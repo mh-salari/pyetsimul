@@ -13,10 +13,9 @@ dependencies = [
     "matplotlib==3.10.3",
     "numpy==2.3.1",
     "scipy==1.16.0",
-    "setuptools==80.9.0",
     "scikit-image==0.25.2"
 ]
-requires-python = ">=3.8"
+requires-python = ">=3.13"
 
 [tool.setuptools.packages.find]
 where = ["."]
