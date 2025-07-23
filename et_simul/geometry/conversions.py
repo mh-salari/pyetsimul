@@ -1,0 +1,117 @@
+import numpy as np
+
+
+def gaze2angle(gaze, rest_pos=None):
+    """Determines rotation angles of the eye from given gaze direction.
+        
+    This function is based on the original MATLAB implementation from the
+    et_simul project — © 2008 Martin Böhme, University of Lübeck.
+    Python port © 2025 Mohammadhossein Salari.
+    Licensed under the GNU GPL v3.0 or later.
+
+    angles = gaze2angle(gaze, rest_pos) calculates the rotation angles of the
+    eye for the gaze direction 'gaze', relative to the rest position of the
+    eye 'rest_pos' (specified as a 3x3 rotation matrix). angles(1) is the 
+    rotation angle in the x-z-plane, and angles(2) is the angle in the 
+    y-z-plane. If no rest position is specified, uses [1 0 0; 0 0 1; 0 1 0].
+    
+    Args:
+        gaze: 3D or 4D gaze direction vector
+        rest_pos: Optional 3x3 rotation matrix for eye rest position
+        
+    Returns:
+        2-element array [horizontal_angle, vertical_angle] in radians
+    """
+    # Convert to numpy array if needed
+    gaze = np.asarray(gaze)
+    
+    # Default rest position if not provided
+    if rest_pos is None:
+        rest_pos = np.array([
+            [1, 0, 0],
+            [0, 0, 1], 
+            [0, 1, 0]
+        ])
+    else:
+        rest_pos = np.asarray(rest_pos)
+    
+    # Use only first 3 components of gaze vector
+    gaze_3d = gaze[:3]
+    # Solve rest_pos * x = gaze_3d for x
+    gaze_transformed = np.linalg.solve(rest_pos, gaze_3d)
+    
+    angles = np.zeros(2)
+    
+    # angles(1) = atan2(gaze(1), -gaze(3))
+    angles[0] = np.arctan2(gaze_transformed[0], -gaze_transformed[2])
+    
+    # angles(2) = atan2(gaze(2), norm(gaze([1,3])))
+    angles[1] = np.arctan2(gaze_transformed[1], 
+                          np.linalg.norm([gaze_transformed[0], gaze_transformed[2]]))
+    
+    return angles
+
+
+def angle2gaze(angles, rest_pos=None):
+    """Calculates gaze direction from rotation angles.
+    
+    This function is based on the original MATLAB implementation from the
+    et_simul project — © 2008 Martin Böhme, University of Lübeck.
+    Python port © 2025 Mohammadhossein Salari.
+    Licensed under the GNU GPL v3.0 or lat
+    
+    gaze = angle2gaze(angles, rest_pos) calculates a gaze direction from 
+    Euler rotation angles. angles(1) is the rotation angle in the 
+    x-z-plane (applied last), and angles(2) is the rotation angle in the 
+    y-z-plane (applied first). 'rest_pos' is a 3x3 rotation matrix specifying
+    the rest position of the eye; if no rest position is specified, uses
+    [1 0 0; 0 0 1; 0 1 0].
+    
+    Args:
+        angles: 2-element array of rotation angles [x_z_angle, y_z_angle] in radians
+        rest_pos: Optional 3x3 rotation matrix for eye rest position
+        
+    Returns:
+        4D homogeneous gaze direction vector [x, y, z, 0]
+    """
+    # Convert to numpy array if needed
+    angles = np.asarray(angles)
+    
+    # Default rest position if not provided
+    if rest_pos is None:
+        rest_pos = np.array([
+            [1, 0, 0],
+            [0, 0, 1],
+            [0, 1, 0]
+        ])
+    else:
+        rest_pos = np.asarray(rest_pos)
+    
+    # rotat_matrix_x_z
+    cos_a1, sin_a1 = np.cos(angles[0]), np.sin(angles[0])
+    rotat_matrix_x_z = np.array([
+        [cos_a1,  0, -sin_a1, 0],
+        [0,       1,  0,      0],
+        [sin_a1,  0,  cos_a1, 0],
+        [0,       0,  0,      1]
+    ])
+    
+    # rotat_matrix_y_z
+    cos_a2, sin_a2 = np.cos(angles[1]), np.sin(angles[1])
+    rotat_matrix_y_z = np.array([
+        [1,  0,       0,      0],
+        [0,  cos_a2, -sin_a2, 0],
+        [0,  sin_a2,  cos_a2, 0],
+        [0,  0,       0,      1]
+    ])
+    
+    # Convert 3x3 rest_pos to 4x4 homogeneous matrix
+    rest_pos_4x4 = np.zeros((4, 4))
+    rest_pos_4x4[:3, :3] = rest_pos
+    rest_pos_4x4[3, 3] = 1
+    
+    # Apply transformations: rest_pos * rotat_matrix_x_z * rotat_matrix_y_z * default_gaze
+    default_gaze = np.array([0, 0, -1, 0])
+    gaze = rest_pos_4x4 @ rotat_matrix_x_z @ rotat_matrix_y_z @ default_gaze
+    
+    return gaze

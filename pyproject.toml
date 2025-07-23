@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=64", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "et-simul"
+version = "1.0.0"
+description = ""
+authors = [{name = "Mohammadhossein Salari", email = "Mohammadhossein.Salari@gmail.com"}]
+license = {text = "GPL-3.0-or-later"}
+readme = {text = "Based on et_simul — © 2008 Martin Böhme, University of Lübeck\nPython port © 2025 Mohammadhossein Salari", content-type = "text/plain"}
+dependencies = [
+    "matplotlib==3.10.3",
+    "numpy==2.3.1",
+    "scipy==1.16.0",
+    "setuptools==80.9.0",
+    "scikit-image==0.25.2"
+]
+requires-python = ">=3.8"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["et_simul*"]
