@@ -13,34 +13,36 @@ from .estimate_cc import estimate_cc_hennessey
 
 def hennessey_eval_base(et, camimg):
     """Evaluation function helper for Hennessey et al.
-    
+
     This function is based on the original MATLAB implementation from the
     et_simul project — © 2008 Martin Böhme, University of Lübeck.
     Python port © 2025 Mohammadhossein Salari.
     Licensed under the GNU GPL v3.0 or later.
-    
+
     Args:
         et: Eye tracker structure
         camimg: Camera image data
-        
+
     Returns:
         Tuple of (gaze, cc_estim, gaze3d)
     """
     # Line 21: r_cornea_assumed=7.98e-3*(1+et.state.parameter_err);
-    r_cornea_assumed = 7.98e-3 * (1 + et.state['parameter_err'])
+    r_cornea_assumed = 7.98e-3 * (1 + et.state["parameter_err"])
     # Line 22: rpc_assumed=4.44e-3*(1+et.state.parameter_err);
-    rpc_assumed = 4.44e-3 * (1 + et.state['parameter_err'])
+    rpc_assumed = 4.44e-3 * (1 + et.state["parameter_err"])
 
     # Find CC
     # Line 25-26: cc_estim=estimate_cc_hennessey(et.cameras{1}, et.lights, camimg{1}.cr, ...
     #             r_cornea_assumed);
-    cc_estim = estimate_cc_hennessey(et.cameras[0], et.lights, camimg[0]['cr'], r_cornea_assumed)
+    cc_estim = estimate_cc_hennessey(
+        et.cameras[0], et.lights, camimg[0]["cr"], r_cornea_assumed
+    )
 
     # Find position of PC using ray-sphere-intersection
     # Line 29: switch et.state.pupil_alg
-    pupil_alg = et.state['pupil_alg']
-    
-    if pupil_alg == 'hennessey':
+    pupil_alg = et.state["pupil_alg"]
+
+    if pupil_alg == "hennessey":
         # Bring CC into camera coordinate system and compute distance
         # Line 32: cc_cam=et.cameras{1}.trans\cc_estim;
         cc_cam = np.linalg.solve(et.cameras[0].trans, cc_estim)
@@ -52,7 +54,7 @@ def hennessey_eval_base(et, camimg):
         # the image of the pupil? At any rate, we apply an empirical
         # correction to try and compensate for this.
         # Line 39: a=fitellipse_hf(camimg{1}.pupil(1,:), camimg{1}.pupil(2,:));
-        points = np.column_stack((camimg[0]['pupil'][0, :], camimg[0]['pupil'][1, :]))
+        points = np.column_stack((camimg[0]["pupil"][0, :], camimg[0]["pupil"][1, :]))
         ellipse = EllipseModel()
         if ellipse.estimate(points):
             # Line 40: r_pupil=max(a(3:4));
@@ -70,23 +72,31 @@ def hennessey_eval_base(et, camimg):
         # Line 46-48: pupil_rays= ...
         #             camera_unproject(et.cameras{1}, camimg{1}.pupil, 1.0) - ...
         #             repmat(et.cameras{1}.trans(:,4), 1, size(camimg{1}.pupil, 2));
-        unprojected = et.cameras[0].unproject(camimg[0]['pupil'], 1.0)
-        camera_pos = np.tile(et.cameras[0].trans[:, 3:4], (1, camimg[0]['pupil'].shape[1]))
+        unprojected = et.cameras[0].unproject(camimg[0]["pupil"], 1.0)
+        camera_pos = np.tile(
+            et.cameras[0].trans[:, 3:4], (1, camimg[0]["pupil"].shape[1])
+        )
         pupil_rays = unprojected - camera_pos
 
         # Initialize array of pupil points
         # Line 51: pupil_points=zeros(size(pupil_rays));
         # Line 54: pupil_points=zeros(4,0);
         pupil_points = np.zeros((4, 0))
-        
+
         # Refract pupil contour rays
         # Line 55: for j=1:size(pupil_rays, 2)
         for j in range(pupil_rays.shape[1]):
             # Refract ray at cornea. If we don't hit the cornea, ignore the ray.
             # Line 58-59: [U0, Ud]=refract_ray_sphere(et.cameras{1}.trans(:,4), ...
             #             pupil_rays(:,j), cc_estim, r_cornea_assumed, 1, 1.376);
-            U0, Ud = refract_ray_sphere(et.cameras[0].trans[:, 3], pupil_rays[:, j], 
-                                       cc_estim, r_cornea_assumed, 1, 1.376)
+            U0, Ud = refract_ray_sphere(
+                et.cameras[0].trans[:, 3],
+                pupil_rays[:, j],
+                cc_estim,
+                r_cornea_assumed,
+                1,
+                1.376,
+            )
             # Line 60-62: if isempty(U0) continue; end
             if U0 is None:
                 continue
@@ -95,14 +105,16 @@ def hennessey_eval_base(et, camimg):
             # find pupil contour point. If we don't hit the sphere, ignore the ray.
             # Line 67-68: pt=intersect_ray_sphere(U0, Ud, cc_estim, ...
             #             sqrt(rpc_assumed^2+r_pupil^2));
-            pt_tuple = intersect_ray_sphere(U0, Ud, cc_estim, np.sqrt(rpc_assumed**2 + r_pupil**2))
+            pt_tuple = intersect_ray_sphere(
+                U0, Ud, cc_estim, np.sqrt(rpc_assumed**2 + r_pupil**2)
+            )
             # Line 69-71: if ~isempty(pt) pupil_points(:,j)=pt; end
             if pt_tuple[0] is not None:  # Check if intersection exists
                 pt = pt_tuple[0]  # Take the closer intersection
                 if pupil_points.shape[1] <= j:
                     # Expand pupil_points array as needed
                     new_points = np.zeros((4, j + 1))
-                    new_points[:, :pupil_points.shape[1]] = pupil_points
+                    new_points[:, : pupil_points.shape[1]] = pupil_points
                     pupil_points = new_points
                 # Convert 3D point to homogeneous coordinates if needed
                 if pt.shape[0] == 3:
@@ -116,19 +128,20 @@ def hennessey_eval_base(et, camimg):
             pc_estim = np.mean(pupil_points[:, valid_cols], axis=1)
         else:
             pc_estim = np.zeros(4)
-            
-    elif pupil_alg == 'pupil_center':
+
+    elif pupil_alg == "pupil_center":
         # This doesn't use the actual Hennessey algorithm. Instead, we
-        # reproject the pupil center into the eye and intersect with a 
+        # reproject the pupil center into the eye and intersect with a
         # sphere of radius r_pc around the cornea center
         # Line 79-80: dir=camera_unproject(et.cameras{1}, camimg{1}.pc, 1.0) - ...
         #             et.cameras{1}.trans(:,4);
-        unprojected_pc = et.cameras[0].unproject(camimg[0]['pc'], 1.0)
+        unprojected_pc = et.cameras[0].unproject(camimg[0]["pc"], 1.0)
         dir = unprojected_pc - et.cameras[0].trans[:, 3]
         # Line 81-82: [U0, Ud]=refract_ray_sphere(et.cameras{1}.trans(:,4), dir, ...
         #             cc_estim, r_cornea_assumed, 1, 1.376);
-        U0, Ud = refract_ray_sphere(et.cameras[0].trans[:, 3], dir, 
-                                   cc_estim, r_cornea_assumed, 1, 1.376)
+        U0, Ud = refract_ray_sphere(
+            et.cameras[0].trans[:, 3], dir, cc_estim, r_cornea_assumed, 1, 1.376
+        )
         # Line 83: pc_estim=intersect_ray_sphere(U0, Ud, cc_estim, rpc_assumed);
         pc_estim_tuple = intersect_ray_sphere(U0, Ud, cc_estim, rpc_assumed)
         if pc_estim_tuple[0] is not None:
@@ -150,7 +163,9 @@ def hennessey_eval_base(et, camimg):
 
     # Line 92-93: x=intersect_ray_plane(cc_estim, gaze3d, [0 0 0 1]', ...
     #             [0 1 0 0]');
-    x = intersect_ray_plane(cc_estim, gaze3d, np.array([0, 0, 0, 1]), np.array([0, 1, 0, 0]))
+    x = intersect_ray_plane(
+        cc_estim, gaze3d, np.array([0, 0, 0, 1]), np.array([0, 1, 0, 0])
+    )
     # Line 94: gaze=[x(1) x(3)]';
     gaze = np.array([x[0], x[2]])
 
@@ -168,7 +183,7 @@ def hennessey_eval_main(et, camimg):
     Args:
         et: Eye tracker structure
         camimg: Camera image data
-        
+
     Returns:
         2D gaze position
     """
@@ -182,41 +197,43 @@ def hennessey_eval_main(et, camimg):
     # Intersect the gaze line with the plane to see where it hits
     # Line 35-36: x=intersect_ray_plane(cc_estim, gaze3d, [0 0 0 1]', ...
     #             [0 1 0 0]');
-    x = intersect_ray_plane(cc_estim, gaze3d, np.array([0, 0, 0, 1]), np.array([0, 1, 0, 0]))
+    x = intersect_ray_plane(
+        cc_estim, gaze3d, np.array([0, 0, 0, 1]), np.array([0, 1, 0, 0])
+    )
     # Line 37: gaze=[x(1) x(3)]';
     gaze = np.array([x[0], x[2]])
 
     # Apply hennessey recalibration to final 2D gaze position
     # Line 40-42: switch et.state.recalib_type ... case 'hennessey'
     #             gaze=recalib_hennessey_eval(et.state.recalib_hennessey, gaze);
-    recalib_type = et.state['recalib_type']
-    if recalib_type == 'hennessey':
-        gaze = recalib_hennessey_eval(et.state['recalib_hennessey'], gaze)
+    recalib_type = et.state["recalib_type"]
+    if recalib_type == "hennessey":
+        gaze = recalib_hennessey_eval(et.state["recalib_hennessey"], gaze)
 
     return gaze
 
 
 def recalib_hennessey_eval(state, gaze):
     """Apply Hennessey's recalibration procedure.
-    
+
     This function is based on the original MATLAB implementation from the
     et_simul project — © 2008 Martin Böhme, University of Lübeck.
     Python port © 2025 Mohammadhossein Salari.
     Licensed under the GNU GPL v3.0 or later.
-    
+
     Args:
         state: Recalibration state from recalib_hennessey_calib
         gaze: 2D gaze position to be corrected
-        
+
     Returns:
         Corrected 2D gaze position
     """
-    if not state or 'gaze_measured' not in state or 'offsets' not in state:
+    if not state or "gaze_measured" not in state or "offsets" not in state:
         return gaze
-    
+
     # Line 25: d=state.gaze_measured-repmat(gaze, 1, size(state.gaze_measured,2));
-    gaze_expanded = np.tile(gaze.reshape(-1, 1), (1, state['gaze_measured'].shape[1]))
-    d = state['gaze_measured'] - gaze_expanded
+    gaze_expanded = np.tile(gaze.reshape(-1, 1), (1, state["gaze_measured"].shape[1]))
+    d = state["gaze_measured"] - gaze_expanded
     # Line 26: d=sqrt(sum(d.^2,1));
     d = np.sqrt(np.sum(d**2, axis=0))
 
@@ -234,7 +251,7 @@ def recalib_hennessey_eval(state, gaze):
 
     # Line 42: gaze=gaze+sum(state.offsets.*repmat(weights,2,1), 2);
     weights_expanded = np.tile(weights.reshape(1, -1), (2, 1))
-    weighted_offsets = state['offsets'] * weights_expanded
+    weighted_offsets = state["offsets"] * weights_expanded
     gaze = gaze + np.sum(weighted_offsets, axis=1)
-    
+
     return gaze

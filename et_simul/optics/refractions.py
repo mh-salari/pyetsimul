@@ -5,7 +5,7 @@ from ..geometry.intersections import intersect_ray_sphere
 
 def find_refraction(C, O, S0, Sr, n_outside, n_sphere):
     """Computes image produced by refracting sphere.
-    
+
     This function is based on the original MATLAB implementation from the
     et_simul project — © 2008 Martin Böhme, University of Lübeck.
     Python port © 2025 Mohammadhossein Salari.
@@ -17,57 +17,57 @@ def find_refraction(C, O, S0, Sr, n_outside, n_sphere):
     through point 'C' (this could be a camera, for example). The refractive
     index of the sphere is 'n_sphere', that of the outside medium is
     'n_outside'.
-    
+
     Args:
         C: Camera/observer position (3D or 4D homogeneous)
         O: Object position inside sphere (3D or 4D homogeneous)
         S0: Sphere center (3D or 4D homogeneous)
-        Sr: Sphere radius  
+        Sr: Sphere radius
         n_outside: Refractive index outside sphere
         n_sphere: Refractive index of sphere
-        
+
     Returns:
         Position on sphere surface where refraction occurs (same coordinate type as input), or None if not found.
     """
     # Extract 3D spatial components for calculations
     C_3d = C[:3] if len(C) > 3 else C
-    O_3d = O[:3] if len(O) > 3 else O  
+    O_3d = O[:3] if len(O) > 3 else O
     S0_3d = S0[:3] if len(S0) > 3 else S0
-    
+
     # Determine output coordinate type from input (preserve input format)
     is_homogeneous = len(C) > 3 or len(O) > 3 or len(S0) > 3
-    
+
     def refraction_objective(a):
         """Objective function for finding refraction point."""
         # Compute vectors from sphere center to camera and object
         to_c = (C_3d - S0_3d) / np.linalg.norm(C_3d - S0_3d)
         to_o = (O_3d - S0_3d) / np.linalg.norm(O_3d - S0_3d)
-        
+
         # Interpolate and normalize to get surface normal
         n = a * to_c + (1 - a) * to_o
         n = n / np.linalg.norm(n)
-        
+
         # Compute point on surface of sphere
         U0 = S0_3d + Sr * n
-        
+
         # Compute angles with surface normal
         cos_angle_c = np.dot(n, (C_3d - U0) / np.linalg.norm(C_3d - U0))
         cos_angle_o = np.dot(n, (U0 - O_3d) / np.linalg.norm(U0 - O_3d))
-        
+
         # Safe sqrt to handle numerical errors
         sin_angle_c = np.sqrt(max(0, 1 - cos_angle_c**2))
         sin_angle_o = np.sqrt(max(0, 1 - cos_angle_o**2))
-        
+
         # Snell's law difference
         diff = n_outside * sin_angle_c - n_sphere * sin_angle_o
-        
+
         return diff, U0
-    
+
     # Find zero of objective function
     try:
         a = brentq(lambda x: refraction_objective(x)[0], 0, 1)
         _, I_3d = refraction_objective(a)
-        
+
         # Return result in same coordinate type as input
         if is_homogeneous:
             return np.array([I_3d[0], I_3d[1], I_3d[2], 1.0])
@@ -79,17 +79,17 @@ def find_refraction(C, O, S0, Sr, n_outside, n_sphere):
 
 def refract_ray_sphere(R0, Rd, S0, Sr, n_outside, n_sphere):
     """Refracts ray at surface of sphere.
-    
+
     This function is based on the original MATLAB implementation from the
     et_simul project — © 2008 Martin Böhme, University of Lübeck.
     Python port © 2025 Mohammadhossein Salari.
     Licensed under the GNU GPL v3.0 or lat
-    
+
     [U0, Ud] = refract_ray_sphere(R0, Rd, S0, Sr, n_outside, n_sphere) finds
     the point 'U0' at which a ray (specified by its origin 'R0' and direction
-    'Rd') strikes a sphere (with center 'S0' and radius 'Sr') and computes 
+    'Rd') strikes a sphere (with center 'S0' and radius 'Sr') and computes
     the direction 'Ud' of the refracted ray. The refractive index outside
-    the sphere is 'n_outside', the refractive index of the sphere is 
+    the sphere is 'n_outside', the refractive index of the sphere is
     'n_sphere'.
 
     [] is returned for 'U0' and 'Ud' if the original ray does not intersect
@@ -97,7 +97,7 @@ def refract_ray_sphere(R0, Rd, S0, Sr, n_outside, n_sphere):
 
     3D or homogeneous coordinates may be passed in; the same type of
     coordinates is passed out.
-    
+
     Args:
         R0: Ray origin (3D or 4D homogeneous)
         Rd: Ray direction (3D or 4D homogeneous)
@@ -105,7 +105,7 @@ def refract_ray_sphere(R0, Rd, S0, Sr, n_outside, n_sphere):
         Sr: Sphere radius
         n_outside: Refractive index outside sphere
         n_sphere: Refractive index of sphere
-        
+
     Returns:
         Tuple of (U0, Ud) where U0 is intersection point, Ud is refracted direction.
         Returns (None, None) if no intersection.
@@ -114,38 +114,40 @@ def refract_ray_sphere(R0, Rd, S0, Sr, n_outside, n_sphere):
     R0_3d = R0[:3] if len(R0) > 3 else R0
     Rd_3d = Rd[:3] if len(Rd) > 3 else Rd
     S0_3d = S0[:3] if len(S0) > 3 else S0
-    
+
     # Determine output coordinate type from ray inputs
     is_homogeneous = len(R0) > 3 or len(Rd) > 3
-    
+
     # Normalize ray direction (using 3D spatial components)
     Rd_normalized = Rd_3d / np.linalg.norm(Rd_3d)
-    
+
     # Find point of intersection
     U0, _ = intersect_ray_sphere(R0, Rd, S0, Sr)
-    
+
     if U0 is None:
         return None, None
-    
+
     # Extract 3D components from intersection result for calculations
     U0_3d = U0[:3] if len(U0) > 3 else U0
-    
+
     # Find surface normal at point of intersection (pointing inwards)
     N = (S0_3d - U0_3d) / np.linalg.norm(S0_3d - U0_3d)
-    
+
     # Find cosines
     costh1 = np.dot(Rd_normalized, N)
-    costh2_squared = 1 - (n_outside / n_sphere)**2 * (1 - costh1**2)
-    
+    costh2_squared = 1 - (n_outside / n_sphere) ** 2 * (1 - costh1**2)
+
     # Check for total internal reflection
     if costh2_squared < 0:
         return U0, None
-    
+
     costh2 = np.sqrt(costh2_squared)
-    
+
     # Snell's law refraction formula
-    Ud_3d = (n_outside / n_sphere) * Rd_normalized + (costh2 - (n_outside / n_sphere) * costh1) * N
-    
+    Ud_3d = (n_outside / n_sphere) * Rd_normalized + (
+        costh2 - (n_outside / n_sphere) * costh1
+    ) * N
+
     # Return results in same coordinate type as input
     if is_homogeneous:
         # Format U0 as homogeneous position (w=1) if not already

@@ -9,4 +9,4 @@ This module provides visualization functions for:
 from . import draw
 from . import setup_visualization
 
-__all__ = ['draw', 'setup_visualization']
+__all__ = ["draw", "setup_visualization"]

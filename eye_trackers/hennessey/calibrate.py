@@ -9,13 +9,13 @@ from .evaluate import hennessey_eval_base
 
 def hennessey_calib(et, calib_data):
     """Calibration function for Hennessey et al.'s method.
-    
+
     This function is based on the original MATLAB implementation from the
     et_simul project — © 2008 Martin Böhme, University of Lübeck.
     Python port © 2025 Mohammadhossein Salari.
     Licensed under the GNU GPL v3.0 or lat
 
-    
+
     Args:
         et: Eye tracker structure
         calib_data: Calibration data from et_calib
@@ -32,19 +32,22 @@ def hennessey_calib(et, calib_data):
     for i in range(et.calib_points.shape[1]):
         # Line 27-28: [gaze_measured(:,i), cc_estim, gaze3d_measured(:,i)]= ...
         #             hennessey_eval_base(et, calib_data{i}.camimg);
-        gaze_measured[:, i], cc_estim, gaze3d_measured[:, i] = \
-            hennessey_eval_base(et, calib_data[i]['camimg'])
+        gaze_measured[:, i], cc_estim, gaze3d_measured[:, i] = hennessey_eval_base(
+            et, calib_data[i]["camimg"]
+        )
         # Line 29-31: gaze3d_desired(:,i)= ...
         #             [et.calib_points(1,i) 0 et.calib_points(2,i) 1]' - ...
         #             cc_estim;
-        gaze3d_desired[:, i] = np.array([
-            et.calib_points[0, i], 0, et.calib_points[1, i], 1
-        ]) - cc_estim
+        gaze3d_desired[:, i] = (
+            np.array([et.calib_points[0, i], 0, et.calib_points[1, i], 1]) - cc_estim
+        )
 
     # For hennessey config, only compute the hennessey recalibration that will actually be used
     # Line 34-35: et.state.recalib_hennessey=recalib_hennessey_calib(gaze_measured, ...
     #             et.calib_points);
-    et.state['recalib_hennessey'] = recalib_hennessey_calib(gaze_measured, et.calib_points)
+    et.state["recalib_hennessey"] = recalib_hennessey_calib(
+        gaze_measured, et.calib_points
+    )
 
     # Note: Other recalibration types are computed in original MATLAB but not used for hennessey config
     # Skipping them to keep implementation focused
@@ -52,7 +55,7 @@ def hennessey_calib(et, calib_data):
 
 def recalib_hennessey_calib(gaze_measured, gaze_desired):
     """Calibrate Hennessey's recalibration procedure.
-    
+
     This function is based on the original MATLAB implementation from the
     et_simul project — © 2008 Martin Böhme, University of Lübeck.
     Python port © 2025 Mohammadhossein Salari.
@@ -61,13 +64,10 @@ def recalib_hennessey_calib(gaze_measured, gaze_desired):
     Args:
         gaze_measured: 2×n matrix of estimated gaze positions on screen
         gaze_desired: 2×n matrix of corresponding true gaze positions
-        
+
     Returns:
         Dictionary containing recalibration state
     """
     # Line 29: state.gaze_measured=gaze_measured;
     # Line 30: state.offsets=gaze_desired-gaze_measured;
-    return {
-        'gaze_measured': gaze_measured,
-        'offsets': gaze_desired - gaze_measured
-    }
+    return {"gaze_measured": gaze_measured, "offsets": gaze_desired - gaze_measured}

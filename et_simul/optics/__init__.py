@@ -9,4 +9,4 @@ This module provides optical physics functions for:
 from . import reflections
 from . import refractions
 
-__all__ = ['reflections', 'refractions']
+__all__ = ["reflections", "refractions"]

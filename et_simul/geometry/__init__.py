@@ -2,7 +2,7 @@
 
 This module provides geometric functions for:
 - 3D coordinate conversions and transformations
-- Ray-surface intersection calculations  
+- Ray-surface intersection calculations
 - Vector and matrix utilities
 """
 
@@ -10,4 +10,4 @@ from . import conversions
 from . import intersections
 from . import utils
 
-__all__ = ['conversions', 'intersections', 'utils']
+__all__ = ["conversions", "intersections", "utils"]
