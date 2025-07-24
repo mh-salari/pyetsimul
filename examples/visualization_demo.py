@@ -10,9 +10,8 @@ key anatomical parameters with camera view.
 import numpy as np
 import matplotlib.pyplot as plt
 
-# Import modules from the package
 from et_simul.core import Eye, Camera, Light
-from et_simul.visualization.setup_visualization import create_eye_tracking_visualization
+from et_simul.visualization import plot_setup_and_camera_view
 
 
 def main():
@@ -84,7 +83,7 @@ def main():
             print(" CR not found - may be outside corneal boundaries")
 
     # Create the visualization
-    create_eye_tracking_visualization(e, target_point, lights, c, cr_3d_list)
+    plot_setup_and_camera_view(e, target_point, lights, c, cr_3d_list)
 
     print("\nDisplaying eye tracking setup...")
     print("Close the plot window when done.")

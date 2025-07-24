@@ -10,7 +10,7 @@ import matplotlib.pyplot as plt
 
 # Import modules from the package
 from et_simul.core import Eye
-from et_simul.visualization.draw import draw_eye_anatomy
+from et_simul.visualization import draw_eye_anatomy
 
 
 def demo_basic_eye_anatomy():

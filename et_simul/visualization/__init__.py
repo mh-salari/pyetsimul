@@ -1,12 +1,22 @@
-"""Visualization tools for eye tracking setups and results.
-
-This module provides visualization functions for:
-- 3D eye tracking setup visualization with anatomical details
-- Camera view rendering with pupil and corneal reflections
-- Eye tracker setup diagrams and configuration displays
+"""Visualization tools for eye and setups.
 """
 
 from . import draw
-from . import setup_visualization
+from .draw import (
+    draw_eye_anatomy,
+    plot_setup,
+    plot_camera_view_of_eye,
+    plot_setup_and_camera_view,
+    setup_interactive_plot,
+    update_interactive_plot,
+)
 
-__all__ = ["draw", "setup_visualization"]
+__all__ = [
+    "draw",
+    "draw_eye_anatomy",
+    "plot_setup",
+    "plot_camera_view_of_eye", 
+    "plot_setup_and_camera_view",
+    "setup_interactive_plot",
+    "update_interactive_plot",
+]

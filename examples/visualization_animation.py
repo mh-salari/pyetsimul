@@ -4,11 +4,7 @@ import copy
 
 # Import modules from the package
 from et_simul.core import Eye, Camera, Light
-from et_simul.visualization.setup_visualization import (
-    setup_interactive_plot,
-    update_interactive_plot,
-    create_eye_tracking_visualization,
-)
+from et_simul.visualization import plot_setup_and_camera_view
 
 
 def manual_eye_gaze_keyboard_control():
@@ -52,7 +48,7 @@ def manual_eye_gaze_keyboard_control():
     for light in lights:
         cr_ref = e_ref.find_cr(light, c)
         cr_ref_list.append(cr_ref)
-    create_eye_tracking_visualization(
+    plot_setup_and_camera_view(
         e_ref, target_point, lights, c, cr_ref_list, ax1=ax1, ax2=ax2, fig=fig
     )
     xlim = ax1.get_xlim()
@@ -69,7 +65,7 @@ def manual_eye_gaze_keyboard_control():
         for light in lights:
             cr_3d = e.find_cr(light, c)
             cr_3d_list.append(cr_3d)
-        create_eye_tracking_visualization(
+        plot_setup_and_camera_view(
             e,
             target_point,
             lights,
