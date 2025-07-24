@@ -89,6 +89,30 @@ class EyeTracker(ABC):
 
         return calib_data
 
+    def predict_gaze_at_position(self, eye, look_at_pos):
+        """Predict gaze position when eye looks at a target.
+
+        Generic gaze prediction that works for all eye tracker types.
+
+        Args:
+            eye: Eye object
+            look_at_pos: 2D position where eye should look [x, y]
+
+        Returns:
+            2D gaze position [x, y] in meters, or None if prediction fails
+        """
+        # Make eye look at target position
+        target = np.array([look_at_pos[0], 0, look_at_pos[1], 1])
+        eye.look_at(target)
+
+        # Take camera images
+        camimg = [None] * len(self.cameras)
+        for iCamera, cam in enumerate(self.cameras):
+            camimg[iCamera] = cam.take_image(eye, self.lights)
+
+        # Get gaze prediction - returns None if prediction fails
+        return self.predict_gaze(camimg)
+
     def calculate_gaze_error(self, eye, look_at_pos):
         """Calculate gaze estimation error.
 
@@ -102,17 +126,7 @@ class EyeTracker(ABC):
         Returns:
             Tuple of (u, v) gaze error in meters, or (NaN, NaN) if estimation fails
         """
-        # Make eye look at target position
-        target = np.array([look_at_pos[0], 0, look_at_pos[1], 1])
-        eye.look_at(target)
-
-        # Take camera images
-        camimg = [None] * len(self.cameras)
-        for iCamera, cam in enumerate(self.cameras):
-            camimg[iCamera] = cam.take_image(eye, self.lights)
-
-        # Get gaze prediction
-        gaze = self.predict_gaze(camimg)
+        gaze = self.predict_gaze_at_position(eye, look_at_pos)
 
         if gaze is not None:
             u = gaze[0] - look_at_pos[0]
