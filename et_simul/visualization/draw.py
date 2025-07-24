@@ -181,6 +181,7 @@ def plot_setup(
     camera,
     cr_3d_list=None,
     ref_bounds=None,
+    calib_points=None,
 ):
     """Plot the 3D eye tracking setup visualization.
 
@@ -192,6 +193,7 @@ def plot_setup(
         camera: Camera object with transformation and parameters
         cr_3d_list: List of corneal reflection 3D positions
         ref_bounds: Optional reference bounds dict with 'x', 'y', 'z' keys
+        calib_points: Optional calibration points array plot_setup_and_camera_view to plot as black x markers
     """
     ax1.cla()
 
@@ -313,6 +315,24 @@ def plot_setup(
         ax1.set_xlim(ref_bounds["x"])
         ax1.set_ylim(ref_bounds["y"])
         ax1.set_zlim(ref_bounds["z"])
+
+    # Plot calibration points if provided
+    if calib_points is not None:
+        # Assume 2D points are in the X-Z plane (y=0)
+        calib_x = calib_points[0, :]
+        calib_y = np.zeros_like(calib_points[0, :])
+        calib_z = calib_points[1, :]
+
+        ax1.scatter(
+            calib_x,
+            calib_y,
+            calib_z,
+            color="black",
+            marker="x",
+            s=50,
+            linewidth=2,
+            label="Calibration Points",
+        )
 
 
 def plot_camera_view_of_eye(
@@ -440,11 +460,11 @@ def plot_setup_and_camera_view(
     target_point,
     lights,
     camera,
-    cr_3d_list=None,
     ax1=None,
     ax2=None,
     fig=None,
     ref_bounds=None,
+    calib_points=None,
 ):
     """Create comprehensive eye tracking visualization with 3D setup and camera view.
 
@@ -453,10 +473,10 @@ def plot_setup_and_camera_view(
         target_point: Target point [x, y, z, 1] or [x, y, z]
         lights: List of Light objects with positions
         camera: Camera object with transformation and parameters
-        cr_3d_list: List of corneal reflection 3D positions
         ax1, ax2: Optional matplotlib axes for reuse
         fig: Optional matplotlib figure for reuse
         ref_bounds: Optional reference bounds dict with 'x', 'y', 'z' keys
+        calib_points: Optional calibration points array plot_setup_and_camera_view to plot as black x markers
 
     Returns:
         fig: Matplotlib figure object
@@ -530,8 +550,14 @@ def plot_setup_and_camera_view(
     # Get camera image data
     camera_image = camera.take_image(eye, lights)
 
+    # Calculate 3D CR positions for each light
+    cr_3d_list = []
+    for light in lights:
+        cr_3d = eye.find_cr(light, camera)
+        cr_3d_list.append(cr_3d)
+
     # Call the plotting functions
-    plot_setup(ax1, eye_data, target_point, lights, camera, cr_3d_list, ref_bounds)
+    plot_setup(ax1, eye_data, target_point, lights, camera, cr_3d_list, ref_bounds, calib_points)
 
     plot_camera_view_of_eye(ax2, camera_image, camera, cr_3d_list)
 
