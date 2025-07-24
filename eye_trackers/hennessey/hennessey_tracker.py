@@ -5,7 +5,7 @@ Eye tracker that uses Hennessey et al.'s method.
 
 from et_simul.core import EyeTracker
 from .calibrate import hennessey_calib
-from .evaluate import hennessey_eval_main
+from .prediction import hennessey_predict_main
 
 
 class HennesseyTracker(EyeTracker):
@@ -24,7 +24,7 @@ class HennesseyTracker(EyeTracker):
 
         Args:
             cameras: List of Camera objects
-            lights: List of Light objects  
+            lights: List of Light objects
             calib_points: Calibration point coordinates (numpy array format)
             params: Dictionary containing optional parameters:
                    - 'recalib_type': Type of recalibration ('hennessey', 'angle', etc.)
@@ -72,4 +72,4 @@ class HennesseyTracker(EyeTracker):
 
         Based on hennessey_eval.m and hennessey_eval_base.m
         """
-        return hennessey_eval_main(self, camimg)
+        return hennessey_predict_main(self, camimg)

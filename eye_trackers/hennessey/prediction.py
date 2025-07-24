@@ -1,6 +1,6 @@
-"""Hennessey evaluation algorithm.
+"""Hennessey Prediction algorithm.
 
-Evaluation function for Hennessey et al.'s method.
+Prediction function for Hennessey et al.'s method.
 Exactly matches MATLAB hennessey_eval() and hennessey_eval_base().
 """
 
@@ -11,8 +11,8 @@ from et_simul.optics.refractions import refract_ray_sphere
 from .estimate_cc import estimate_cc_hennessey
 
 
-def hennessey_eval_base(et, camimg):
-    """Evaluation function helper for Hennessey et al.
+def hennessey_predict_base(et, camimg):
+    """Prediction function helper for Hennessey et al.
 
     This function is based on the original MATLAB implementation from the
     et_simul project — © 2008 Martin Böhme, University of Lübeck.
@@ -37,7 +37,7 @@ def hennessey_eval_base(et, camimg):
     cc_estim = estimate_cc_hennessey(
         et.cameras[0], et.lights, camimg[0]["cr"], r_cornea_assumed
     )
-    
+
     # Check if CR estimation failed
     if cc_estim is None:
         return None, None, None
@@ -176,8 +176,8 @@ def hennessey_eval_base(et, camimg):
     return gaze, cc_estim, gaze3d
 
 
-def hennessey_eval_main(et, camimg):
-    """Evaluation function for Hennessey et al.'s method.
+def hennessey_predict_main(et, camimg):
+    """Prediction function for Hennessey et al.'s method.
 
     This function is based on the original MATLAB implementation from the
     et_simul project — © 2008 Martin Böhme, University of Lübeck.
@@ -192,9 +192,9 @@ def hennessey_eval_main(et, camimg):
         2D gaze position
     """
     # Line 21: [gaze, cc_estim, gaze3d]=hennessey_eval_base(et, camimg);
-    gaze, cc_estim, gaze3d = hennessey_eval_base(et, camimg)
-    
-    # Check if base evaluation failed
+    gaze, cc_estim, gaze3d = hennessey_predict_base(et, camimg)
+
+    # Check if base Prediction failed
     if gaze is None:
         return None
 

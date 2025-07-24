@@ -53,7 +53,7 @@ def estimate_cc_hennessey(c, l, cr, r_cornea_assumed=None):
         # Check if CR was detected
         if cr[j] is None:
             return None
-            
+
         # Compute vector to CR
         # Line 40: cr_hat=camera_unproject(c, cr{j}, 1);
         cr_hat = c.unproject(cr[j], 1.0)  # Should return 4x1 column vector
