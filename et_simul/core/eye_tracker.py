@@ -62,18 +62,16 @@ class EyeTracker(ABC):
         return self
 
     def _collect_calibration_data(self, eye):
-        """Collect calibration data at all calibration points.
-
-        Generic data collection process that works for all eye trackers.
-        Exactly matches the original calibrate_eye_tracker logic.
-        """
-        if self.calib_points is None:
-            raise ValueError("Calibration points not set")
-
+        """Helper to collect data for each calibration point."""
         calib_data = [None] * self.calib_points.shape[1]
         np.random.seed(0)  # For reproducible results
 
-        for i in range(self.calib_points.shape[1]):
+        n_points = self.calib_points.shape[1]
+        failed_points = []
+
+        print(f"Collecting calibration data at {n_points} points...")
+
+        for i in range(n_points):
             # Make eye look at calibration point
             target = np.array([self.calib_points[0, i], 0, self.calib_points[1, i], 1])
             eye.look_at(target)
@@ -81,11 +79,41 @@ class EyeTracker(ABC):
             # Take images from all cameras
             calib_data[i] = {}
             calib_data[i]["camimg"] = [None] * len(self.cameras)
+
             for iCamera, cam in enumerate(self.cameras):
-                calib_data[i]["camimg"][iCamera] = cam.take_image(eye, self.lights)
+                camimg = cam.take_image(eye, self.lights)
+                calib_data[i]["camimg"][iCamera] = camimg
+
+                # Check for detection failures immediately
+                pc = camimg["pc"]
+                cr = camimg["cr"][0] if camimg["cr"] else None
+
+                if pc is None:
+                    failed_points.append(
+                        (i + 1, self.calib_points[:, i], "PUPIL CENTER not detected")
+                    )
+                elif cr is None:
+                    failed_points.append(
+                        (i + 1, self.calib_points[:, i], "CR not detected")
+                    )
 
             # Store eye state
             calib_data[i]["e"] = copy.deepcopy(eye)
+
+        # Summary of failed points
+        if failed_points:
+            print(
+                f"\n⚠️  WARNING: {len(failed_points)}/{n_points} calibration points failed:"
+            )
+            for point_num, coords, reason in failed_points:
+                print(
+                    f"  Point {point_num} ({coords[0]*1000:.0f}mm, {coords[1]*1000:.0f}mm): {reason}"
+                )
+            print(
+                f"  Calibration will proceed with {n_points - len(failed_points)} valid points.\n"
+            )
+        else:
+            print(f"✅ All {n_points} calibration points collected successfully.\n")
 
         return calib_data
 
