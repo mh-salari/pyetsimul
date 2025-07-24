@@ -29,11 +29,7 @@ def intersect_ray_sphere(R0, Rd, S0, Sr):
         Tuple of (pos, pos2) where pos is closer intersection, pos2 is farther.
         Both are 3D coordinates. Returns (None, None) if no intersection.
     """
-    # Store original inputs for format preservation
-    R0_orig = R0.copy()
-    Rd_orig = Rd.copy()
-    S0_orig = S0.copy()
-
+    
     # Extract 3D components for calculations
     R0_3d = R0[:3] if len(R0) == 4 else R0
     Rd_3d = Rd[:3] if len(Rd) == 4 else Rd
