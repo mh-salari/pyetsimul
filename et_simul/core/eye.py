@@ -323,6 +323,34 @@ class Eye:
 
         return pupil_world
 
+    def get_pupil_radii(self) -> tuple[float, float]:
+        """Returns the current pupil radii from both axes.
+        
+        Returns:
+            Tuple of (across_radius, up_radius) in meters
+        """
+        across_radius = np.linalg.norm(self.across_pupil[:3])
+        up_radius = np.linalg.norm(self.up_pupil[:3])
+        return across_radius, up_radius
+
+    def set_pupil_radii(self, across_radius: float = None, up_radius: float = None) -> None:
+        """Sets the pupil radii and updates pupil geometry.
+        
+        Args:
+            across_radius: Pupil radius in X direction (meters)
+            up_radius: Pupil radius in Y direction (meters)
+            
+        Raises:
+            ValueError: If both radii are None
+        """
+        if across_radius is None and up_radius is None:
+            raise ValueError("At least one radius must be specified")
+            
+        if across_radius is not None:
+            self.across_pupil = across_radius * np.array([1, 0, 0, 0])
+        if up_radius is not None:
+            self.up_pupil = up_radius * np.array([0, 1, 0, 0])
+
     def find_cr_simple(self, l: "Light", c: "Camera") -> Optional[np.ndarray]:
         """Finds the position of a corneal reflex (simplified).
 
