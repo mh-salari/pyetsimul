@@ -8,12 +8,12 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def draw_eye_anatomy(eye, target_point=None, show_axes=True, show_annotations=True):
+def draw_eye_anatomy(eye, look_at_target=None, show_axes=True, show_annotations=True):
     """Draw detailed eye anatomy with optional gaze target.
 
     Args:
         eye: Eye structure
-        target_point: Optional target point [x, y, z] for gaze visualization
+        look_at_target: Optional target point [x, y, z] for gaze visualization
         show_axes: Whether to show coordinate axes
         show_annotations: Whether to show anatomical labels
     """
@@ -22,14 +22,12 @@ def draw_eye_anatomy(eye, target_point=None, show_axes=True, show_annotations=Tr
 
     # Transform anatomical points to world coordinates
     def transform_point(point):
-        if len(point) == 3:
-            point = np.append(point, 1)
-        return (eye.trans @ point)[:3]
+        return eye.trans @ point
 
     # Get key anatomical points
-    cornea_center_world = transform_point(eye.pos_cornea[:3])
-    pupil_center_world = transform_point(eye.pos_pupil[:3])
-    apex_world = transform_point(eye.pos_apex[:3])
+    cornea_center_world = transform_point(eye.pos_cornea)
+    pupil_center_world = transform_point(eye.pos_pupil)
+    apex_world = transform_point(eye.pos_apex)
 
     # Draw corneal surface as a sphere (simplified)
     u = np.linspace(0, 2 * np.pi, 20)
@@ -111,19 +109,19 @@ def draw_eye_anatomy(eye, target_point=None, show_axes=True, show_annotations=Tr
     )
 
     # Show gaze direction if target provided
-    if target_point is not None:
-        if len(target_point) == 3:
-            target_point = np.array(target_point)
+    if look_at_target is not None:
+        if len(look_at_target) == 3:
+            look_at_target = np.array(look_at_target)
         ax.plot(
-            [pupil_center_world[0], target_point[0]],
-            [pupil_center_world[1], target_point[1]],
-            [pupil_center_world[2], target_point[2]],
+            [pupil_center_world[0], look_at_target[0]],
+            [pupil_center_world[1], look_at_target[1]],
+            [pupil_center_world[2], look_at_target[2]],
             "r-",
             linewidth=3,
             label="Gaze Direction",
         )
         ax.scatter(
-            *target_point[:3], color="red", s=150, marker="*", label="Gaze Target"
+            *look_at_target[:3], color="red", s=150, marker="*", label="Gaze Target"
         )
 
     # Show coordinate axes
@@ -176,7 +174,7 @@ import matplotlib.pyplot as plt
 def plot_setup(
     ax1,
     eye_data,
-    target_point,
+    look_at_target,
     lights,
     camera,
     cr_3d_list=None,
@@ -188,12 +186,12 @@ def plot_setup(
     Args:
         ax1: 3D matplotlib axis
         eye_data: Dict with transformed eye anatomy data
-        target_point: Target point [x, y, z, 1] or [x, y, z]
+        look_at_target: Target point [x, y, z, 1] or [x, y, z]
         lights: List of Light objects with positions
         camera: Camera object with transformation and parameters
         cr_3d_list: List of corneal reflection 3D positions
         ref_bounds: Optional reference bounds dict with 'x', 'y', 'z' keys
-        calib_points: Optional calibration points array plot_setup_and_camera_view to plot as black x markers
+        calib_points: Optional calibration points array to plot as black x markers
     """
     ax1.cla()
 
@@ -233,9 +231,9 @@ def plot_setup(
     )
 
     # Draw visual axis to target
-    if len(target_point) == 3:
-        target_point = np.append(target_point, 1)
-    target_world = target_point
+    if len(look_at_target) == 3:
+        look_at_target = np.append(look_at_target, 1)
+    target_world = look_at_target
 
     ax1.plot(
         [eye_data["pupil_world"][0], target_world[0]],
@@ -318,6 +316,7 @@ def plot_setup(
 
     # Plot calibration points if provided
     if calib_points is not None:
+        calib_points = np.array(calib_points).T
         # Assume 2D points are in the X-Z plane (y=0)
         calib_x = calib_points[0, :]
         calib_y = np.zeros_like(calib_points[0, :])
@@ -455,45 +454,27 @@ def plot_camera_view_of_eye(
                 )
 
 
-def plot_setup_and_camera_view(
-    eye,
-    target_point,
-    lights,
-    camera,
-    ax1=None,
-    ax2=None,
-    fig=None,
-    ref_bounds=None,
-    calib_points=None,
-):
-    """Create comprehensive eye tracking visualization with 3D setup and camera view.
+def prepare_eye_data_for_plots(eye, look_at_target, lights, camera):
+    """Prepare eye visualization data for plotting.
 
     Args:
         eye: Eye object with transformation matrix and anatomy
-        target_point: Target point [x, y, z, 1] or [x, y, z]
+        look_at_target: Target point [x, y, z, 1] or [x, y, z]
         lights: List of Light objects with positions
         camera: Camera object with transformation and parameters
-        ax1, ax2: Optional matplotlib axes for reuse
-        fig: Optional matplotlib figure for reuse
-        ref_bounds: Optional reference bounds dict with 'x', 'y', 'z' keys
-        calib_points: Optional calibration points array plot_setup_and_camera_view to plot as black x markers
 
     Returns:
-        fig: Matplotlib figure object
+        dict: Contains eye_data, camera_image, and cr_3d_list for plotting
     """
-    # Create figure and axes if not provided
-    if ax1 is None or ax2 is None:
-        fig = plt.figure(figsize=(16, 8))
-        ax1 = fig.add_subplot(1, 2, 1, projection="3d")
-        ax2 = fig.add_subplot(1, 2, 2)
 
     # Calculate all values once
     def transform_point(point):
         return eye.trans @ point
 
+    # Rotate the eye toward the target
+    eye.look_at(look_at_target)
     # Get eye anatomy points
     cornea_center = eye.pos_cornea
-    apex_point = eye.pos_apex
     pupil_center = eye.pos_pupil
     r_cornea = eye.r_cornea
     depth_cornea = eye.depth_cornea
@@ -556,22 +537,76 @@ def plot_setup_and_camera_view(
         cr_3d = eye.find_cr(light, camera)
         cr_3d_list.append(cr_3d)
 
-    # Call the plotting functions
-    plot_setup(ax1, eye_data, target_point, lights, camera, cr_3d_list, ref_bounds, calib_points)
+    return {
+        "eye_data": eye_data,
+        "camera_image": camera_image,
+        "cr_3d_list": cr_3d_list,
+    }
 
-    plot_camera_view_of_eye(ax2, camera_image, camera, cr_3d_list)
+
+def plot_setup_and_camera_view(
+    eye,
+    look_at_target,
+    lights,
+    camera,
+    ax1=None,
+    ax2=None,
+    fig=None,
+    ref_bounds=None,
+    calib_points=None,
+):
+    """Create comprehensive eye tracking visualization with 3D setup and camera view.
+
+    Args:
+        eye: Eye object with transformation matrix and anatomy
+        look_at_target: Target point [x, y, z, 1] or [x, y, z]
+        lights: List of Light objects with positions
+        camera: Camera object with transformation and parameters
+        ax1, ax2: Optional matplotlib axes for reuse
+        fig: Optional matplotlib figure for reuse
+        ref_bounds: Optional reference bounds dict with 'x', 'y', 'z' keys
+        calib_points: Optional calibration points array to plot as black x markers
+
+    Returns:
+        fig: Matplotlib figure object
+    """
+    # Create figure and axes if not provided
+    if ax1 is None or ax2 is None:
+        fig = plt.figure(figsize=(16, 8))
+        ax1 = fig.add_subplot(1, 2, 1, projection="3d")
+        ax2 = fig.add_subplot(1, 2, 2)
+
+    # Prepare all eye data
+    prepared_data = prepare_eye_data_for_plots(eye, look_at_target, lights, camera)
+
+    # Call the plotting functions
+    plot_setup(
+        ax1,
+        prepared_data["eye_data"],
+        look_at_target,
+        lights,
+        camera,
+        prepared_data["cr_3d_list"],
+        ref_bounds,
+        calib_points,
+    )
+
+    if ax2 is not None:
+        plot_camera_view_of_eye(
+            ax2, prepared_data["camera_image"], camera, prepared_data["cr_3d_list"]
+        )
 
     return fig
 
 
-def setup_interactive_plot(eye_base, light, camera, target_point):
+def setup_interactive_plot(eye_base, light, camera, look_at_target):
     """Setup interactive plot with reference bounds for consistent view.
 
     Args:
         eye_base: Base eye object
         light: Light object
         camera: Camera object
-        target_point: Initial target point
+        look_at_target: Initial target point
 
     Returns:
         dict: Contains fig, ax1, ax2, ref_bounds for reuse
@@ -583,11 +618,11 @@ def setup_interactive_plot(eye_base, light, camera, target_point):
 
     # Create reference bounds from initial view
     e_ref = eye_base.copy()
-    e_ref.look_at(target_point)
+    e_ref.look_at(look_at_target)
     cr_ref = e_ref.find_cr(light, camera)
 
     plot_setup_and_camera_view(
-        e_ref, target_point, light, camera, cr_ref, ax1=ax1, ax2=ax2, fig=fig
+        e_ref, look_at_target, light, camera, cr_ref, ax1=ax1, ax2=ax2, fig=fig
     )
     xlim = ax1.get_xlim()
     ylim = ax1.get_ylim()
@@ -597,7 +632,7 @@ def setup_interactive_plot(eye_base, light, camera, target_point):
     return {"fig": fig, "ax1": ax1, "ax2": ax2, "ref_bounds": ref_bounds}
 
 
-def update_interactive_plot(plot_setup, eye_base, light, camera, target_point):
+def update_interactive_plot(plot_setup, eye_base, light, camera, look_at_target):
     """Update interactive plot with new target position.
 
     Args:
@@ -605,15 +640,15 @@ def update_interactive_plot(plot_setup, eye_base, light, camera, target_point):
         eye_base: Base eye object
         light: Light object
         camera: Camera object
-        target_point: New target point
+        look_at_target: New target point
     """
     e = eye_base.copy()
-    e.look_at(target_point)
+    e.look_at(look_at_target)
     cr_3d = e.find_cr(light, camera)
 
     plot_setup_and_camera_view(
         e,
-        target_point,
+        look_at_target,
         light,
         camera,
         cr_3d,
@@ -624,7 +659,7 @@ def update_interactive_plot(plot_setup, eye_base, light, camera, target_point):
     )
 
     plot_setup["fig"].suptitle(
-        f"Target X={target_point[0]*1000:.1f} mm, Y={target_point[1]*1000:.1f} mm, Z={target_point[2]*1000:.1f} mm",
+        f"Target X={look_at_target[0]*1000:.1f} mm, Y={look_at_target[1]*1000:.1f} mm, Z={look_at_target[2]*1000:.1f} mm",
         fontsize=16,
     )
     plot_setup["fig"].canvas.draw_idle()

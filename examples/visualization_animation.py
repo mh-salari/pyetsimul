@@ -49,7 +49,7 @@ def manual_eye_gaze_keyboard_control():
         cr_ref = e_ref.find_cr(light, c)
         cr_ref_list.append(cr_ref)
     plot_setup_and_camera_view(
-        e_ref, target_point, lights, c, cr_ref_list, ax1=ax1, ax2=ax2, fig=fig
+        e_ref, target_point, lights, c, ax1=ax1, ax2=ax2, fig=fig
     )
     xlim = ax1.get_xlim()
     ylim = ax1.get_ylim()
@@ -61,16 +61,11 @@ def manual_eye_gaze_keyboard_control():
         e = copy.deepcopy(e_base)
         e.look_at(target_point)
         # Find corneal reflections for both lights
-        cr_3d_list = []
-        for light in lights:
-            cr_3d = e.find_cr(light, c)
-            cr_3d_list.append(cr_3d)
         plot_setup_and_camera_view(
             e,
             target_point,
             lights,
             c,
-            cr_3d_list,
             ax1=ax1,
             ax2=ax2,
             fig=fig,
