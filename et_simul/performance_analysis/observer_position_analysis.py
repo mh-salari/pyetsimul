@@ -7,6 +7,7 @@ The gaze target is fixed while observer position varies.
 import numpy as np
 import matplotlib.pyplot as plt
 from ..core import Eye
+from ..geometry.conversions import calculate_angular_error_degrees
 
 
 def accuracy_over_observer_positions(
@@ -76,21 +77,23 @@ def accuracy_over_observer_positions(
             # Move observer to test position [X[i], Y[j], Z]
             e.trans[:3, 3] = np.array([X[i], Y[j], Z])
 
-            # Calculate gaze error for fixed target point
-            U[j, i], V[j, i] = et.calculate_gaze_error(e, gaze_target)
-
-            # Compute error in degrees
-            gaze3d_real = np.array([gaze_target[0], 0, gaze_target[1]]) - e.trans[:3, 3]
-            gaze3d_measured = (
-                np.array([gaze_target[0] + U[j, i], 0, gaze_target[1] + V[j, i]])
-                - e.trans[:3, 3]
-            )
-            gaze3d_real = gaze3d_real / np.linalg.norm(gaze3d_real)
-            gaze3d_measured = gaze3d_measured / np.linalg.norm(gaze3d_measured)
-
-            # Angle between vectors in degrees
-            dot_product = np.clip(np.dot(gaze3d_real, gaze3d_measured), -1, 1)
-            errs_deg[j, i] = 180 / np.pi * np.real(np.arccos(dot_product))
+            # Get predicted gaze position directly
+            predicted_gaze = et.predict_gaze_at_position(e, gaze_target)
+            
+            if predicted_gaze is not None:
+                # Calculate error in mm
+                U[j, i] = predicted_gaze[0] - gaze_target[0]
+                V[j, i] = predicted_gaze[1] - gaze_target[1]
+                
+                # Compute error in degrees using utility function
+                errs_deg[j, i] = calculate_angular_error_degrees(
+                    gaze_target, [predicted_gaze[0], predicted_gaze[1]], e.trans[:3, 3]
+                )
+            else:
+                # Handle prediction failure
+                U[j, i] = np.nan
+                V[j, i] = np.nan
+                errs_deg[j, i] = np.nan
 
         # Progress indicator
         print(".", end="", flush=True)

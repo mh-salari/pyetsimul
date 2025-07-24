@@ -7,6 +7,7 @@ The observer position is fixed while gaze targets vary across screen positions.
 import numpy as np
 import matplotlib.pyplot as plt
 from ..core import Eye
+from ..geometry.conversions import calculate_angular_error_degrees
 
 
 def accuracy_over_gaze_points(
@@ -78,20 +79,24 @@ def accuracy_over_gaze_points(
     # Main analysis loop - varying gaze target points
     for i in range(len(X)):
         for j in range(len(Y)):
-            # Calculate gaze error for this target point
-            U[j, i], V[j, i] = et.calculate_gaze_error(e, np.array([X[i], Y[j]]))
-
-            # Compute error in degrees
-            gaze3d_real = np.array([X[i], 0, Y[j]]) - observer_pos_test[:3]
-            gaze3d_measured = (
-                np.array([X[i] + U[j, i], 0, Y[j] + V[j, i]]) - observer_pos_test[:3]
-            )
-            gaze3d_real = gaze3d_real / np.linalg.norm(gaze3d_real)
-            gaze3d_measured = gaze3d_measured / np.linalg.norm(gaze3d_measured)
-
-            # Angle between vectors in degrees
-            dot_product = np.clip(np.dot(gaze3d_real, gaze3d_measured), -1, 1)
-            errs_deg[j, i] = 180 / np.pi * np.real(np.arccos(dot_product))
+            # Get predicted gaze position directly
+            actual_point = np.array([X[i], Y[j]])
+            predicted_gaze = et.predict_gaze_at_position(e, actual_point)
+            
+            if predicted_gaze is not None:
+                # Calculate error in mm
+                U[j, i] = predicted_gaze[0] - X[i]
+                V[j, i] = predicted_gaze[1] - Y[j]
+                
+                # Compute error in degrees using utility function
+                errs_deg[j, i] = calculate_angular_error_degrees(
+                    [X[i], Y[j]], [predicted_gaze[0], predicted_gaze[1]], observer_pos_test
+                )
+            else:
+                # Handle prediction failure
+                U[j, i] = np.nan
+                V[j, i] = np.nan
+                errs_deg[j, i] = np.nan
 
         # Progress indicator
         print(".", end="", flush=True)

@@ -102,3 +102,39 @@ def angle2gaze(angles, rest_pos=None):
     gaze = rest_pos_4x4 @ rotat_matrix_x_z @ rotat_matrix_y_z @ default_gaze
 
     return gaze
+
+
+def calculate_angular_error_degrees(actual_point, predicted_point, observer_pos):
+    """Calculate angular error in degrees between two gaze points.
+    
+    This function computes the angular error between actual and predicted gaze positions
+    by creating 3D gaze vectors from the observer position to each point, normalizing them,
+    and calculating the angle between them using the dot product formula.
+    
+    Args:
+        actual_point: [x, z] actual target position in meters
+        predicted_point: [x, z] predicted gaze position in meters  
+        observer_pos: [x, y, z] or [x, y, z, 1] observer position in meters
+        
+    Returns:
+        Angular error in degrees
+    """
+    # Ensure we use only the first 3 components of observer position
+    obs_pos_3d = np.asarray(observer_pos)[:3]
+    
+    # Create 3D gaze vectors from observer to target points (Y=0 for screen plane)
+    gaze3d_real = np.array([actual_point[0], 0, actual_point[1]]) - obs_pos_3d
+    gaze3d_measured = np.array([predicted_point[0], 0, predicted_point[1]]) - obs_pos_3d
+    
+    # Normalize vectors to unit length
+    gaze3d_real = gaze3d_real / np.linalg.norm(gaze3d_real)
+    gaze3d_measured = gaze3d_measured / np.linalg.norm(gaze3d_measured)
+    
+    # Calculate angle between vectors using dot product
+    # Clip to [-1, 1] to handle numerical precision issues
+    dot_product = np.clip(np.dot(gaze3d_real, gaze3d_measured), -1, 1)
+    
+    # Convert angle from radians to degrees
+    angle_deg = 180 / np.pi * np.real(np.arccos(dot_product))
+    
+    return angle_deg
