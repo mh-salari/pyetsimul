@@ -32,9 +32,17 @@ def hennessey_calib(et, calib_data):
     for i in range(et.calib_points.shape[1]):
         # Line 27-28: [gaze_measured(:,i), cc_estim, gaze3d_measured(:,i)]= ...
         #             hennessey_eval_base(et, calib_data{i}.camimg);
-        gaze_measured[:, i], cc_estim, gaze3d_measured[:, i] = hennessey_eval_base(
+        gaze_result, cc_estim, gaze3d_result = hennessey_eval_base(
             et, calib_data[i]["camimg"]
         )
+        
+        # Skip this calibration point if evaluation failed
+        if gaze_result is None:
+            continue
+            
+        gaze_measured[:, i] = gaze_result
+        gaze3d_measured[:, i] = gaze3d_result
+        
         # Line 29-31: gaze3d_desired(:,i)= ...
         #             [et.calib_points(1,i) 0 et.calib_points(2,i) 1]' - ...
         #             cc_estim;

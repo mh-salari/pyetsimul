@@ -37,6 +37,10 @@ def hennessey_eval_base(et, camimg):
     cc_estim = estimate_cc_hennessey(
         et.cameras[0], et.lights, camimg[0]["cr"], r_cornea_assumed
     )
+    
+    # Check if CR estimation failed
+    if cc_estim is None:
+        return None, None, None
 
     # Find position of PC using ray-sphere-intersection
     # Line 29: switch et.state.pupil_alg
@@ -189,6 +193,10 @@ def hennessey_eval_main(et, camimg):
     """
     # Line 21: [gaze, cc_estim, gaze3d]=hennessey_eval_base(et, camimg);
     gaze, cc_estim, gaze3d = hennessey_eval_base(et, camimg)
+    
+    # Check if base evaluation failed
+    if gaze is None:
+        return None
 
     # For hennessey config (recalib_type='hennessey'), skip 3D gaze vector recalibration
     # Only other recalib_types ('angle', 'henn_angle', 'henn3d') modify gaze3d here
