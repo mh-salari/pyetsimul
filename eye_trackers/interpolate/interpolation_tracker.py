@@ -3,11 +3,11 @@
 Pupil-CR tracker with biquadratic interpolation.
 """
 
-import numpy as np
-from et_simul.core import Camera, Light, EyeTracker
+from et_simul.core import EyeTracker
 from .polynomials import get_polynomial
 from .calibration import calibrate_eye_tracker
 from .prediction import predict_gaze_position
+import numpy as np
 
 
 class InterpolationTracker(EyeTracker):
@@ -18,40 +18,23 @@ class InterpolationTracker(EyeTracker):
     """
 
     @classmethod
-    def setup(cls, polynomial="cerrolaza_2008"):
+    def setup(cls, cameras, lights, calib_points, polynomial):
         """Create interpolation eye tracker setup.
 
         Args:
-            polynomial: Polynomial type to use (default: 'cerrolaza_2008')
+            cameras: List of Camera objects
+            lights: List of Light objects
+            calib_points: Calibration points list
+            polynomial: Polynomial type to use
 
         Returns:
             InterpolationTracker: Configured interpolation eye tracker
         """
-        # Lines 27-32: Create the camera
-        cam = Camera(err=0.0, err_type="gaussian")
-        cam.trans[:3, :3] = np.array([[1, 0, 0], [0, 0, -1], [0, 1, 0]])
-        cam.rest_trans = cam.trans.copy()
-        cam.point_at(np.array([0, 550e-3, 350e-3, 1]))
-
-        # Lines 35-36: Create lights
-        light = Light(position=np.array([200e-3, 0, 350e-3, 1]))
-
-        # Lines 40-49: Calibration points
-        calib_points = np.array(
-            [
-                [-200e-3, 50e-3],
-                [0, 50e-3],
-                [200e-3, 50e-3],
-                [-200e-3, 200e-3],
-                [0, 200e-3],
-                [200e-3, 200e-3],
-                [-200e-3, 350e-3],
-                [0, 350e-3],
-                [200e-3, 350e-3],
-            ]
-        ).T
-
-        tracker = cls(cameras=[cam], lights=[light], calib_points=calib_points)
+        tracker = cls(
+            cameras=cameras,
+            lights=lights,
+            calib_points=np.array(calib_points).T,
+        )
         tracker.polynomial_name = polynomial
         tracker.polynomial_func = get_polynomial(polynomial)
         return tracker
