@@ -48,7 +48,7 @@ def test_set_pupil_radii_error_handling():
 
 
 def test_set_pupil_radii_updates_vectors():
-    """Test that set_pupil_radii correctly updates across_pupil and up_pupil vectors."""
+    """Test that set_pupil_radii correctly updates x_pupil and y_pupil vectors."""
     e = Eye()
     x_radius = 3e-3  # 3mm
     y_radius = 2e-3      # 2mm
@@ -56,15 +56,15 @@ def test_set_pupil_radii_updates_vectors():
     e.set_pupil_radii(x_radius=x_radius, y_radius=y_radius)
     
     # Check that vectors have correct magnitude
-    across_magnitude = np.linalg.norm(e.across_pupil[:3])
-    up_magnitude = np.linalg.norm(e.up_pupil[:3])
+    x_magnitude = np.linalg.norm(e.x_pupil[:3])
+    y_magnitude = np.linalg.norm(e.y_pupil[:3])
     
-    assert np.isclose(across_magnitude, x_radius, rtol=1e-12)
-    assert np.isclose(up_magnitude, y_radius, rtol=1e-12)
+    assert np.isclose(x_magnitude, x_radius, rtol=1e-12)
+    assert np.isclose(y_magnitude, y_radius, rtol=1e-12)
     
     # Check vector directions
-    expected_across = np.array([x_radius, 0, 0, 0])
-    expected_up = np.array([0, y_radius, 0, 0])
+    expected_x = np.array([x_radius, 0, 0, 0])
+    expected_y = np.array([0, y_radius, 0, 0])
     
-    np.testing.assert_allclose(e.across_pupil, expected_across, rtol=1e-12)
-    np.testing.assert_allclose(e.up_pupil, expected_up, rtol=1e-12)
+    np.testing.assert_allclose(e.x_pupil, expected_x, rtol=1e-12)
+    np.testing.assert_allclose(e.y_pupil, expected_y, rtol=1e-12)

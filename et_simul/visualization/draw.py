@@ -80,7 +80,7 @@ def draw_eye_anatomy(eye, look_at_target=None, show_axes=True, show_annotations=
     ax.plot(cornea_x, cornea_y, cornea_z, "c-", linewidth=3, label="Cornea")
 
     # Draw pupil circle
-    pupil_radius = np.linalg.norm(eye.across_pupil[:3])
+    pupil_radius = np.linalg.norm(eye.x_pupil[:3])
     pupil_y = pupil_center_world[1] + pupil_radius * np.cos(theta)
     pupil_z = pupil_center_world[2] + pupil_radius * np.sin(theta)
     pupil_x = np.full_like(pupil_y, pupil_center_world[0])

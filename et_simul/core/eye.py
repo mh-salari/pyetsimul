@@ -54,11 +54,11 @@ class Eye:
 
     - 'pos_pupil' is the position of the center of the pupil.
 
-    - 'across_pupil' and 'up_pupil' are two orthogonal vectors that extend
+    - 'x_pupil' and 'y_pupil' are two orthogonal vectors that extend
      from the center of the pupil to its border. Any position on the pupil's
      border can thus be obtained by taking
 
-         pos_pupil + cos(alpha)*across_pupil + sin(alpha)*up_pupil
+         pos_pupil + cos(alpha)*x_pupil + sin(alpha)*y_pupil
     """
 
     r_cornea: float = 7.98e-3
@@ -77,8 +77,8 @@ class Eye:
     pos_apex: np.ndarray = field(init=False)
     depth_cornea: float = field(init=False)
     pos_pupil: np.ndarray = field(init=False)
-    across_pupil: np.ndarray = field(init=False)
-    up_pupil: np.ndarray = field(init=False)
+    x_pupil: np.ndarray = field(init=False)
+    y_pupil: np.ndarray = field(init=False)
 
     def __post_init__(self) -> None:
         """Initializes the eye's anatomical properties based on constructor parameters."""
@@ -120,11 +120,11 @@ class Eye:
         # Line 116: e.pos_pupil=e.pos_apex+[0 0 scale*3.54e-3 0]';
         self.pos_pupil = self.pos_apex + np.array([0, 0, scale * 3.54e-3, 0])
 
-        # Line 119: e.across_pupil=scale*3e-3*[1 0 0 0]';
-        self.across_pupil = scale * 3e-3 * np.array([1, 0, 0, 0])
+        # Line 119: e.x_pupil=scale*3e-3*[1 0 0 0]';
+        self.x_pupil = scale * 3e-3 * np.array([1, 0, 0, 0])
 
-        # Line 120: e.up_pupil=scale*3e-3*[0 1 0 0]';
-        self.up_pupil = scale * 3e-3 * np.array([0, 1, 0, 0])
+        # Line 120: e.y_pupil=scale*3e-3*[0 1 0 0]';
+        self.y_pupil = scale * 3e-3 * np.array([0, 1, 0, 0])
 
     def point_within_cornea(self, p: np.ndarray) -> bool:
         """Tests whether a point lies within the cornea.
@@ -314,8 +314,8 @@ class Eye:
         # Lines 28-29: X=repmat(e.pos_pupil, 1, N) + e.across_pupil*cos(alpha) + e.up_pupil*sin(alpha);
         pupil_points = (
             np.tile(self.pos_pupil.reshape(-1, 1), (1, N))
-            + self.across_pupil.reshape(-1, 1) @ np.cos(alpha).reshape(1, -1)
-            + self.up_pupil.reshape(-1, 1) @ np.sin(alpha).reshape(1, -1)
+            + self.x_pupil.reshape(-1, 1) @ np.cos(alpha).reshape(1, -1)
+            + self.y_pupil.reshape(-1, 1) @ np.sin(alpha).reshape(1, -1)
         )
 
         # Transform to world coordinates
@@ -329,8 +329,8 @@ class Eye:
         Returns:
             Tuple of (x_radius, y_radius) in meters
         """
-        x_radius = np.linalg.norm(self.across_pupil[:3])
-        y_radius = np.linalg.norm(self.up_pupil[:3])
+        x_radius = np.linalg.norm(self.x_pupil[:3])
+        y_radius = np.linalg.norm(self.y_pupil[:3])
         return x_radius, y_radius
 
     def set_pupil_radii(self, x_radius: float = None, y_radius: float = None) -> None:
@@ -347,9 +347,9 @@ class Eye:
             raise ValueError("At least one radius must be specified")
             
         if x_radius is not None:
-            self.across_pupil = x_radius * np.array([1, 0, 0, 0])
+            self.x_pupil = x_radius * np.array([1, 0, 0, 0])
         if y_radius is not None:
-            self.up_pupil = y_radius * np.array([0, 1, 0, 0])
+            self.y_pupil = y_radius * np.array([0, 1, 0, 0])
 
     def find_cr_simple(self, l: "Light", c: "Camera") -> Optional[np.ndarray]:
         """Finds the position of a corneal reflex (simplified).

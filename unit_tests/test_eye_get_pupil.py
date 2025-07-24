@@ -296,5 +296,5 @@ def test_output_properties():
     # Test circle properties
     pupil_center = e.pos_pupil[:3]
     radii = np.linalg.norm(X[:3, :] - pupil_center.reshape(-1, 1), axis=0)
-    expected_radius = np.linalg.norm(e.across_pupil[:3])
+    expected_radius = np.linalg.norm(e.x_pupil[:3])
     assert np.allclose(radii, expected_radius, rtol=1e-12)
