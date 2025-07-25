@@ -5,15 +5,13 @@ The observer position is fixed while gaze targets vary across screen positions.
 """
 
 import numpy as np
-import matplotlib.pyplot as plt
-from ..core import Eye
 from ..geometry.conversions import calculate_angular_error_degrees
+from .analysis_utils import plot_error_vectors, calculate_error_statistics
 
 
 def accuracy_over_gaze_points(
     et,
-    eye=None,
-    observer_pos_calib=np.array([0, 550e-3, 350e-3, 1]),
+    eye,
     observer_pos_test=None,
     grid_center=np.array([0, 200e-3]),
     dx=200e-3,
@@ -32,8 +30,7 @@ def accuracy_over_gaze_points(
 
     Args:
         et: Eye tracker structure
-        eye: Pre-configured Eye object (if None, creates default eye with r_cornea=7.98e-3)
-        observer_pos_calib: Observer position for calibration (default: [0, 550mm, 350mm, 1])
+        eye: Pre-configured Eye object (required)
         observer_pos_test: Observer position for testing (default: same as calib position)
         grid_center: Center point of the gaze target grid [x, y] in meters (default: [0, 200mm])
         dx: Half-width of the grid in x direction in meters (default: 200mm, so grid spans ±200mm)
@@ -43,16 +40,11 @@ def accuracy_over_gaze_points(
     Returns:
         Dictionary with error statistics (mean, max, std, median for both mm and degrees)
     """
-    # Use provided eye or create default one
-    if eye is None:
-        e = Eye(rest_pos=np.array([[1, 0, 0], [0, 0, 1], [0, 1, 0]]))
-        e.trans[:3, 3] = observer_pos_calib[:3]
-    else:
-        e = eye
+    e = eye
 
     # Set test position
     if observer_pos_test is None:
-        observer_pos_test = observer_pos_calib
+        observer_pos_test = e.position
 
     # Calibrate eye tracker using current API
     et.run_calibration(e)
@@ -74,23 +66,23 @@ def accuracy_over_gaze_points(
     print(f"Pupil radius:   {cornea_pupil_dist * 1e3:.3g} mm")
 
     # Set observer position for testing
-    e.trans[:3, 3] = observer_pos_test[:3]
+    e.position = observer_pos_test[:3]
 
     # Main analysis loop - varying gaze target points
     for i in range(len(X)):
         for j in range(len(Y)):
             # Get predicted gaze position directly
             actual_point = np.array([X[i], Y[j]])
-            predicted_gaze = et.predict_gaze_at_position(e, actual_point)
+            predicted_gaze = et.estimate_gaze_at(e, actual_point)
             
-            if predicted_gaze is not None:
+            if predicted_gaze is not None and predicted_gaze.gaze_point is not None:
                 # Calculate error in mm
-                U[j, i] = predicted_gaze[0] - X[i]
-                V[j, i] = predicted_gaze[1] - Y[j]
+                U[j, i] = predicted_gaze.gaze_point[0] - X[i]
+                V[j, i] = predicted_gaze.gaze_point[1] - Y[j]
                 
                 # Compute error in degrees using utility function
                 errs_deg[j, i] = calculate_angular_error_degrees(
-                    [X[i], Y[j]], [predicted_gaze[0], predicted_gaze[1]], observer_pos_test
+                    [X[i], Y[j]], predicted_gaze.gaze_point, observer_pos_test
                 )
             else:
                 # Handle prediction failure
@@ -103,41 +95,19 @@ def accuracy_over_gaze_points(
 
     print()
 
-    # Create visualization
-    plt.figure(figsize=(10, 8))
-    plt.quiver(X, Y, U, V, width=0.002)
-
-    # Calculate error statistics using numpy
-    errs_mtr = np.sqrt(U**2 + V**2).flatten()
-    errors = {
-        "mtr": {
-            "mean": np.mean(errs_mtr),
-            "max": np.max(errs_mtr),
-            "std": np.std(errs_mtr),
-            "median": np.median(errs_mtr),
-        },
-        "deg": {
-            "mean": np.mean(errs_deg.flatten()),
-            "max": np.max(errs_deg.flatten()),
-            "std": np.std(errs_deg.flatten()),
-            "median": np.median(errs_deg.flatten()),
-        },
-    }
+    # Calculate error statistics
+    errors = calculate_error_statistics(U, V, errs_deg)
 
     # Display statistics
     print(f'Maximum error {errors["mtr"]["max"] * 1e3:.3g} mm')
     print(f'Mean error {errors["mtr"]["mean"] * 1e3:.3g} mm')
     print(f'Standard deviation {errors["mtr"]["std"] * 1e3:.3g} mm')
 
-    # Plot formatting
-    title = (
-        f'Maximum error {errors["mtr"]["max"] * 1e3:.3g} mm  '
-        + f'Mean error {errors["mtr"]["mean"] * 1e3:.3g} mm  '
-        + f'Std dev {errors["mtr"]["std"] * 1e3:.3g} mm'
-    )
-    plt.title(title)
-    plt.xlabel("X position (m)")
-    plt.ylabel("Y position (m)")
-    plt.show()
+    # Plot using shared utility (gaze points use meters, no mm conversion)
+    plot_error_vectors(X, Y, U, V, errors,
+                      title_prefix="Gaze Point Analysis",
+                      convert_to_mm=False,
+                      xlabel="X position (m)",
+                      ylabel="Y position (m)")
 
     return errors

@@ -49,34 +49,45 @@ def accuracy_at_calibration_points(et, eye):
     V = np.zeros(n_points)
     errs_deg = np.zeros(n_points)
 
-    # Test prediction at each calibration point
+    # Print polynomial parameters
+    _print_polynomial_parameters(et)
+
+    # Test prediction at each calibration point - side-by-side format
+    print(
+        f"\n{'Point':<6} {'Target (mm)':<18} {'Predicted (mm)':<18} {'Error (mm)':<12} {'Error (°)':<10}"
+    )
+    print("-" * 75)
+
     for i in range(n_points):
         actual_x = calib_points[0, i]
         actual_y = calib_points[1, i]
         actual_point = np.array([actual_x, actual_y])
 
         # Get predicted gaze position
-        predicted_gaze = et.predict_gaze_at_position(e, actual_point)
+        predicted_gaze = et.estimate_gaze_at(e, actual_point)
 
         actual_points.append(actual_point)
 
-        if predicted_gaze is not None:
-            predicted_points.append(predicted_gaze)
+        if predicted_gaze is not None and predicted_gaze.gaze_point is not None:
+            predicted_points.append(predicted_gaze.gaze_point)
 
             # Calculate error vectors
-            U[i] = predicted_gaze[0] - actual_x
-            V[i] = predicted_gaze[1] - actual_y
+            U[i] = predicted_gaze.gaze_point[0] - actual_x
+            V[i] = predicted_gaze.gaze_point[1] - actual_y
 
             # Compute error in degrees
             errs_deg[i] = calculate_angular_error_degrees(
-                actual_point, predicted_gaze, e.trans[:3, 3]
+                actual_point, predicted_gaze.gaze_point, e.position
             )
 
-            # Progress output
+            # Progress output - side-by-side format
             error_mm = np.sqrt(U[i] ** 2 + V[i] ** 2)
             print(
-                f"Point {i+1}: Target=({actual_x*1000:.1f}, {actual_y*1000:.1f})mm "
-                f"→ Error={error_mm*1000:.2f}mm ({errs_deg[i]:.4f}°)"
+                f"{i+1:<6} "
+                f"({actual_x*1000:>6.1f}, {actual_y*1000:>6.1f}){'':<1} "
+                f"({predicted_gaze.gaze_point[0]*1000:>6.1f}, {predicted_gaze.gaze_point[1]*1000:>6.1f}){'':<1} "
+                f"{error_mm*1000:>8.2f}{'':<4} "
+                f"{errs_deg[i]:>8.4f}"
             )
         else:
             predicted_points.append([np.nan, np.nan])
@@ -84,7 +95,11 @@ def accuracy_at_calibration_points(et, eye):
             V[i] = np.nan
             errs_deg[i] = np.nan
             print(
-                f"Point {i+1}: Target=({actual_x*1000:.1f}, {actual_y*1000:.1f})mm → PREDICTION FAILED"
+                f"{i+1:<6} "
+                f"({actual_x*1000:>6.1f}, {actual_y*1000:>6.1f}){'':<7} "
+                f"{'FAILED':<18} "
+                f"{'--':<12} "
+                f"{'--':<10}"
             )
 
     # Convert to arrays
@@ -106,7 +121,7 @@ def accuracy_at_calibration_points(et, eye):
 
         # Display statistics
         print(
-            f"\\nCalibration Analysis Results ({n_valid}/{n_total} points successful):"
+            f"\nCalibration Analysis Results ({n_valid}/{n_total} points successful):"
         )
         print(
             f'Maximum error {errors["mtr"]["max"] * 1e3:.3g} mm ({errors["deg"]["max"]:.4f}°)'
@@ -123,7 +138,7 @@ def accuracy_at_calibration_points(et, eye):
             et, e, X, Y, U, V, predicted_points, valid_mask, errs_deg
         )
     else:
-        print(f"\\nCalibration Analysis Results: ALL {n_total} POINTS FAILED")
+        print(f"\nCalibration Analysis Results: ALL {n_total} POINTS FAILED")
         errors = {
             "mtr": {"max": np.nan, "mean": np.nan, "std": np.nan, "median": np.nan},
             "deg": {"max": np.nan, "mean": np.nan, "std": np.nan, "median": np.nan},
@@ -226,11 +241,18 @@ def _create_interactive_calibration_plot(
             # Draw arrows from calibration points to predicted gaze points
             for i in range(len(X_valid)):
                 ax.arrow(
-                    X_valid[i], Y_valid[i], U_valid[i], V_valid[i],
-                    head_width=2, head_length=1.5, fc="gray", ec="gray",
-                    linewidth=1, alpha=0.6
+                    X_valid[i],
+                    Y_valid[i],
+                    U_valid[i],
+                    V_valid[i],
+                    head_width=2,
+                    head_length=1.5,
+                    fc="gray",
+                    ec="gray",
+                    linewidth=1,
+                    alpha=0.6,
                 )
-            
+
             ax.scatter(
                 pred_x,
                 pred_y,
@@ -243,9 +265,9 @@ def _create_interactive_calibration_plot(
             )
 
         # Get real-time prediction for current target
-        current_prediction = et.predict_gaze_at_position(eye, current_target)
+        current_prediction = et.estimate_gaze_at(eye, current_target)
 
-        if current_prediction is not None:
+        if current_prediction is not None and current_prediction.gaze_point is not None:
             # Plot current target and prediction
             ax.scatter(
                 [current_target[0] * 1000],
@@ -257,8 +279,8 @@ def _create_interactive_calibration_plot(
                 zorder=5,
             )
             ax.scatter(
-                [current_prediction[0] * 1000],
-                [current_prediction[1] * 1000],
+                [current_prediction.gaze_point[0] * 1000],
+                [current_prediction.gaze_point[1] * 1000],
                 marker="x",
                 s=40,
                 c="orange",
@@ -267,8 +289,8 @@ def _create_interactive_calibration_plot(
             )
 
             # Draw error arrow for current prediction
-            error_x = (current_prediction[0] - current_target[0]) * 1000
-            error_y = (current_prediction[1] - current_target[1]) * 1000
+            error_x = (current_prediction.gaze_point[0] - current_target[0]) * 1000
+            error_y = (current_prediction.gaze_point[1] - current_target[1]) * 1000
             ax.arrow(
                 current_target[0] * 1000,
                 current_target[1] * 1000,
@@ -286,7 +308,7 @@ def _create_interactive_calibration_plot(
             # Calculate current error
             current_error_mm = np.sqrt(error_x**2 + error_y**2)
             current_error_deg = calculate_angular_error_degrees(
-                current_target, current_prediction, eye.trans[:3, 3]
+                current_target, current_prediction.gaze_point, eye.position
             )
 
             # Create calibration error summary for title
@@ -365,3 +387,39 @@ def _create_interactive_calibration_plot(
 
     update_display()
     plt.show()
+
+
+def _print_polynomial_parameters(et):
+    """Print polynomial parameters from calibrated eye tracker."""
+    print("\nPolynomial Parameters:")
+    print("-" * 40)
+
+    if hasattr(et, "polynomial_name"):
+        print(f"Polynomial type: {et.polynomial_name}")
+
+    if hasattr(et, "state") and et.state:
+        # Handle 1D polynomials (shared parameters)
+        if "A" in et.state:
+            A = et.state["A"]
+            print(f"Calibration matrix A shape: {A.shape}")
+            print("A matrix:")
+            for i, row in enumerate(A):
+                coord_name = "X" if i == 0 else "Y"
+                print(f"  {coord_name}: [{', '.join(f'{val:8.4f}' for val in row)}]")
+
+        # Handle 2D polynomials (separate parameters)
+        elif "A_x" in et.state and "A_y" in et.state:
+            A_x = et.state["A_x"]
+            A_y = et.state["A_y"]
+            print(f"X calibration matrix shape: {A_x.shape}")
+            print(f"Y calibration matrix shape: {A_y.shape}")
+            print("A_x matrix:")
+            for i, row in enumerate(A_x):
+                print(f"  [{', '.join(f'{val:8.4f}' for val in row)}]")
+            print("A_y matrix:")
+            for i, row in enumerate(A_y):
+                print(f"  [{', '.join(f'{val:8.4f}' for val in row)}]")
+    else:
+        print("No calibration parameters found (tracker not calibrated)")
+
+

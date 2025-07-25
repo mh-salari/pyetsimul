@@ -5,15 +5,13 @@ The gaze target is fixed while observer position varies.
 """
 
 import numpy as np
-import matplotlib.pyplot as plt
-from ..core import Eye
 from ..geometry.conversions import calculate_angular_error_degrees
+from .analysis_utils import plot_error_vectors, calculate_error_statistics
 
 
 def accuracy_over_observer_positions(
     et,
-    eye=None,
-    observer_pos_calib=np.array([0, 550e-3, 350e-3, 1]),
+    eye,
     gaze_target=np.array([0, 200e-3]),
     movement_range=50e-3,
     grid_size=16,
@@ -30,8 +28,7 @@ def accuracy_over_observer_positions(
 
     Args:
         et: Eye tracker structure
-        eye: Pre-configured Eye object (if None, creates default eye with r_cornea=7.98e-3)
-        observer_pos_calib: Observer position for calibration (default: [0, 550mm, 350mm, 1])
+        eye: Pre-configured Eye object (required)
         gaze_target: Fixed gaze target point [x, y] in meters (default: [0, 200mm])
         movement_range: How far to move observer from calibration position in meters (default: 50mm)
         grid_size: Number of grid points per dimension (default: 16)
@@ -39,18 +36,13 @@ def accuracy_over_observer_positions(
     Returns:
         Dictionary with error statistics (mean, max, std, median for both mm and degrees)
     """
-    # Use provided eye or create default one
-    if eye is None:
-        e = Eye(rest_pos=np.array([[1, 0, 0], [0, 0, 1], [0, 1, 0]]))
-        e.trans[:3, 3] = observer_pos_calib[:3]
-    else:
-        e = eye
+    e = eye
 
     # Calibrate eye tracker at the reference position
     et.run_calibration(e)
 
     # Define observer position grid - move observer by ±movement_range from calibration position
-    calib_x, calib_y, calib_z = observer_pos_calib[:3]
+    calib_x, calib_y, calib_z = e.position
     X = np.linspace(
         calib_x - movement_range, calib_x + movement_range, grid_size
     )  # ±movement_range from calib X
@@ -75,19 +67,19 @@ def accuracy_over_observer_positions(
     for i in range(len(X)):
         for j in range(len(Y)):
             # Move observer to test position [X[i], Y[j], Z]
-            e.trans[:3, 3] = np.array([X[i], Y[j], Z])
+            e.position = np.array([X[i], Y[j], Z])
 
             # Get predicted gaze position directly
-            predicted_gaze = et.predict_gaze_at_position(e, gaze_target)
+            predicted_gaze = et.estimate_gaze_at(e, gaze_target)
             
-            if predicted_gaze is not None:
+            if predicted_gaze is not None and predicted_gaze.gaze_point is not None:
                 # Calculate error in mm
-                U[j, i] = predicted_gaze[0] - gaze_target[0]
-                V[j, i] = predicted_gaze[1] - gaze_target[1]
+                U[j, i] = predicted_gaze.gaze_point[0] - gaze_target[0]
+                V[j, i] = predicted_gaze.gaze_point[1] - gaze_target[1]
                 
                 # Compute error in degrees using utility function
                 errs_deg[j, i] = calculate_angular_error_degrees(
-                    gaze_target, [predicted_gaze[0], predicted_gaze[1]], e.trans[:3, 3]
+                    gaze_target, predicted_gaze.gaze_point, e.position
                 )
             else:
                 # Handle prediction failure
@@ -100,67 +92,16 @@ def accuracy_over_observer_positions(
 
     print()
 
-    # Plot gaze error vectors
-    plt.figure(figsize=(10, 8))
-    q = plt.quiver(
-        X * 1000, Y * 1000, U * 1000, V * 1000, scale=150, alpha=0.8, width=0.002
-    )
-
-    # Automatically adjust plot limits to include arrow tips
-    # Create meshgrid for arrow positions
-    XX, YY = np.meshgrid(X * 1000, Y * 1000)
-    u_vec, v_vec = U * 1000, V * 1000
-
-    # Calculate arrow tip positions
-    arrow_tips_x = XX.flatten() + u_vec.flatten()
-    arrow_tips_y = YY.flatten() + v_vec.flatten()
-
-    # Set limits to include both arrow bases and tips with small margin
-    all_x = np.concatenate([XX.flatten(), arrow_tips_x])
-    all_y = np.concatenate([YY.flatten(), arrow_tips_y])
-
-    x_range = np.max(all_x) - np.min(all_x)
-    y_range = np.max(all_y) - np.min(all_y)
-    margin_x = x_range * 0.05  # 5% margin
-    margin_y = y_range * 0.05  # 5% margin
-
-    plt.xlim(np.min(all_x) - margin_x, np.max(all_x) + margin_x)
-    plt.ylim(np.min(all_y) - margin_y, np.max(all_y) + margin_y)
-
-    plt.xlabel("Observer X position (mm)")
-    plt.ylabel("Observer Y position (mm)")
-    plt.title("Gaze Error Vectors (mm)")
-    plt.grid(True, alpha=0.3)
-
-    # Calculate error statistics using numpy
-    errs_mtr = np.sqrt(U**2 + V**2).flatten()
-    errors = {
-        "mtr": {
-            "mean": np.mean(errs_mtr),
-            "max": np.max(errs_mtr),
-            "std": np.std(errs_mtr),
-            "median": np.median(errs_mtr),
-        },
-        "deg": {
-            "mean": np.mean(errs_deg.flatten()),
-            "max": np.max(errs_deg.flatten()),
-            "std": np.std(errs_deg.flatten()),
-            "median": np.median(errs_deg.flatten()),
-        },
-    }
+    # Calculate error statistics
+    errors = calculate_error_statistics(U, V, errs_deg)
 
     # Display statistics
     print(f'Maximum error {errors["mtr"]["max"] * 1e3:.3g} mm')
     print(f'Mean error {errors["mtr"]["mean"] * 1e3:.3g} mm')
     print(f'Standard deviation {errors["mtr"]["std"] * 1e3:.3g} mm')
 
-    # Plot title
-    title = (
-        f'Movement ±{movement_range*1000:.0f}mm: Max {errors["mtr"]["max"] * 1e3:.3g} mm, '
-        + f'Mean {errors["mtr"]["mean"] * 1e3:.3g} mm, '
-        + f'Std {errors["mtr"]["std"] * 1e3:.3g} mm'
-    )
-    plt.title(title)
-    plt.show()
+    # Plot using shared utility with movement range in title
+    title_prefix = f'Movement ±{movement_range*1000:.0f}mm'
+    plot_error_vectors(X, Y, U, V, errors, title_prefix=title_prefix)
 
     return errors
