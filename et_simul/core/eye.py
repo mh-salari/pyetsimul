@@ -161,11 +161,6 @@ class Eye:
         """Set the eye's world position and update transformation matrix."""
         self.trans[:3, 3] = value
 
-    @property
-    def optical_axis(self) -> np.ndarray:
-        """Get the direction the eye is looking (read-only)."""
-        return -self.trans[:3, 2]
-
     def point_within_cornea(self, p: np.ndarray) -> bool:
         """Tests whether a point lies within the cornea.
 
