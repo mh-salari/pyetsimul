@@ -35,6 +35,9 @@ class EyeTracker(ABC):
 
     # Algorithm state/parameters
     state: Dict[str, Any] = field(default_factory=dict)
+    
+    # Refraction setting
+    use_refraction: bool = True
 
     def add_camera(self, camera: Camera):
         """Add a camera to the eye tracker."""
@@ -81,7 +84,7 @@ class EyeTracker(ABC):
             calib_data[i]["camimg"] = [None] * len(self.cameras)
 
             for iCamera, cam in enumerate(self.cameras):
-                camimg = cam.take_image(eye, self.lights)
+                camimg = cam.take_image(eye, self.lights, use_refraction=self.use_refraction)
                 calib_data[i]["camimg"][iCamera] = camimg
 
                 # Check for detection failures immediately
@@ -136,7 +139,7 @@ class EyeTracker(ABC):
         # Take camera images
         camimg = [None] * len(self.cameras)
         for iCamera, cam in enumerate(self.cameras):
-            camimg[iCamera] = cam.take_image(eye, self.lights)
+            camimg[iCamera] = cam.take_image(eye, self.lights, use_refraction=self.use_refraction)
 
         # Get gaze prediction - returns None if prediction fails
         return self.predict_gaze(camimg)
