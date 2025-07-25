@@ -549,7 +549,7 @@ class Eye:
 
         return I
 
-    def get_pupil_image(self, c: "Camera", N: int = 20) -> np.ndarray:
+    def get_pupil_image(self, c: "Camera", N: int = 20, use_refraction: bool = True) -> np.ndarray:
         """Computes image of pupil boundary.
 
         This function is based on the original MATLAB implementation from the
@@ -567,6 +567,7 @@ class Eye:
         Args:
             c: Camera object
             N: Number of pupil boundary points (default 20)
+            use_refraction: Whether to apply corneal refraction (default True)
 
         Returns:
             2xM matrix of pupil boundary points in camera image
@@ -577,12 +578,17 @@ class Eye:
         # Line 32: X=zeros(4,0);
         X = np.zeros((4, 0))
 
-        # Line 33-38: For each pupil point, find refracted image
+        # Line 33-38: For each pupil point, find image (with or without refraction)
         for i in range(pupil.shape[1]):
-            # Line 34: img=eye_find_refraction(e, c.trans(:,4), pupil(:,i));
-            img = self.find_refraction(c.trans[:, 3], pupil[:, i])
+            if use_refraction:
+                # Line 34: img=eye_find_refraction(e, c.trans(:,4), pupil(:,i));
+                img = self.find_refraction(c.trans[:, 3], pupil[:, i])
+            else:
+                # Direct projection without refraction
+                pupil_world = self.trans @ pupil[:, i]
+                img = pupil_world
 
-            # Line 35-37: If refraction point found, add to results
+            # Line 35-37: If point found, add to results
             if img is not None:
                 # Convert to homogeneous coordinates
                 img_homo = np.array([img[0], img[1], img[2], 1.0])
@@ -599,6 +605,14 @@ class Eye:
             X = np.zeros((2, 0))
 
         return X
+
+    def get_pupil_center(self) -> np.ndarray:
+        """Get the pupil center position in world coordinates.
+        
+        Returns:
+            4D homogeneous coordinates of the pupil center in world coordinates
+        """
+        return self.trans @ self.pos_pupil
 
     def get_pc(
         self, c: "Camera", use_refraction: bool = True
