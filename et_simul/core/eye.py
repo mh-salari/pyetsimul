@@ -151,16 +151,6 @@ class Eye:
         """Set the eye's position and update transformation matrix."""
         self.trans[:3, 3] = value
 
-    @property
-    def world_position(self) -> np.ndarray:
-        """Get/set the eye's world position (alias for position)."""
-        return self.trans[:3, 3]
-
-    @world_position.setter
-    def world_position(self, value: np.ndarray) -> None:
-        """Set the eye's world position and update transformation matrix."""
-        self.trans[:3, 3] = value
-
     def point_within_cornea(self, p: np.ndarray) -> bool:
         """Tests whether a point lies within the cornea.
 
