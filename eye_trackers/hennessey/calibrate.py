@@ -4,7 +4,7 @@ Calibration function for Hennessey et al.'s method.
 """
 
 import numpy as np
-from .prediction import hennessey_predict_base
+from .prediction import _predict_base
 
 
 def hennessey_calib(et, calib_data):
@@ -32,7 +32,7 @@ def hennessey_calib(et, calib_data):
     for i in range(et.calib_points.shape[1]):
         # Line 27-28: [gaze_measured(:,i), cc_estim, gaze3d_measured(:,i)]= ...
         #             hennessey_eval_base(et, calib_data{i}.camimg);
-        gaze_result, cc_estim, gaze3d_result = hennessey_predict_base(
+        gaze_result, cc_estim, gaze3d_result, _, _ = _predict_base(
             et, calib_data[i]["camimg"]
         )
 

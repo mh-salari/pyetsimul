@@ -5,8 +5,8 @@ Pupil-CR tracker with biquadratic interpolation.
 
 from et_simul.core import EyeTracker
 from .polynomials import get_polynomial
-from .calibration import calibrate_eye_tracker
-from .prediction import predict_gaze_position
+from .calibration import calibrate
+from .prediction import predict, PredictionResult
 import numpy as np
 
 
@@ -47,10 +47,10 @@ class InterpolationTracker(EyeTracker):
         Args:
             calib_data: Calibration data from run_calibration
         """
-        calibrate_eye_tracker(self, calib_data)
+        calibrate(self, calib_data)
 
-    def predict_gaze(self, camimg):
-        """Predict gaze position from pupil-corneal reflection vector.
+    def predict_gaze(self, camimg) -> PredictionResult:
+        """Predict gaze from pupil-corneal reflection vector.
 
         Uses the calibrated polynomial model to predict screen gaze coordinates
         from the pupil-CR vector in the camera image.
@@ -59,6 +59,6 @@ class InterpolationTracker(EyeTracker):
             camimg: Camera image data containing pupil and corneal reflection positions
 
         Returns:
-            2D gaze position [x, y] on screen or None if prediction fails
+            PredictionResult: Detailed prediction result with all intermediate values.
         """
-        return predict_gaze_position(self, camimg)
+        return predict(self, camimg)

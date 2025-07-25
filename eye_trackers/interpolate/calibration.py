@@ -6,7 +6,7 @@ Handles polynomial regression calibration for both 1D and 2D polynomial models.
 import numpy as np
 
 
-def calibrate_eye_tracker(eye_tracker, calib_data):
+def calibrate(eye_tracker, calib_data):
     """Calibrate the interpolation eye tracker using polynomial regression.
 
     Automatically detects 1D vs 2D polynomials based on feature shape and

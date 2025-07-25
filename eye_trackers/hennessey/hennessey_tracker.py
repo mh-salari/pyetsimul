@@ -5,7 +5,7 @@ Eye tracker that uses Hennessey et al.'s method.
 
 from et_simul.core import EyeTracker
 from .calibrate import hennessey_calib
-from .prediction import hennessey_predict_main
+from .prediction import predict, PredictionResult
 
 
 class HennesseyTracker(EyeTracker):
@@ -67,9 +67,12 @@ class HennesseyTracker(EyeTracker):
 
         hennessey_calib(self, calib_data)
 
-    def predict_gaze(self, camimg):
+    def predict_gaze(self, camimg) -> PredictionResult:
         """Predict gaze position for Hennessey method.
 
         Based on hennessey_eval.m and hennessey_eval_base.m
+        
+        Returns:
+            PredictionResult: Detailed prediction result with all intermediate values
         """
-        return hennessey_predict_main(self, camimg)
+        return predict(self, camimg)

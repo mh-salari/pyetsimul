@@ -5,13 +5,46 @@ Exactly matches MATLAB hennessey_eval() and hennessey_eval_base().
 """
 
 import numpy as np
+from dataclasses import dataclass
+from typing import Optional
 from skimage.measure import EllipseModel
 from et_simul.geometry.intersections import intersect_ray_sphere, intersect_ray_plane
 from et_simul.optics.refractions import refract_ray_sphere
 from .estimate_cc import estimate_cc_hennessey
 
 
-def hennessey_predict_base(et, camimg):
+@dataclass
+class PredictionResult:
+    """Detailed prediction result for Hennessey method containing all intermediate values.
+    
+    Attributes:
+        gaze_point: Predicted gaze position [x, y] or None if prediction failed
+        pc: Pupil center coordinates (estimated 3D position)
+        cr: Corneal reflection coordinates in camera image  
+        cc: Estimated corneal center position (3D)
+        gaze3d: 3D gaze direction vector
+        r_pupil: Estimated pupil radius
+        prediction_successful: Whether prediction was successful
+    """
+    gaze_point: Optional[np.ndarray] = None
+    pc: Optional[np.ndarray] = None
+    cr: Optional[np.ndarray] = None
+    cc: Optional[np.ndarray] = None
+    gaze3d: Optional[np.ndarray] = None
+    r_pupil: Optional[float] = None
+    prediction_successful: bool = False
+    
+    @property
+    def gaze(self) -> Optional[np.ndarray]:
+        """Convenience property to access gaze point."""
+        return self.gaze_point
+    
+    def __bool__(self) -> bool:
+        """Return True if prediction was successful."""
+        return self.prediction_successful
+
+
+def _predict_base(et, camimg):
     """Prediction function helper for Hennessey et al.
 
     This function is based on the original MATLAB implementation from the
@@ -40,11 +73,12 @@ def hennessey_predict_base(et, camimg):
 
     # Check if CR estimation failed
     if cc_estim is None:
-        return None, None, None
+        return None, None, None, None, None
 
     # Find position of PC using ray-sphere-intersection
     # Line 29: switch et.state.pupil_alg
     pupil_alg = et.state["pupil_alg"]
+    r_pupil = None  # Initialize for all code paths
 
     if pupil_alg == "hennessey":
         # Bring CC into camera coordinate system and compute distance
@@ -65,7 +99,7 @@ def hennessey_predict_base(et, camimg):
             # EllipseModel.params = [xc, yc, a, b, theta], so semi-axes are at indices 2:4
             r_pupil = max(ellipse.params[2:4])
         else:
-            return None  # Failed to fit ellipse
+            return None, None, None, None, None  # Failed to fit ellipse
         # Line 41: r_pupil=r_pupil/et.cameras{1}.focal_length*d_cc;
         r_pupil = r_pupil / et.cameras[0].focal_length * d_cc
         # Empirical correction
@@ -173,10 +207,10 @@ def hennessey_predict_base(et, camimg):
     # Line 94: gaze=[x(1) x(3)]';
     gaze = np.array([x[0], x[2]])
 
-    return gaze, cc_estim, gaze3d
+    return gaze, cc_estim, gaze3d, pc_estim, r_pupil
 
 
-def hennessey_predict_main(et, camimg):
+def predict(et, camimg) -> PredictionResult:
     """Prediction function for Hennessey et al.'s method.
 
     This function is based on the original MATLAB implementation from the
@@ -189,14 +223,25 @@ def hennessey_predict_main(et, camimg):
         camimg: Camera image data
 
     Returns:
-        2D gaze position
+        PredictionResult: Detailed prediction result with all intermediate values
     """
+    result = PredictionResult()
+    
+    # Extract CR from camera image
+    result.cr = camimg[0]["cr"][0] if camimg[0]["cr"] else None
+    
     # Line 21: [gaze, cc_estim, gaze3d]=hennessey_eval_base(et, camimg);
-    gaze, cc_estim, gaze3d = hennessey_predict_base(et, camimg)
+    gaze, cc_estim, gaze3d, pc_estim, r_pupil = _predict_base(et, camimg)
 
     # Check if base Prediction failed
     if gaze is None:
-        return None
+        return result
+
+    # Store intermediate values
+    result.cc = cc_estim
+    result.gaze3d = gaze3d
+    result.pc = pc_estim
+    result.r_pupil = r_pupil
 
     # For hennessey config (recalib_type='hennessey'), skip 3D gaze vector recalibration
     # Only other recalib_types ('angle', 'henn_angle', 'henn3d') modify gaze3d here
@@ -216,12 +261,14 @@ def hennessey_predict_main(et, camimg):
     #             gaze=recalib_hennessey_eval(et.state.recalib_hennessey, gaze);
     recalib_type = et.state["recalib_type"]
     if recalib_type == "hennessey":
-        gaze = recalib_hennessey_eval(et.state["recalib_hennessey"], gaze)
+        gaze = _apply_recalibration(et.state["recalib_hennessey"], gaze)
 
-    return gaze
+    result.gaze_point = gaze
+    result.prediction_successful = True
+    return result
 
 
-def recalib_hennessey_eval(state, gaze):
+def _apply_recalibration(state, gaze):
     """Apply Hennessey's recalibration procedure.
 
     This function is based on the original MATLAB implementation from the

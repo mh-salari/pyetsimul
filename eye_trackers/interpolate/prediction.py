@@ -5,10 +5,43 @@ calibrated polynomial regression models.
 """
 
 import numpy as np
+from dataclasses import dataclass
+from typing import Optional
 
 
-def predict_gaze_position(eye_tracker, camimg):
-    """Predict gaze position from pupil-corneal reflection vector.
+@dataclass
+class PredictionResult:
+    """Detailed prediction result containing all intermediate values.
+    
+    Attributes:
+        gaze_point: Predicted gaze position [x, y] or None if prediction failed
+        pc: Pupil center coordinates in camera image
+        cr: Corneal reflection coordinates in camera image  
+        pcr_vector: PC-CR difference vector used for prediction
+        polynomial_name: Name of polynomial used for prediction
+        feature_vector: Computed polynomial features
+        prediction_successful: Whether prediction was successful
+    """
+    gaze_point: Optional[np.ndarray] = None
+    pc: Optional[np.ndarray] = None
+    cr: Optional[np.ndarray] = None
+    pcr_vector: Optional[np.ndarray] = None
+    polynomial_name: Optional[str] = None
+    feature_vector: Optional[np.ndarray] = None
+    prediction_successful: bool = False
+    
+    @property
+    def gaze(self) -> Optional[np.ndarray]:
+        """Convenience property to access gaze point."""
+        return self.gaze_point
+    
+    def __bool__(self) -> bool:
+        """Return True if prediction was successful."""
+        return self.prediction_successful
+
+
+def predict(eye_tracker, camimg) -> PredictionResult:
+    """Predict gaze from pupil-corneal reflection vector.
 
     Uses the calibrated polynomial model to predict screen gaze coordinates
     from the pupil-CR vector in the camera image.
@@ -18,23 +51,30 @@ def predict_gaze_position(eye_tracker, camimg):
         camimg: Camera image data containing pupil and corneal reflection positions
 
     Returns:
-        2D gaze position [x, y] on screen or None if prediction fails
+        PredictionResult: Detailed prediction result with all intermediate values.
     """
-    pc = camimg[0]["pc"]
-    cr = camimg[0]["cr"][0]
+    result = PredictionResult()
+    
+    # Extract PC and CR from camera image
+    result.pc = camimg[0]["pc"]
+    result.cr = camimg[0]["cr"][0] if camimg[0]["cr"] else None
+    result.polynomial_name = getattr(eye_tracker, 'polynomial_name', 'unknown')
 
-    if pc is not None and cr is not None:
-        pcr = pc - cr
+    if result.pc is not None and result.cr is not None:
+        result.pcr_vector = result.pc - result.cr
 
         # Test polynomial shape to determine type
-        test_features = eye_tracker.polynomial_func(pcr[0], pcr[1])
+        test_features = eye_tracker.polynomial_func(result.pcr_vector[0], result.pcr_vector[1])
+        result.feature_vector = test_features
 
         if test_features.ndim == 2:
-            return _predict_2d(eye_tracker, pcr)
+            result.gaze_point = _predict_2d(eye_tracker, result.pcr_vector)
         else:
-            return _predict_1d(eye_tracker, pcr)
-    else:
-        return None
+            result.gaze_point = _predict_1d(eye_tracker, result.pcr_vector)
+        
+        result.prediction_successful = result.gaze_point is not None
+    
+    return result
 
 
 def _predict_1d(eye_tracker, pcr):
