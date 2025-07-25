@@ -1,16 +1,16 @@
 import numpy as np
-from dataclasses import dataclass
-from typing import Optional, Tuple, Union, List, Dict, Any
+from dataclasses import dataclass, field
+from typing import Tuple, Union, List, Dict, Any, TYPE_CHECKING
+
+from .light import Light
+
+if TYPE_CHECKING:
+    from .eye import Eye
 
 
 @dataclass
 class Camera:
     """Pinhole camera model for eye tracking.
-
-    This class is based on the original MATLAB implementation from the
-    et_simul project — © 2008 Martin Böhme, University of Lübeck.
-    Python port © 2025 Mohammadhossein Salari.
-    Licensed under the GNU GPL v3.0 or later.
 
     The camera model is a pinhole model, the center of projection is at the
     origin of the camera coordinate system, and the camera's optical axis
@@ -58,28 +58,24 @@ class Camera:
 
       'uniform': A uniform distribution between -err and +err for both the x
       and y coordinate
+
+    This class is based on the original MATLAB implementation from the
+    et_simul project — © 2008 Martin Böhme, University of Lübeck.
+    Python port © 2025 Mohammadhossein Salari.
+    Licensed under the GNU GPL v3.0 or later.
     """
 
     focal_length: float = 2880
-    resolution: Optional[np.ndarray] = None
+    resolution: np.ndarray = field(default_factory=lambda: np.array([1280, 1024]))
     err: float = 0.0
     err_type: str = "gaussian"
-    trans: Optional[np.ndarray] = None
-    rest_trans: Optional[np.ndarray] = None
+    trans: np.ndarray = field(default_factory=lambda: np.eye(4))
+    rest_trans: np.ndarray = field(init=False)
 
     def __post_init__(self) -> None:
         """Initialize camera with default values."""
-        # Line 69: c.trans=eye(4);
-        if self.trans is None:
-            self.trans = np.eye(4)
-
         # Line 70: c.rest_trans=c.trans;
-        if self.rest_trans is None:
-            self.rest_trans = self.trans.copy()
-
-        # Line 74: c.resolution=[1280 1024];
-        if self.resolution is None:
-            self.resolution = np.array([1280, 1024])
+        self.rest_trans = self.trans.copy()
 
     @property
     def orientation(self) -> np.ndarray:
@@ -102,11 +98,6 @@ class Camera:
     def project(self, pos: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Projects points in space onto the camera's image plane.
 
-        This function is based on the original MATLAB implementation from the
-        et_simul project — © 2008 Martin Böhme, University of Lübeck.
-        Python port © 2025 Mohammadhossein Salari.
-        Licensed under the GNU GPL v3.0 or later.
-
         [x, dist] = project(self, pos) transforms a list of points 'pos'
         (given as a 4xn matrix) into the local coordinate system of camera
         and projects them onto the camera's image plane. A certain amount of
@@ -126,6 +117,11 @@ class Camera:
             - x: 2×n matrix of image coordinates (NaN for invalid points)
             - dist: 1×n array of distances from camera along optical axis
             - valid: 1×n boolean array indicating points within image bounds
+
+        This function is based on the original MATLAB implementation from the
+        et_simul project — © 2008 Martin Böhme, University of Lübeck.
+        Python port © 2025 Mohammadhossein Salari.
+        Licensed under the GNU GPL v3.0 or later.
         """
         # Handle single point case
         if pos.ndim == 1:
@@ -138,9 +134,7 @@ class Camera:
         dist = -pos[2, :]
 
         # Line 41: x=[c.focal_length*pos(1,:)./dist; c.focal_length*pos(2,:)./dist];
-        x = np.array(
-            [self.focal_length * pos[0, :] / dist, self.focal_length * pos[1, :] / dist]
-        )
+        x = self.focal_length * pos[:2, :] / dist
 
         # Lines 43-49: Add error
         if self.err_type == "uniform":
@@ -171,13 +165,8 @@ class Camera:
 
         return x, dist, condition
 
-    def unproject(self, X: np.ndarray, d: float) -> np.ndarray:
+    def unproject(self, X: np.ndarray, d: Union[float, np.ndarray]) -> np.ndarray:
         """Unprojects points on the image plane back into 3D space.
-
-        This function is based on the original MATLAB implementation from the
-        et_simul project — © 2008 Martin Böhme, University of Lübeck.
-        Python port © 2025 Mohammadhossein Salari.
-        Licensed under the GNU GPL v3.0 or later.
 
         pos = unproject(self, X, d) unprojects the two-dimensional points
         contained in the columns of the 2xn matrix 'X' from the image plane
@@ -191,6 +180,11 @@ class Camera:
 
         Returns:
             4xn matrix of homogeneous 3D points
+
+        This function is based on the original MATLAB implementation from the
+        et_simul project — © 2008 Martin Böhme, University of Lübeck.
+        Python port © 2025 Mohammadhossein Salari.
+        Licensed under the GNU GPL v3.0 or later.
         """
         # Handle single point case
         if X.ndim == 1:
@@ -217,11 +211,6 @@ class Camera:
     def pan_tilt(self, look_at: Union[np.ndarray, List[float]]) -> None:
         """Pans and tilts a camera towards a certain location.
 
-        This function is based on the original MATLAB implementation from the
-        et_simul project — © 2008 Martin Böhme, University of Lübeck.
-        Python port © 2025 Mohammadhossein Salari.
-        Licensed under the GNU GPL v3.0 or later.
-
         c = pan_tilt(c, look_at) pans and tilts the camera 'c' so that it
         is looking directly at the point 'look_at' (given in world coordinates).
         The coordinate transformation 'trans' of the returned camera is modified
@@ -234,6 +223,11 @@ class Camera:
 
         Returns:
             Camera structure with updated transformation matrix
+
+        This function is based on the original MATLAB implementation from the
+        et_simul project — © 2008 Martin Böhme, University of Lübeck.
+        Python port © 2025 Mohammadhossein Salari.
+        Licensed under the GNU GPL v3.0 or later.
         """
         # Lines 27-29: Extend 'look_at' to homogeneous coordinates if necessary
         if len(look_at) < 4:
@@ -277,11 +271,6 @@ class Camera:
     def point_at(self, point_at: Union[np.ndarray, List[float]]) -> None:
         """Points camera towards a certain location.
 
-        This function is based on the original MATLAB implementation from the
-        et_simul project — © 2008 Martin Böhme, University of Lübeck.
-        Python port © 2025 Mohammadhossein Salari.
-        Licensed under the GNU GPL v3.0 or later.
-
         c = point_at(c, point_at) changes the rest position of the
         camera 'c' so that it is pointing at the point 'point_at' (given in world
         coordinates). The elements 'rest_trans' and 'trans' of the returned
@@ -297,6 +286,11 @@ class Camera:
 
         Returns:
             Camera structure with updated transformation and rest transformation matrices
+
+        This function is based on the original MATLAB implementation from the
+        et_simul project — © 2008 Martin Böhme, University of Lübeck.
+        Python port © 2025 Mohammadhossein Salari.
+        Licensed under the GNU GPL v3.0 or later.
         """
         # Line 30: c.rest_trans=c.trans;
         self.rest_trans = self.trans.copy()
@@ -308,14 +302,9 @@ class Camera:
         self.rest_trans = self.trans.copy()
 
     def take_image(
-        self, e: "Eye", lights: List["Light"], use_refraction: bool = True
+        self, e: "Eye", lights: List[Light], use_refraction: bool = True
     ) -> Dict[str, Any]:
         """Computes the image of an eye seen by a camera.
-
-        This function is based on the original MATLAB implementation from the
-        et_simul project — © 2008 Martin Böhme, University of Lübeck.
-        Python port © 2025 Mohammadhossein Salari.
-        Licensed under the GNU GPL v3.0 or later.
 
         camimg = take_image(camera, e, lights) computes the image of the
         eye 'e' as seen by the camera 'camera'. 'lights' is a cell array of light
@@ -344,6 +333,11 @@ class Camera:
 
         Returns:
             dict: Camera image structure containing 'cr', 'pc', and 'pupil' fields
+
+        This function is based on the original MATLAB implementation from the
+        et_simul project — © 2008 Martin Böhme, University of Lübeck.
+        Python port © 2025 Mohammadhossein Salari.
+        Licensed under the GNU GPL v3.0 or later.
         """
 
         camimg = {}

@@ -12,6 +12,7 @@ from abc import ABC, abstractmethod
 
 from .camera import Camera
 from .light import Light
+from .eye import Eye
 
 
 @dataclass
@@ -35,19 +36,19 @@ class EyeTracker(ABC):
 
     # Algorithm state/parameters
     state: Dict[str, Any] = field(default_factory=dict)
-    
+
     # Refraction setting
     use_refraction: bool = True
 
-    def add_camera(self, camera: Camera):
+    def add_camera(self, camera: Camera) -> None:
         """Add a camera to the eye tracker."""
         self.cameras.append(camera)
 
-    def add_light(self, light: Light):
+    def add_light(self, light: Light) -> None:
         """Add a light to the eye tracker."""
         self.lights.append(light)
 
-    def run_calibration(self, eye):
+    def run_calibration(self, eye: Eye) -> 'EyeTracker':
         """Run the complete calibration workflow.
 
         Generic calibration process that works for all eye tracker types:
@@ -64,7 +65,7 @@ class EyeTracker(ABC):
         self.calibrate(calib_data)
         return self
 
-    def _collect_calibration_data(self, eye):
+    def _collect_calibration_data(self, eye: Eye) -> List[Dict[str, Any]]:
         """Helper to collect data for each calibration point."""
         calib_data = [None] * self.calib_points.shape[1]
         np.random.seed(0)  # For reproducible results
@@ -84,7 +85,9 @@ class EyeTracker(ABC):
             calib_data[i]["camimg"] = [None] * len(self.cameras)
 
             for iCamera, cam in enumerate(self.cameras):
-                camimg = cam.take_image(eye, self.lights, use_refraction=self.use_refraction)
+                camimg = cam.take_image(
+                    eye, self.lights, use_refraction=self.use_refraction
+                )
                 calib_data[i]["camimg"][iCamera] = camimg
 
                 # Check for detection failures immediately
@@ -120,7 +123,7 @@ class EyeTracker(ABC):
 
         return calib_data
 
-    def estimate_gaze_at(self, eye, look_at_pos):
+    def estimate_gaze_at(self, eye: Eye, look_at_pos: np.ndarray) -> Optional[Any]:
         """Estimate gaze position when eye looks at a target.
 
         Generic gaze estimation that works for all eye tracker types.
@@ -139,12 +142,16 @@ class EyeTracker(ABC):
         # Take camera images
         camimg = [None] * len(self.cameras)
         for iCamera, cam in enumerate(self.cameras):
-            camimg[iCamera] = cam.take_image(eye, self.lights, use_refraction=self.use_refraction)
+            camimg[iCamera] = cam.take_image(
+                eye, self.lights, use_refraction=self.use_refraction
+            )
 
         # Get gaze prediction - returns None if prediction fails
         return self.predict_gaze(camimg)
 
-    def calculate_gaze_error(self, eye, look_at_pos):
+    def calculate_gaze_error(
+        self, eye: Eye, look_at_pos: np.ndarray
+    ) -> tuple[float, float]:
         """Calculate gaze estimation error.
 
         Generic error calculation that works for all eye tracker types.
@@ -167,7 +174,7 @@ class EyeTracker(ABC):
             return np.nan, np.nan
 
     @abstractmethod
-    def calibrate(self, calib_data):
+    def calibrate(self, calib_data: List[Dict[str, Any]]) -> None:
         """Calibrate the eye tracker using collected data.
 
         Each eye tracker type must implement its specific calibration algorithm.
@@ -178,7 +185,7 @@ class EyeTracker(ABC):
         pass
 
     @abstractmethod
-    def predict_gaze(self, camimg):
+    def predict_gaze(self, camimg: List[Dict[str, Any]]) -> Optional[Any]:
         """Predict gaze position from camera images.
 
         Each eye tracker type must implement its specific gaze prediction algorithm.

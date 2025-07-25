@@ -7,18 +7,18 @@ from typing import Optional
 class Light:
     """Light source for generating corneal reflections.
 
+    Creates a light object that is positioned at the world coordinate origin.
+    The position is stored internally as homogeneous coordinates [x, y, z, 1].
+
     This class is based on the original MATLAB implementation from the
     et_simul project — © 2008 Martin Böhme, University of Lübeck.
     Python port © 2025 Mohammadhossein Salari.
     Licensed under the GNU GPL v3.0 or later.
-
-    Creates a light object that is positioned at the world coordinate origin.
-    The position is stored internally as homogeneous coordinates [x, y, z, 1].
     """
 
     _pos_homogeneous: np.ndarray = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Initialize light positioned at the origin."""
         if self._pos_homogeneous is None:
             # Default position at origin
