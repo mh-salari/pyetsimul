@@ -4,7 +4,6 @@ from typing import Optional, Union, List, Tuple
 from skimage.measure import EllipseModel
 
 from ..optics import reflections, refractions
-from ..geometry import utils
 
 
 @dataclass
@@ -126,42 +125,42 @@ class Eye:
     def rest_orientation(self) -> np.ndarray:
         """Get/set the eye's orientation (3x3 rotation matrix)."""
         return self.trans[:3, :3]
-    
+
     @rest_orientation.setter
     def rest_orientation(self, value: np.ndarray) -> None:
         """Set the eye's orientation and update transformation matrix."""
         self.trans[:3, :3] = value
-    
+
     @property
     def rotation(self) -> np.ndarray:
         """Get/set the eye's rotation matrix (alias for rest_orientation)."""
         return self.trans[:3, :3]
-    
+
     @rotation.setter
     def rotation(self, value: np.ndarray) -> None:
         """Set the eye's rotation matrix and update transformation matrix."""
         self.trans[:3, :3] = value
-    
+
     @property
     def position(self) -> np.ndarray:
         """Get/set the eye's position in world coordinates (3D vector)."""
         return self.trans[:3, 3]
-    
+
     @position.setter
     def position(self, value: np.ndarray) -> None:
         """Set the eye's position and update transformation matrix."""
         self.trans[:3, 3] = value
-    
+
     @property
     def world_position(self) -> np.ndarray:
         """Get/set the eye's world position (alias for position)."""
         return self.trans[:3, 3]
-    
+
     @world_position.setter
     def world_position(self, value: np.ndarray) -> None:
         """Set the eye's world position and update transformation matrix."""
         self.trans[:3, 3] = value
-    
+
     @property
     def optical_axis(self) -> np.ndarray:
         """Get the direction the eye is looking (read-only)."""
@@ -219,7 +218,10 @@ class Eye:
         """
         # Line 26: cr=find_reflection(l.pos, c.trans(:,4), e.trans*e.pos_cornea, e.r_cornea);
         cr = reflections.find_reflection(
-            l.position, c.trans[:, 3], self.trans @ self.pos_cornea, self.r_cornea
+            l._pos_homogeneous,
+            c.trans[:, 3],
+            self.trans @ self.pos_cornea,
+            self.r_cornea,
         )
 
         # Lines 29-31: if ~eye_point_within_cornea(e, cr), cr=[]; end
@@ -365,7 +367,7 @@ class Eye:
 
     def get_pupil_radii(self) -> tuple[float, float]:
         """Returns the current pupil radii from both axes.
-        
+
         Returns:
             Tuple of (x_radius, y_radius) in meters
         """
@@ -375,17 +377,17 @@ class Eye:
 
     def set_pupil_radii(self, x_radius: float = None, y_radius: float = None) -> None:
         """Sets the pupil radii and updates pupil geometry.
-        
+
         Args:
             x_radius: Pupil radius in X direction (meters)
             y_radius: Pupil radius in Y direction (meters)
-            
+
         Raises:
             ValueError: If both radii are None
         """
         if x_radius is None and y_radius is None:
             raise ValueError("At least one radius must be specified")
-            
+
         if x_radius is not None:
             self.x_pupil = x_radius * np.array([1, 0, 0, 0])
         if y_radius is not None:
@@ -423,7 +425,7 @@ class Eye:
         to_cam = to_cam / np.linalg.norm(to_cam)
 
         # Line 30: w=e.r_cornea/(2*(l.pos-cc)'*to_cam);
-        light_to_cornea = l.position - cc
+        light_to_cornea = l._pos_homogeneous - cc
         denominator = 2 * np.dot(light_to_cornea, to_cam)
 
         if abs(denominator) < 1e-10:  # Avoid division by zero
@@ -589,7 +591,9 @@ class Eye:
 
         return I
 
-    def get_pupil_image(self, c: "Camera", N: int = 20, use_refraction: bool = True) -> np.ndarray:
+    def get_pupil_image(
+        self, c: "Camera", N: int = 20, use_refraction: bool = True
+    ) -> np.ndarray:
         """Computes image of pupil boundary.
 
         This function is based on the original MATLAB implementation from the
@@ -648,7 +652,7 @@ class Eye:
 
     def get_pupil_center(self) -> np.ndarray:
         """Get the pupil center position in world coordinates.
-        
+
         Returns:
             4D homogeneous coordinates of the pupil center in world coordinates
         """

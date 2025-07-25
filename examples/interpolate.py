@@ -13,27 +13,35 @@ import argparse
 def main():
     parser = argparse.ArgumentParser(description="Interpolation Eye Tracker Test")
     parser.add_argument(
-        "--eye-position", 
-        type=float, 
-        nargs=3, 
-        default=[0, 250e-3, 350e-3],
+        "--eye-position",
+        type=float,
+        nargs=3,
+        default=[0, 550e-3, 350e-3],
         metavar=("X", "Y", "Z"),
-        help="Eye position in meters (default: 0 250e-3 350e-3)"
+        help="Eye position in meters (default: 0 250e-3 350e-3)",
     )
     parser.add_argument(
         "--method",
         type=str,
         default="cerrolaza_2008",
-        choices=["cerrolaza_2008", "hennessey_2008", "second_order", "zhu_ji_2005", "blignaut_wium_2013"],
-        help="Interpolation method (default: cerrolaza_2008)"
+        choices=[
+            "cerrolaza_2008",
+            "hennessey_2008",
+            "second_order",
+            "zhu_ji_2005",
+            "blignaut_wium_2013",
+        ],
+        help="Interpolation method (default: cerrolaza_2008)",
     )
-    
+
     args = parser.parse_args()
-    
+
     print("=== Python Interpolate Test (System Integration) ===\n")
-    
+
     eye_position = np.array(args.eye_position)
-    print(f"Using eye position: X={eye_position[0]*1000:.1f}mm, Y={eye_position[1]*1000:.1f}mm, Z={eye_position[2]*1000:.1f}mm")
+    print(
+        f"Using eye position: X={eye_position[0]*1000:.1f}mm, Y={eye_position[1]*1000:.1f}mm, Z={eye_position[2]*1000:.1f}mm"
+    )
     print(f"Using interpolation method: {args.method}\n")
 
     # Create eye configuration
@@ -49,7 +57,8 @@ def main():
     cam.point_at(eye.position.tolist() + [1])
 
     # Create light configuration
-    light = Light(position=np.array([200e-3, 0, 350e-3, 1]))
+    light = Light()
+    light.position = np.array([200e-3, 0, 350e-3])
 
     # Create calibration grid
     calib_points = [

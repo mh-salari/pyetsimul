@@ -22,19 +22,23 @@ def manual_eye_gaze_keyboard_control():
     print("=" * 40)
 
     rest_orientation = np.array([[1, 0, 0], [0, 0, 1], [0, 1, 0]])
-    e_base = Eye(r_cornea=7.98e-3, fovea_displacement=True)
+    e_base = Eye()
     e_base.rest_orientation = rest_orientation
     e_base.position = [0, 250e-3, 100e-3]
 
     # Create two light sources
-    l1 = Light(position=np.array([100e-3, 0, 0, 1]))  # Right side light
-    l2 = Light(position=np.array([-100e-3, 0, 0, 1]))  # Left side light
+    l1 = Light()
+    l1.position = np.array([100e-3, 0, 0])  # Right side light
+
+    l2 = Light()
+    l2.position = np.array([-100e-3, 0, 0])  # Left side light
+
     lights = [l1, l2]
 
     c = Camera()
     c.point_at(e_base.position)
 
-    # Start target point exactly as you had
+    # Start target point
     target_point = np.array([-50e-3, 0, 50e-3, 1])
 
     fig = plt.figure(figsize=(18, 8), constrained_layout=True)

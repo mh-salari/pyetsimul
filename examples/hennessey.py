@@ -13,20 +13,22 @@ import argparse
 def main():
     parser = argparse.ArgumentParser(description="Hennessey Eye Tracker Test")
     parser.add_argument(
-        "--eye-position", 
-        type=float, 
-        nargs=3, 
+        "--eye-position",
+        type=float,
+        nargs=3,
         default=[0, 550e-3, 350e-3],
         metavar=("X", "Y", "Z"),
-        help="Eye position in meters (default: 0 550e-3 350e-3)"
+        help="Eye position in meters (default: 0 550e-3 350e-3)",
     )
-    
+
     args = parser.parse_args()
-    
+
     print("=== Python Hennessey Test (System Integration) ===\n")
-    
+
     eye_position = np.array(args.eye_position)
-    print(f"Using eye position: X={eye_position[0]*1000:.1f}mm, Y={eye_position[1]*1000:.1f}mm, Z={eye_position[2]*1000:.1f}mm\n")
+    print(
+        f"Using eye position: X={eye_position[0]*1000:.1f}mm, Y={eye_position[1]*1000:.1f}mm, Z={eye_position[2]*1000:.1f}mm\n"
+    )
 
     # Create eye configuration
     eye = Eye()
@@ -41,8 +43,11 @@ def main():
     cam.point_at(eye.position.tolist() + [1])
 
     # Create light configuration (dual lights on vertical edge of monitor)
-    light1 = Light(position=np.array([200e-3, 0, 50e-3, 1]))
-    light2 = Light(position=np.array([200e-3, 0, 300e-3, 1]))
+    light1 = Light()
+    light1.position = np.array([200e-3, 0, 50e-3])
+
+    light2 = Light()
+    light2.position = np.array([200e-3, 0, 300e-3])
 
     # Nine-point calibration pattern
     calib_points = [

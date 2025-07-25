@@ -20,18 +20,22 @@ def main():
     print("=" * 50)
     print("Using exact positioning values from MATLAB example.m")
 
-    # Create eye with MATLAB example.m positioning
-    rest_orientation = np.array(
-        [[1, 0, 0], [0, 0, 1], [0, 1, 0]]
-    )  # Looking out along negative y-axis
-    e = Eye(r_cornea=7.98e-3, fovea_displacement=True)
+    e = Eye()
+
+    # Looking out along negative y-axis
+    rest_orientation = np.array([[1, 0, 0], [0, 0, 1], [0, 1, 0]])
     e.rest_orientation = rest_orientation
+
     eye_position = [0, 250e-3, 100e-3]
-    e.position = eye_position  # MATLAB example.m position
+    e.position = eye_position
 
     # Create two light sources for dual-light eye tracking
-    l1 = Light(position=np.array([100e-3, 0, 0, 1]))  # Right side light
-    l2 = Light(position=np.array([-100e-3, 0, 0, 1]))  # Left side light (symmetric)
+    l1 = Light()
+    l1.position = np.array([100e-3, 0, 0])  # Right side light
+
+    l2 = Light()
+    l2.position = np.array([-100e-3, 0, 0])  # Left side light (symmetric)
+
     lights = [l1, l2]
 
     # Create camera and point it at the eye

@@ -13,7 +13,7 @@ def test_basic_simple_corneal_reflex():
     c = Camera()
 
     # Position light in front of eye
-    l.position = np.array([0, 0, -50, 1])
+    l.position = np.array([0, 0, -50])
 
     # Position camera to the side
     c.trans[0:3, 3] = np.array([30, 0, -40])
@@ -45,7 +45,7 @@ def test_angled_positions():
     c = Camera()
 
     # Light at an angle
-    l.position = np.array([15, -10, -45, 1])
+    l.position = np.array([15, -10, -45])
 
     # Camera at different position
     c.trans[0:3, 3] = np.array([-20, 8, -35])
@@ -81,7 +81,7 @@ def test_reflex_outside_cornea_boundary():
     e.look_at(target_down)
 
     # Extreme positioning to force reflex outside cornea
-    l.position = np.array([10, 50, -30, 1])
+    l.position = np.array([10, 50, -30])
     c.trans[0:3, 3] = np.array([20, 80, -20])
 
     cr = e.find_cr_simple(l, c)
@@ -96,7 +96,7 @@ def test_output_properties():
     l = Light()
     c = Camera()
 
-    l.position = np.array([0, 0, -50, 1])
+    l.position = np.array([0, 0, -50])
     c.trans[0:3, 3] = np.array([30, 0, -40])
 
     cr = e.find_cr_simple(l, c)

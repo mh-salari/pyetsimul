@@ -64,7 +64,7 @@ def estimate_cc_hennessey(c, l, cr, r_cornea_assumed=None):
 
         # Compute vector to light
         # Line 45: l_vec=l{j}.pos-c.trans(:,4);
-        light_pos = l[j].position
+        light_pos = l[j]._pos_homogeneous
         # Ensure light_pos is column vector
         if light_pos.ndim == 1:
             light_pos = light_pos.reshape(-1, 1)

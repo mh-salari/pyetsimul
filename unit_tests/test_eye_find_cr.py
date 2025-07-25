@@ -13,7 +13,7 @@ def test_basic_corneal_reflex():
     c = Camera()
 
     # Position light in front of eye
-    l.position = np.array([0, 0, -50, 1])
+    l.position = np.array([0, 0, -50])
 
     # Position camera to the side
     c.trans[0:3, 3] = np.array([30, 0, -40])
@@ -44,7 +44,7 @@ def test_different_positions():
     c = Camera()
 
     # Light positioned at an angle
-    l.position = np.array([20, 15, -60, 1])
+    l.position = np.array([20, 15, -60])
 
     # Camera at different position
     c.trans[0:3, 3] = np.array([-25, 10, -35])
@@ -73,7 +73,7 @@ def test_light_behind_eye():
     c = Camera()
 
     # Light behind the eye (positive Z)
-    l.position = np.array([0, 0, 50, 1])
+    l.position = np.array([0, 0, 50])
 
     # Camera in front
     c.trans[0:3, 3] = np.array([20, 0, -30])
@@ -97,7 +97,13 @@ target_down = np.array([0, -100, 0])
 e.look_at(target_down)
 
 # Light and camera above
-l.position = np.array([5, 30, -40, 1])
+l.position = np.array(
+    [
+        5,
+        30,
+        -40,
+    ]
+)
 c.trans[0:3, 3] = np.array([10, 60, -25])
 
 cr = e.find_cr(l, c)
@@ -112,7 +118,7 @@ def test_output_properties():
     l = Light()
     c = Camera()
 
-    l.position = np.array([0, 0, -50, 1])
+    l.position = np.array([0, 0, -50])
     c.trans[0:3, 3] = np.array([30, 0, -40])
 
     cr = e.find_cr(l, c)

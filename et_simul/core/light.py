@@ -13,20 +13,28 @@ class Light:
     Licensed under the GNU GPL v3.0 or later.
 
     Creates a light object that is positioned at the world coordinate origin.
-    The position is stored in world coordinates as homogeneous coordinates [x, y, z, 1].
+    The position is stored internally as homogeneous coordinates [x, y, z, 1].
     """
 
-    position: Optional[np.ndarray] = None
+    _pos_homogeneous: np.ndarray = None
 
     def __post_init__(self):
         """Initialize light positioned at the origin."""
-        if self.position is None:
-            # Default position at origin (matches original: l.pos=[0 0 0 1]')
-            self.position = np.array([0, 0, 0, 1], dtype=float)
-        else:
-            # Ensure user input is numpy array with correct dtype and size
-            self.position = np.array(self.position, dtype=float)
-            if len(self.position) != 4:
-                raise ValueError(
-                    f"Light position must be 4D homogeneous coordinates, got {len(self.position)}D"
-                )
+        if self._pos_homogeneous is None:
+            # Default position at origin
+            self._pos_homogeneous = np.array([0, 0, 0, 1], dtype=float)
+
+    @property
+    def position(self) -> np.ndarray:
+        """Get the light's position in world coordinates (3D vector)."""
+        return self._pos_homogeneous[:3]
+
+    @position.setter
+    def position(self, value: np.ndarray) -> None:
+        """Set the light's position from 3D coordinates."""
+        value = np.array(value, dtype=float)
+        if len(value) != 3:
+            raise ValueError(
+                f"Light position must be 3D coordinates, got {len(value)}D"
+            )
+        self._pos_homogeneous = np.array([value[0], value[1], value[2], 1], dtype=float)
