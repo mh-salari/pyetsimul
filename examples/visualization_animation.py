@@ -44,10 +44,7 @@ def manual_eye_gaze_keyboard_control():
     e_ref = copy.deepcopy(e_base)
     e_ref.look_at(target_point)
     # Find corneal reflections for both lights
-    cr_ref_list = []
-    for light in lights:
-        cr_ref = e_ref.find_cr(light, c)
-        cr_ref_list.append(cr_ref)
+    
     plot_setup_and_camera_view(
         e_ref, target_point, lights, c, ax1=ax1, ax2=ax2, fig=fig
     )
