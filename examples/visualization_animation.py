@@ -23,7 +23,7 @@ def manual_eye_gaze_keyboard_control():
 
     rest_orientation = np.array([[1, 0, 0], [0, 0, 1], [0, 1, 0]])
     e_base = Eye(r_cornea=7.98e-3, rest_pos=rest_orientation, fovea_displacement=True)
-    e_base.trans[:3, 3] = [0, 250e-3, 100e-3]
+    e_base.position = [0, 250e-3, 100e-3]
 
     # Create two light sources
     l1 = Light(position=np.array([100e-3, 0, 0, 1]))  # Right side light
@@ -31,7 +31,7 @@ def manual_eye_gaze_keyboard_control():
     lights = [l1, l2]
 
     c = Camera()
-    c.point_at(e_base.trans[:3, 3])
+    c.point_at(e_base.position)
 
     # Start target point exactly as you had
     target_point = np.array([-50e-3, 0, 50e-3, 1])
@@ -44,7 +44,7 @@ def manual_eye_gaze_keyboard_control():
     e_ref = copy.deepcopy(e_base)
     e_ref.look_at(target_point)
     # Find corneal reflections for both lights
-    
+
     plot_setup_and_camera_view(
         e_ref, target_point, lights, c, ax1=ax1, ax2=ax2, fig=fig
     )
@@ -68,7 +68,7 @@ def manual_eye_gaze_keyboard_control():
             fig=fig,
             ref_bounds=ref_bounds,
         )
-        eye_pos = e_base.trans[:3, 3]
+        eye_pos = e_base.position
         fig.suptitle(
             f"Target X={target_point[0]*1000:.1f} mm, Y={target_point[1]*1000:.1f} mm, Z={target_point[2]*1000:.1f} mm\n"
             f"Eye X={eye_pos[0]*1000:.1f} mm, Y={eye_pos[1]*1000:.1f} mm, Z={eye_pos[2]*1000:.1f} mm",

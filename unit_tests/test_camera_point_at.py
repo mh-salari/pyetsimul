@@ -19,7 +19,7 @@ def test_point_at_basic():
     assert not np.allclose(c.trans, original_trans, rtol=1e-10)
 
     # Should be a valid transformation matrix
-    rotation = c.trans[:3, :3]
+    rotation = c.orientation
     assert np.allclose(np.linalg.det(rotation), 1.0, rtol=1e-12)
     assert np.allclose(rotation @ rotation.T, np.eye(3), rtol=1e-12)
 

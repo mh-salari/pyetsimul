@@ -297,13 +297,13 @@ class Eye:
             pos: Three-dimensional position in world coordinates to look at
         """
         # Line 31: out=pos(1:3)-e.trans(1:3,4);
-        out = pos[:3] - self.trans[:3, 3]
+        out = pos[:3] - self.position
         # Line 32: out=out/norm(out);
         out = out / np.linalg.norm(out)
 
         rest_orientation_base = np.eye(3)
         out_rest = rest_orientation_base @ np.array([0, 0, -1])
-        self.trans[:3, :3] = self.listings_law(out_rest, out) @ rest_orientation_base
+        self.rest_orientation = self.listings_law(out_rest, out) @ rest_orientation_base
 
         # Lines 39-46: Compensate for fovea displacement
         if self.fovea_displacement:
@@ -327,7 +327,7 @@ class Eye:
                 ]
             )
             # Line 45: e.trans(1:3, 1:3)=e.trans(1:3, 1:3)*B*A;
-            self.trans[:3, :3] = self.trans[:3, :3] @ B @ A
+            self.rest_orientation = self.rest_orientation @ B @ A
 
     def get_pupil(self, N: int = 20) -> np.ndarray:
         """Returns an array of points describing the pupil boundary.

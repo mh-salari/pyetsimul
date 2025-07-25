@@ -26,7 +26,7 @@ def main():
     )  # Looking out along negative y-axis
     e = Eye(r_cornea=7.98e-3, rest_pos=rest_orientation, fovea_displacement=True)
     eye_position = [0, 250e-3, 100e-3]
-    e.trans[:3, 3] = eye_position  # MATLAB example.m position
+    e.position = eye_position  # MATLAB example.m position
 
     # Create two light sources for dual-light eye tracking
     l1 = Light(position=np.array([100e-3, 0, 0, 1]))  # Right side light

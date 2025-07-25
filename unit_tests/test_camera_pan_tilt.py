@@ -112,7 +112,7 @@ def test_output_properties():
     assert c.trans.dtype == np.float64
 
     # Transformation matrix should be orthogonal
-    rotation = c.trans[:3, :3]
+    rotation = c.orientation
     assert np.allclose(np.linalg.det(rotation), 1.0, rtol=1e-12)
     assert np.allclose(rotation @ rotation.T, np.eye(3), rtol=1e-12)
 

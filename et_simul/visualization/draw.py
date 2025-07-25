@@ -253,7 +253,7 @@ def plot_setup(
             *light_pos, color=color, s=200, marker="*", label=f"Light Source {i+1}"
         )
 
-    camera_pos = camera.trans[:3, 3]
+    camera_pos = camera.position
     ax1.scatter(*camera_pos, color="black", s=200, marker="s", label="Camera")
 
     ax1.scatter(
