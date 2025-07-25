@@ -138,8 +138,8 @@ class Eye:
         """Set the rest orientation and initialize current orientation to match."""
         self._rest_orientation = value.copy()
         self.trans[:3, :3] = value
-    
-    @property 
+
+    @property
     def rest_orientation(self) -> np.ndarray:
         """Get the rest orientation (read-only)."""
         return self._rest_orientation.copy()
@@ -607,34 +607,34 @@ class Eye:
         # Line 31: pupil=eye_get_pupil(e, N);
         pupil = self.get_pupil(N)
 
-        # Line 32: X=zeros(4,0);
-        X = np.zeros((4, 0))
+        if use_refraction:
+            # Line 32: X=zeros(4,0);
+            X = np.zeros((4, 0))
 
-        # Line 33-38: For each pupil point, find image (with or without refraction)
-        for i in range(pupil.shape[1]):
-            if use_refraction:
+            # Line 33-38: For each pupil point, find image with refraction
+            for i in range(pupil.shape[1]):
                 # Line 34: img=eye_find_refraction(e, c.trans(:,4), pupil(:,i));
                 img = self.find_refraction(c.trans[:, 3], pupil[:, i])
+
+                # Line 35-37: If point found, add to results
+                if img is not None:
+                    # Convert to homogeneous coordinates
+                    img_homo = np.array([img[0], img[1], img[2], 1.0])
+                    if X.shape[1] == 0:
+                        X = img_homo.reshape(-1, 1)
+                    else:
+                        X = np.column_stack([X, img_homo])
+
+            # Line 40-41: Project to camera and filter valid points
+            if X.shape[1] > 0:
+                X_proj, _, valid = c.project(X)
+                X = X_proj[:, valid]
             else:
-                # Direct projection without refraction
-                pupil_world = self.trans @ pupil[:, i]
-                img = pupil_world
-
-            # Line 35-37: If point found, add to results
-            if img is not None:
-                # Convert to homogeneous coordinates
-                img_homo = np.array([img[0], img[1], img[2], 1.0])
-                if X.shape[1] == 0:
-                    X = img_homo.reshape(-1, 1)
-                else:
-                    X = np.column_stack([X, img_homo])
-
-        # Line 40-41: Project to camera and filter valid points
-        if X.shape[1] > 0:
-            X_proj, _, valid = c.project(X)
-            X = X_proj[:, valid]
+                X = np.zeros((2, 0))
         else:
-            X = np.zeros((2, 0))
+            # Direct projection without refraction - use the correct approach
+            X_proj, _, _ = c.project(pupil)
+            X = X_proj
 
         return X
 
@@ -669,35 +669,30 @@ class Eye:
             - pupil: 2×N matrix of pupil boundary points in camera image
             - pc: 2-element vector with pupil center position, or None if not found
         """
-        # Use refraction model for accurate pupil imaging
-        if use_refraction:
-            # Get pupil image using refraction
-            pupil = self.get_pupil_image(c)
+        # Get pupil image (with or without refraction)
+        pupil = self.get_pupil_image(c, use_refraction=use_refraction)
 
-            # Find center of pupil using ellipse fitting
-            if pupil.shape[1] >= 5:
-                # Fit ellipse to pupil boundary points
-                points = np.column_stack((pupil[0, :], pupil[1, :]))
-                ellipse = EllipseModel()
-                if ellipse.estimate(points):
-                    # Extract center coordinates directly
-                    pc = ellipse.params[:2]  # [xc, yc]
-                else:
-                    pc = None
-            else:
-                # Not enough points for ellipse fitting
-                pc = None
-        else:
-            # Simple pupil version without refraction
-            pupil = self.get_pupil()
-            pupil_proj, _, valid = c.project(pupil)
-            pupil = pupil_proj[:, valid]
-
-            # Project pupil center directly
-            pc_proj, _, _ = c.project(self.trans @ self.pos_pupil)
-            if np.any(np.isnan(pc_proj)):
-                pc = None
-            else:
-                pc = pc_proj.flatten()
+        # Find center of pupil using ellipse fitting
+        pc = self._fit_ellipse_center(pupil)
 
         return pupil, pc
+
+    def _fit_ellipse_center(self, pupil: np.ndarray) -> Optional[np.ndarray]:
+        """Fit ellipse to pupil boundary points and return center.
+
+        Args:
+            pupil: 2xN matrix of pupil boundary points
+
+        Returns:
+            2-element array with center coordinates [xc, yc], or None if fitting fails
+        """
+        if pupil.shape[1] >= 5:
+            # Fit ellipse to pupil boundary points
+            points = np.column_stack((pupil[0, :], pupil[1, :]))
+            ellipse = EllipseModel()
+            if ellipse.estimate(points):
+                # Extract center coordinates directly
+                return ellipse.params[:2]  # [xc, yc]
+
+        # Not enough points for ellipse fitting or fitting failed
+        return None
