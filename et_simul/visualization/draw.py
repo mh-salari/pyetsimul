@@ -8,6 +8,11 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
+def to_3d(point):
+    """Convert homogeneous (4D) coordinates to 3D Cartesian for plotting."""
+    return point[:3] if len(point) > 3 else point
+
+
 def draw_eye_anatomy(eye, look_at_target=None, show_axes=True, show_annotations=True):
     """Draw detailed eye anatomy with optional gaze target.
 
@@ -22,7 +27,10 @@ def draw_eye_anatomy(eye, look_at_target=None, show_axes=True, show_annotations=
 
     # Transform anatomical points to world coordinates
     def transform_point(point):
-        return eye.trans @ point
+        if len(point) == 3:
+            point = np.append(point, 1)  # Convert to homogeneous coordinates
+        world_point = eye.trans @ point
+        return to_3d(world_point)  # Convert back to 3D for plotting
 
     # Get key anatomical points
     cornea_center_world = transform_point(eye.pos_cornea)
@@ -52,7 +60,7 @@ def draw_eye_anatomy(eye, look_at_target=None, show_axes=True, show_annotations=
                 # Point relative to cornea center
                 point_local = np.array([x_sphere[i, j], y_sphere[i, j], z_sphere[i, j]])
                 # Add to cornea center in eye coordinates, then transform
-                point_eye = eye.pos_cornea[:3] + point_local
+                point_eye = to_3d(eye.pos_cornea) + point_local
                 point_world = transform_point(point_eye)
                 x_sphere[i, j] = point_world[0]
                 y_sphere[i, j] = point_world[1]
@@ -80,7 +88,7 @@ def draw_eye_anatomy(eye, look_at_target=None, show_axes=True, show_annotations=
     ax.plot(cornea_x, cornea_y, cornea_z, "c-", linewidth=3, label="Cornea")
 
     # Draw pupil circle
-    pupil_radius = np.linalg.norm(eye.x_pupil[:3])
+    pupil_radius = np.linalg.norm(to_3d(eye.x_pupil))
     pupil_y = pupil_center_world[1] + pupil_radius * np.cos(theta)
     pupil_z = pupil_center_world[2] + pupil_radius * np.sin(theta)
     pupil_x = np.full_like(pupil_y, pupil_center_world[0])
@@ -208,13 +216,13 @@ def plot_setup(
 
     # Mark key anatomical points
     ax1.scatter(
-        *eye_data["cornea_center_world"][:3],
+        *eye_data["cornea_center_world"],
         color="green",
         s=100,
         label="Cornea Center",
     )
     ax1.scatter(
-        *eye_data["pupil_world"][:3],
+        *eye_data["pupil_world"],
         color="cornflowerblue",
         s=100,
         label="Pupil Center",
@@ -247,7 +255,7 @@ def plot_setup(
     # Add scene elements - multiple lights
     light_colors = ["yellow", "orange", "gold", "khaki"]  # Colors for different lights
     for i, light in enumerate(lights):
-        light_pos = light.position[:3]
+        light_pos = to_3d(light.position)
         color = light_colors[i % len(light_colors)]
         ax1.scatter(
             *light_pos, color=color, s=200, marker="*", label=f"Light Source {i+1}"
@@ -257,7 +265,7 @@ def plot_setup(
     ax1.scatter(*camera_pos, color="black", s=200, marker="s", label="Camera")
 
     ax1.scatter(
-        *target_world[:3], color="magenta", s=150, marker="D", label="Gaze Target"
+        *to_3d(target_world), color="magenta", s=150, marker="D", label="Gaze Target"
     )
 
     # Add corneal reflections if provided
@@ -272,7 +280,7 @@ def plot_setup(
             if cr_3d is not None:
                 color = cr_colors[i % len(cr_colors)]
                 ax1.scatter(
-                    *cr_3d[:3],
+                    *to_3d(cr_3d),
                     color=color,
                     s=80,
                     marker="o",
@@ -283,7 +291,7 @@ def plot_setup(
 
                 # Get corresponding light position
                 light = lights[i]
-                light_pos = light.position[:3]
+                light_pos = to_3d(light.position)
 
                 # Draw light ray paths (only from light to CR, not to camera)
                 ax1.plot(
@@ -469,7 +477,10 @@ def prepare_eye_data_for_plots(eye, look_at_target, lights, camera):
 
     # Calculate all values once
     def transform_point(point):
-        return eye.trans @ point
+        if len(point) == 3:
+            point = np.append(point, 1)  # Convert to homogeneous coordinates
+        world_point = eye.trans @ point
+        return to_3d(world_point)  # Convert back to 3D for plotting
 
     # Rotate the eye toward the target
     eye.look_at(look_at_target)
@@ -500,7 +511,7 @@ def prepare_eye_data_for_plots(eye, look_at_target, lights, camera):
     for i in range(X_cornea.shape[0]):
         for j in range(X_cornea.shape[1]):
             if not np.isnan(X_cornea[i, j]):
-                point = cornea_center[:3] + np.array(
+                point = to_3d(cornea_center) + np.array(
                     [X_cornea[i, j], Y_cornea[i, j], Z_cornea[i, j]]
                 )
                 point_world = transform_point(np.append(point, 1))
@@ -512,10 +523,10 @@ def prepare_eye_data_for_plots(eye, look_at_target, lights, camera):
     optical_axis_direction_local = np.array(
         [0, 0, -1, 0]
     )  # negative z in homogeneous coordinates
-    optical_axis_direction_world = transform_point(optical_axis_direction_local)[:3]
+    optical_axis_direction_world = transform_point(optical_axis_direction_local)
     optical_axis_length = 0.1  # 100mm extension
     optical_axis_end = (
-        cornea_center_world[:3] + optical_axis_direction_world * optical_axis_length
+        cornea_center_world + optical_axis_direction_world * optical_axis_length
     )
 
     # Prepare eye data for 3D plot

@@ -19,9 +19,8 @@ def main():
     # Create an eye with a corneal radius of 7.98 mm looking out along the negative y axis
     # MATLAB: e=eye_make(7.98e-3, [1 0 0; 0 0 1; 0 1 0]);
     rotation_matrix = np.array([[1, 0, 0], [0, 0, 1], [0, 1, 0]])
-    e = Eye(
-        r_cornea=7.98e-3, rest_pos=rotation_matrix, fovea_displacement=False
-    )  # Match MATLAB defaults
+    e = Eye(r_cornea=7.98e-3, fovea_displacement=False)  # Match MATLAB defaults
+    e.rest_orientation = rotation_matrix
 
     # MATLAB: e.trans(1:3, 4)=[0 500e-3 200e-3]';
     e.position = np.array([0, 500e-3, 200e-3])

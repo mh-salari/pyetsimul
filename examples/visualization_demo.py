@@ -24,7 +24,8 @@ def main():
     rest_orientation = np.array(
         [[1, 0, 0], [0, 0, 1], [0, 1, 0]]
     )  # Looking out along negative y-axis
-    e = Eye(r_cornea=7.98e-3, rest_pos=rest_orientation, fovea_displacement=True)
+    e = Eye(r_cornea=7.98e-3, fovea_displacement=True)
+    e.rest_orientation = rest_orientation
     eye_position = [0, 250e-3, 100e-3]
     e.position = eye_position  # MATLAB example.m position
 
@@ -41,7 +42,7 @@ def main():
     target_point = np.array([50e-3, 0, 50e-3, 1])  # 5cm left, at screen plane, 5cm up
 
     print(
-        f"- Eye position: ({e.trans[0,3]*1000:.1f}, {e.trans[1,3]*1000:.1f}, {e.trans[2,3]*1000:.1f}) mm"
+        f"- Eye position: ({e.position[0]*1000:.1f}, {e.position[1]*1000:.1f}, {e.position[2]*1000:.1f}) mm"
     )
     print(
         f"- Light 1 position: ({l1.position[0]*1000:.1f}, {l1.position[1]*1000:.1f}, {l1.position[2]*1000:.1f}) mm"
@@ -50,7 +51,7 @@ def main():
         f"- Light 2 position: ({l2.position[0]*1000:.1f}, {l2.position[1]*1000:.1f}, {l2.position[2]*1000:.1f}) mm"
     )
     print(
-        f"- Camera position: ({c.trans[0,3]*1000:.1f}, {c.trans[1,3]*1000:.1f}, {c.trans[2,3]*1000:.1f}) mm"
+        f"- Camera position: ({c.position[0]*1000:.1f}, {c.position[1]*1000:.1f}, {c.position[2]*1000:.1f}) mm"
     )
     print(
         f"- Target position: ({target_point[0]*1000:.1f}, {target_point[1]*1000:.1f}, {target_point[2]*1000:.1f}) mm"
