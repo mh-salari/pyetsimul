@@ -46,7 +46,7 @@ def main():
 
     # Create eye configuration
     eye = Eye()
-    eye.rest_orientation = np.array([[1, 0, 0], [0, 0, 1], [0, 1, 0]])
+    eye.set_rest_orientation(np.array([[1, 0, 0], [0, 0, 1], [0, 1, 0]]))
     eye.position = eye_position
 
     # Create camera configuration

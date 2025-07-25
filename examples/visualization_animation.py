@@ -23,7 +23,7 @@ def manual_eye_gaze_keyboard_control():
 
     rest_orientation = np.array([[1, 0, 0], [0, 0, 1], [0, 1, 0]])
     e_base = Eye()
-    e_base.rest_orientation = rest_orientation
+    e_base.set_rest_orientation(rest_orientation)
     e_base.position = [0, 250e-3, 100e-3]
 
     # Create two light sources

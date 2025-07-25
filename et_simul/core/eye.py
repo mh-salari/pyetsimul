@@ -67,6 +67,7 @@ class Eye:
 
     # These fields are calculated in __post_init__
     trans: np.ndarray = field(init=False)
+    _rest_orientation: np.ndarray = field(init=False)
     pos_cornea: np.ndarray = field(init=False)
     r_cornea_inner: float = field(init=False)
     cornea_inner_center: np.ndarray = field(init=False)
@@ -86,8 +87,10 @@ class Eye:
         # Line 80: scale=r_cornea/r_cornea_default;
         scale = self.r_cornea / r_cornea_default
 
-        # Line 86: e.trans=eye(4);
+        # Lines 86-88: e.trans=eye(4); e.trans(1:3, 1:3)=rest_pos; e.rest_pos=rest_pos;
         self.trans = np.eye(4)
+        self._rest_orientation = np.eye(3)
+        self.trans[:3, :3] = self._rest_orientation
 
         # Line 94: e.pos_cornea=[0 0 -scale*(24.75e-3 - 2*10.20e-3) 1]';
         self.pos_cornea = np.array([0, 0, -scale * (24.75e-3 - 2 * 10.20e-3), 1])
@@ -122,24 +125,24 @@ class Eye:
         self.y_pupil = scale * 3e-3 * np.array([0, 1, 0, 0])
 
     @property
+    def orientation(self) -> np.ndarray:
+        """Get/set the eye's current orientation (3x3 rotation matrix)."""
+        return self.trans[:3, :3]
+
+    @orientation.setter
+    def orientation(self, value: np.ndarray) -> None:
+        """Set the eye's current orientation and update transformation matrix."""
+        self.trans[:3, :3] = value
+
+    def set_rest_orientation(self, value: np.ndarray) -> None:
+        """Set the rest orientation and initialize current orientation to match."""
+        self._rest_orientation = value.copy()
+        self.trans[:3, :3] = value
+    
+    @property 
     def rest_orientation(self) -> np.ndarray:
-        """Get/set the eye's orientation (3x3 rotation matrix)."""
-        return self.trans[:3, :3]
-
-    @rest_orientation.setter
-    def rest_orientation(self, value: np.ndarray) -> None:
-        """Set the eye's orientation and update transformation matrix."""
-        self.trans[:3, :3] = value
-
-    @property
-    def rotation(self) -> np.ndarray:
-        """Get/set the eye's rotation matrix (alias for rest_orientation)."""
-        return self.trans[:3, :3]
-
-    @rotation.setter
-    def rotation(self, value: np.ndarray) -> None:
-        """Set the eye's rotation matrix and update transformation matrix."""
-        self.trans[:3, :3] = value
+        """Get the rest orientation (read-only)."""
+        return self._rest_orientation.copy()
 
     @property
     def position(self) -> np.ndarray:
@@ -288,9 +291,9 @@ class Eye:
         # Line 32: out=out/norm(out);
         out = out / np.linalg.norm(out)
 
-        rest_orientation_base = np.eye(3)
-        out_rest = rest_orientation_base @ np.array([0, 0, -1])
-        self.rest_orientation = self.listings_law(out_rest, out) @ rest_orientation_base
+        # Line 35-36: out_rest=e.rest_pos*[0 0 -1]'; e.trans(1:3, 1:3)=listings_law(out_rest, out)*e.rest_pos;
+        out_rest = self._rest_orientation @ np.array([0, 0, -1])
+        self.orientation = self.listings_law(out_rest, out) @ self._rest_orientation
 
         # Lines 39-46: Compensate for fovea displacement
         if self.fovea_displacement:
@@ -314,7 +317,7 @@ class Eye:
                 ]
             )
             # Line 45: e.trans(1:3, 1:3)=e.trans(1:3, 1:3)*B*A;
-            self.rest_orientation = self.rest_orientation @ B @ A
+            self.orientation = self.orientation @ B @ A
 
     def get_pupil(self, N: int = 20) -> np.ndarray:
         """Returns an array of points describing the pupil boundary.

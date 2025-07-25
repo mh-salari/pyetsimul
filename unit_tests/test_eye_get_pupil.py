@@ -227,7 +227,7 @@ def test_custom_rest_position():
         ]
     )
     e = Eye(r_cornea=7.98e-3)
-    e.rest_orientation = custom_rest
+    e.set_rest_orientation(custom_rest)
     N = 6
     X = e.get_pupil(N)
 

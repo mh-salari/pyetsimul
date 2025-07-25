@@ -25,7 +25,7 @@ def test_look_at_with_foveal_displacement():
     np.testing.assert_allclose(e.position, initial_position, rtol=1e-12)
 
     # Orientation matrix should match MATLAB exactly
-    np.testing.assert_allclose(e.rest_orientation, expected_matrix, rtol=1e-12)
+    np.testing.assert_allclose(e.orientation, expected_matrix, rtol=1e-12)
 
 
 def test_look_at_without_foveal_displacement():
@@ -49,7 +49,7 @@ def test_look_at_without_foveal_displacement():
     np.testing.assert_allclose(e.position, initial_position, rtol=1e-12)
 
     # Orientation matrix should match MATLAB exactly
-    np.testing.assert_allclose(e.rest_orientation, expected_matrix, rtol=1e-12)
+    np.testing.assert_allclose(e.orientation, expected_matrix, rtol=1e-12)
 
 
 def test_output_properties():
@@ -65,7 +65,7 @@ def test_output_properties():
     assert e.trans.dtype == np.float64
 
     # Rotation matrix should be orthogonal with determinant 1
-    rotation = e.rest_orientation
+    rotation = e.orientation
     assert np.allclose(np.linalg.det(rotation), 1.0, rtol=1e-12)
     assert np.allclose(rotation @ rotation.T, np.eye(3), rtol=1e-12)
 

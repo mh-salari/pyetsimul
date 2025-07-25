@@ -24,7 +24,7 @@ def main():
 
     # Looking out along negative y-axis
     rest_orientation = np.array([[1, 0, 0], [0, 0, 1], [0, 1, 0]])
-    e.rest_orientation = rest_orientation
+    e.set_rest_orientation(rest_orientation)
 
     eye_position = [0, 250e-3, 100e-3]
     e.position = eye_position

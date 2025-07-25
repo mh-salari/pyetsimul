@@ -19,7 +19,7 @@ def main():
     # Create an eye with a corneal radius of 7.98 mm looking out along the negative y axis
     rotation_matrix = np.array([[1, 0, 0], [0, 0, 1], [0, 1, 0]])
     e = Eye(r_cornea=7.98e-3, fovea_displacement=False)
-    e.rest_orientation = rotation_matrix
+    e.set_rest_orientation(rotation_matrix)
 
     e.position = np.array([0, 500e-3, 200e-3])
 
