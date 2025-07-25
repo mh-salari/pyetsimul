@@ -81,6 +81,29 @@ class Camera:
         if self.resolution is None:
             self.resolution = np.array([1280, 1024])
 
+    @property
+    def orientation(self) -> np.ndarray:
+        """Get/set the camera's orientation (3x3 rotation matrix)."""
+        return self.trans[:3, :3]
+    
+    @orientation.setter  
+    def orientation(self, value: np.ndarray) -> None:
+        self.trans[:3, :3] = value
+
+    @property
+    def position(self) -> np.ndarray:
+        """Get/set the camera's position (3D vector)."""
+        return self.trans[:3, 3]
+
+    @position.setter
+    def position(self, value: np.ndarray) -> None:
+        self.trans[:3, 3] = value
+
+    @property
+    def optical_axis(self) -> np.ndarray:
+        """Get the direction the camera is looking."""
+        return -self.trans[:3, 2]
+
     def project(self, pos: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
         """Projects points in space onto the camera's image plane.
 

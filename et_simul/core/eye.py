@@ -25,7 +25,7 @@ class Eye:
 
      - 'trans' is the transformation matrix from eye to world coordinates.
 
-     - 'rest_pos' is a 3x3 rotation matrix that specifies the rest position of
+     - 'rest_orientation' is a 3x3 rotation matrix that specifies the rest position of
        the eye -- i.e. a transformation that rotates the local eye coordinate
        system into the rest position of the eye in world coordinates. The rest
        position is important for computing the amount of torsion that occurs
@@ -62,7 +62,6 @@ class Eye:
     """
 
     r_cornea: float = 7.98e-3
-    rest_pos: np.ndarray = field(default_factory=lambda: np.eye(3))
     fovea_displacement: bool = True
     fovea_alpha_deg: float = 6.0  # Horizontal fovea displacement in degrees
     fovea_beta_deg: float = 2.0  # Vertical fovea displacement in degrees
@@ -90,9 +89,6 @@ class Eye:
 
         # Line 86: e.trans=eye(4);
         self.trans = np.eye(4)
-
-        # Line 87: e.trans(1:3, 1:3)=rest_pos;
-        self.trans[0:3, 0:3] = self.rest_pos
 
         # Line 94: e.pos_cornea=[0 0 -scale*(24.75e-3 - 2*10.20e-3) 1]';
         self.pos_cornea = np.array([0, 0, -scale * (24.75e-3 - 2 * 10.20e-3), 1])
@@ -125,6 +121,51 @@ class Eye:
 
         # Line 120: e.y_pupil=scale*3e-3*[0 1 0 0]';
         self.y_pupil = scale * 3e-3 * np.array([0, 1, 0, 0])
+
+    @property
+    def rest_orientation(self) -> np.ndarray:
+        """Get/set the eye's orientation (3x3 rotation matrix)."""
+        return self.trans[:3, :3]
+    
+    @rest_orientation.setter
+    def rest_orientation(self, value: np.ndarray) -> None:
+        """Set the eye's orientation and update transformation matrix."""
+        self.trans[:3, :3] = value
+    
+    @property
+    def rotation(self) -> np.ndarray:
+        """Get/set the eye's rotation matrix (alias for rest_orientation)."""
+        return self.trans[:3, :3]
+    
+    @rotation.setter
+    def rotation(self, value: np.ndarray) -> None:
+        """Set the eye's rotation matrix and update transformation matrix."""
+        self.trans[:3, :3] = value
+    
+    @property
+    def position(self) -> np.ndarray:
+        """Get/set the eye's position in world coordinates (3D vector)."""
+        return self.trans[:3, 3]
+    
+    @position.setter
+    def position(self, value: np.ndarray) -> None:
+        """Set the eye's position and update transformation matrix."""
+        self.trans[:3, 3] = value
+    
+    @property
+    def world_position(self) -> np.ndarray:
+        """Get/set the eye's world position (alias for position)."""
+        return self.trans[:3, 3]
+    
+    @world_position.setter
+    def world_position(self, value: np.ndarray) -> None:
+        """Set the eye's world position and update transformation matrix."""
+        self.trans[:3, 3] = value
+    
+    @property
+    def optical_axis(self) -> np.ndarray:
+        """Get the direction the eye is looking (read-only)."""
+        return -self.trans[:3, 2]
 
     def point_within_cornea(self, p: np.ndarray) -> bool:
         """Tests whether a point lies within the cornea.
@@ -260,10 +301,9 @@ class Eye:
         # Line 32: out=out/norm(out);
         out = out / np.linalg.norm(out)
 
-        # Line 35: out_rest=e.rest_pos*[0 0 -1]';
-        out_rest = self.rest_pos @ np.array([0, 0, -1])
-        # Line 36: e.trans(1:3, 1:3)=listings_law(out_rest, out)*e.rest_pos;
-        self.trans[:3, :3] = self.listings_law(out_rest, out) @ self.rest_pos
+        rest_orientation_base = np.eye(3)
+        out_rest = rest_orientation_base @ np.array([0, 0, -1])
+        self.trans[:3, :3] = self.listings_law(out_rest, out) @ rest_orientation_base
 
         # Lines 39-46: Compensate for fovea displacement
         if self.fovea_displacement:
