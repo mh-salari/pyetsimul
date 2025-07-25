@@ -26,8 +26,8 @@ pip install -e .
 ```bash
 python examples/example.py
 python examples/visualization_animation.py
-python eye_trackers/hennessey.py
-python eye_trackers/interpolate.py
+python examples/hennessey.py
+python examples/interpolate.py
 ```
 
 ## Citation

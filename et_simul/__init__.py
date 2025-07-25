@@ -12,5 +12,6 @@ from . import geometry
 from . import optics
 from . import visualization
 from . import performance_analysis
+from . import gaze_tracking_algorithms
 
-__all__ = ["core", "geometry", "optics", "visualization", "performance_analysis"]
+__all__ = ["core", "geometry", "optics", "visualization", "performance_analysis", "gaze_tracking_algorithms"]
