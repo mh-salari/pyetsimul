@@ -18,7 +18,7 @@ class InterpolationTracker(EyeTracker):
     """
 
     @classmethod
-    def setup(cls, cameras, lights, calib_points, polynomial):
+    def setup(cls, cameras, lights, calib_points, polynomial, use_refraction=True):
         """Create interpolation eye tracker setup.
 
         Args:
@@ -26,6 +26,7 @@ class InterpolationTracker(EyeTracker):
             lights: List of Light objects
             calib_points: Calibration points list
             polynomial: Polynomial type to use
+            use_refraction: Whether to use refraction model (default True)
 
         Returns:
             InterpolationTracker: Configured interpolation eye tracker
@@ -34,6 +35,7 @@ class InterpolationTracker(EyeTracker):
             cameras=cameras,
             lights=lights,
             calib_points=np.array(calib_points).T,
+            use_refraction=use_refraction
         )
         tracker.polynomial_name = polynomial
         tracker.polynomial_func = get_polynomial(polynomial)
