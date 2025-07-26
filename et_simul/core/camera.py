@@ -366,7 +366,7 @@ class Camera:
         camimg["cr"] = cr
 
         # Line 53: [camimg.pupil, camimg.pc]=get_pc(e, camera);
-        pupil, pc = e.get_pc(self, use_refraction=use_refraction)
+        pupil, pc = e.get_pupil_ellipse_in_camera_image(self, use_refraction=use_refraction)
         camimg["pupil"] = pupil
         camimg["pc"] = pc
 

@@ -1,4 +1,4 @@
-"""Unit tests for Eye.get_pupil_image method."""
+"""Unit tests for Eye.get_pupil_boundary_in_camera_image method."""
 
 import numpy as np
 from et_simul.core.eye import Eye
@@ -29,7 +29,7 @@ def test_camera_pointed_at_eye():
 
     # Get pupil image with 20 points
     N = 20
-    X = e.get_pupil_image(c, N)
+    X = e.get_pupil_boundary_in_camera_image(c, N)
 
     # MATLAB reference values from proper setup
     matlab_expected_points = np.array(
@@ -95,7 +95,7 @@ def test_eye_rotated_away_no_pupil_visible():
 
     # Get pupil image
     N = 20
-    X = e.get_pupil_image(c, N)
+    X = e.get_pupil_boundary_in_camera_image(c, N)
 
     # When eye is rotated away such that pupil is not visible,
     # should return None or significantly fewer points
@@ -126,7 +126,7 @@ def test_output_properties():
 
     e.look_at(np.array([0, 0, 0, 1]))
 
-    X = e.get_pupil_image(c, 20)
+    X = e.get_pupil_boundary_in_camera_image(c, 20)
 
     if X is not None:
         # Check types and shapes

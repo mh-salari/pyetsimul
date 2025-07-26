@@ -581,12 +581,12 @@ class Eye:
 
         return I
 
-    def get_pupil_image(
+    def get_pupil_boundary_in_camera_image(
         self, c: Camera, N: int = 20, use_refraction: bool = True
     ) -> np.ndarray:
         """Computes image of pupil boundary.
 
-        X = get_pupil_image(e, c, N) returns a 2xM matrix of points
+        X = get_pupil_boundary_in_camera_image(e, c, N) returns a 2xM matrix of points
         describing the image of the pupil boundary of the eye 'e' as observed by
         the camera 'c'. Normally, M=N, but M can be less than N if some of the
         boundary points lie outside the camera image or are not visible through
@@ -640,7 +640,7 @@ class Eye:
 
         return X
 
-    def get_pupil_center(self) -> np.ndarray:
+    def get_pupil_center_in_world(self) -> np.ndarray:
         """Get the pupil center position in world coordinates.
 
         Returns:
@@ -648,12 +648,12 @@ class Eye:
         """
         return self.trans @ self.pos_pupil
 
-    def get_pc(
+    def get_pupil_ellipse_in_camera_image(
         self, c: Camera, use_refraction: bool = True
     ) -> Tuple[np.ndarray, Optional[np.ndarray]]:
-        """Determines position of pupil in camera image.
+        """Determines pupil ellipse in camera image.
 
-        [pupil, pc] = get_pc(e, c) finds the image of the pupil border in the camera image
+        [pupil, pc] = get_pupil_ellipse_in_camera_image(e, c) finds the image of the pupil border in the camera image
         (returned as 'pupil'), then fits an ellipse to those points and returns
         the center of the ellipse in 'pc'.
 
@@ -672,7 +672,7 @@ class Eye:
         Licensed under the GNU GPL v3.0 or later.
         """
         # Get pupil image (with or without refraction)
-        pupil = self.get_pupil_image(c, use_refraction=use_refraction)
+        pupil = self.get_pupil_boundary_in_camera_image(c, use_refraction=use_refraction)
 
         # Find center of pupil using ellipse fitting
         pc = self._fit_ellipse_center(pupil)
