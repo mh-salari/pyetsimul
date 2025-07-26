@@ -1,5 +1,5 @@
 import numpy as np
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Optional
 
 
@@ -19,22 +19,33 @@ class Light:
     Licensed under the GNU GPL v3.0 or later.
     """
 
-    position: np.ndarray
-    _pos_homogeneous: np.ndarray = None
+    _position: np.ndarray = field(init=False, repr=False)
+    _pos_homogeneous: np.ndarray = field(init=False, repr=False)
 
-    def __post_init__(self) -> None:
-        """Initialize light with specified position."""
-        pos = np.array(self.position, dtype=float)
-        if len(pos) != 3:
-            raise ValueError(f"Light position must be 3D coordinates, got {len(pos)}D")
-        self._pos_homogeneous = np.array([pos[0], pos[1], pos[2], 1], dtype=float)
+    def __init__(self, position: np.ndarray):
+        self.position = position  # Uses the setter
 
-    def set_position(self, value: np.ndarray) -> None:
-        """Set the light's position from 3D coordinates."""
+    @property
+    def position(self) -> np.ndarray:
+        return self._position
+
+    @position.setter
+    def position(self, value: np.ndarray) -> None:
         value = np.array(value, dtype=float)
         if len(value) != 3:
-            raise ValueError(
-                f"Light position must be 3D coordinates, got {len(value)}D"
-            )
-        self.position = value
-        self._pos_homogeneous = np.array([value[0], value[1], value[2], 1], dtype=float)
+            raise ValueError(f"Must be 3D coordinates, got {len(value)}D")
+        self._position = value
+        self._pos_homogeneous = np.array([value[0], value[1], value[2], 1])
+
+    @property
+    def pos_homogeneous(self) -> np.ndarray:
+        return self._pos_homogeneous
+
+    @pos_homogeneous.setter
+    def pos_homogeneous(self, value: np.ndarray) -> None:
+        value = np.array(value, dtype=float)
+        if len(value) != 4 or value[3] != 1:
+            raise ValueError("Must be homogeneous coordinates [x,y,z,1]")
+        self._pos_homogeneous = value
+        self._position = value[:3]  # Sync back to position
+
