@@ -66,7 +66,7 @@ cr_img, _, _ = c.project(cr)
 print(f"CR is at ({cr_img[0, 0]:.6g} {cr_img[1, 0]:.6g}) in camera image")
 
 
-plt.figure(figsize=(8, 6))
+plt.figure(figsize=(12, 6))
 
 # Plot pupil boundary (refracted)
 plt.plot(pupil_img[0, :], pupil_img[1, :], "b.", markersize=5, alpha=0.7)  # Small dots

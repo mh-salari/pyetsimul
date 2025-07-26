@@ -8,165 +8,275 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def to_3d(point):
-    """Convert homogeneous (4D) coordinates to 3D Cartesian for plotting."""
-    return point[:3] if len(point) > 3 else point
+from et_simul.core import Eye
 
 
-def draw_eye_anatomy(eye, look_at_target=None, show_axes=True, show_annotations=True):
-    """Draw detailed eye anatomy with optional gaze target.
+def transform_surface(x_local, y_local, z_local, trans_matrix):
+    """Transform surface coordinates to world coordinates"""
+    ones = np.ones_like(x_local)
+    local_coords = np.stack([x_local, y_local, z_local, ones], axis=0)
+    world_coords = np.einsum("ij,j...->i...", trans_matrix, local_coords)
+    return world_coords[0], world_coords[1], world_coords[2]
 
-    Args:
-        eye: Eye structure
-        look_at_target: Optional target point [x, y, z] for gaze visualization
-        show_axes: Whether to show coordinate axes
-        show_annotations: Whether to show anatomical labels
-    """
-    fig = plt.figure(figsize=(10, 8))
+
+def plot_axis(ax, center, trans_matrix, axis_idx, label, color, length=0.003):
+    """Plot a single axis with arrow and label"""
+    axis_local = np.zeros(4)
+    axis_local[axis_idx] = 1
+    axis_world = (trans_matrix @ axis_local)[:3]
+    axis_end = center + length * axis_world
+
+    ax.quiver(
+        center[0],
+        center[1],
+        center[2],
+        axis_world[0] * length,
+        axis_world[1] * length,
+        axis_world[2] * length,
+        color=color,
+        arrow_length_ratio=0.2,
+        linewidth=2,
+        alpha=0.8,
+    )
+    ax.text(
+        axis_end[0],
+        axis_end[1],
+        axis_end[2],
+        label,
+        fontsize=10,
+        color=color,
+        weight="bold",
+    )
+
+
+def plot_eye_anatomy(eye=Eye(), target_point=(15e-3, 15e-3, 0)):
+    """Plot 3D eye anatomy with transformed coordinates"""
+    eye.look_at(target_point)
+
+    # Calculate all key points in WORLD coordinates using eye.trans
+    eye_rotation_center = eye.position
+    cornea_center_world = (eye.trans @ eye.pos_cornea)[:3]
+    cornea_inner_center_world = (eye.trans @ eye.cornea_inner_center)[:3]
+    pupil_center_world = (eye.trans @ eye.pos_pupil)[:3]
+    fovea_world = (eye.trans @ np.append(eye.fovea_position, 1))[:3]
+
+    # Eye sphere parameters
+    main_eye_radius = eye.axial_length / 2
+    limbus_z_local = eye.pos_apex[2] + eye.depth_cornea
+    limbus_point_world = (eye.trans @ np.array([0, 0, limbus_z_local, 1]))[:3]
+
+    # Transform corneal surfaces to world coordinates
+    # Create local corneal surface coordinates first
+    cornea_radius = eye.r_cornea
+    depth = eye.depth_cornea
+    cap_angle = np.arccos((cornea_radius - depth) / cornea_radius)
+    phi_cap = np.linspace(0, cap_angle, 20)
+    theta_full = np.linspace(0, 2 * np.pi, 50)
+    phi_grid, theta_grid = np.meshgrid(phi_cap, theta_full)
+
+    # Outer corneal surface in local coordinates
+    x_outer_local = eye.pos_cornea[0] + cornea_radius * np.sin(phi_grid) * np.cos(
+        theta_grid
+    )
+    y_outer_local = eye.pos_cornea[1] + cornea_radius * np.sin(phi_grid) * np.sin(
+        theta_grid
+    )
+    z_outer_local = eye.pos_cornea[2] - cornea_radius * np.cos(phi_grid)
+
+    # Inner corneal surface in local coordinates
+    cornea_inner_radius = eye.r_cornea_inner
+    x_inner_local = eye.cornea_inner_center[0] + cornea_inner_radius * np.sin(
+        phi_grid
+    ) * np.cos(theta_grid)
+    y_inner_local = eye.cornea_inner_center[1] + cornea_inner_radius * np.sin(
+        phi_grid
+    ) * np.sin(theta_grid)
+    z_inner_local = eye.cornea_inner_center[2] - cornea_inner_radius * np.cos(phi_grid)
+
+    # Transform corneal surfaces
+    x_outer_world, y_outer_world, z_outer_world = transform_surface(
+        x_outer_local, y_outer_local, z_outer_local, eye.trans
+    )
+    x_inner_world, y_inner_world, z_inner_world = transform_surface(
+        x_inner_local, y_inner_local, z_inner_local, eye.trans
+    )
+
+    # Create eye sphere in world coordinates
+    phi_eye = np.linspace(0, np.pi, 30)
+    theta_eye = np.linspace(0, 2 * np.pi, 50)
+    phi_grid_eye, theta_grid_eye = np.meshgrid(phi_eye, theta_eye)
+
+    # Generate sphere coordinates in local space
+    x_eye_local = main_eye_radius * np.sin(phi_grid_eye) * np.cos(theta_grid_eye)
+    y_eye_local = main_eye_radius * np.sin(phi_grid_eye) * np.sin(theta_grid_eye)
+    z_eye_local = main_eye_radius * np.cos(phi_grid_eye)
+
+    # Transform to world coordinates
+    x_eye_world, y_eye_world, z_eye_world = transform_surface(
+        x_eye_local, y_eye_local, z_eye_local, eye.trans
+    )
+
+    # Mask out the front part where cornea is
+    limbus_z_local = eye.pos_apex[2] + eye.depth_cornea
+    optical_axis_world = (eye.trans @ np.array([0, 0, -1, 0]))[:3]
+    optical_axis_unit = optical_axis_world / np.linalg.norm(optical_axis_world)
+
+    # Calculate limbus position projection
+    limbus_point_world = (eye.trans @ np.array([0, 0, limbus_z_local, 1]))[:3]
+    limbus_projection = np.dot(
+        limbus_point_world - eye_rotation_center, optical_axis_unit
+    )
+
+    # Calculate projections for all eye points
+    eye_vectors = np.stack([x_eye_world, y_eye_world, z_eye_world]) - np.array(
+        eye_rotation_center
+    ).reshape(3, 1, 1)
+    projections = np.einsum("i,ijk->jk", optical_axis_unit, eye_vectors)
+
+    # Apply mask to keep only back part of eye
+    mask = projections <= limbus_projection
+    x_eye_masked, y_eye_masked, z_eye_masked = np.where(
+        mask, [x_eye_world, y_eye_world, z_eye_world], np.nan
+    )
+
+    # Calculate axes in world coordinates
+    axis_length = 0.02  # 20mm axis length
+
+    # Optical axis: from rotation center in transformed -Z direction
+    optical_axis_end = eye_rotation_center + axis_length * optical_axis_unit
+
+    # Visual axis: from fovea through rotation center, extending outward
+    visual_axis_direction = (eye_rotation_center - fovea_world) / np.linalg.norm(
+        eye_rotation_center - fovea_world
+    )
+    visual_axis_end = eye_rotation_center + axis_length * visual_axis_direction
+
+    # Create pupil ellipse in world coordinates
+    pupil_radius_x = np.linalg.norm(eye.x_pupil[:3])
+    pupil_radius_y = np.linalg.norm(eye.y_pupil[:3])
+
+    # Transform pupil vectors to world coordinates
+    x_pupil_world = (eye.trans @ eye.x_pupil)[:3]
+    y_pupil_world = (eye.trans @ eye.y_pupil)[:3]
+
+    # Plot everything
+    fig = plt.figure(figsize=(14, 10))
     ax = fig.add_subplot(111, projection="3d")
 
-    # Transform anatomical points to world coordinates
-    def transform_point(point):
-        if len(point) == 3:
-            point = np.append(point, 1)  # Convert to homogeneous coordinates
-        world_point = eye.trans @ point
-        return to_3d(world_point)  # Convert back to 3D for plotting
-
-    # Get key anatomical points
-    cornea_center_world = transform_point(eye.pos_cornea)
-    pupil_center_world = transform_point(eye.pos_pupil)
-    apex_world = transform_point(eye.pos_apex)
-
-    # Draw corneal surface as a sphere (simplified)
-    u = np.linspace(0, 2 * np.pi, 20)
-    v = np.linspace(0, np.pi, 20)
-    r = eye.r_cornea
-
-    # Create sphere coordinates
-    x_sphere = r * np.outer(np.cos(u), np.sin(v))
-    y_sphere = r * np.outer(np.sin(u), np.sin(v))
-    z_sphere = r * np.outer(np.ones(np.size(u)), np.cos(v))
-
-    # Only show the anterior surface (cap) - mask the posterior part
-    mask = z_sphere > -r + eye.depth_cornea
-    x_sphere[mask] = np.nan
-    y_sphere[mask] = np.nan
-    z_sphere[mask] = np.nan
-
-    # Transform sphere points to world coordinates
-    for i in range(x_sphere.shape[0]):
-        for j in range(x_sphere.shape[1]):
-            if not np.isnan(x_sphere[i, j]):
-                # Point relative to cornea center
-                point_local = np.array([x_sphere[i, j], y_sphere[i, j], z_sphere[i, j]])
-                # Add to cornea center in eye coordinates, then transform
-                point_eye = to_3d(eye.pos_cornea) + point_local
-                point_world = transform_point(point_eye)
-                x_sphere[i, j] = point_world[0]
-                y_sphere[i, j] = point_world[1]
-                z_sphere[i, j] = point_world[2]
-
-    # Plot cornea surface
+    # Plot the eye sphere
     ax.plot_surface(
-        x_sphere,
-        y_sphere,
-        z_sphere,
+        x_eye_masked,
+        y_eye_masked,
+        z_eye_masked,
         alpha=0.3,
+        color="lightgray",
+        label="Eye Sclera",
+    )
+
+    # Plot corneal surfaces
+    ax.plot_surface(
+        x_outer_world,
+        y_outer_world,
+        z_outer_world,
+        alpha=0.7,
         color="lightblue",
-        edgecolor="blue",
-        linewidth=0.1,
+        label="Cornea",
+    )
+    ax.plot_surface(
+        x_inner_world, y_inner_world, z_inner_world, alpha=0.7, color="lightblue"
     )
 
-    # Draw corneal outline circle
-    theta = np.linspace(0, 2 * np.pi, 50)
-    cornea_radius = eye.r_cornea
-
-    # Create circle in YZ plane around cornea center
-    cornea_y = cornea_center_world[1] + cornea_radius * np.cos(theta)
-    cornea_z = cornea_center_world[2] + cornea_radius * np.sin(theta)
-    cornea_x = np.full_like(cornea_y, cornea_center_world[0])
-    ax.plot(cornea_x, cornea_y, cornea_z, "c-", linewidth=3, label="Cornea")
-
-    # Draw pupil circle
-    pupil_radius = np.linalg.norm(to_3d(eye.x_pupil))
-    pupil_y = pupil_center_world[1] + pupil_radius * np.cos(theta)
-    pupil_z = pupil_center_world[2] + pupil_radius * np.sin(theta)
-    pupil_x = np.full_like(pupil_y, pupil_center_world[0])
-    ax.plot(pupil_x, pupil_y, pupil_z, "m-", linewidth=3, label="Pupil")
-
-    # Mark key anatomical points
+    # Plot reference points
     ax.scatter(
-        *cornea_center_world, color="cyan", s=100, marker="o", label="Cornea Center"
+        *eye_rotation_center,
+        color="black",
+        s=120,
+        marker="x",
+        label="Eye Rotation Center",
     )
     ax.scatter(
-        *pupil_center_world, color="magenta", s=100, marker="s", label="Pupil Center"
+        *cornea_center_world,
+        color="darkblue",
+        s=20,
+        marker="o",
+        label="Outer Cornea Center",
     )
-    ax.scatter(*apex_world, color="green", s=100, marker="^", label="Corneal Apex")
+    ax.scatter(
+        *cornea_inner_center_world,
+        color="purple",
+        s=20,
+        marker="o",
+        label="Inner Cornea Center",
+    )
+    ax.scatter(*pupil_center_world, color="red", s=20, marker="o", label="Pupil Center")
+    ax.scatter(*fovea_world, color="orange", s=80, marker="*", label="Fovea")
 
-    # Draw optical axis (from apex through pupil center)
-    optical_direction = pupil_center_world - apex_world
-    optical_direction = optical_direction / np.linalg.norm(optical_direction)
-    optical_end = apex_world + optical_direction * 0.05  # 5cm extension
+    # Plot pupil boundary
+    theta_pupil = np.linspace(0, 2 * np.pi, 50)
+    cos_t = np.cos(theta_pupil)
+    sin_t = np.sin(theta_pupil)
+
+    # Calculate pupil boundary points
+    pupil_boundary_local = (
+        eye.pos_pupil.reshape(-1, 1)
+        + eye.x_pupil.reshape(-1, 1) @ cos_t.reshape(1, -1)
+        + eye.y_pupil.reshape(-1, 1) @ sin_t.reshape(1, -1)
+    )
+    pupil_boundary_world = eye.trans @ pupil_boundary_local
+
     ax.plot(
-        [apex_world[0], optical_end[0]],
-        [apex_world[1], optical_end[1]],
-        [apex_world[2], optical_end[2]],
-        "k--",
+        pupil_boundary_world[0],
+        pupil_boundary_world[1],
+        pupil_boundary_world[2],
+        "k-",
         linewidth=3,
+        label="Pupil Opening",
+    )
+
+    # Plot optical axis
+    ax.plot(
+        [eye_rotation_center[0], optical_axis_end[0]],
+        [eye_rotation_center[1], optical_axis_end[1]],
+        [eye_rotation_center[2], optical_axis_end[2]],
+        "b--",
+        linewidth=1,
         label="Optical Axis",
     )
 
-    # Show gaze direction if target provided
-    if look_at_target is not None:
-        if len(look_at_target) == 3:
-            look_at_target = np.array(look_at_target)
-        ax.plot(
-            [pupil_center_world[0], look_at_target[0]],
-            [pupil_center_world[1], look_at_target[1]],
-            [pupil_center_world[2], look_at_target[2]],
-            "r-",
-            linewidth=3,
-            label="Gaze Direction",
-        )
-        ax.scatter(
-            *look_at_target[:3], color="red", s=150, marker="*", label="Gaze Target"
-        )
+    # Plot visual axis
+    ax.plot(
+        [fovea_world[0], visual_axis_end[0]],
+        [fovea_world[1], visual_axis_end[1]],
+        [fovea_world[2], visual_axis_end[2]],
+        "r--",
+        linewidth=1,
+        label="Visual Axis",
+    )
 
-    # Show coordinate axes
-    if show_axes:
-        eye_origin = transform_point([0, 0, 0])
-        axis_length = 0.02
+    # Plot target point
+    ax.scatter(*target_point, color="green", s=100, marker="^", label="Target Point")
 
-        # X, Y, Z axes
-        for i, (color, label) in enumerate([("r", "X"), ("g", "Y"), ("b", "Z")]):
-            axis_end = eye_origin + eye.trans[:3, i] * axis_length
-            ax.plot(
-                [eye_origin[0], axis_end[0]],
-                [eye_origin[1], axis_end[1]],
-                [eye_origin[2], axis_end[2]],
-                color=color,
-                linewidth=2,
-                label=f"{label}-axis",
-            )
+    # Plot all three axes
+    axes_data = [(0, "X", "red"), (1, "Y", "green"), (2, "Z", "blue")]
+    for axis_idx, label, color in axes_data:
+        plot_axis(ax, eye_rotation_center, eye.trans, axis_idx, label, color)
 
-    # Labels and formatting
+    # Set labels and properties
     ax.set_xlabel("X (m)")
     ax.set_ylabel("Y (m)")
     ax.set_zlabel("Z (m)")
-    ax.set_title("Eye Anatomy")
+    ax.legend(bbox_to_anchor=(1.05, 1), loc="upper left")
 
-    if show_annotations:
-        ax.legend(bbox_to_anchor=(1.05, 1), loc="upper left")
+    ax.set_box_aspect([1, 1, 1])
+    ax.set_aspect("equal")
 
-    # Set appropriate limits based on eye size
-    center = transform_point([0, 0, 0])
-    max_range = 0.02  # 2cm range
-    ax.set_xlim([center[0] - max_range, center[0] + max_range])
-    ax.set_ylim([center[1] - max_range, center[1] + max_range])
-    ax.set_zlim([center[2] - max_range, center[2] + max_range])
+    plt.title("Eye Anatomy with look_at([1, 1, 0]) - World Coordinates")
+    plt.show()
 
-    plt.tight_layout()
-    return fig
+
+def to_3d(point):
+    """Convert homogeneous (4D) coordinates to 3D Cartesian for plotting."""
+    return point[:3] if len(point) > 3 else point
 
 
 """Eye tracking setup visualization module.
