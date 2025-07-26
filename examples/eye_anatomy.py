@@ -16,5 +16,6 @@ print(f"n_cornea: {e.n_cornea}")
 print(f"n_aqueous_humor: {e.n_aqueous_humor}")
 print(f"fovea_alpha_deg: {e.fovea_alpha_deg:.1f}°")
 print(f"fovea_beta_deg: {e.fovea_beta_deg:.1f}°")
+print(f"angle_kappa: {e.angle_kappa:.3f}°")
 
 plot_eye_anatomy()

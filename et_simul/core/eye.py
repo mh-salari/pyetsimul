@@ -768,3 +768,33 @@ class Eye:
         fovea_position = np.array([fovea_x, fovea_y, fovea_z])
         
         return fovea_position
+
+    @property
+    def angle_kappa(self) -> float:
+        """Calculate angle kappa (degrees) - the angle between optical and visual axes.
+        
+        Angle kappa is the angle between:
+        - Optical axis: direction the eye is pointing (-Z axis in eye coordinates)
+        - Visual axis: direction from rotation center to fovea
+        
+        This is calculated using the 3D fovea position for accuracy.
+        
+        Returns:
+            Angle kappa in degrees
+        """
+        # Get fovea position (3D coordinates relative to rotation center)
+        fovea_pos = self.fovea_position
+        
+        # Calculate visual axis direction (normalized)
+        visual_axis = fovea_pos / np.linalg.norm(fovea_pos)
+        
+        # Optical axis points along -Z direction in eye coordinates
+        optical_axis = np.array([0, 0, -1])
+        
+        # Calculate angle between visual and optical axes
+        dot_product = np.dot(visual_axis, optical_axis)
+        # Use abs() to get acute angle and clip to avoid numerical errors
+        angle_kappa_rad = np.arccos(np.clip(np.abs(dot_product), 0, 1))
+        
+        # Convert to degrees
+        return angle_kappa_rad * 180.0 / np.pi
