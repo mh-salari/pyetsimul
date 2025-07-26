@@ -56,8 +56,12 @@ print(f"CR is at ({cr_img[0, 0]:.6g} {cr_img[1, 0]:.6g}) in camera image")
 plt.figure(figsize=(8, 6))
 
 # Plot pupil boundary
-if pupil_img.shape[1] > 0:
-    plt.plot(pupil_img[0, :], pupil_img[1, :], "b-", linewidth=2, label="Pupil")
+plt.plot(pupil_img[0, :], pupil_img[1, :], "b.", markersize=5, alpha=0.7)  # Small dots
+# Close the loop by adding first point at the end
+pupil_closed = np.column_stack([pupil_img, pupil_img[:, 0:1]])
+plt.plot(
+    pupil_closed[0, :], pupil_closed[1, :], "b-", linewidth=1, label="Pupil"
+)  # Connected line
 
 # Plot pupil center
 plt.plot(
