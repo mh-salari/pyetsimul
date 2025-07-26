@@ -23,7 +23,23 @@ class Light:
     _pos_homogeneous: np.ndarray = field(init=False, repr=False)
 
     def __init__(self, position: np.ndarray):
-        self.position = position  # Uses the setter
+        """Initialize light with either 3D Euclidean or 4D homogeneous coordinates.
+        
+        Args:
+            position: Either [x, y, z] or [x, y, z, 1] coordinates in meters
+        """
+        position = np.array(position, dtype=float)
+        
+        if len(position) == 3:
+            # Euclidean coordinates
+            self.position = position
+        elif len(position) == 4:
+            # Homogeneous coordinates [x, y, z, 1]
+            if position[3] != 1:
+                raise ValueError("Homogeneous coordinates must have w=1, got w={position[3]}")
+            self.pos_homogeneous = position
+        else:
+            raise ValueError(f"Position must be 3D or 4D coordinates, got {len(position)}D")
 
     @property
     def position(self) -> np.ndarray:
@@ -44,8 +60,15 @@ class Light:
     @pos_homogeneous.setter
     def pos_homogeneous(self, value: np.ndarray) -> None:
         value = np.array(value, dtype=float)
-        if len(value) != 4 or value[3] != 1:
-            raise ValueError("Must be homogeneous coordinates [x,y,z,1]")
+        if len(value) != 4:
+            raise ValueError(f"Must be 4D homogeneous coordinates, got {len(value)}D")
+        if value[3] != 1:
+            raise ValueError(f"Homogeneous coordinates must have w=1, got w={value[3]}")
+            
         self._pos_homogeneous = value
         self._position = value[:3]  # Sync back to position
+
+    def __repr__(self) -> str:
+        """String representation showing the light position."""
+        return f"Light(position={self._position})"
 
