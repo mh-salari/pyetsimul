@@ -62,10 +62,35 @@ class Eye:
      Licensed under the GNU GPL v3.0 or later.
     """
 
-    r_cornea: float = 7.98e-3
+    # Anatomical constants (meters) from Boff and Lincoln [1988, Section 1.210]
+    # Standard eye parameters for human eye modeling
+    
+    # Corneal parameters
+    r_cornea_default: float = 7.98e-3  # Default outer corneal radius (m)
+    r_cornea_inner_default: float = 6.22e-3  # Default inner corneal radius (m)
+    
+    # Eye geometry constants  
+    axial_length: float = 24.75e-3  # Total axial length of eye (m)
+    cornea_center_to_rotation_center: float = 10.20e-3  # Distance from corneal center to rotation center (m)
+    cornea_thickness_offset: float = 1.15e-3  # Corneal thickness offset (m)
+    cornea_depth_default: float = 3.54e-3  # Corneal depth (distance from apex to limbus projection) (m)
+    
+    # Pupil parameters
+    pupil_radius_default: float = 3e-3  # Default pupil radius (m)
+    
+    # Refractive indices
+    n_cornea_default: float = 1.376  # Refractive index of cornea
+    n_aqueous_humor_default: float = 1.336  # Refractive index of aqueous humor
+    
+    # Fovea displacement parameters (degrees)
+    fovea_alpha_default: float = 6.0  # Horizontal fovea displacement
+    fovea_beta_default: float = 2.0  # Vertical fovea displacement
+
+    # Instance parameters
+    r_cornea: float = r_cornea_default
     fovea_displacement: bool = True
-    fovea_alpha_deg: float = 6.0  # Horizontal fovea displacement in degrees
-    fovea_beta_deg: float = 2.0  # Vertical fovea displacement in degrees
+    fovea_alpha_deg: float = fovea_alpha_default
+    fovea_beta_deg: float = fovea_beta_default
 
     # These fields are calculated in __post_init__
     trans: np.ndarray = field(init=False)
@@ -83,48 +108,42 @@ class Eye:
 
     def __post_init__(self) -> None:
         """Initializes the eye's anatomical properties based on constructor parameters."""
-        # Line 75: r_cornea_default=7.98e-3;
-        r_cornea_default = 7.98e-3
+        # Calculate scale factor based on corneal radius
+        scale = self.r_cornea / self.r_cornea_default
 
-        # Line 80: scale=r_cornea/r_cornea_default;
-        scale = self.r_cornea / r_cornea_default
-
-        # Lines 86-88: e.trans=eye(4); e.trans(1:3, 1:3)=rest_pos; e.rest_pos=rest_pos;
+        # Initialize transformation matrix (identity at rest position)
         self.trans = np.eye(4)
         self._rest_orientation = np.eye(3)
         self.trans[:3, :3] = self._rest_orientation
 
-        # Line 94: e.pos_cornea=[0 0 -scale*(24.75e-3 - 2*10.20e-3) 1]';
-        self.pos_cornea = np.array([0, 0, -scale * (24.75e-3 - 2 * 10.20e-3), 1])
+        # Position corneal center relative to rotation center
+        cornea_z_offset = self.axial_length - 2 * self.cornea_center_to_rotation_center
+        self.pos_cornea = np.array([0, 0, -scale * cornea_z_offset, 1])
 
-        # Line 97: e.r_cornea_inner=scale*6.22e-3;
-        self.r_cornea_inner = scale * 6.22e-3
+        # Inner corneal surface radius (scaled)
+        self.r_cornea_inner = scale * self.r_cornea_inner_default
 
-        # Lines 100-101: e.cornea_inner_center=e.pos_cornea-[0 0 e.r_cornea - e.r_cornea_inner - scale*1.15e-3 0]';
-        self.cornea_inner_center = self.pos_cornea - np.array(
-            [0, 0, self.r_cornea - self.r_cornea_inner - scale * 1.15e-3, 0]
-        )
+        # Inner corneal surface center
+        thickness_term = self.r_cornea - self.r_cornea_inner - scale * self.cornea_thickness_offset
+        self.cornea_inner_center = self.pos_cornea - np.array([0, 0, thickness_term, 0])
 
-        # Line 104: e.n_cornea=1.376;
-        self.n_cornea = 1.376
+        # Refractive indices
+        self.n_cornea = self.n_cornea_default
+        self.n_aqueous_humor = self.n_aqueous_humor_default
 
-        # Line 107: e.n_aqueous_humor=1.336;
-        self.n_aqueous_humor = 1.336
-
-        # Line 110: e.pos_apex=e.pos_cornea+[0 0 -e.r_cornea 0]';
+        # Corneal apex (frontmost point)
         self.pos_apex = self.pos_cornea + np.array([0, 0, -self.r_cornea, 0])
 
-        # Line 113: e.depth_cornea=scale*3.54e-3;
-        self.depth_cornea = scale * 3.54e-3
+        # Corneal depth (scaled)
+        self.depth_cornea = scale * self.cornea_depth_default
 
-        # Line 116: e.pos_pupil=e.pos_apex+[0 0 scale*3.54e-3 0]';
-        self.pos_pupil = self.pos_apex + np.array([0, 0, scale * 3.54e-3, 0])
+        # Pupil center position
+        self.pos_pupil = self.pos_apex + np.array([0, 0, scale * self.cornea_depth_default, 0])
 
-        # Line 119: e.x_pupil=scale*3e-3*[1 0 0 0]';
-        self.x_pupil = scale * 3e-3 * np.array([1, 0, 0, 0])
-
-        # Line 120: e.y_pupil=scale*3e-3*[0 1 0 0]';
-        self.y_pupil = scale * 3e-3 * np.array([0, 1, 0, 0])
+        # Pupil boundary vectors (scaled)
+        pupil_radius_scaled = scale * self.pupil_radius_default
+        self.x_pupil = pupil_radius_scaled * np.array([1, 0, 0, 0])
+        self.y_pupil = pupil_radius_scaled * np.array([0, 1, 0, 0])
 
     @property
     def orientation(self) -> np.ndarray:
