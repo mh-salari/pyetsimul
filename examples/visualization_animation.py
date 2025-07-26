@@ -27,11 +27,9 @@ def manual_eye_gaze_keyboard_control():
     e_base.position = [0, 250e-3, 100e-3]
 
     # Create two light sources
-    l1 = Light()
-    l1.position = np.array([100e-3, 0, 0])  # Right side light
+    l1 = Light(position=np.array([100e-3, 0, 0]))  # Right side light
 
-    l2 = Light()
-    l2.position = np.array([-100e-3, 0, 0])  # Left side light
+    l2 = Light(position=np.array([-100e-3, 0, 0]))  # Left side light
 
     lights = [l1, l2]
 

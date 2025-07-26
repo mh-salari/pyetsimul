@@ -9,11 +9,8 @@ from et_simul.core.camera import Camera
 def test_basic_simple_corneal_reflex():
     """Test basic simple corneal reflex with MATLAB reference values."""
     e = Eye()
-    l = Light()
+    l = Light(position=np.array([0, 0, -50]))
     c = Camera()
-
-    # Position light in front of eye
-    l.position = np.array([0, 0, -50])
 
     # Position camera to the side
     c.trans[0:3, 3] = np.array([30, 0, -40])
@@ -41,11 +38,8 @@ def test_basic_simple_corneal_reflex():
 def test_angled_positions():
     """Test simple corneal reflex with angled light and camera positions."""
     e = Eye()
-    l = Light()
+    l = Light(position=np.array([15, -10, -45]))
     c = Camera()
-
-    # Light at an angle
-    l.position = np.array([15, -10, -45])
 
     # Camera at different position
     c.trans[0:3, 3] = np.array([-20, 8, -35])
@@ -73,15 +67,12 @@ def test_angled_positions():
 def test_reflex_outside_cornea_boundary():
     """Test case where simple reflex falls outside cornea boundary - should return None."""
     e = Eye()
-    l = Light()
+    l = Light(position=np.array([10, 50, -30]))
     c = Camera()
 
     # Eye looking down, light and camera positioned to create reflex outside boundary
     target_down = np.array([0, -100, 0])
     e.look_at(target_down)
-
-    # Extreme positioning to force reflex outside cornea
-    l.position = np.array([10, 50, -30])
     c.trans[0:3, 3] = np.array([20, 80, -20])
 
     cr = e.find_cr_simple(l, c)
@@ -93,10 +84,8 @@ def test_reflex_outside_cornea_boundary():
 def test_output_properties():
     """Test that output has correct properties."""
     e = Eye()
-    l = Light()
+    l = Light(position=np.array([0, 0, -50]))
     c = Camera()
-
-    l.position = np.array([0, 0, -50])
     c.trans[0:3, 3] = np.array([30, 0, -40])
 
     cr = e.find_cr_simple(l, c)

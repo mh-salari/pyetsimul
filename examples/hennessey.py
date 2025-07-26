@@ -43,11 +43,9 @@ def main():
     cam.point_at(eye.position.tolist() + [1])
 
     # Create light configuration (dual lights on vertical edge of monitor)
-    light1 = Light()
-    light1.position = np.array([200e-3, 0, 50e-3])
+    light1 = Light(position=np.array([200e-3, 0, 50e-3]))
 
-    light2 = Light()
-    light2.position = np.array([200e-3, 0, 300e-3])
+    light2 = Light(position=np.array([200e-3, 0, 300e-3]))
 
     # Nine-point calibration pattern
     calib_points = [

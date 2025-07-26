@@ -23,8 +23,7 @@ e.position = np.array([0, 500e-3, 200e-3])
 # Create a light. Because lights are modelled as perfect point light sources, they do not have
 # an orientation, and hence they do not need a full transformation matrix; only
 # the position has to be specified.
-l = Light()
-l.position = np.array([200e-3, 0, 0])
+l = Light(position=np.array([200e-3, 0, 0]))
 
 # Create a camera. In its local coordinate system, the camera points out along the negative
 # z-axis. We use point_at() to orient the camera towards the eye.

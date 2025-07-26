@@ -30,11 +30,9 @@ def main():
     e.position = eye_position
 
     # Create two light sources for dual-light eye tracking
-    l1 = Light()
-    l1.position = np.array([100e-3, 0, 0])  # Right side light
+    l1 = Light(position=np.array([100e-3, 0, 0]))  # Right side light
 
-    l2 = Light()
-    l2.position = np.array([-100e-3, 0, 0])  # Left side light (symmetric)
+    l2 = Light(position=np.array([-100e-3, 0, 0]))  # Left side light (symmetric)
 
     lights = [l1, l2]
 

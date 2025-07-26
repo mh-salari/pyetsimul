@@ -29,13 +29,11 @@ def test_camera_take_image_with_refraction():
     lights = []
 
     # Light 1: right side, low
-    light1 = Light()
-    light1.position = np.array([200e-3, 0, 50e-3])
+    light1 = Light(position=np.array([200e-3, 0, 50e-3]))
     lights.append(light1)
 
     # Light 2: right side, high
-    light2 = Light()
-    light2.position = np.array([200e-3, 0, 300e-3])
+    light2 = Light(position=np.array([200e-3, 0, 300e-3]))
     lights.append(light2)
 
     # Take image with refraction
@@ -104,12 +102,10 @@ def test_camera_take_image_without_refraction():
 
     # Same light sources
     lights = []
-    light1 = Light()
-    light1.position = np.array([200e-3, 0, 50e-3])
+    light1 = Light(position=np.array([200e-3, 0, 50e-3]))
     lights.append(light1)
 
-    light2 = Light()
-    light2.position = np.array([200e-3, 0, 300e-3])
+    light2 = Light(position=np.array([200e-3, 0, 300e-3]))
     lights.append(light2)
 
     # Take image without refraction
@@ -179,8 +175,7 @@ def test_camera_take_image_output_structure():
     e.look_at(np.array([0, 0, 0, 1]))
 
     # Single light source
-    light = Light()
-    light.position = np.array([200e-3, 0, 50e-3])
+    light = Light(position=np.array([200e-3, 0, 50e-3]))
     lights = [light]
 
     camimg = c.take_image(e, lights, use_refraction=True)

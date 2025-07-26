@@ -9,11 +9,8 @@ from et_simul.core.camera import Camera
 def test_basic_corneal_reflex():
     """Test basic corneal reflex with MATLAB reference values."""
     e = Eye()
-    l = Light()
+    l = Light(position=np.array([0, 0, -50]))
     c = Camera()
-
-    # Position light in front of eye
-    l.position = np.array([0, 0, -50])
 
     # Position camera to the side
     c.trans[0:3, 3] = np.array([30, 0, -40])
@@ -40,11 +37,8 @@ def test_basic_corneal_reflex():
 def test_different_positions():
     """Test corneal reflex with different light and camera positions."""
     e = Eye()
-    l = Light()
+    l = Light(position=np.array([20, 15, -60]))
     c = Camera()
-
-    # Light positioned at an angle
-    l.position = np.array([20, 15, -60])
 
     # Camera at different position
     c.trans[0:3, 3] = np.array([-25, 10, -35])
@@ -69,11 +63,8 @@ def test_different_positions():
 def test_light_behind_eye():
     """Test case where light is behind eye - should return None."""
     e = Eye()
-    l = Light()
+    l = Light(position=np.array([0, 0, 50]))
     c = Camera()
-
-    # Light behind the eye (positive Z)
-    l.position = np.array([0, 0, 50])
 
     # Camera in front
     c.trans[0:3, 3] = np.array([20, 0, -30])
@@ -89,21 +80,20 @@ def test_reflex_outside_cornea_boundary():
 
 
 e = Eye()
-l = Light()
+l = Light(
+    position=np.array(
+        [
+            5,
+            30,
+            -40,
+        ]
+    )
+)
 c = Camera()
 
 # Eye looking straight down
 target_down = np.array([0, -100, 0])
 e.look_at(target_down)
-
-# Light and camera above
-l.position = np.array(
-    [
-        5,
-        30,
-        -40,
-    ]
-)
 c.trans[0:3, 3] = np.array([10, 60, -25])
 
 cr = e.find_cr(l, c)
@@ -115,10 +105,8 @@ assert cr is None
 def test_output_properties():
     """Test that output has correct properties."""
     e = Eye()
-    l = Light()
+    l = Light(position=np.array([0, 0, -50]))
     c = Camera()
-
-    l.position = np.array([0, 0, -50])
     c.trans[0:3, 3] = np.array([30, 0, -40])
 
     cr = e.find_cr(l, c)

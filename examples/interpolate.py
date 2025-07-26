@@ -57,8 +57,7 @@ def main():
     cam.point_at(eye.position.tolist() + [1])
 
     # Create light configuration
-    light = Light()
-    light.position = np.array([200e-3, 0, 350e-3])
+    light = Light(position=np.array([200e-3, 0, 350e-3]))
 
     # Create calibration grid
     calib_points = [
