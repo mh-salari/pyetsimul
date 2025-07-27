@@ -693,7 +693,10 @@ def plot_setup_and_camera_view(
     """
     # Create figure and axes if not provided
     if ax1 is None or ax2 is None:
-        fig = plt.figure(figsize=(16, 8))
+        if fig is None:
+            fig = plt.figure(figsize=(16, 8))
+        else:
+            fig.clear()  # Clear existing plots when reusing figure
         ax1 = fig.add_subplot(1, 2, 1, projection="3d")
         ax2 = fig.add_subplot(1, 2, 2)
 
