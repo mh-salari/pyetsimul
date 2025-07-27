@@ -49,8 +49,17 @@ def plot_axis(ax, center, trans_matrix, axis_idx, label, color, length=0.003):
     )
 
 
-def plot_eye_anatomy(eye=Eye(), target_point=(15e-3, 15e-3, 0)):
-    """Plot 3D eye anatomy with transformed coordinates"""
+def plot_eye_anatomy(eye=Eye(), target_point=(15e-3, 15e-3, 0), ax=None):
+    """Plot 3D eye anatomy with transformed coordinates.
+    
+    Args:
+        eye: Eye object to plot
+        target_point: Point for the eye to look at
+        ax: Optional matplotlib 3D axis. If None, creates new figure.
+        
+    Returns:
+        The matplotlib 3D axis used for plotting
+    """
     eye.look_at(target_point)
 
     # Calculate all key points in WORLD coordinates using eye.trans
@@ -159,9 +168,13 @@ def plot_eye_anatomy(eye=Eye(), target_point=(15e-3, 15e-3, 0)):
     x_pupil_world = (eye.trans @ eye.x_pupil)[:3]
     y_pupil_world = (eye.trans @ eye.y_pupil)[:3]
 
-    # Plot everything
-    fig = plt.figure(figsize=(14, 10))
-    ax = fig.add_subplot(111, projection="3d")
+    # Create figure and axis if not provided
+    if ax is None:
+        fig = plt.figure(figsize=(14, 10))
+        ax = fig.add_subplot(111, projection="3d")
+        show_plot = True
+    else:
+        show_plot = False
 
     # Plot the eye sphere
     ax.plot_surface(
@@ -270,8 +283,11 @@ def plot_eye_anatomy(eye=Eye(), target_point=(15e-3, 15e-3, 0)):
     ax.set_box_aspect([1, 1, 1])
     ax.set_aspect("equal")
 
-    plt.title("Eye Anatomy")
-    plt.show()
+    if show_plot:
+        plt.title("Eye Anatomy")
+        plt.show()
+        
+    return ax
 
 
 def to_3d(point):
