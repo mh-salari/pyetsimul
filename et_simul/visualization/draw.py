@@ -467,6 +467,25 @@ def plot_camera_view_of_eye(
         cr_3d_list: List of corneal reflection 3D positions
     """
     ax2.cla()
+    
+    # Debug: print actual content of elements
+    pupil_valid = camera_image["pupil"] is not None and camera_image["pupil"].shape[1] > 2
+    pc_valid = camera_image["pc"] is not None
+    cr_valid = bool(camera_image["cr"]) and bool(cr_3d_list)
+    
+    if not pupil_valid:
+        print(f"Warning: camera_image['pupil'] = {camera_image['pupil']}")
+        if camera_image["pupil"] is not None:
+            print(f"  Shape: {camera_image['pupil'].shape}")
+    if not pc_valid:
+        print(f"Warning: camera_image['pc'] = {camera_image['pc']}")
+    if not cr_valid:
+        print(f"Warning: camera_image['cr'] = {camera_image['cr']}")
+        print(f"Warning: cr_3d_list = {cr_3d_list}")
+    
+    if not (pupil_valid or pc_valid or cr_valid):
+        print("No eye elements to plot - skipping camera view")
+        return
 
     # Draw pupil in camera image
     if camera_image["pupil"] is not None and camera_image["pupil"].shape[1] > 2:
@@ -532,7 +551,10 @@ def plot_camera_view_of_eye(
     ax2.set_title("Camera View of Eye")
     ax2.grid(True, alpha=0.3)
     ax2.set_aspect("equal")
-    ax2.legend()
+    # Only show legend if there are labeled elements
+    handles, labels = ax2.get_legend_handles_labels()
+    if handles:
+        ax2.legend()
 
     # Add measurement annotations for multiple CRs
     if camera_image["pc"] is not None and camera_image["cr"]:
