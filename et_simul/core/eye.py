@@ -73,45 +73,26 @@ class Eye:
      Licensed under the GNU GPL v3.0 or later.
     """
 
-    # Anatomical constants (meters) from Boff and Lincoln [1988, Section 1.210]
-    # Standard eye parameters for human eye modeling
-
-    # Corneal parameters
-    r_cornea_default: float = 7.98e-3  # Default outer corneal radius (m)
-    r_cornea_inner_default: float = 6.22e-3  # Default inner corneal radius (m)
-
-    # Eye geometry constants
-    axial_length: float = 24.75e-3  # Total axial length of eye (m)
-    cornea_center_to_rotation_center: float = (
-        10.20e-3  # Distance from corneal center to rotation center (m)
-    )
-    cornea_thickness_offset: float = 1.15e-3  # Corneal thickness offset (m)
-    cornea_depth_default: float = (
-        3.54e-3  # Corneal depth (distance from apex to limbus projection) (m)
-    )
-
-    # Pupil parameters
-    pupil_radius_default: float = 3e-3  # Default pupil radius (m)
-
-    # Refractive indices
-    n_cornea_default: float = 1.376  # Refractive index of cornea
-    n_aqueous_humor_default: float = 1.336  # Refractive index of aqueous humor
-
-    # Fovea displacement parameters (degrees)
-    fovea_alpha_default: float = 6.0  # Horizontal fovea displacement
-    fovea_beta_default: float = 2.0  # Vertical fovea displacement
-
     # Instance parameters
-    r_cornea: float = r_cornea_default
+    r_cornea: float = (
+        7.98e-3  # Outer corneal radius (m) - Default from Boff and Lincoln [1988]
+    )
     fovea_displacement: bool = True
-    fovea_alpha_deg: float = fovea_alpha_default
-    fovea_beta_deg: float = fovea_beta_default
+    fovea_alpha_deg: float = 6.0  # Horizontal fovea displacement (degrees)
+    fovea_beta_deg: float = 2.0  # Vertical fovea displacement (degrees)
 
     # These fields are calculated in __post_init__
     trans: np.ndarray = field(init=False)
     _rest_orientation: np.ndarray = field(init=False)
     pos_cornea: np.ndarray = field(init=False)
     r_cornea_inner: float = field(init=False)
+    axial_length: float = field(init=False)  # Calculated axial length (m)
+    cornea_center_to_rotation_center: float = field(
+        init=False
+    )  # Calculated distance (m)
+    cornea_thickness_offset: float = field(
+        init=False
+    )  # Calculated thickness offset (m)
     cornea_inner_center: np.ndarray = field(init=False)
     n_cornea: float = field(init=False)
     n_aqueous_humor: float = field(init=False)
@@ -123,20 +104,43 @@ class Eye:
 
     def __post_init__(self) -> None:
         """Initializes the eye's anatomical properties based on constructor parameters."""
+        # Default constants for scaling (meters) from Boff and Lincoln [1988, Section 1.210]
+        r_cornea_default = 7.98e-3  # Default outer corneal radius (m)
+        r_cornea_inner_default = 6.22e-3  # Default inner corneal radius (m)
+        cornea_depth_default = (
+            3.54e-3  # Corneal depth (distance from apex to limbus projection) (m)
+        )
+        pupil_radius_default = 3e-3  # Default pupil radius (m)
+        n_cornea_default = 1.376  # Refractive index of cornea
+        n_aqueous_humor_default = 1.336  # Refractive index of aqueous humor
+        axial_length_default = 24.75e-3  # Default total axial length of eye (m)
+        cornea_center_to_rotation_center_default = (
+            10.20e-3  # Default distance from corneal center to rotation center (m)
+        )
+
+        cornea_thickness_offset_default = (
+            1.15e-3  # Default corneal thickness offset (m)
+        )
+
         # Calculate scale factor based on corneal radius
-        scale = self.r_cornea / self.r_cornea_default
+        scale = self.r_cornea / r_cornea_default
 
         # Initialize transformation matrix (identity at rest position)
         self.trans = np.eye(4)
         self._rest_orientation = np.eye(3)
         self.trans[:3, :3] = self._rest_orientation
 
+        # Set anatomical parameters (original MATLAB scaling)
+        self.axial_length = axial_length_default
+        self.cornea_center_to_rotation_center = cornea_center_to_rotation_center_default
+        self.cornea_thickness_offset = cornea_thickness_offset_default
+
         # Position corneal center relative to rotation center
         cornea_z_offset = self.axial_length - 2 * self.cornea_center_to_rotation_center
         self.pos_cornea = np.array([0, 0, -scale * cornea_z_offset, 1])
 
         # Inner corneal surface radius (scaled)
-        self.r_cornea_inner = scale * self.r_cornea_inner_default
+        self.r_cornea_inner = scale * r_cornea_inner_default
 
         # Inner corneal surface center
         thickness_term = (
@@ -145,22 +149,22 @@ class Eye:
         self.cornea_inner_center = self.pos_cornea - np.array([0, 0, thickness_term, 0])
 
         # Refractive indices
-        self.n_cornea = self.n_cornea_default
-        self.n_aqueous_humor = self.n_aqueous_humor_default
+        self.n_cornea = n_cornea_default
+        self.n_aqueous_humor = n_aqueous_humor_default
 
         # Corneal apex (frontmost point)
         self.pos_apex = self.pos_cornea + np.array([0, 0, -self.r_cornea, 0])
 
         # Corneal depth (scaled)
-        self.depth_cornea = scale * self.cornea_depth_default
+        self.depth_cornea = scale * cornea_depth_default
 
         # Pupil center position
         self.pos_pupil = self.pos_apex + np.array(
-            [0, 0, scale * self.cornea_depth_default, 0]
+            [0, 0, scale * cornea_depth_default, 0]
         )
 
-        # Pupil boundary vectors (scaled)
-        pupil_radius_scaled = scale * self.pupil_radius_default
+        # Pupil boundary vectors (scaled - original MATLAB behavior)
+        pupil_radius_scaled = scale * pupil_radius_default
         self.x_pupil = pupil_radius_scaled * np.array([1, 0, 0, 0])
         self.y_pupil = pupil_radius_scaled * np.array([0, 1, 0, 0])
 
@@ -742,59 +746,63 @@ class Eye:
     @property
     def fovea_position(self) -> np.ndarray:
         """Calculate the 3D position of the fovea on the retinal surface.
-        
+
         Based on our simplified spherical eye model where:
         - The eye is modeled as a sphere with nodal point at cornea center
-        - Fovea is displaced from optical axis by fovea_alpha_deg (horizontal) 
+        - Fovea is displaced from optical axis by fovea_alpha_deg (horizontal)
           and fovea_beta_deg (vertical) angles
         - Retina is positioned at axial_length distance from cornea center
-        
+
         Returns:
             3-element array with fovea position [x, y, z] in eye coordinate system
         """
         # Convert displacement angles to radians
-        alpha = self.fovea_alpha_deg * np.pi / 180.0  # Horizontal (temporal) displacement
-        beta = self.fovea_beta_deg * np.pi / 180.0    # Vertical (upward) displacement
-        
+        alpha = (
+            self.fovea_alpha_deg * np.pi / 180.0
+        )  # Horizontal (temporal) displacement
+        beta = self.fovea_beta_deg * np.pi / 180.0  # Vertical (upward) displacement
+
         # Retina distance from rotation center (from our eye model)
         retina_distance = self.axial_length / 2
-        
+
         # Calculate fovea position in eye coordinate system using spherical coordinates
-        fovea_x = retina_distance * np.sin(alpha) * np.cos(beta)  # Temporal displacement
-        fovea_y = retina_distance * np.sin(beta)                  # Vertical displacement  
+        fovea_x = (
+            retina_distance * np.sin(alpha) * np.cos(beta)
+        )  # Temporal displacement
+        fovea_y = retina_distance * np.sin(beta)  # Vertical displacement
         fovea_z = retina_distance * np.cos(alpha) * np.cos(beta)  # Along optical axis
-        
+
         # Position in eye coordinate system (relative to eye rotation center)
         fovea_position = np.array([fovea_x, fovea_y, fovea_z])
-        
+
         return fovea_position
 
     @property
     def angle_kappa(self) -> float:
         """Calculate angle kappa (degrees) - the angle between optical and visual axes.
-        
+
         Angle kappa is the angle between:
         - Optical axis: direction the eye is pointing (-Z axis in eye coordinates)
         - Visual axis: direction from rotation center to fovea
-        
+
         This is calculated using the 3D fovea position for accuracy.
-        
+
         Returns:
             Angle kappa in degrees
         """
         # Get fovea position (3D coordinates relative to rotation center)
         fovea_pos = self.fovea_position
-        
+
         # Calculate visual axis direction (normalized)
         visual_axis = fovea_pos / np.linalg.norm(fovea_pos)
-        
+
         # Optical axis points along -Z direction in eye coordinates
         optical_axis = np.array([0, 0, -1])
-        
+
         # Calculate angle between visual and optical axes
         dot_product = np.dot(visual_axis, optical_axis)
         # Use abs() to get acute angle and clip to avoid numerical errors
         angle_kappa_rad = np.arccos(np.clip(np.abs(dot_product), 0, 1))
-        
+
         # Convert to degrees
         return angle_kappa_rad * 180.0 / np.pi
