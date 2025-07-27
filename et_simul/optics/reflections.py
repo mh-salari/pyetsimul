@@ -88,7 +88,7 @@ def find_reflection(L, C, S0, Sr):
         return U0
     except ValueError as e:
         warnings.warn(
-            f"Invalid reflection geometry: Light={L}, Camera={C}, Sphere center={S0}",
+            f"No glint found due to degenerate geometry: Light={L}, Camera={C}, Sphere center={S0}",
             RuntimeWarning,
         )
         return None
