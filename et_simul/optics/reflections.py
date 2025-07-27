@@ -1,4 +1,5 @@
 import numpy as np
+import warnings
 from scipy.optimize import brentq
 from ..geometry.intersections import intersect_ray_circle, intersect_ray_sphere
 
@@ -26,31 +27,33 @@ def reflect_objective(a, L, C, S0, Sr):
         Tuple of (angle_diff, U0) where angle_diff is the reflection angle error
         and U0 is the potential glint position
     """
-    # to_c=(C-S0)/norm(C-S0)
-    to_c = (C - S0) / np.linalg.norm(C - S0)
+    # Suppress numpy warnings to provide cleaner reflection error messages
+    with np.errstate(invalid='ignore', divide='ignore'):
+        # to_c=(C-S0)/norm(C-S0)
+        to_c = (C - S0) / np.linalg.norm(C - S0)
 
-    # to_l=(L-S0)/norm(L-S0)
-    to_l = (L - S0) / np.linalg.norm(L - S0)
+        # to_l=(L-S0)/norm(L-S0)
+        to_l = (L - S0) / np.linalg.norm(L - S0)
 
-    # n=a*to_c+(1-a)*to_l
-    n = a * to_c + (1 - a) * to_l
+        # n=a*to_c+(1-a)*to_l
+        n = a * to_c + (1 - a) * to_l
 
-    # n=n/norm(n)
-    n = n / np.linalg.norm(n)
+        # n=n/norm(n)
+        n = n / np.linalg.norm(n)
 
-    # U0=S0+Sr*n
-    U0 = S0 + Sr * n
+        # U0=S0+Sr*n
+        U0 = S0 + Sr * n
 
-    # angle_c=arccos(n'*(C-U0)/norm(C-U0)) with safe clipping
-    angle_c = np.arccos(np.clip(np.dot(n, (C - U0) / np.linalg.norm(C - U0)), -1, 1))
+        # angle_c=arccos(n'*(C-U0)/norm(C-U0)) with safe clipping
+        angle_c = np.arccos(np.clip(np.dot(n, (C - U0) / np.linalg.norm(C - U0)), -1, 1))
 
-    # angle_l=arccos(n'*(L-U0)/norm(L-U0)) with safe clipping
-    angle_l = np.arccos(np.clip(np.dot(n, (L - U0) / np.linalg.norm(L - U0)), -1, 1))
+        # angle_l=arccos(n'*(L-U0)/norm(L-U0)) with safe clipping
+        angle_l = np.arccos(np.clip(np.dot(n, (L - U0) / np.linalg.norm(L - U0)), -1, 1))
 
-    # angle_diff=angle_c-angle_l
-    angle_diff = angle_c - angle_l
+        # angle_diff=angle_c-angle_l
+        angle_diff = angle_c - angle_l
 
-    return angle_diff, U0
+        return angle_diff, U0
 
 
 def find_reflection(L, C, S0, Sr):
@@ -73,15 +76,22 @@ def find_reflection(L, C, S0, Sr):
         Sr: Sphere radius
 
     Returns:
-        U0: Position of glint on sphere surface
+        U0: Position of glint on sphere surface, or None if no reflection found
     """
-    # a=brentq(@(a) reflect_objective(a, L, C, S0, Sr), 0, 1)
-    a = brentq(lambda a: reflect_objective(a, L, C, S0, Sr)[0], 0, 1)
+    try:
+        # a=brentq(@(a) reflect_objective(a, L, C, S0, Sr), 0, 1)
+        a = brentq(lambda a: reflect_objective(a, L, C, S0, Sr)[0], 0, 1)
 
-    # [dummy, U0]=reflect_objective(a, L, C, S0, Sr)
-    _, U0 = reflect_objective(a, L, C, S0, Sr)
+        # [dummy, U0]=reflect_objective(a, L, C, S0, Sr)
+        _, U0 = reflect_objective(a, L, C, S0, Sr)
 
-    return U0
+        return U0
+    except ValueError as e:
+        warnings.warn(
+            f"Invalid reflection geometry: Light={L}, Camera={C}, Sphere center={S0}",
+            RuntimeWarning,
+        )
+        return None
 
 
 def reflect_ray_circle(R0, Rd, C0, Cr):
