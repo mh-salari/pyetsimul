@@ -270,7 +270,7 @@ def plot_eye_anatomy(eye=Eye(), target_point=(15e-3, 15e-3, 0)):
     ax.set_box_aspect([1, 1, 1])
     ax.set_aspect("equal")
 
-    plt.title("Eye Anatomy with look_at([1, 1, 0]) - World Coordinates")
+    plt.title("Eye Anatomy")
     plt.show()
 
 
