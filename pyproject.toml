@@ -24,3 +24,8 @@ include = ["et_simul*"]
 [tool.ruff]
 line-length = 119
 lint.ignore = ["E741"]
+
+[dependency-groups]
+dev = [
+    "pytest>=8.4.1",
+]
