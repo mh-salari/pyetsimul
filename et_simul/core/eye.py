@@ -166,10 +166,10 @@ class Eye:
 
     def set_rest_orientation(self, value: np.ndarray) -> None:
         """Set the rest orientation and initialize current orientation to match.
-        
+
         Args:
             value: 3x3 rotation matrix (must be right-handed with determinant = +1)
-            
+
         Raises:
             ValueError: If the matrix is not right-handed (det ≠ +1)
         """
@@ -177,12 +177,14 @@ class Eye:
         det = np.linalg.det(value)
         if abs(det - 1.0) > 1e-6:
             if abs(det + 1.0) < 1e-6:
-                raise ValueError("Left-handed coordinate system detected. "
-                               "Eye orientation must be right-handed (det = +1).")
+                raise ValueError(
+                    "Left-handed coordinate system detected. Eye orientation must be right-handed (det = +1)."
+                )
             else:
-                raise ValueError(f"Invalid rotation matrix (det = {det:.3f}). "
-                               "Determinant must be +1 for a proper rotation matrix.")
-        
+                raise ValueError(
+                    f"Invalid rotation matrix (det = {det:.3f}). Determinant must be +1 for a proper rotation matrix."
+                )
+
         self._rest_orientation = value.copy()
         self.trans[:3, :3] = value
 
