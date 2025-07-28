@@ -303,7 +303,7 @@ def plot_setup(
         eye_data["X_cornea"],
         eye_data["Y_cornea"],
         eye_data["Z_cornea"],
-        alpha=0.6,
+        alpha=0.8,
         color="lightblue",
         edgecolor="blue",
         linewidth=0.1,
@@ -407,11 +407,37 @@ def plot_setup(
     ax1.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f"{x * 1000:.0f}"))
     ax1.zaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f"{x * 1000:.0f}"))
 
-    # Apply reference bounds if provided
+    # Apply reference bounds if provided, otherwise calculate bounds to include all objects
     if ref_bounds:
         ax1.set_xlim(ref_bounds["x"])
         ax1.set_ylim(ref_bounds["y"])
         ax1.set_zlim(ref_bounds["z"])
+    else:
+        # Calculate bounds that include eye, camera, and target with equal aspect ratio
+        eye_center = eye_data["cornea_center_world"]
+        camera_pos = to_3d(camera.trans[:, 3])
+        target_world = to_3d(look_at_target) if len(look_at_target) == 4 else np.array(look_at_target)
+
+        # Find min/max of all objects
+        all_points = np.array([eye_center, camera_pos, target_world])
+        min_coords = np.min(all_points, axis=0)
+        max_coords = np.max(all_points, axis=0)
+
+        # Add padding and make all axes have same range
+        padding = 0.02  # 20mm padding
+        ranges = max_coords - min_coords + 2 * padding
+        max_range = np.max(ranges)
+
+        # Center each axis and use the same range for all
+        centers = (max_coords + min_coords) / 2
+        half_range = max_range / 2
+
+        ax1.set_xlim(centers[0] - half_range, centers[0] + half_range)
+        ax1.set_ylim(centers[1] - half_range, centers[1] + half_range)
+        ax1.set_zlim(centers[2] - half_range, centers[2] + half_range)
+
+    # Set equal aspect ratio for proper sphere appearance (must be after setting limits)
+    ax1.set_box_aspect([1, 1, 1])
 
     # Plot calibration points if provided
     if calib_points is not None:
@@ -636,6 +662,8 @@ def prepare_eye_data_for_plots(eye, look_at_target, lights, camera):
         "cornea_center_world": cornea_center_world,
         "pupil_world": pupil_world,
         "optical_axis_end": optical_axis_end,
+        "axial_length": eye.axial_length,
+        "eye_rotation_center": to_3d(eye.position),
     }
 
     # Get camera image data
@@ -681,6 +709,7 @@ def plot_setup_and_camera_view(
         fig: Matplotlib figure object
     """
     # Create figure and axes if not provided
+    axes_provided = ax1 is not None and ax2 is not None
     if ax1 is None or ax2 is None:
         if fig is None:
             fig = plt.figure(figsize=(16, 8))
@@ -706,6 +735,10 @@ def plot_setup_and_camera_view(
 
     if ax2 is not None:
         plot_camera_view_of_eye(ax2, prepared_data["camera_image"], camera, prepared_data["cr_3d_list"])
+
+    # Show plot if axes were not provided (user didn't create their own figure)
+    if not axes_provided:
+        plt.show()
 
     return fig
 
