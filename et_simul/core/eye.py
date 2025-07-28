@@ -383,6 +383,38 @@ class Eye:
 
         return pupil_world
 
+    def get_pupil_in_camera_image(
+        self, c: Camera, use_refraction: bool = True, center_method: str = "ellipse"
+    ) -> Tuple[np.ndarray, Optional[np.ndarray]]:
+        """Gets pupil boundary and center in camera image using specified method.
+
+        Args:
+            c: Camera object
+            use_refraction: Whether to use refraction model (default True)
+            center_method: Method to use for pupil center detection (default "ellipse")
+                          Options: "ellipse", "center_of_mass"
+
+        Returns:
+            Tuple of (pupil_boundary, pupil_center) where:
+            - pupil_boundary: 2×N matrix of pupil boundary points in camera image
+            - pupil_center: 2-element vector with pupil center position, or None if not found
+
+        Raises:
+            ValueError: If center_method is not recognized
+        """
+        # Get pupil boundary points in camera image
+        pupil_boundary = self.get_pupil_boundary_in_camera_image(c, use_refraction=use_refraction)
+
+        # Calculate center using specified method
+        if center_method == "ellipse":
+            pupil_center = self._fit_ellipse_center(pupil_boundary)
+        elif center_method == "center_of_mass":
+            pupil_center = self._calculate_center_of_mass(pupil_boundary, c.resolution)
+        else:
+            raise ValueError(f"Unknown center_method '{center_method}'. Use 'ellipse' or 'center_of_mass'")
+
+        return pupil_boundary, pupil_center
+
     def get_pupil_radii(self) -> tuple[float, float]:
         """Returns the current pupil radii from both axes.
 
@@ -697,6 +729,32 @@ class Eye:
 
         return pupil, pc
 
+    def get_pupil_center_of_mass_in_camera_image(
+        self, c: Camera, use_refraction: bool = True
+    ) -> Tuple[np.ndarray, Optional[np.ndarray]]:
+        """Determines pupil center using center of mass calculation.
+
+        [pupil, pc] = get_pupil_center_of_mass_in_camera_image(e, c) finds the image of the pupil border
+        in the camera image (returned as 'pupil'), creates a binary mask from the boundary points,
+        and calculates the center of mass of the pupil region.
+
+        Args:
+            c: Camera object
+            use_refraction: Whether to use refraction model (default True)
+
+        Returns:
+            Tuple of (pupil, pc) where:
+            - pupil: 2×N matrix of pupil boundary points in camera image
+            - pc: 2-element vector with center of mass position, or None if not found
+        """
+        # Get pupil image (with or without refraction)
+        pupil = self.get_pupil_boundary_in_camera_image(c, use_refraction=use_refraction)
+
+        # Find center of pupil using center of mass calculation
+        pc = self._calculate_center_of_mass(pupil, c.resolution)
+
+        return pupil, pc
+
     def _fit_ellipse_center(self, pupil: np.ndarray) -> Optional[np.ndarray]:
         """Fit ellipse to pupil boundary points and return center.
 
@@ -716,6 +774,58 @@ class Eye:
 
         # Not enough points for ellipse fitting or fitting failed
         return None
+
+    def _calculate_center_of_mass(self, pupil: np.ndarray, camera_resolution: np.ndarray) -> Optional[np.ndarray]:
+        """Calculate center of mass from pupil boundary points using binary mask.
+
+        Args:
+            pupil: 2xN matrix of pupil boundary points
+            camera_resolution: 2-element array [width, height] of camera resolution
+
+        Returns:
+            2-element array with center of mass coordinates [xc, yc], or None if calculation fails
+        """
+        if pupil.shape[1] < 3:
+            return None
+
+        try:
+            from skimage.draw import polygon
+            from scipy import ndimage
+        except ImportError:
+            return None
+
+        # Convert camera coordinates to image array coordinates
+        # Camera: (0,0) at center, ranges -res/2 to +res/2
+        # Array: (0,0) at top-left, ranges 0 to res
+        width, height = int(camera_resolution[0]), int(camera_resolution[1])
+
+        # Convert pupil points to array coordinates
+        pupil_array_x = pupil[0, :] + width // 2
+        pupil_array_y = pupil[1, :] + height // 2
+
+        # Clip to valid image bounds
+        pupil_array_x = np.clip(pupil_array_x, 0, width - 1)
+        pupil_array_y = np.clip(pupil_array_y, 0, height - 1)
+
+        # Create binary mask
+        mask = np.zeros((height, width), dtype=bool)
+
+        # Fill polygon defined by pupil boundary
+        rr, cc = polygon(pupil_array_y, pupil_array_x, shape=(height, width))
+        mask[rr, cc] = True
+
+        if not np.any(mask):
+            return None
+
+        # Calculate center of mass
+        # For binary mask, center of mass is just the centroid of True pixels
+        y_center, x_center = ndimage.center_of_mass(mask.astype(float))
+
+        # Convert back to camera coordinates
+        x_camera = x_center - width // 2
+        y_camera = y_center - height // 2
+
+        return np.array([x_camera, y_camera])
 
     @property
     def fovea_position(self) -> np.ndarray:

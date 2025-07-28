@@ -346,7 +346,7 @@ def _create_interactive_calibration_plot(et, eye, X, Y, U, V, predicted_points, 
         if event.key == "escape":
             plt.close(fig)
             return
-        
+
         # TARGET MOVEMENT (Arrow keys)
         elif event.key == "up":
             current_target[1] += step_size
@@ -356,7 +356,7 @@ def _create_interactive_calibration_plot(et, eye, X, Y, U, V, predicted_points, 
             current_target[0] -= step_size
         elif event.key == "right":
             current_target[0] += step_size
-        
+
         # EYE MOVEMENT (I/K/J/L/./,)
         elif event.key == "j":
             interactive_eye.trans[0, 3] -= step_size  # Eye left (decrease X)
