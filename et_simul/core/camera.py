@@ -84,6 +84,24 @@ class Camera:
 
     @orientation.setter
     def orientation(self, value: np.ndarray) -> None:
+        """Set the camera's orientation matrix.
+        
+        Args:
+            value: 3x3 rotation matrix (must be right-handed with determinant = +1)
+            
+        Raises:
+            ValueError: If the matrix is not right-handed (det ≠ +1)
+        """
+        # Validate that the matrix is right-handed
+        det = np.linalg.det(value)
+        if abs(det - 1.0) > 1e-6:
+            if abs(det + 1.0) < 1e-6:
+                raise ValueError("Left-handed coordinate system detected. "
+                               "Camera orientation must be right-handed (det = +1).")
+            else:
+                raise ValueError(f"Invalid rotation matrix (det = {det:.3f}). "
+                               "Determinant must be +1 for a proper rotation matrix.")
+        
         self.trans[:3, :3] = value
 
     @property
