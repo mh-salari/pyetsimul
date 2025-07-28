@@ -166,11 +166,13 @@ class Camera:
 
         # Lines 51-52: valid=find(x(1,:)>=-c.resolution(1)/2 & x(1,:)<=c.resolution(1)/2 & ...
         #                         x(2,:)>=-c.resolution(2)/2 & x(2,:)<=c.resolution(2)/2);
+        # Added dist > 0 check to filter out points behind camera
         condition = (
             (x[0, :] >= -self.resolution[0] / 2)
             & (x[0, :] <= self.resolution[0] / 2)
             & (x[1, :] >= -self.resolution[1] / 2)
             & (x[1, :] <= self.resolution[1] / 2)
+            & (dist > 0)  # Points must be in front of camera
         )
 
         # Line 54: x(:,~valid)=nan;
