@@ -173,9 +173,7 @@ def test_projection_unprojection_roundtrip():
     # Unproject back using original distances
     unprojected_3d = np.zeros((4, projected_2d.shape[1]))
     for i in range(projected_2d.shape[1]):
-        unprojected_3d[:, i : i + 1] = c.unproject(
-            projected_2d[:, i : i + 1], distances[i]
-        )
+        unprojected_3d[:, i : i + 1] = c.unproject(projected_2d[:, i : i + 1], distances[i])
 
     # Check roundtrip accuracy
     diff_matrix = np.abs(original_3d - unprojected_3d)

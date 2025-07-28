@@ -48,7 +48,7 @@ class EyeTracker(ABC):
         """Add a light to the eye tracker."""
         self.lights.append(light)
 
-    def run_calibration(self, eye: Eye) -> 'EyeTracker':
+    def run_calibration(self, eye: Eye) -> "EyeTracker":
         """Run the complete calibration workflow.
 
         Generic calibration process that works for all eye tracker types:
@@ -85,9 +85,7 @@ class EyeTracker(ABC):
             calib_data[i]["camimg"] = [None] * len(self.cameras)
 
             for iCamera, cam in enumerate(self.cameras):
-                camimg = cam.take_image(
-                    eye, self.lights, use_refraction=self.use_refraction
-                )
+                camimg = cam.take_image(eye, self.lights, use_refraction=self.use_refraction)
                 calib_data[i]["camimg"][iCamera] = camimg
 
                 # Check for detection failures immediately
@@ -95,29 +93,19 @@ class EyeTracker(ABC):
                 cr = camimg["cr"][0] if camimg["cr"] else None
 
                 if pc is None:
-                    failed_points.append(
-                        (i + 1, self.calib_points[:, i], "PUPIL CENTER not detected")
-                    )
+                    failed_points.append((i + 1, self.calib_points[:, i], "PUPIL CENTER not detected"))
                 elif cr is None:
-                    failed_points.append(
-                        (i + 1, self.calib_points[:, i], "CR not detected")
-                    )
+                    failed_points.append((i + 1, self.calib_points[:, i], "CR not detected"))
 
             # Store eye state
             calib_data[i]["e"] = copy.deepcopy(eye)
 
         # Summary of failed points
         if failed_points:
-            print(
-                f"\n⚠️  WARNING: {len(failed_points)}/{n_points} calibration points failed:"
-            )
+            print(f"\n⚠️  WARNING: {len(failed_points)}/{n_points} calibration points failed:")
             for point_num, coords, reason in failed_points:
-                print(
-                    f"  Point {point_num} ({coords[0]*1000:.0f}mm, {coords[1]*1000:.0f}mm): {reason}"
-                )
-            print(
-                f"  Calibration will proceed with {n_points - len(failed_points)} valid points.\n"
-            )
+                print(f"  Point {point_num} ({coords[0] * 1000:.0f}mm, {coords[1] * 1000:.0f}mm): {reason}")
+            print(f"  Calibration will proceed with {n_points - len(failed_points)} valid points.\n")
         else:
             print(f"✅ All {n_points} calibration points collected successfully.\n")
 
@@ -142,16 +130,12 @@ class EyeTracker(ABC):
         # Take camera images
         camimg = [None] * len(self.cameras)
         for iCamera, cam in enumerate(self.cameras):
-            camimg[iCamera] = cam.take_image(
-                eye, self.lights, use_refraction=self.use_refraction
-            )
+            camimg[iCamera] = cam.take_image(eye, self.lights, use_refraction=self.use_refraction)
 
         # Get gaze prediction - returns None if prediction fails
         return self.predict_gaze(camimg)
 
-    def calculate_gaze_error(
-        self, eye: Eye, look_at_pos: np.ndarray
-    ) -> tuple[float, float]:
+    def calculate_gaze_error(self, eye: Eye, look_at_pos: np.ndarray) -> tuple[float, float]:
         """Calculate gaze estimation error.
 
         Generic error calculation that works for all eye tracker types.

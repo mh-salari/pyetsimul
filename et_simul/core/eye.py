@@ -74,9 +74,7 @@ class Eye:
     """
 
     # Instance parameters
-    r_cornea: float = (
-        7.98e-3  # Outer corneal radius (m) - Default from Boff and Lincoln [1988]
-    )
+    r_cornea: float = 7.98e-3  # Outer corneal radius (m) - Default from Boff and Lincoln [1988]
     fovea_displacement: bool = True
     fovea_alpha_deg: float = 6.0  # Horizontal fovea displacement (degrees)
     fovea_beta_deg: float = 2.0  # Vertical fovea displacement (degrees)
@@ -87,12 +85,8 @@ class Eye:
     pos_cornea: np.ndarray = field(init=False)
     r_cornea_inner: float = field(init=False)
     axial_length: float = field(init=False)  # Calculated axial length (m)
-    cornea_center_to_rotation_center: float = field(
-        init=False
-    )  # Calculated distance (m)
-    cornea_thickness_offset: float = field(
-        init=False
-    )  # Calculated thickness offset (m)
+    cornea_center_to_rotation_center: float = field(init=False)  # Calculated distance (m)
+    cornea_thickness_offset: float = field(init=False)  # Calculated thickness offset (m)
     cornea_inner_center: np.ndarray = field(init=False)
     n_cornea: float = field(init=False)
     n_aqueous_humor: float = field(init=False)
@@ -107,9 +101,7 @@ class Eye:
         # Default constants for scaling (meters) from Boff and Lincoln [1988, Section 1.210]
         r_cornea_default = 7.98e-3  # Default outer corneal radius (m)
         r_cornea_inner_default = 6.22e-3  # Default inner corneal radius (m)
-        cornea_depth_default = (
-            3.54e-3  # Corneal depth (distance from apex to limbus projection) (m)
-        )
+        cornea_depth_default = 3.54e-3  # Corneal depth (distance from apex to limbus projection) (m)
         pupil_radius_default = 3e-3  # Default pupil radius (m)
         n_cornea_default = 1.376  # Refractive index of cornea
         n_aqueous_humor_default = 1.336  # Refractive index of aqueous humor
@@ -118,9 +110,7 @@ class Eye:
             10.20e-3  # Default distance from corneal center to rotation center (m)
         )
 
-        cornea_thickness_offset_default = (
-            1.15e-3  # Default corneal thickness offset (m)
-        )
+        cornea_thickness_offset_default = 1.15e-3  # Default corneal thickness offset (m)
 
         # Calculate scale factor based on corneal radius
         scale = self.r_cornea / r_cornea_default
@@ -143,9 +133,7 @@ class Eye:
         self.r_cornea_inner = scale * r_cornea_inner_default
 
         # Inner corneal surface center
-        thickness_term = (
-            self.r_cornea - self.r_cornea_inner - scale * self.cornea_thickness_offset
-        )
+        thickness_term = self.r_cornea - self.r_cornea_inner - scale * self.cornea_thickness_offset
         self.cornea_inner_center = self.pos_cornea - np.array([0, 0, thickness_term, 0])
 
         # Refractive indices
@@ -159,9 +147,7 @@ class Eye:
         self.depth_cornea = scale * cornea_depth_default
 
         # Pupil center position
-        self.pos_pupil = self.pos_apex + np.array(
-            [0, 0, scale * cornea_depth_default, 0]
-        )
+        self.pos_pupil = self.pos_apex + np.array([0, 0, scale * cornea_depth_default, 0])
 
         # Pupil boundary vectors (scaled - original MATLAB behavior)
         pupil_radius_scaled = scale * pupil_radius_default
@@ -474,9 +460,7 @@ class Eye:
 
         return cr
 
-    def refract_ray(
-        self, R0: np.ndarray, Rd: np.ndarray
-    ) -> Tuple[Optional[np.ndarray], Optional[np.ndarray]]:
+    def refract_ray(self, R0: np.ndarray, Rd: np.ndarray) -> Tuple[Optional[np.ndarray], Optional[np.ndarray]]:
         """Computes refraction of ray at cornea surface.
 
         [U0, Ud] = refract_ray(e, R0, Rd) takes a ray (specified by its
@@ -509,9 +493,7 @@ class Eye:
         cornea_center = self.trans @ self.pos_cornea
 
         # refract_ray_sphere handles 3D/4D coordinates properly (fixes MATLAB's coordinate bug)
-        U0, Ud = refractions.refract_ray_sphere(
-            R0, Rd, cornea_center, self.r_cornea, 1.0, self.n_cornea
-        )
+        U0, Ud = refractions.refract_ray_sphere(R0, Rd, cornea_center, self.r_cornea, 1.0, self.n_cornea)
 
         return U0, Ud
 
@@ -556,9 +538,7 @@ class Eye:
         cornea_center = self.trans @ self.pos_cornea
 
         # refract_ray_sphere handles 3D/4D coordinates properly (fixes MATLAB's coordinate bug)
-        O0, Od = refractions.refract_ray_sphere(
-            R0, Rd, cornea_center, self.r_cornea, 1.0, self.n_cornea
-        )
+        O0, Od = refractions.refract_ray_sphere(R0, Rd, cornea_center, self.r_cornea, 1.0, self.n_cornea)
 
         if O0 is None or Od is None:
             return None, None, None
@@ -604,9 +584,7 @@ class Eye:
 
         # Line 28: I=find_refraction(C, O, e.trans*e.pos_cornea, e.r_cornea, 1, e.n_cornea);
         # find_refraction handles 3D/4D coordinates properly (fixes MATLAB's coordinate bug)
-        I = refractions.find_refraction(
-            C, O, cornea_center, self.r_cornea, 1.0, self.n_cornea
-        )
+        I = refractions.find_refraction(C, O, cornea_center, self.r_cornea, 1.0, self.n_cornea)
 
         if I is None:
             return None
@@ -623,9 +601,7 @@ class Eye:
 
         return I
 
-    def get_pupil_boundary_in_camera_image(
-        self, c: Camera, N: int = 20, use_refraction: bool = True
-    ) -> np.ndarray:
+    def get_pupil_boundary_in_camera_image(self, c: Camera, N: int = 20, use_refraction: bool = True) -> np.ndarray:
         """Computes image of pupil boundary.
 
         X = get_pupil_boundary_in_camera_image(e, c, N) returns a 2xM matrix of points
@@ -714,9 +690,7 @@ class Eye:
         Licensed under the GNU GPL v3.0 or later.
         """
         # Get pupil image (with or without refraction)
-        pupil = self.get_pupil_boundary_in_camera_image(
-            c, use_refraction=use_refraction
-        )
+        pupil = self.get_pupil_boundary_in_camera_image(c, use_refraction=use_refraction)
 
         # Find center of pupil using ellipse fitting
         pc = self._fit_ellipse_center(pupil)
@@ -757,18 +731,14 @@ class Eye:
             3-element array with fovea position [x, y, z] in eye coordinate system
         """
         # Convert displacement angles to radians
-        alpha = (
-            self.fovea_alpha_deg * np.pi / 180.0
-        )  # Horizontal (temporal) displacement
+        alpha = self.fovea_alpha_deg * np.pi / 180.0  # Horizontal (temporal) displacement
         beta = self.fovea_beta_deg * np.pi / 180.0  # Vertical (upward) displacement
 
         # Retina distance from rotation center (from our eye model)
         retina_distance = self.axial_length / 2
 
         # Calculate fovea position in eye coordinate system using spherical coordinates
-        fovea_x = (
-            retina_distance * np.sin(alpha) * np.cos(beta)
-        )  # Temporal displacement
+        fovea_x = retina_distance * np.sin(alpha) * np.cos(beta)  # Temporal displacement
         fovea_y = retina_distance * np.sin(beta)  # Vertical displacement
         fovea_z = retina_distance * np.cos(alpha) * np.cos(beta)  # Along optical axis
 

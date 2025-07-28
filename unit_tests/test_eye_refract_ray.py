@@ -19,9 +19,7 @@ def test_basic_ray_refraction():
 
     # MATLAB reference values
     expected_U0 = np.array([0.0003620467382754, 0.0001448186953101, 0.0036204673827527])
-    expected_Ud = np.array(
-        [-0.0846693339523489, -0.0338677335809380, -0.9958333598098410]
-    )
+    expected_Ud = np.array([-0.0846693339523489, -0.0338677335809380, -0.9958333598098410])
 
     assert U0 is not None
     assert Ud is not None
@@ -44,9 +42,7 @@ def test_optical_axis_ray():
 
     # MATLAB reference values
     expected_U0 = np.array([0.0000000000000000, 0.0000000000000000, 0.0036299999993510])
-    expected_Ud = np.array(
-        [0.0000000000000000, 0.0000000000000000, -1.0000000000000000]
-    )
+    expected_Ud = np.array([0.0000000000000000, 0.0000000000000000, -1.0000000000000000])
 
     assert U0 is not None
     assert Ud is not None
@@ -86,9 +82,7 @@ def test_homogeneous_coordinates():
     U0, Ud = e.refract_ray(R0, Rd)
 
     # MATLAB reference values (4D)
-    expected_U0 = np.array(
-        [0.0002718158445933, 0.0001359079222967, 0.0036242112612399, 1.0000000000000000]
-    )
+    expected_U0 = np.array([0.0002718158445933, 0.0001359079222967, 0.0036242112612399, 1.0000000000000000])
     expected_Ud = np.array(
         [
             -0.0636298985212294,

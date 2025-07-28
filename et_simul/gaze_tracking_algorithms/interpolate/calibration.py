@@ -96,9 +96,5 @@ def _calibrate_2d(eye_tracker, calib_data):
 
     # Separate calibration matrices for x and y coordinates
     # Solve separate least squares problems for each coordinate
-    eye_tracker.state["A_x"] = eye_tracker.calib_points[0:1, :] @ np.linalg.pinv(
-        X_x
-    )  # x coordinate only
-    eye_tracker.state["A_y"] = eye_tracker.calib_points[1:2, :] @ np.linalg.pinv(
-        X_y
-    )  # y coordinate only
+    eye_tracker.state["A_x"] = eye_tracker.calib_points[0:1, :] @ np.linalg.pinv(X_x)  # x coordinate only
+    eye_tracker.state["A_y"] = eye_tracker.calib_points[1:2, :] @ np.linalg.pinv(X_y)  # y coordinate only

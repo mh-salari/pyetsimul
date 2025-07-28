@@ -20,3 +20,6 @@ requires-python = ">=3.13"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["et_simul*"]
+
+[tool.ruff]
+line-length = 119

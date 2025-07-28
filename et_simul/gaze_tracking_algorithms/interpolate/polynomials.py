@@ -115,9 +115,7 @@ def blignaut_wium_2013(x, y):
     Returns:
         2x7 feature matrix
     """
-    return np.array(
-        [[1, x, x**3, y**2, x * y, 0, 0], [1, x, x**2, y, y**2, x * y, x**2 * y]]
-    )
+    return np.array([[1, x, x**3, y**2, x * y, 0, 0], [1, x, x**2, y, y**2, x * y, x**2 * y]])
 
 
 # Dictionary mapping polynomial names to functions

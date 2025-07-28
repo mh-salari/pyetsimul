@@ -16,16 +16,17 @@ from .estimate_cc import estimate_cc_hennessey
 @dataclass
 class PredictionResult:
     """Detailed prediction result for Hennessey method containing all intermediate values.
-    
+
     Attributes:
         gaze_point: Predicted gaze position [x, y] or None if prediction failed
         pc: Pupil center coordinates (estimated 3D position)
-        cr: Corneal reflection coordinates in camera image  
+        cr: Corneal reflection coordinates in camera image
         cc: Estimated corneal center position (3D)
         gaze3d: 3D gaze direction vector
         r_pupil: Estimated pupil radius
         prediction_successful: Whether prediction was successful
     """
+
     gaze_point: Optional[np.ndarray] = None
     pc: Optional[np.ndarray] = None
     cr: Optional[np.ndarray] = None
@@ -33,12 +34,12 @@ class PredictionResult:
     gaze3d: Optional[np.ndarray] = None
     r_pupil: Optional[float] = None
     prediction_successful: bool = False
-    
+
     @property
     def gaze(self) -> Optional[np.ndarray]:
         """Convenience property to access gaze point."""
         return self.gaze_point
-    
+
     def __bool__(self) -> bool:
         """Return True if prediction was successful."""
         return self.prediction_successful
@@ -67,9 +68,7 @@ def _predict_base(et, camimg):
     # Find CC
     # Line 25-26: cc_estim=estimate_cc_hennessey(et.cameras{1}, et.lights, camimg{1}.cr, ...
     #             r_cornea_assumed);
-    cc_estim = estimate_cc_hennessey(
-        et.cameras[0], et.lights, camimg[0]["cr"], r_cornea_assumed
-    )
+    cc_estim = estimate_cc_hennessey(et.cameras[0], et.lights, camimg[0]["cr"], r_cornea_assumed)
 
     # Check if CR estimation failed
     if cc_estim is None:
@@ -111,9 +110,7 @@ def _predict_base(et, camimg):
         #             camera_unproject(et.cameras{1}, camimg{1}.pupil, 1.0) - ...
         #             repmat(et.cameras{1}.trans(:,4), 1, size(camimg{1}.pupil, 2));
         unprojected = et.cameras[0].unproject(camimg[0]["pupil"], 1.0)
-        camera_pos = np.tile(
-            et.cameras[0].trans[:, 3:4], (1, camimg[0]["pupil"].shape[1])
-        )
+        camera_pos = np.tile(et.cameras[0].trans[:, 3:4], (1, camimg[0]["pupil"].shape[1]))
         pupil_rays = unprojected - camera_pos
 
         # Initialize array of pupil points
@@ -143,9 +140,7 @@ def _predict_base(et, camimg):
             # find pupil contour point. If we don't hit the sphere, ignore the ray.
             # Line 67-68: pt=intersect_ray_sphere(U0, Ud, cc_estim, ...
             #             sqrt(rpc_assumed^2+r_pupil^2));
-            pt_tuple = intersect_ray_sphere(
-                U0, Ud, cc_estim, np.sqrt(rpc_assumed**2 + r_pupil**2)
-            )
+            pt_tuple = intersect_ray_sphere(U0, Ud, cc_estim, np.sqrt(rpc_assumed**2 + r_pupil**2))
             # Line 69-71: if ~isempty(pt) pupil_points(:,j)=pt; end
             if pt_tuple[0] is not None:  # Check if intersection exists
                 pt = pt_tuple[0]  # Take the closer intersection
@@ -177,9 +172,7 @@ def _predict_base(et, camimg):
         dir = unprojected_pc - et.cameras[0].trans[:, 3]
         # Line 81-82: [U0, Ud]=refract_ray_sphere(et.cameras{1}.trans(:,4), dir, ...
         #             cc_estim, r_cornea_assumed, 1, 1.376);
-        U0, Ud = refract_ray_sphere(
-            et.cameras[0].trans[:, 3], dir, cc_estim, r_cornea_assumed, 1, 1.376
-        )
+        U0, Ud = refract_ray_sphere(et.cameras[0].trans[:, 3], dir, cc_estim, r_cornea_assumed, 1, 1.376)
         # Line 83: pc_estim=intersect_ray_sphere(U0, Ud, cc_estim, rpc_assumed);
         pc_estim_tuple = intersect_ray_sphere(U0, Ud, cc_estim, rpc_assumed)
         if pc_estim_tuple[0] is not None:
@@ -201,9 +194,7 @@ def _predict_base(et, camimg):
 
     # Line 92-93: x=intersect_ray_plane(cc_estim, gaze3d, [0 0 0 1]', ...
     #             [0 1 0 0]');
-    x = intersect_ray_plane(
-        cc_estim, gaze3d, np.array([0, 0, 0, 1]), np.array([0, 1, 0, 0])
-    )
+    x = intersect_ray_plane(cc_estim, gaze3d, np.array([0, 0, 0, 1]), np.array([0, 1, 0, 0]))
     # Line 94: gaze=[x(1) x(3)]';
     gaze = np.array([x[0], x[2]])
 
@@ -226,10 +217,10 @@ def predict(et, camimg) -> PredictionResult:
         PredictionResult: Detailed prediction result with all intermediate values
     """
     result = PredictionResult()
-    
+
     # Extract CR from camera image
     result.cr = camimg[0]["cr"][0] if camimg[0]["cr"] else None
-    
+
     # Line 21: [gaze, cc_estim, gaze3d]=hennessey_eval_base(et, camimg);
     gaze, cc_estim, gaze3d, pc_estim, r_pupil = _predict_base(et, camimg)
 
@@ -250,9 +241,7 @@ def predict(et, camimg) -> PredictionResult:
     # Intersect the gaze line with the plane to see where it hits
     # Line 35-36: x=intersect_ray_plane(cc_estim, gaze3d, [0 0 0 1]', ...
     #             [0 1 0 0]');
-    x = intersect_ray_plane(
-        cc_estim, gaze3d, np.array([0, 0, 0, 1]), np.array([0, 1, 0, 0])
-    )
+    x = intersect_ray_plane(cc_estim, gaze3d, np.array([0, 0, 0, 1]), np.array([0, 1, 0, 0]))
     # Line 37: gaze=[x(1) x(3)]';
     gaze = np.array([x[0], x[2]])
 

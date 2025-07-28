@@ -28,7 +28,7 @@ def reflect_objective(a, L, C, S0, Sr):
         and U0 is the potential glint position
     """
     # Suppress numpy warnings to provide cleaner reflection error messages
-    with np.errstate(invalid='ignore', divide='ignore'):
+    with np.errstate(invalid="ignore", divide="ignore"):
         # to_c=(C-S0)/norm(C-S0)
         to_c = (C - S0) / np.linalg.norm(C - S0)
 

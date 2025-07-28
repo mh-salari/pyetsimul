@@ -301,9 +301,7 @@ class Camera:
         # Line 36: c.rest_trans=c.trans;
         self.rest_trans = self.trans.copy()
 
-    def take_image(
-        self, e: "Eye", lights: List[Light], use_refraction: bool = True
-    ) -> Dict[str, Any]:
+    def take_image(self, e: "Eye", lights: List[Light], use_refraction: bool = True) -> Dict[str, Any]:
         """Computes the image of an eye seen by a camera.
 
         camimg = take_image(camera, e, lights) computes the image of the

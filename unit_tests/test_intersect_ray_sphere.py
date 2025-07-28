@@ -15,12 +15,8 @@ def test_two_intersections():
     pos1, pos2 = intersect_ray_sphere(R0, Rd, S0, Sr)
 
     # MATLAB reference values
-    expected_pos1 = np.array(
-        [0.0000000000000000, 0.0000000000000000, -1.0000000000000000]
-    )
-    expected_pos2 = np.array(
-        [0.0000000000000000, 0.0000000000000000, 1.0000000000000000]
-    )
+    expected_pos1 = np.array([0.0000000000000000, 0.0000000000000000, -1.0000000000000000])
+    expected_pos2 = np.array([0.0000000000000000, 0.0000000000000000, 1.0000000000000000])
 
     assert pos1 is not None
     assert pos2 is not None
@@ -39,9 +35,7 @@ def test_tangent_intersection():
     pos1, pos2 = intersect_ray_sphere(R0, Rd, S0, Sr)
 
     # MATLAB reference values (both identical for tangent)
-    expected_pos = np.array(
-        [0.0000000000000000, 1.0000000000000000, 0.0000000000000000]
-    )
+    expected_pos = np.array([0.0000000000000000, 1.0000000000000000, 0.0000000000000000])
 
     assert pos1 is not None
     assert pos2 is not None
@@ -75,12 +69,8 @@ def test_ray_inside_sphere():
     pos1, pos2 = intersect_ray_sphere(R0, Rd, S0, Sr)
 
     # MATLAB reference values
-    expected_pos1 = np.array(
-        [-2.0000000000000000, 0.0000000000000000, 0.0000000000000000]
-    )
-    expected_pos2 = np.array(
-        [2.0000000000000000, 0.0000000000000000, 0.0000000000000000]
-    )
+    expected_pos1 = np.array([-2.0000000000000000, 0.0000000000000000, 0.0000000000000000])
+    expected_pos2 = np.array([2.0000000000000000, 0.0000000000000000, 0.0000000000000000])
 
     assert pos1 is not None
     assert pos2 is not None
@@ -99,12 +89,8 @@ def test_non_unit_direction():
     pos1, pos2 = intersect_ray_sphere(R0, Rd, S0, Sr)
 
     # MATLAB reference values (same as unit direction case)
-    expected_pos1 = np.array(
-        [0.0000000000000000, 0.0000000000000000, -1.0000000000000000]
-    )
-    expected_pos2 = np.array(
-        [0.0000000000000000, 0.0000000000000000, 1.0000000000000000]
-    )
+    expected_pos1 = np.array([0.0000000000000000, 0.0000000000000000, -1.0000000000000000])
+    expected_pos2 = np.array([0.0000000000000000, 0.0000000000000000, 1.0000000000000000])
 
     assert pos1 is not None
     assert pos2 is not None

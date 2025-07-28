@@ -48,9 +48,7 @@ def manual_eye_gaze_keyboard_control():
     e_ref.look_at(target_point)
     # Find corneal reflections for both lights
 
-    plot_setup_and_camera_view(
-        e_ref, target_point, lights, c, ax1=ax1, ax2=ax2, fig=fig
-    )
+    plot_setup_and_camera_view(e_ref, target_point, lights, c, ax1=ax1, ax2=ax2, fig=fig)
     xlim = ax1.get_xlim()
     ylim = ax1.get_ylim()
     zlim = ax1.get_zlim()
@@ -73,8 +71,8 @@ def manual_eye_gaze_keyboard_control():
         )
         eye_pos = e_base.position
         fig.suptitle(
-            f"Target X={target_point[0]*1000:.1f} mm, Y={target_point[1]*1000:.1f} mm, Z={target_point[2]*1000:.1f} mm\n"
-            f"Eye X={eye_pos[0]*1000:.1f} mm, Y={eye_pos[1]*1000:.1f} mm, Z={eye_pos[2]*1000:.1f} mm",
+            f"Target X={target_point[0] * 1000:.1f} mm, Y={target_point[1] * 1000:.1f} mm, Z={target_point[2] * 1000:.1f} mm\n"
+            f"Eye X={eye_pos[0] * 1000:.1f} mm, Y={eye_pos[1] * 1000:.1f} mm, Z={eye_pos[2] * 1000:.1f} mm",
             fontsize=14,
         )
         fig.canvas.draw_idle()

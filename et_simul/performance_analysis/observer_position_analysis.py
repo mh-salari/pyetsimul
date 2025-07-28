@@ -43,12 +43,8 @@ def accuracy_over_observer_positions(
 
     # Define observer position grid - move observer by ±movement_range from calibration position
     calib_x, calib_y, calib_z = e.position
-    X = np.linspace(
-        calib_x - movement_range, calib_x + movement_range, grid_size
-    )  # ±movement_range from calib X
-    Y = np.linspace(
-        calib_y - movement_range, calib_y + movement_range, grid_size
-    )  # ±movement_range from calib Y
+    X = np.linspace(calib_x - movement_range, calib_x + movement_range, grid_size)  # ±movement_range from calib X
+    Y = np.linspace(calib_y - movement_range, calib_y + movement_range, grid_size)  # ±movement_range from calib Y
     Z = calib_z  # Fix Z to calibration position
 
     # Initialize result arrays
@@ -71,16 +67,14 @@ def accuracy_over_observer_positions(
 
             # Get predicted gaze position directly
             predicted_gaze = et.estimate_gaze_at(e, gaze_target)
-            
+
             if predicted_gaze is not None and predicted_gaze.gaze_point is not None:
                 # Calculate error in mm
                 U[j, i] = predicted_gaze.gaze_point[0] - gaze_target[0]
                 V[j, i] = predicted_gaze.gaze_point[1] - gaze_target[1]
-                
+
                 # Compute error in degrees using utility function
-                errs_deg[j, i] = calculate_angular_error_degrees(
-                    gaze_target, predicted_gaze.gaze_point, e.position
-                )
+                errs_deg[j, i] = calculate_angular_error_degrees(gaze_target, predicted_gaze.gaze_point, e.position)
             else:
                 # Handle prediction failure
                 U[j, i] = np.nan
@@ -96,12 +90,12 @@ def accuracy_over_observer_positions(
     errors = calculate_error_statistics(U, V, errs_deg)
 
     # Display statistics
-    print(f'Maximum error {errors["mtr"]["max"] * 1e3:.3g} mm')
-    print(f'Mean error {errors["mtr"]["mean"] * 1e3:.3g} mm')
-    print(f'Standard deviation {errors["mtr"]["std"] * 1e3:.3g} mm')
+    print(f"Maximum error {errors['mtr']['max'] * 1e3:.3g} mm")
+    print(f"Mean error {errors['mtr']['mean'] * 1e3:.3g} mm")
+    print(f"Standard deviation {errors['mtr']['std'] * 1e3:.3g} mm")
 
     # Plot using shared utility with movement range in title
-    title_prefix = f'Movement ±{movement_range*1000:.0f}mm'
+    title_prefix = f"Movement ±{movement_range * 1000:.0f}mm"
     plot_error_vectors(X, Y, U, V, errors, title_prefix=title_prefix)
 
     return errors

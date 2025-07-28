@@ -32,9 +32,7 @@ def hennessey_calib(et, calib_data):
     for i in range(et.calib_points.shape[1]):
         # Line 27-28: [gaze_measured(:,i), cc_estim, gaze3d_measured(:,i)]= ...
         #             hennessey_eval_base(et, calib_data{i}.camimg);
-        gaze_result, cc_estim, gaze3d_result, _, _ = _predict_base(
-            et, calib_data[i]["camimg"]
-        )
+        gaze_result, cc_estim, gaze3d_result, _, _ = _predict_base(et, calib_data[i]["camimg"])
 
         # Skip this calibration point if prediction failed
         if gaze_result is None:
@@ -46,16 +44,12 @@ def hennessey_calib(et, calib_data):
         # Line 29-31: gaze3d_desired(:,i)= ...
         #             [et.calib_points(1,i) 0 et.calib_points(2,i) 1]' - ...
         #             cc_estim;
-        gaze3d_desired[:, i] = (
-            np.array([et.calib_points[0, i], 0, et.calib_points[1, i], 1]) - cc_estim
-        )
+        gaze3d_desired[:, i] = np.array([et.calib_points[0, i], 0, et.calib_points[1, i], 1]) - cc_estim
 
     # For hennessey config, only compute the hennessey recalibration that will actually be used
     # Line 34-35: et.state.recalib_hennessey=recalib_hennessey_calib(gaze_measured, ...
     #             et.calib_points);
-    et.state["recalib_hennessey"] = recalib_hennessey_calib(
-        gaze_measured, et.calib_points
-    )
+    et.state["recalib_hennessey"] = recalib_hennessey_calib(gaze_measured, et.calib_points)
 
     # Note: Other recalibration types are computed in original MATLAB but not used for hennessey config
     # Skipping them to keep implementation focused

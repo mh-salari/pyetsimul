@@ -15,12 +15,8 @@ def test_basic_center_reflection():
     U0, Ud = reflect_ray_sphere(R0, Rd, S0, Sr)
 
     # MATLAB reference values
-    expected_U0 = np.array(
-        [0.0000000000000000, 0.0000000000000000, -2.0000000000000000]
-    )
-    expected_Ud = np.array(
-        [0.0000000000000000, 0.0000000000000000, -1.0000000000000000]
-    )
+    expected_U0 = np.array([0.0000000000000000, 0.0000000000000000, -2.0000000000000000])
+    expected_Ud = np.array([0.0000000000000000, 0.0000000000000000, -1.0000000000000000])
 
     assert U0 is not None
     assert Ud is not None
@@ -39,12 +35,8 @@ def test_angled_reflection():
     U0, Ud = reflect_ray_sphere(R0, Rd, S0, Sr)
 
     # MATLAB reference values
-    expected_U0 = np.array(
-        [-0.8660254037844397, -0.8660254037844397, -0.8660254037844397]
-    )
-    expected_Ud = np.array(
-        [-0.5773502691896256, -0.5773502691896256, -0.5773502691896256]
-    )
+    expected_U0 = np.array([-0.8660254037844397, -0.8660254037844397, -0.8660254037844397])
+    expected_Ud = np.array([-0.5773502691896256, -0.5773502691896256, -0.5773502691896256])
 
     assert U0 is not None
     assert Ud is not None

@@ -23,9 +23,7 @@ def test_round_trip_conversion():
 
         # Check accuracy
         error = np.linalg.norm(gaze[:3] - gaze_new[:3])
-        assert (
-            error < 1e-8
-        ), f"Round-trip error {error:.2e} exceeds tolerance at ({x}, {y})"
+        assert error < 1e-8, f"Round-trip error {error:.2e} exceeds tolerance at ({x}, {y})"
 
 
 def test_forward_gaze():
@@ -68,9 +66,7 @@ def test_grid_conversion_accuracy():
             error = np.linalg.norm(gaze[:3] - gaze_new[:3])
             max_error = max(max_error, error)
 
-            assert (
-                error < tolerance
-            ), f"Error {error:.2e} exceeds tolerance at ({x}, {y})"
+            assert error < tolerance, f"Error {error:.2e} exceeds tolerance at ({x}, {y})"
 
     assert max_error < tolerance
 

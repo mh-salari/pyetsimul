@@ -71,7 +71,7 @@ class HennesseyTracker(EyeTracker):
         """Predict gaze position for Hennessey method.
 
         Based on hennessey_eval.m and hennessey_eval_base.m
-        
+
         Returns:
             PredictionResult: Detailed prediction result with all intermediate values
         """

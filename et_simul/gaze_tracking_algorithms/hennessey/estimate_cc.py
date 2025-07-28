@@ -83,9 +83,7 @@ def estimate_cc_hennessey(c, l, cr, r_cornea_assumed=None):
         Y_cross = np.cross(X[:3].flatten(), Z[:3].flatten())
         Y = np.append(Y_cross, 0).reshape(-1, 1)  # Make column vector
         # Line 52: params.R{j}=[X Y Z c.trans(:,4)];
-        params["R"].append(
-            np.column_stack([X.flatten(), Y.flatten(), Z.flatten(), c.trans[:, 3]])
-        )
+        params["R"].append(np.column_stack([X.flatten(), Y.flatten(), Z.flatten(), c.trans[:, 3]]))
 
         # Compute other required quantities
         # Line 55: params.alpha(j)=acos(l_vec'*cr_vec/norm(l_vec));
@@ -149,9 +147,7 @@ def objective_func(params, gx):
         cx = gx[j] - params["r_cornea"] * np.sin((params["alpha"][j] - beta) / 2)
         # Line 80-81: cz=gx(j)*tan(params.alpha(j)) + ...
         #             params.r_cornea*cos((params.alpha(j)-beta)/2);
-        cz = gx[j] * np.tan(params["alpha"][j]) + params["r_cornea"] * np.cos(
-            (params["alpha"][j] - beta) / 2
-        )
+        cz = gx[j] * np.tan(params["alpha"][j]) + params["r_cornea"] * np.cos((params["alpha"][j] - beta) / 2)
 
         # Line 83: cc(:,j)=params.R{j} * [cx; 0; cz; 1];
         cc[:, j] = params["R"][j] @ np.array([cx, 0, cz, 1])

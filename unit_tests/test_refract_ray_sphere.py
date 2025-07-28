@@ -39,9 +39,7 @@ def test_oblique_incidence():
     U0, Ud = refract_ray_sphere(R0, Rd, S0, Sr, n_outside, n_sphere)
 
     # MATLAB reference values with many decimals
-    expected_U0 = np.array(
-        [-0.0000000000000013, 0.0000000000000000, 2.9999999999999987]
-    )
+    expected_U0 = np.array([-0.0000000000000013, 0.0000000000000000, 2.9999999999999987])
     expected_Ud = np.array([0.4714045207910319, 0.0000000000000000, 0.8819171036881968])
 
     assert U0 is not None

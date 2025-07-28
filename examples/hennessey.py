@@ -27,7 +27,7 @@ def main():
 
     eye_position = np.array(args.eye_position)
     print(
-        f"Using eye position: X={eye_position[0]*1000:.1f}mm, Y={eye_position[1]*1000:.1f}mm, Z={eye_position[2]*1000:.1f}mm\n"
+        f"Using eye position: X={eye_position[0] * 1000:.1f}mm, Y={eye_position[1] * 1000:.1f}mm, Z={eye_position[2] * 1000:.1f}mm\n"
     )
 
     # Create eye configuration

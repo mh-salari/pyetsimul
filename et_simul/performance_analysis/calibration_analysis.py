@@ -53,9 +53,7 @@ def accuracy_at_calibration_points(et, eye):
     _print_polynomial_parameters(et)
 
     # Test prediction at each calibration point - side-by-side format
-    print(
-        f"\n{'Point':<6} {'Target (mm)':<18} {'Predicted (mm)':<18} {'Error (mm)':<12} {'Error (°)':<10}"
-    )
+    print(f"\n{'Point':<6} {'Target (mm)':<18} {'Predicted (mm)':<18} {'Error (mm)':<12} {'Error (°)':<10}")
     print("-" * 75)
 
     for i in range(n_points):
@@ -76,17 +74,15 @@ def accuracy_at_calibration_points(et, eye):
             V[i] = predicted_gaze.gaze_point[1] - actual_y
 
             # Compute error in degrees
-            errs_deg[i] = calculate_angular_error_degrees(
-                actual_point, predicted_gaze.gaze_point, e.position
-            )
+            errs_deg[i] = calculate_angular_error_degrees(actual_point, predicted_gaze.gaze_point, e.position)
 
             # Progress output - side-by-side format
             error_mm = np.sqrt(U[i] ** 2 + V[i] ** 2)
             print(
-                f"{i+1:<6} "
-                f"({actual_x*1000:>6.1f}, {actual_y*1000:>6.1f}){'':<1} "
-                f"({predicted_gaze.gaze_point[0]*1000:>6.1f}, {predicted_gaze.gaze_point[1]*1000:>6.1f}){'':<1} "
-                f"{error_mm*1000:>8.2f}{'':<4} "
+                f"{i + 1:<6} "
+                f"({actual_x * 1000:>6.1f}, {actual_y * 1000:>6.1f}){'':<1} "
+                f"({predicted_gaze.gaze_point[0] * 1000:>6.1f}, {predicted_gaze.gaze_point[1] * 1000:>6.1f}){'':<1} "
+                f"{error_mm * 1000:>8.2f}{'':<4} "
                 f"{errs_deg[i]:>8.4f}"
             )
         else:
@@ -95,8 +91,8 @@ def accuracy_at_calibration_points(et, eye):
             V[i] = np.nan
             errs_deg[i] = np.nan
             print(
-                f"{i+1:<6} "
-                f"({actual_x*1000:>6.1f}, {actual_y*1000:>6.1f}){'':<7} "
+                f"{i + 1:<6} "
+                f"({actual_x * 1000:>6.1f}, {actual_y * 1000:>6.1f}){'':<7} "
                 f"{'FAILED':<18} "
                 f"{'--':<12} "
                 f"{'--':<10}"
@@ -120,23 +116,13 @@ def accuracy_at_calibration_points(et, eye):
         )
 
         # Display statistics
-        print(
-            f"\nCalibration Analysis Results ({n_valid}/{n_total} points successful):"
-        )
-        print(
-            f'Maximum error {errors["mtr"]["max"] * 1e3:.3g} mm ({errors["deg"]["max"]:.4f}°)'
-        )
-        print(
-            f'Mean error {errors["mtr"]["mean"] * 1e3:.3g} mm ({errors["deg"]["mean"]:.4f}°)'
-        )
-        print(
-            f'Standard deviation {errors["mtr"]["std"] * 1e3:.3g} mm ({errors["deg"]["std"]:.4f}°)'
-        )
+        print(f"\nCalibration Analysis Results ({n_valid}/{n_total} points successful):")
+        print(f"Maximum error {errors['mtr']['max'] * 1e3:.3g} mm ({errors['deg']['max']:.4f}°)")
+        print(f"Mean error {errors['mtr']['mean'] * 1e3:.3g} mm ({errors['deg']['mean']:.4f}°)")
+        print(f"Standard deviation {errors['mtr']['std'] * 1e3:.3g} mm ({errors['deg']['std']:.4f}°)")
 
         # Create interactive visualization
-        _create_interactive_calibration_plot(
-            et, e, X, Y, U, V, predicted_points, valid_mask, errs_deg
-        )
+        _create_interactive_calibration_plot(et, e, X, Y, U, V, predicted_points, valid_mask, errs_deg)
     else:
         print(f"\nCalibration Analysis Results: ALL {n_total} POINTS FAILED")
         errors = {
@@ -147,9 +133,7 @@ def accuracy_at_calibration_points(et, eye):
     return errors
 
 
-def _create_interactive_calibration_plot(
-    et, eye, X, Y, U, V, predicted_points, valid_mask, errs_deg
-):
+def _create_interactive_calibration_plot(et, eye, X, Y, U, V, predicted_points, valid_mask, errs_deg):
     """Create interactive calibration plot with keyboard controls."""
     from .analysis_utils import plt
     from ..visualization import prepare_eye_data_for_plots, plot_setup
@@ -158,9 +142,7 @@ def _create_interactive_calibration_plot(
     fig = plt.figure(figsize=(20, 8))
 
     # Interactive state
-    current_target = np.array(
-        [np.mean(et.calib_points[0, :]), np.mean(et.calib_points[1, :])]
-    )
+    current_target = np.array([np.mean(et.calib_points[0, :]), np.mean(et.calib_points[1, :])])
     step_size = 10e-3  # 10mm steps
 
     def update_display():
@@ -179,9 +161,7 @@ def _create_interactive_calibration_plot(
             calib_points_list.append([et.calib_points[0, i], et.calib_points[1, i]])
 
         # Prepare eye data
-        prepared_data = prepare_eye_data_for_plots(
-            eye, target_3d, et.lights, et.cameras[0]
-        )
+        prepared_data = prepare_eye_data_for_plots(eye, target_3d, et.lights, et.cameras[0])
 
         # Plot 3D setup
         plot_setup(
@@ -421,5 +401,3 @@ def _print_polynomial_parameters(et):
                 print(f"  [{', '.join(f'{val:8.4f}' for val in row)}]")
     else:
         print("No calibration parameters found (tracker not calibrated)")
-
-

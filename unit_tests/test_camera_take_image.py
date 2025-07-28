@@ -14,9 +14,7 @@ def test_camera_take_image_with_refraction():
 
     # Camera at origin pointing at eye
     c = Camera()
-    c.trans[0:3, 0:3] = np.array(
-        [[1, 0, 0], [0, 0, -1], [0, 1, 0]]
-    )  # Hennessey-style rotation
+    c.trans[0:3, 0:3] = np.array([[1, 0, 0], [0, 0, -1], [0, 1, 0]])  # Hennessey-style rotation
     c.rest_trans = c.trans.copy()
     c.point_at(e.trans[:, 3])  # Point at eye
     c.err = 0
@@ -59,16 +57,12 @@ def test_camera_take_image_with_refraction():
     # Test corneal reflexes
     assert len(camimg["cr"]) == 2, "Should have 2 corneal reflexes"
     for i, (expected, actual) in enumerate(zip(expected_cr, camimg["cr"])):
-        assert actual is not None, f"Light {i+1} CR should be visible"
-        np.testing.assert_allclose(
-            actual, expected, atol=tolerance, err_msg=f"Light {i+1} CR mismatch"
-        )
+        assert actual is not None, f"Light {i + 1} CR should be visible"
+        np.testing.assert_allclose(actual, expected, atol=tolerance, err_msg=f"Light {i + 1} CR mismatch")
 
     # Test pupil center
     assert camimg["pc"] is not None, "Pupil center should be visible"
-    np.testing.assert_allclose(
-        camimg["pc"], expected_pc, atol=tolerance, err_msg="Pupil center mismatch"
-    )
+    np.testing.assert_allclose(camimg["pc"], expected_pc, atol=tolerance, err_msg="Pupil center mismatch")
 
     # Test pupil boundary points
     assert camimg["pupil"].shape[0] == 2, "Should have 2D pupil coordinates"
@@ -127,12 +121,12 @@ def test_camera_take_image_without_refraction():
     # Test that corneal reflexes are the same
     assert len(camimg["cr"]) == 2
     for i, (expected, actual) in enumerate(zip(expected_cr, camimg["cr"])):
-        assert actual is not None, f"Light {i+1} CR should be visible"
+        assert actual is not None, f"Light {i + 1} CR should be visible"
         np.testing.assert_allclose(
             actual,
             expected,
             atol=tolerance,
-            err_msg=f"Light {i+1} CR mismatch in non-refraction test",
+            err_msg=f"Light {i + 1} CR mismatch in non-refraction test",
         )
 
     # Test pupil center

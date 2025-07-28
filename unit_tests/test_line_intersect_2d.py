@@ -19,9 +19,7 @@ def test_horizontal_vertical_lines():
     # MATLAB reference values
     expected_intersection = np.array([0.3, 0.5])
 
-    np.testing.assert_allclose(
-        intersection, expected_intersection, rtol=1e-14, atol=1e-15
-    )
+    np.testing.assert_allclose(intersection, expected_intersection, rtol=1e-14, atol=1e-15)
 
 
 def test_non_integer_coordinates():
@@ -39,9 +37,7 @@ def test_non_integer_coordinates():
     # MATLAB reference values
     expected_intersection = np.array([0.5, 0.5])
 
-    np.testing.assert_allclose(
-        intersection, expected_intersection, rtol=1e-14, atol=1e-15
-    )
+    np.testing.assert_allclose(intersection, expected_intersection, rtol=1e-14, atol=1e-15)
 
 
 def test_output_properties():
@@ -68,9 +64,7 @@ def test_output_properties():
     p3_parallel = np.array([0.0, 1.0])
     p4_parallel = np.array([1.0, 2.0])  # Parallel to first line
 
-    intersection_parallel = line_intersect_2d(
-        p1_parallel, p2_parallel, p3_parallel, p4_parallel
-    )
+    intersection_parallel = line_intersect_2d(p1_parallel, p2_parallel, p3_parallel, p4_parallel)
 
     # Should return NaN for parallel lines (like MATLAB)
     assert np.all(np.isnan(intersection_parallel))

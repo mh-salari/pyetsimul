@@ -24,12 +24,12 @@ class Light:
 
     def __init__(self, position: np.ndarray):
         """Initialize light with either 3D Euclidean or 4D homogeneous coordinates.
-        
+
         Args:
             position: Either [x, y, z] or [x, y, z, 1] coordinates in meters
         """
         position = np.array(position, dtype=float)
-        
+
         if len(position) == 3:
             # Euclidean coordinates
             self.position = position
@@ -64,11 +64,10 @@ class Light:
             raise ValueError(f"Must be 4D homogeneous coordinates, got {len(value)}D")
         if value[3] != 1:
             raise ValueError(f"Homogeneous coordinates must have w=1, got w={value[3]}")
-            
+
         self._pos_homogeneous = value
         self._position = value[:3]  # Sync back to position
 
     def __repr__(self) -> str:
         """String representation showing the light position."""
         return f"Light(position={self._position})"
-

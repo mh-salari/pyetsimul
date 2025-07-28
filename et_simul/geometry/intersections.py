@@ -29,7 +29,7 @@ def intersect_ray_sphere(R0, Rd, S0, Sr):
         Tuple of (pos, pos2) where pos is closer intersection, pos2 is farther.
         Both are 3D coordinates. Returns (None, None) if no intersection.
     """
-    
+
     # Extract 3D components for calculations
     R0_3d = R0[:3] if len(R0) == 4 else R0
     Rd_3d = Rd[:3] if len(Rd) == 4 else Rd
@@ -39,17 +39,8 @@ def intersect_ray_sphere(R0, Rd, S0, Sr):
     Rd_3d = Rd_3d / np.linalg.norm(Rd_3d)
 
     # Quadratic equation coefficients
-    b = 2 * (
-        Rd_3d[0] * (R0_3d[0] - S0_3d[0])
-        + Rd_3d[1] * (R0_3d[1] - S0_3d[1])
-        + Rd_3d[2] * (R0_3d[2] - S0_3d[2])
-    )
-    c = (
-        (R0_3d[0] - S0_3d[0]) ** 2
-        + (R0_3d[1] - S0_3d[1]) ** 2
-        + (R0_3d[2] - S0_3d[2]) ** 2
-        - Sr**2
-    )
+    b = 2 * (Rd_3d[0] * (R0_3d[0] - S0_3d[0]) + Rd_3d[1] * (R0_3d[1] - S0_3d[1]) + Rd_3d[2] * (R0_3d[2] - S0_3d[2]))
+    c = (R0_3d[0] - S0_3d[0]) ** 2 + (R0_3d[1] - S0_3d[1]) ** 2 + (R0_3d[2] - S0_3d[2]) ** 2 - Sr**2
 
     # discriminant
     disc = b**2 - 4 * c

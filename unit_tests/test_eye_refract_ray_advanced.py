@@ -17,9 +17,7 @@ def test_optical_axis_ray():
     # MATLAB reference values
     expected_O0 = np.array([0.0000000000000000, 0.0000000000000000, 0.0036299999993510])
     expected_I0 = np.array([0.0000000000000000, 0.0000000000000000, 0.0012600000000000])
-    expected_Id = np.array(
-        [0.0000000000000000, 0.0000000000000000, -1.0000000000000000]
-    )
+    expected_Id = np.array([0.0000000000000000, 0.0000000000000000, -1.0000000000000000])
 
     assert O0 is not None
     assert I0 is not None

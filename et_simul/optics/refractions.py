@@ -144,9 +144,7 @@ def refract_ray_sphere(R0, Rd, S0, Sr, n_outside, n_sphere):
     costh2 = np.sqrt(costh2_squared)
 
     # Snell's law refraction formula
-    Ud_3d = (n_outside / n_sphere) * Rd_normalized + (
-        costh2 - (n_outside / n_sphere) * costh1
-    ) * N
+    Ud_3d = (n_outside / n_sphere) * Rd_normalized + (costh2 - (n_outside / n_sphere) * costh1) * N
 
     # Return results in same coordinate type as input
     if is_homogeneous:

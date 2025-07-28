@@ -42,9 +42,7 @@ def gaze2angle(gaze, rest_pos=None):
     angles[0] = np.arctan2(gaze_transformed[0], -gaze_transformed[2])
 
     # angles(2) = atan2(gaze(2), norm(gaze([1,3])))
-    angles[1] = np.arctan2(
-        gaze_transformed[1], np.linalg.norm([gaze_transformed[0], gaze_transformed[2]])
-    )
+    angles[1] = np.arctan2(gaze_transformed[1], np.linalg.norm([gaze_transformed[0], gaze_transformed[2]]))
 
     return angles
 
@@ -82,15 +80,11 @@ def angle2gaze(angles, rest_pos=None):
 
     # rotat_matrix_x_z
     cos_a1, sin_a1 = np.cos(angles[0]), np.sin(angles[0])
-    rotat_matrix_x_z = np.array(
-        [[cos_a1, 0, -sin_a1, 0], [0, 1, 0, 0], [sin_a1, 0, cos_a1, 0], [0, 0, 0, 1]]
-    )
+    rotat_matrix_x_z = np.array([[cos_a1, 0, -sin_a1, 0], [0, 1, 0, 0], [sin_a1, 0, cos_a1, 0], [0, 0, 0, 1]])
 
     # rotat_matrix_y_z
     cos_a2, sin_a2 = np.cos(angles[1]), np.sin(angles[1])
-    rotat_matrix_y_z = np.array(
-        [[1, 0, 0, 0], [0, cos_a2, -sin_a2, 0], [0, sin_a2, cos_a2, 0], [0, 0, 0, 1]]
-    )
+    rotat_matrix_y_z = np.array([[1, 0, 0, 0], [0, cos_a2, -sin_a2, 0], [0, sin_a2, cos_a2, 0], [0, 0, 0, 1]])
 
     # Convert 3x3 rest_pos to 4x4 homogeneous matrix
     rest_pos_4x4 = np.zeros((4, 4))
@@ -106,35 +100,35 @@ def angle2gaze(angles, rest_pos=None):
 
 def calculate_angular_error_degrees(actual_point, predicted_point, observer_pos):
     """Calculate angular error in degrees between two gaze points.
-    
+
     This function computes the angular error between actual and predicted gaze positions
     by creating 3D gaze vectors from the observer position to each point, normalizing them,
     and calculating the angle between them using the dot product formula.
-    
+
     Args:
         actual_point: [x, z] actual target position in meters
-        predicted_point: [x, z] predicted gaze position in meters  
+        predicted_point: [x, z] predicted gaze position in meters
         observer_pos: [x, y, z] or [x, y, z, 1] observer position in meters
-        
+
     Returns:
         Angular error in degrees
     """
     # Ensure we use only the first 3 components of observer position
     obs_pos_3d = np.asarray(observer_pos)[:3]
-    
+
     # Create 3D gaze vectors from observer to target points (Y=0 for screen plane)
     gaze3d_real = np.array([actual_point[0], 0, actual_point[1]]) - obs_pos_3d
     gaze3d_measured = np.array([predicted_point[0], 0, predicted_point[1]]) - obs_pos_3d
-    
+
     # Normalize vectors to unit length
     gaze3d_real = gaze3d_real / np.linalg.norm(gaze3d_real)
     gaze3d_measured = gaze3d_measured / np.linalg.norm(gaze3d_measured)
-    
+
     # Calculate angle between vectors using dot product
     # Clip to [-1, 1] to handle numerical precision issues
     dot_product = np.clip(np.dot(gaze3d_real, gaze3d_measured), -1, 1)
-    
+
     # Convert angle from radians to degrees
     angle_deg = 180 / np.pi * np.real(np.arccos(dot_product))
-    
+
     return angle_deg

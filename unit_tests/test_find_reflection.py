@@ -15,9 +15,7 @@ def test_specific_reflection_case():
     U0 = find_reflection(L, C, S0, Sr)
 
     # MATLAB reference values
-    expected_U0 = np.array(
-        [0.1472592734935877, -0.0408954315633531, 0.2069878958069135]
-    )
+    expected_U0 = np.array([0.1472592734935877, -0.0408954315633531, 0.2069878958069135])
 
     np.testing.assert_allclose(U0, expected_U0, rtol=1e-14, atol=1e-15)
 

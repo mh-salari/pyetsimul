@@ -43,20 +43,18 @@ def main():
     # Set gaze target
     target_point = np.array([50e-3, 0, 50e-3, 1])  # 5cm left, at screen plane, 5cm up
 
+    print(f"- Eye position: ({e.position[0] * 1000:.1f}, {e.position[1] * 1000:.1f}, {e.position[2] * 1000:.1f}) mm")
     print(
-        f"- Eye position: ({e.position[0]*1000:.1f}, {e.position[1]*1000:.1f}, {e.position[2]*1000:.1f}) mm"
+        f"- Light 1 position: ({l1.position[0] * 1000:.1f}, {l1.position[1] * 1000:.1f}, {l1.position[2] * 1000:.1f}) mm"
     )
     print(
-        f"- Light 1 position: ({l1.position[0]*1000:.1f}, {l1.position[1]*1000:.1f}, {l1.position[2]*1000:.1f}) mm"
+        f"- Light 2 position: ({l2.position[0] * 1000:.1f}, {l2.position[1] * 1000:.1f}, {l2.position[2] * 1000:.1f}) mm"
     )
     print(
-        f"- Light 2 position: ({l2.position[0]*1000:.1f}, {l2.position[1]*1000:.1f}, {l2.position[2]*1000:.1f}) mm"
+        f"- Camera position: ({c.position[0] * 1000:.1f}, {c.position[1] * 1000:.1f}, {c.position[2] * 1000:.1f}) mm"
     )
     print(
-        f"- Camera position: ({c.position[0]*1000:.1f}, {c.position[1]*1000:.1f}, {c.position[2]*1000:.1f}) mm"
-    )
-    print(
-        f"- Target position: ({target_point[0]*1000:.1f}, {target_point[1]*1000:.1f}, {target_point[2]*1000:.1f}) mm"
+        f"- Target position: ({target_point[0] * 1000:.1f}, {target_point[1] * 1000:.1f}, {target_point[2] * 1000:.1f}) mm"
     )
 
     # Print eye transformation matrix before look_at
@@ -80,7 +78,7 @@ def main():
 
         if cr_3d is not None:
             print(
-                f" CR successfully found at: ({cr_3d[0]*1000:.1f}, {cr_3d[1]*1000:.1f}, {cr_3d[2]*1000:.1f}) mm"
+                f" CR successfully found at: ({cr_3d[0] * 1000:.1f}, {cr_3d[1] * 1000:.1f}, {cr_3d[2] * 1000:.1f}) mm"
             )
         else:
             print(" CR not found - may be outside corneal boundaries")

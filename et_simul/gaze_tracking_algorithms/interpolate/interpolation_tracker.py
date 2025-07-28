@@ -32,10 +32,7 @@ class InterpolationTracker(EyeTracker):
             InterpolationTracker: Configured interpolation eye tracker
         """
         tracker = cls(
-            cameras=cameras,
-            lights=lights,
-            calib_points=np.array(calib_points).T,
-            use_refraction=use_refraction
+            cameras=cameras, lights=lights, calib_points=np.array(calib_points).T, use_refraction=use_refraction
         )
         tracker.polynomial_name = polynomial
         tracker.polynomial_func = get_polynomial(polynomial)

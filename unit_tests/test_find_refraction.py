@@ -44,9 +44,7 @@ def test_different_refractive_indices():
     I = find_refraction(C, O, S0, Sr, n_outside, n_sphere)
 
     # MATLAB reference values
-    expected_I = np.array(
-        [-3.9369221058636397, 5.3748224021012501, -7.4573405767896075]
-    )
+    expected_I = np.array([-3.9369221058636397, 5.3748224021012501, -7.4573405767896075])
 
     assert I is not None
     np.testing.assert_allclose(I, expected_I, rtol=1e-10, atol=1e-10)
@@ -71,9 +69,7 @@ def test_large_sphere():
     I = find_refraction(C, O, S0, Sr, n_outside, n_sphere)
 
     # MATLAB reference values
-    expected_I = np.array(
-        [37.3698407698170811, -10.7448391945206190, 31.4331581538096536]
-    )
+    expected_I = np.array([37.3698407698170811, -10.7448391945206190, 31.4331581538096536])
 
     assert I is not None
     np.testing.assert_allclose(I, expected_I, rtol=1e-10, atol=1e-10)
@@ -107,12 +103,8 @@ def test_snells_law_verification():
     expected_ray_refracted = np.array([0.761852, 0.411524, 0.500230])
 
     np.testing.assert_allclose(n_surface, expected_n_surface, rtol=1e-5, atol=1e-5)
-    np.testing.assert_allclose(
-        ray_incident, expected_ray_incident, rtol=1e-5, atol=1e-5
-    )
-    np.testing.assert_allclose(
-        ray_refracted, expected_ray_refracted, rtol=1e-5, atol=1e-5
-    )
+    np.testing.assert_allclose(ray_incident, expected_ray_incident, rtol=1e-5, atol=1e-5)
+    np.testing.assert_allclose(ray_refracted, expected_ray_refracted, rtol=1e-5, atol=1e-5)
 
     # Verify angles and Snell's law
     cos_theta_i = np.dot(n_surface, ray_incident)
