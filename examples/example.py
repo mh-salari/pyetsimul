@@ -12,9 +12,9 @@ import matplotlib.pyplot as plt
 # Create an eye with a corneal radius of 7.98 mm and its optical axis points along
 # the negative y-axis. (In the eye's local coordinate system, the optical axis
 # points along the negative z-axis. By specifying an eye-to-world transformation
-# matrix that exchanges the y- and z-axis, we make the optical axis of the eye
+# matrix that rotates the coordinate system, we make the optical axis of the eye
 # point along the negative y-axis of the world coordinate system.)
-rotation_matrix = np.array([[1, 0, 0], [0, 0, 1], [0, 1, 0]])
+rotation_matrix = np.array([[1, 0, 0], [0, 0, 1], [0, -1, 0]])
 e = Eye(r_cornea=7.98e-3, fovea_displacement=False)
 e.set_rest_orientation(rotation_matrix)
 

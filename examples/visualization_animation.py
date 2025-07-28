@@ -21,7 +21,7 @@ def manual_eye_gaze_keyboard_control():
     print("  ./,: Move eye closer/farther from camera")
     print("=" * 40)
 
-    rest_orientation = np.array([[1, 0, 0], [0, 0, 1], [0, 1, 0]])
+    rest_orientation = np.array([[1, 0, 0], [0, 0, 1], [0, -1, 0]])
     e_base = Eye()
     e_base.set_rest_orientation(rest_orientation)
     e_base.position = [0, 250e-3, 100e-3]
