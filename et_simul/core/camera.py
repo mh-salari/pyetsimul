@@ -1,3 +1,4 @@
+import warnings
 import numpy as np
 from dataclasses import dataclass, field
 from typing import Tuple, Union, List, Dict, Any, TYPE_CHECKING
@@ -85,10 +86,10 @@ class Camera:
     @orientation.setter
     def orientation(self, value: np.ndarray) -> None:
         """Set the camera's orientation matrix.
-        
+
         Args:
             value: 3x3 rotation matrix (must be right-handed with determinant = +1)
-            
+
         Raises:
             ValueError: If the matrix is not right-handed (det ≠ +1)
         """
@@ -96,12 +97,14 @@ class Camera:
         det = np.linalg.det(value)
         if abs(det - 1.0) > 1e-6:
             if abs(det + 1.0) < 1e-6:
-                raise ValueError("Left-handed coordinate system detected. "
-                               "Camera orientation must be right-handed (det = +1).")
+                raise ValueError(
+                    "Left-handed coordinate system detected. Camera orientation must be right-handed (det = +1)."
+                )
             else:
-                raise ValueError(f"Invalid rotation matrix (det = {det:.3f}). "
-                               "Determinant must be +1 for a proper rotation matrix.")
-        
+                raise ValueError(
+                    f"Invalid rotation matrix (det = {det:.3f}). Determinant must be +1 for a proper rotation matrix."
+                )
+
         self.trans[:3, :3] = value
 
     @property
@@ -388,4 +391,54 @@ class Camera:
         camimg["pupil"] = pupil
         camimg["pc"] = pc
 
+        # Check for problematic eye-camera configurations and issue warnings
+        self._check_eye_camera_configuration(e, pupil)
+
         return camimg
+
+    def _check_eye_camera_configuration(self, eye: "Eye", pupil: np.ndarray) -> None:
+        """Check for problematic eye-camera configurations and issue warnings.
+
+        Args:
+            eye: Eye object to check
+            pupil: Pupil boundary points from get_pupil_in_camera_image
+        """
+
+        # Only check if no pupil is visible
+        if pupil.shape[1] > 0:
+            return
+
+        # Eye's gaze direction in world coordinates
+        eye_gaze = eye.orientation @ np.array([0, 0, -1])
+
+        # Camera's viewing direction (negative of optical axis)
+        camera_viewing = -self.orientation[:, 2]
+
+        # Vector from camera to eye
+        camera_to_eye = eye.position - self.position
+        if np.linalg.norm(camera_to_eye) == 0:
+            warnings.warn("Eye and camera are at the same position. This may result in no visible pupil.", UserWarning)
+            return
+
+        camera_to_eye_norm = camera_to_eye / np.linalg.norm(camera_to_eye)
+
+        # Check if eye is behind camera (dot product < 0)
+        behind_camera = np.dot(camera_to_eye_norm, camera_viewing) < 0
+
+        # Check if eye and camera face same direction (dot product > threshold)
+        same_direction = np.dot(eye_gaze, camera_viewing) > 0.7
+
+        if behind_camera:
+            warnings.warn(
+                f"Eye appears to be positioned behind camera. "
+                f"Eye position: {eye.position}, Camera position: {self.position}. "
+                f"This results in no visible pupil.",
+                UserWarning,
+            )
+        elif same_direction:
+            warnings.warn(
+                f"Eye and camera appear to face the same direction (dot product: {np.dot(eye_gaze, camera_viewing):.3f}). "
+                f"Camera may be seeing the back of the eye, resulting in no visible pupil. "
+                f"Consider adjusting eye or camera orientation.",
+                UserWarning,
+            )
