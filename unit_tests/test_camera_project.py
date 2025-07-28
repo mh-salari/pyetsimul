@@ -131,7 +131,7 @@ def test_center_point():
     np.testing.assert_allclose(dist[0], 200.0, rtol=1e-12, atol=1e-15)
 
     # Should be valid
-    assert valid_condition[0] == True
+    assert valid_condition[0]
 
 
 def test_output_properties():

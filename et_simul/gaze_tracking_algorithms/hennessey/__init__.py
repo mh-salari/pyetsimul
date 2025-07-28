@@ -7,3 +7,5 @@ to estimate gaze direction.
 """
 
 from .hennessey_tracker import HennesseyTracker
+
+__all__ = ["HennesseyTracker"]

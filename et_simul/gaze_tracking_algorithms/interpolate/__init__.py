@@ -5,3 +5,5 @@ for mapping pupil-corneal reflection vectors to gaze coordinates.
 """
 
 from .interpolation_tracker import InterpolationTracker
+
+__all__ = ["InterpolationTracker"]

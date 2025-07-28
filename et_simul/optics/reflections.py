@@ -171,7 +171,7 @@ def reflect_ray_sphere(R0, Rd, S0, Sr):
     S0_orig = S0.copy()
 
     # Extract 3D components for calculations
-    R0_3d = R0[:3] if len(R0) == 4 else R0
+    # R0_3d = R0[:3] if len(R0) == 4 else R0
     Rd_3d = Rd[:3] if len(Rd) == 4 else Rd
     S0_3d = S0[:3] if len(S0) == 4 else S0
 

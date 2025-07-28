@@ -23,3 +23,4 @@ include = ["et_simul*"]
 
 [tool.ruff]
 line-length = 119
+lint.ignore = ["E741"]

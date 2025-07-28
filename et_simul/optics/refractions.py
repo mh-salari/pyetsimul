@@ -111,7 +111,7 @@ def refract_ray_sphere(R0, Rd, S0, Sr, n_outside, n_sphere):
         Returns (None, None) if no intersection.
     """
     # Extract 3D spatial components for calculations
-    R0_3d = R0[:3] if len(R0) > 3 else R0
+    # R0_3d = R0[:3] if len(R0) > 3 else R0
     Rd_3d = Rd[:3] if len(Rd) > 3 else Rd
     S0_3d = S0[:3] if len(S0) > 3 else S0
 
