@@ -5,8 +5,10 @@ at the original calibration points to assess calibration quality.
 """
 
 import numpy as np
+import copy
 from ..geometry.conversions import calculate_angular_error_degrees
-from .analysis_utils import calculate_error_statistics
+from .analysis_utils import calculate_error_statistics, plt
+from ..visualization import prepare_eye_data_for_plots, plot_setup
 
 
 def accuracy_at_calibration_points(et, eye):
@@ -135,11 +137,11 @@ def accuracy_at_calibration_points(et, eye):
 
 def _create_interactive_calibration_plot(et, eye, X, Y, U, V, predicted_points, valid_mask, errs_deg):
     """Create interactive calibration plot with keyboard controls."""
-    from .analysis_utils import plt
-    from ..visualization import prepare_eye_data_for_plots, plot_setup
-
     # Create figure with two subplots: 3D setup and 2D calibration analysis
     fig = plt.figure(figsize=(20, 8))
+
+    # Create a copy of the eye to avoid modifying the original
+    interactive_eye = copy.deepcopy(eye)
 
     # Interactive state
     current_target = np.array([np.mean(et.calib_points[0, :]), np.mean(et.calib_points[1, :])])
@@ -161,7 +163,7 @@ def _create_interactive_calibration_plot(et, eye, X, Y, U, V, predicted_points, 
             calib_points_list.append([et.calib_points[0, i], et.calib_points[1, i]])
 
         # Prepare eye data
-        prepared_data = prepare_eye_data_for_plots(eye, target_3d, et.lights, et.cameras[0])
+        prepared_data = prepare_eye_data_for_plots(interactive_eye, target_3d, et.lights, et.cameras[0])
 
         # Plot 3D setup
         plot_setup(
@@ -245,7 +247,7 @@ def _create_interactive_calibration_plot(et, eye, X, Y, U, V, predicted_points, 
             )
 
         # Get real-time prediction for current target
-        current_prediction = et.estimate_gaze_at(eye, current_target)
+        current_prediction = et.estimate_gaze_at(interactive_eye, current_target)
 
         if current_prediction is not None and current_prediction.gaze_point is not None:
             # Plot current target and prediction
@@ -288,7 +290,7 @@ def _create_interactive_calibration_plot(et, eye, X, Y, U, V, predicted_points, 
             # Calculate current error
             current_error_mm = np.sqrt(error_x**2 + error_y**2)
             current_error_deg = calculate_angular_error_degrees(
-                current_target, current_prediction.gaze_point, eye.position
+                current_target, current_prediction.gaze_point, interactive_eye.position
             )
 
             # Create calibration error summary for title
@@ -301,7 +303,7 @@ def _create_interactive_calibration_plot(et, eye, X, Y, U, V, predicted_points, 
             # Update title with current error and calibration errors
             ax.set_title(
                 f"Interactive Calibration Analysis\n"
-                f"Current: {current_error_mm:.2f}mm ({current_error_deg:.4f}°)\n"
+                f"Current gaze error: {current_error_mm:.2f}mm ({current_error_deg:.4f}°)\n"
                 f"Calibration errors: {calib_errors_text}"
             )
         else:
@@ -324,7 +326,7 @@ def _create_interactive_calibration_plot(et, eye, X, Y, U, V, predicted_points, 
 
             ax.set_title(
                 f"Interactive Calibration Analysis\n"
-                f"Current: PREDICTION FAILED\n"
+                f"Current gaze error: PREDICTION FAILED\n"
                 f"Calibration errors: {calib_errors_text}"
             )
 
@@ -338,12 +340,14 @@ def _create_interactive_calibration_plot(et, eye, X, Y, U, V, predicted_points, 
         fig.canvas.draw()
 
     def on_key_press(event):
-        """Handle keyboard input for moving target."""
+        """Handle keyboard input for moving target and eye."""
         nonlocal current_target
 
         if event.key == "escape":
             plt.close(fig)
             return
+        
+        # TARGET MOVEMENT (Arrow keys)
         elif event.key == "up":
             current_target[1] += step_size
         elif event.key == "down":
@@ -352,6 +356,20 @@ def _create_interactive_calibration_plot(et, eye, X, Y, U, V, predicted_points, 
             current_target[0] -= step_size
         elif event.key == "right":
             current_target[0] += step_size
+        
+        # EYE MOVEMENT (I/K/J/L/./,)
+        elif event.key == "j":
+            interactive_eye.trans[0, 3] -= step_size  # Eye left (decrease X)
+        elif event.key == "l":
+            interactive_eye.trans[0, 3] += step_size  # Eye right (increase X)
+        elif event.key == "i":
+            interactive_eye.trans[2, 3] += step_size  # Eye up (increase Z)
+        elif event.key == "k":
+            interactive_eye.trans[2, 3] -= step_size  # Eye down (decrease Z)
+        elif event.key == ".":
+            interactive_eye.trans[1, 3] -= step_size  # Eye closer to camera (decrease Y)
+        elif event.key == ",":
+            interactive_eye.trans[1, 3] += step_size  # Eye farther from camera (increase Y)
         else:
             return
 
@@ -361,7 +379,15 @@ def _create_interactive_calibration_plot(et, eye, X, Y, U, V, predicted_points, 
     fig.canvas.mpl_connect("key_press_event", on_key_press)
 
     print("\nINTERACTIVE MODE:")
-    print("Use arrow keys to move the target")
+    print("Target Movement (Arrow keys):")
+    print("  ↑/↓: Move target up/down")
+    print("  ←/→: Move target left/right")
+    print()
+    print("Eye Movement (I/K/J/L/./):")
+    print("  I/K: Move eye up/down")
+    print("  J/L: Move eye left/right")
+    print("  ./,: Move eye closer/farther from camera")
+    print()
     print("Press ESC to exit")
     print("Click on the plot window to focus for keyboard input\n")
 
