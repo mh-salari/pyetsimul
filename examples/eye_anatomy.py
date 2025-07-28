@@ -39,8 +39,8 @@ e_default = Eye()  # Default 7.98mm
 e = Eye(r_cornea=6.98e-3)  # Large 9.0mm
 
 # Print parameters
-print_eye_parameters(e_default, f"Default Eye (r_cornea = {e_default.r_cornea * 1000:.1f} mm)")
-print_eye_parameters(e, f"Large Cornea Eye (r_cornea = {e.r_cornea * 1000:.1f} mm)")
+print_eye_parameters(e_default, f"r_cornea = {e_default.r_cornea * 1000:.3f} mm)")
+print_eye_parameters(e, f"r_cornea = {e.r_cornea * 1000:.3f} mm)")
 
 
 fig = plt.figure(figsize=(20, 10))
