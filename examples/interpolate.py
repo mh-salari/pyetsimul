@@ -86,7 +86,7 @@ def main():
 
     print_error_summary(screen_results, "Screen Test Summary")
 
-    print(f"\n3. Testing over observer (fixed gaze, sweep observer positions):")
+    print("\n3. Testing over observer (fixed gaze, sweep observer positions):")
     print("-" * 60)
     observer_results = accuracy_over_observer_positions(et, eye=eye)
 

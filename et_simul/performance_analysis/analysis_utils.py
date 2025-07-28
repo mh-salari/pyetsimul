@@ -224,12 +224,12 @@ def print_error_summary(errors, title="Error Summary"):
         title: Title for the summary section
     """
     print(f"\n{title}:")
-    print(f"  Error statistics (mm):")
+    print("  Error statistics (mm):")
     print(f"    Max:    {errors['mtr']['max'] * 1e3:.4f}")
     print(f"    Mean:   {errors['mtr']['mean'] * 1e3:.4f}")
     print(f"    Std:    {errors['mtr']['std'] * 1e3:.4f}")
     print(f"    Median: {errors['mtr']['median'] * 1e3:.4f}")
-    print(f"  Error statistics (degrees):")
+    print("  Error statistics (degrees):")
     print(f"    Max:    {errors['deg']['max']:.4f}")
     print(f"    Mean:   {errors['deg']['mean']:.4f}")
     print(f"    Std:    {errors['deg']['std']:.4f}")

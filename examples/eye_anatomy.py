@@ -1,7 +1,6 @@
 from et_simul.core import Eye
 from et_simul.visualization import plot_eye_anatomy
 import matplotlib.pyplot as plt
-import numpy as np
 
 
 def print_eye_parameters(eye, title="Eye Parameters"):

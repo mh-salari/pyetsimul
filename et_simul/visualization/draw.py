@@ -142,14 +142,6 @@ def plot_eye_anatomy(eye=Eye(), target_point=(15e-3, 15e-3, 0), ax=None):
     visual_axis_direction = (eye_rotation_center - fovea_world) / np.linalg.norm(eye_rotation_center - fovea_world)
     visual_axis_end = eye_rotation_center + axis_length * visual_axis_direction
 
-    # Create pupil ellipse in world coordinates
-    pupil_radius_x = np.linalg.norm(eye.x_pupil[:3])
-    pupil_radius_y = np.linalg.norm(eye.y_pupil[:3])
-
-    # Transform pupil vectors to world coordinates
-    x_pupil_world = (eye.trans @ eye.x_pupil)[:3]
-    y_pupil_world = (eye.trans @ eye.y_pupil)[:3]
-
     # Create figure and axis if not provided
     if ax is None:
         fig = plt.figure(figsize=(14, 10))
@@ -280,9 +272,6 @@ def to_3d(point):
 This module provides comprehensive visualization functions for eye tracking
 setups, including 3D scene views and camera image views.
 """
-
-import numpy as np
-import matplotlib.pyplot as plt
 
 
 def plot_setup(
