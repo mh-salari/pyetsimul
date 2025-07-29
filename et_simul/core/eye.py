@@ -7,8 +7,7 @@ from ..optics import reflections, refractions
 from .camera import Camera
 from .light import Light
 from .coordinate_system import validate_orientation_matrix
-from .pupil import Pupil
-
+from .pupil import Pupil, create_pupil
 
 
 @dataclass
@@ -81,7 +80,7 @@ class Eye:
     fovea_displacement: bool = True
     fovea_alpha_deg: float = 6.0  # Horizontal fovea displacement (degrees)
     fovea_beta_deg: float = 2.0  # Vertical fovea displacement (degrees)
-    pupil_type: str = "elliptical"  # Pupil type: "elliptical" (default), others not yet implemented
+    pupil_type: str = "elliptical"  # Pupil type: "elliptical" (default), "realistic"
 
     # These fields are calculated in __post_init__
     trans: np.ndarray = field(init=False)
@@ -148,18 +147,13 @@ class Eye:
         # Corneal depth (scaled)
         self.depth_cornea = scale * cornea_depth_default
 
-        # Create pupil object with default elliptical pupil
+        # Create pupil object using factory pattern
         pos_pupil = self.pos_apex + np.array([0, 0, scale * cornea_depth_default, 0])
         pupil_radius_scaled = scale * pupil_radius_default
         x_pupil = pupil_radius_scaled * np.array([1, 0, 0, 0])
         y_pupil = pupil_radius_scaled * np.array([0, 1, 0, 0])
-        
-        self.pupil = Pupil(
-            pupil_type=self.pupil_type,
-            pos_pupil=pos_pupil,
-            x_pupil=x_pupil,
-            y_pupil=y_pupil
-        )
+
+        self.pupil = create_pupil(pupil_type=self.pupil_type, pos_pupil=pos_pupil, x_pupil=x_pupil, y_pupil=y_pupil)
 
     @property
     def orientation(self) -> np.ndarray:
@@ -366,17 +360,15 @@ class Eye:
             # Line 45: e.trans(1:3, 1:3)=e.trans(1:3, 1:3)*B*A;
             self.orientation = self.orientation @ B @ A
 
-    def get_pupil(self, N: int = 20) -> np.ndarray:
+    def get_pupil(self) -> np.ndarray:
         """Returns an array of points describing the pupil boundary.
 
-        X = get_pupil(e, N) returns a 4xN matrix of points (in world
-        coordinates) on the pupil boundary of the eye 'e'.
-
-        Args:
-            N: Number of points on pupil boundary (default 20)
+        X = get_pupil(e) returns a 4×N matrix of points (in world
+        coordinates) on the pupil boundary of the eye 'e', where N is
+        determined by the pupil's resolution setting.
 
         Returns:
-            4xN matrix of points in world coordinates on pupil boundary
+            4×N matrix of points in world coordinates on pupil boundary
 
         This function is based on the original MATLAB implementation from the
         et_simul project — © 2008 Martin Böhme, University of Lübeck.
@@ -384,7 +376,7 @@ class Eye:
         Licensed under the GNU GPL v3.0 or later.
         """
         # Get pupil boundary points from pupil object
-        pupil_points = self.pupil.get_boundary_points(N)
+        pupil_points = self.pupil.get_boundary_points()
 
         # Transform to world coordinates
         pupil_world = self.trans @ pupil_points
@@ -633,31 +625,29 @@ class Eye:
 
         return I
 
-    def get_pupil_boundary_in_camera_image(self, c: Camera, N: int = 20, use_refraction: bool = True) -> np.ndarray:
+    def get_pupil_boundary_in_camera_image(self, c: Camera, use_refraction: bool = True) -> np.ndarray:
         """Computes image of pupil boundary.
 
-        X = get_pupil_boundary_in_camera_image(e, c, N) returns a 2xM matrix of points
+        X = get_pupil_boundary_in_camera_image(e, c) returns a 2×M matrix of points
         describing the image of the pupil boundary of the eye 'e' as observed by
-        the camera 'c'. Normally, M=N, but M can be less than N if some of the
-        boundary points lie outside the camera image or are not visible through
-        the cornea. Refraction at the corneal surface and camera error are taken
-        into account.
+        the camera 'c'. M can be less than the pupil's N if some boundary points
+        lie outside the camera image or are not visible through the cornea.
+        Refraction at the corneal surface and camera error are taken into account.
 
         Args:
             c: Camera object
-            N: Number of pupil boundary points (default 20)
             use_refraction: Whether to apply corneal refraction (default True)
 
         Returns:
-            2xM matrix of pupil boundary points in camera image
+            2×M matrix of pupil boundary points in camera image
 
         This function is based on the original MATLAB implementation from the
         et_simul project — © 2008 Martin Böhme, University of Lübeck.
         Python port © 2025 Mohammadhossein Salari.
         Licensed under the GNU GPL v3.0 or later.
         """
-        # Line 31: pupil=eye_get_pupil(e, N);
-        pupil = self.get_pupil(N)
+        # Line 31: pupil=eye_get_pupil(e);
+        pupil = self.get_pupil()
 
         if use_refraction:
             # Line 32: X=zeros(4,0);

@@ -62,8 +62,8 @@ def test_default_n():
 def test_custom_n_8():
     """Test get_pupil with N=8 and MATLAB reference values."""
     e = Eye()
-    N = 8
-    X = e.get_pupil(N)
+    e.pupil.N = 8  # Set pupil resolution to 8
+    X = e.get_pupil()
 
     # MATLAB reference values for all 8 points
     expected_points = np.array(
@@ -130,8 +130,8 @@ def test_custom_corneal_radius():
     """Test get_pupil with custom corneal radius and MATLAB reference values."""
     r_cornea_custom = 10e-3  # 10mm corneal radius
     e = Eye(r_cornea=r_cornea_custom)
-    N = 12
-    X = e.get_pupil(N)
+    e.pupil.N = 12  # Set pupil resolution to 12
+    X = e.get_pupil()
 
     # MATLAB reference values for scaled eye
     expected_points = np.array(
@@ -228,8 +228,8 @@ def test_custom_rest_position():
     )
     e = Eye(r_cornea=7.98e-3)
     e.set_rest_orientation(custom_rest)
-    N = 6
-    X = e.get_pupil(N)
+    e.pupil.N = 6  # Set pupil resolution to 6
+    X = e.get_pupil()
 
     # MATLAB reference values for rotated eye
     expected_points = np.array(
@@ -280,12 +280,12 @@ def test_custom_rest_position():
 def test_output_properties():
     """Test that output has correct properties."""
     e = Eye()
-    N = 16
-    X = e.get_pupil(N)
+    e.pupil.N = 16  # Set pupil resolution to 16
+    X = e.get_pupil()
 
     # Check types and shapes
     assert isinstance(X, np.ndarray)
-    assert X.shape == (4, N)
+    assert X.shape == (4, 16)
     assert X.dtype == np.float64
 
     # Test homogeneous coordinates
