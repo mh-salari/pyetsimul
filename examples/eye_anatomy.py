@@ -26,7 +26,7 @@ def print_eye_parameters(eye, title="Eye Parameters"):
         f"pos_apex: [{eye.pos_apex[0]:.6f}, {eye.pos_apex[1]:.6f}, {eye.pos_apex[2] * 1000:.3f}, {eye.pos_apex[3]:.1f}] (z in mm)"
     )
     print(
-        f"pos_pupil: [{eye.pos_pupil[0]:.6f}, {eye.pos_pupil[1]:.6f}, {eye.pos_pupil[2] * 1000:.3f}, {eye.pos_pupil[3]:.1f}] (z in mm)"
+        f"pos_pupil: [{eye.pupil.pos_pupil[0]:.6f}, {eye.pupil.pos_pupil[1]:.6f}, {eye.pupil.pos_pupil[2] * 1000:.3f}, {eye.pupil.pos_pupil[3]:.1f}] (z in mm)"
     )
 
     # Pupil radii

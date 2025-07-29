@@ -66,7 +66,7 @@ def plot_eye_anatomy(eye=Eye(), target_point=(15e-3, 15e-3, 0), ax=None):
     eye_rotation_center = eye.position
     cornea_center_world = (eye.trans @ eye.pos_cornea)[:3]
     cornea_inner_center_world = (eye.trans @ eye.cornea_inner_center)[:3]
-    pupil_center_world = (eye.trans @ eye.pos_pupil)[:3]
+    pupil_center_world = (eye.trans @ eye.pupil.pos_pupil)[:3]
     fovea_world = (eye.trans @ np.append(eye.fovea_position, 1))[:3]
 
     # Eye sphere parameters
@@ -203,9 +203,9 @@ def plot_eye_anatomy(eye=Eye(), target_point=(15e-3, 15e-3, 0), ax=None):
 
     # Calculate pupil boundary points
     pupil_boundary_local = (
-        eye.pos_pupil.reshape(-1, 1)
-        + eye.x_pupil.reshape(-1, 1) @ cos_t.reshape(1, -1)
-        + eye.y_pupil.reshape(-1, 1) @ sin_t.reshape(1, -1)
+        eye.pupil.pos_pupil.reshape(-1, 1)
+        + eye.pupil.x_pupil.reshape(-1, 1) @ cos_t.reshape(1, -1)
+        + eye.pupil.y_pupil.reshape(-1, 1) @ sin_t.reshape(1, -1)
     )
     pupil_boundary_world = eye.trans @ pupil_boundary_local
 
@@ -626,7 +626,7 @@ def prepare_eye_data_for_plots(eye, look_at_target, lights, camera):
     eye.look_at(look_at_target)
     # Get eye anatomy points
     cornea_center = eye.pos_cornea
-    pupil_center = eye.pos_pupil
+    pupil_center = eye.pupil.pos_pupil
     r_cornea = eye.r_cornea
     depth_cornea = eye.depth_cornea
 

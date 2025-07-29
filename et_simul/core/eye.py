@@ -10,6 +10,93 @@ from .coordinate_system import validate_orientation_matrix
 
 
 @dataclass
+class Pupil:
+    """Represents a pupil with parametric elliptical shape.
+    
+    This class encapsulates all pupil-related calculations using the parametric
+    representation: pos_pupil + cos(α)*x_pupil + sin(α)*y_pupil
+    
+    Args:
+        pupil_type: Type of pupil ("elliptical" is currently supported)
+        pos_pupil: 4D homogeneous center position
+        x_pupil: 4D vector defining X-axis radius/direction  
+        y_pupil: 4D vector defining Y-axis radius/direction
+    """
+    pupil_type: str
+    pos_pupil: np.ndarray
+    x_pupil: np.ndarray  
+    y_pupil: np.ndarray
+    
+    def __post_init__(self):
+        """Validate pupil type."""
+        if self.pupil_type != "elliptical":
+            raise NotImplementedError(
+                f"Pupil type '{self.pupil_type}' is not yet implemented. "
+                f"Currently supported: 'elliptical'. "
+                f"Integration with other pupil types (e.g., 'human') has not been implemented yet."
+            )
+    
+    def get_boundary_points(self, N: int = 20) -> np.ndarray:
+        """Generate pupil boundary points using parametric representation.
+        
+        Args:
+            N: Number of points on pupil boundary
+            
+        Returns:
+            4xN matrix of points on pupil boundary
+        """
+        alpha = 2 * np.pi * np.arange(N) / N
+        
+        # Parametric pupil boundary: pos_pupil + cos(α)*x_pupil + sin(α)*y_pupil
+        pupil_points = (
+            np.tile(self.pos_pupil.reshape(-1, 1), (1, N))
+            + self.x_pupil.reshape(-1, 1) @ np.cos(alpha).reshape(1, -1)
+            + self.y_pupil.reshape(-1, 1) @ np.sin(alpha).reshape(1, -1)
+        )
+        
+        return pupil_points
+    
+    def get_radii(self) -> tuple[float, float]:
+        """Get pupil radii from both axes.
+        
+        Returns:
+            Tuple of (x_radius, y_radius) in meters
+        """
+        x_radius = np.linalg.norm(self.x_pupil[:3])
+        y_radius = np.linalg.norm(self.y_pupil[:3])
+        return x_radius, y_radius
+    
+    def set_radii(self, x_radius: float = None, y_radius: float = None) -> None:
+        """Set pupil radii and update geometry.
+        
+        Args:
+            x_radius: Pupil radius in X direction (meters)
+            y_radius: Pupil radius in Y direction (meters)
+            
+        Raises:
+            ValueError: If both radii are None
+        """
+        if x_radius is None and y_radius is None:
+            raise ValueError("At least one radius must be specified")
+            
+        if x_radius is not None:
+            self.x_pupil = x_radius * np.array([1, 0, 0, 0])
+        if y_radius is not None:
+            self.y_pupil = y_radius * np.array([0, 1, 0, 0])
+    
+    def get_center_world_coords(self, eye_transform: np.ndarray) -> np.ndarray:
+        """Get pupil center in world coordinates.
+        
+        Args:
+            eye_transform: 4x4 transformation matrix from eye to world coordinates
+            
+        Returns:
+            4D homogeneous coordinates of pupil center in world coordinates  
+        """
+        return eye_transform @ self.pos_pupil
+
+
+@dataclass
 class Eye:
     """Creates a structure that represents an eye.
 
@@ -79,6 +166,7 @@ class Eye:
     fovea_displacement: bool = True
     fovea_alpha_deg: float = 6.0  # Horizontal fovea displacement (degrees)
     fovea_beta_deg: float = 2.0  # Vertical fovea displacement (degrees)
+    pupil_type: str = "elliptical"  # Pupil type: "elliptical" (default), others not yet implemented
 
     # These fields are calculated in __post_init__
     trans: np.ndarray = field(init=False)
@@ -93,9 +181,7 @@ class Eye:
     n_aqueous_humor: float = field(init=False)
     pos_apex: np.ndarray = field(init=False)
     depth_cornea: float = field(init=False)
-    pos_pupil: np.ndarray = field(init=False)
-    x_pupil: np.ndarray = field(init=False)
-    y_pupil: np.ndarray = field(init=False)
+    pupil: Pupil = field(init=False)  # Pupil object that handles all pupil calculations
 
     def __post_init__(self) -> None:
         """Initializes the eye's anatomical properties based on constructor parameters."""
@@ -147,13 +233,18 @@ class Eye:
         # Corneal depth (scaled)
         self.depth_cornea = scale * cornea_depth_default
 
-        # Pupil center position
-        self.pos_pupil = self.pos_apex + np.array([0, 0, scale * cornea_depth_default, 0])
-
-        # Pupil boundary vectors (scaled - original MATLAB behavior)
+        # Create pupil object with default elliptical pupil
+        pos_pupil = self.pos_apex + np.array([0, 0, scale * cornea_depth_default, 0])
         pupil_radius_scaled = scale * pupil_radius_default
-        self.x_pupil = pupil_radius_scaled * np.array([1, 0, 0, 0])
-        self.y_pupil = pupil_radius_scaled * np.array([0, 1, 0, 0])
+        x_pupil = pupil_radius_scaled * np.array([1, 0, 0, 0])
+        y_pupil = pupil_radius_scaled * np.array([0, 1, 0, 0])
+        
+        self.pupil = Pupil(
+            pupil_type=self.pupil_type,
+            pos_pupil=pos_pupil,
+            x_pupil=x_pupil,
+            y_pupil=y_pupil
+        )
 
     @property
     def orientation(self) -> np.ndarray:
@@ -377,17 +468,8 @@ class Eye:
         Python port © 2025 Mohammadhossein Salari.
         Licensed under the GNU GPL v3.0 or later.
         """
-        # Line 24: if nargin<2, N=20; end (handled by default parameter)
-
-        # Line 27: alpha=2*pi*(0:(N-1))/N;
-        alpha = 2 * np.pi * np.arange(N) / N
-
-        # Lines 28-29: X=repmat(e.pos_pupil, 1, N) + e.across_pupil*cos(alpha) + e.up_pupil*sin(alpha);
-        pupil_points = (
-            np.tile(self.pos_pupil.reshape(-1, 1), (1, N))
-            + self.x_pupil.reshape(-1, 1) @ np.cos(alpha).reshape(1, -1)
-            + self.y_pupil.reshape(-1, 1) @ np.sin(alpha).reshape(1, -1)
-        )
+        # Get pupil boundary points from pupil object
+        pupil_points = self.pupil.get_boundary_points(N)
 
         # Transform to world coordinates
         pupil_world = self.trans @ pupil_points
@@ -432,9 +514,7 @@ class Eye:
         Returns:
             Tuple of (x_radius, y_radius) in meters
         """
-        x_radius = np.linalg.norm(self.x_pupil[:3])
-        y_radius = np.linalg.norm(self.y_pupil[:3])
-        return x_radius, y_radius
+        return self.pupil.get_radii()
 
     def set_pupil_radii(self, x_radius: float = None, y_radius: float = None) -> None:
         """Sets the pupil radii and updates pupil geometry.
@@ -446,13 +526,7 @@ class Eye:
         Raises:
             ValueError: If both radii are None
         """
-        if x_radius is None and y_radius is None:
-            raise ValueError("At least one radius must be specified")
-
-        if x_radius is not None:
-            self.x_pupil = x_radius * np.array([1, 0, 0, 0])
-        if y_radius is not None:
-            self.y_pupil = y_radius * np.array([0, 1, 0, 0])
+        self.pupil.set_radii(x_radius, y_radius)
 
     def find_cr_simple(self, l: Light, c: Camera) -> Optional[np.ndarray]:
         """Finds the position of a corneal reflex (simplified).
@@ -707,7 +781,7 @@ class Eye:
         Returns:
             4D homogeneous coordinates of the pupil center in world coordinates
         """
-        return self.trans @ self.pos_pupil
+        return self.pupil.get_center_world_coords(self.trans)
 
     def get_pupil_ellipse_in_camera_image(
         self, c: Camera, use_refraction: bool = True

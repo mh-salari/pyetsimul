@@ -39,7 +39,7 @@ def accuracy_at_calibration_points(et, eye):
 
     # Output eye measurements
     apex_cornea_dist = np.linalg.norm(e.pos_apex - e.pos_cornea)
-    cornea_pupil_dist = np.linalg.norm(e.pos_cornea - e.pos_pupil)
+    cornea_pupil_dist = np.linalg.norm(e.pos_cornea - e.pupil.pos_pupil)
 
     print(f"Corneal radius: {apex_cornea_dist * 1e3:.3g} mm")
     print(f"Pupil radius:   {cornea_pupil_dist * 1e3:.3g} mm")

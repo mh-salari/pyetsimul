@@ -53,7 +53,7 @@ def test_default_n():
     assert np.allclose(X[3, :], 1.0, rtol=1e-12)
 
     # Test circle properties
-    pupil_center = e.pos_pupil[:3]
+    pupil_center = e.pupil.pos_pupil[:3]
     radii = np.linalg.norm(X[:3, :] - pupil_center.reshape(-1, 1), axis=0)
     expected_radius = 0.0030000000000000
     assert np.allclose(radii, expected_radius, rtol=1e-12)
@@ -295,7 +295,7 @@ def test_output_properties():
     assert np.all(np.isfinite(X))
 
     # Test circle properties
-    pupil_center = e.pos_pupil[:3]
+    pupil_center = e.pupil.pos_pupil[:3]
     radii = np.linalg.norm(X[:3, :] - pupil_center.reshape(-1, 1), axis=0)
-    expected_radius = np.linalg.norm(e.x_pupil[:3])
+    expected_radius = np.linalg.norm(e.pupil.x_pupil[:3])
     assert np.allclose(radii, expected_radius, rtol=1e-12)
