@@ -8,6 +8,7 @@ from .camera import Camera
 from .light import Light
 from .coordinate_system import validate_orientation_matrix
 from .pupil import Pupil, create_pupil
+from .cornea import Cornea, SphericalCornea
 
 
 @dataclass
@@ -76,7 +77,7 @@ class Eye:
     """
 
     # Instance parameters
-    r_cornea: float = 7.98e-3  # Outer corneal radius (m) - Default from Boff and Lincoln [1988]
+    cornea: Optional[Cornea] = None  # Cornea object (SphericalCornea or SpheroidCornea)
     fovea_displacement: bool = True
     fovea_alpha_deg: float = 6.0  # Horizontal fovea displacement (degrees)
     fovea_beta_deg: float = 2.0  # Vertical fovea displacement (degrees)
@@ -85,7 +86,6 @@ class Eye:
     # These fields are calculated in __post_init__
     trans: np.ndarray = field(init=False)
     _rest_orientation: np.ndarray = field(init=False)
-    pos_cornea: np.ndarray = field(init=False)
     r_cornea_inner: float = field(init=False)
     axial_length: float = field(init=False)  # Calculated axial length (m)
     cornea_center_to_rotation_center: float = field(init=False)  # Calculated distance (m)
@@ -113,8 +113,17 @@ class Eye:
 
         cornea_thickness_offset_default = 1.15e-3  # Default corneal thickness offset (m)
 
+        # Create default cornea if none provided
+        if self.cornea is None:
+            self.cornea = SphericalCornea(radius=r_cornea_default)
+
         # Calculate scale factor based on corneal radius
-        scale = self.r_cornea / r_cornea_default
+        scale = self.cornea.radius / r_cornea_default
+
+        # Calculate anatomical position if center not provided
+        if self.cornea.center is None:
+            cornea_z_offset = axial_length_default - 2 * cornea_center_to_rotation_center_default
+            self.cornea.center = np.array([0, 0, -scale * cornea_z_offset, 1])
 
         # Initialize transformation matrix (identity at rest position)
         self.trans = np.eye(4)
@@ -126,23 +135,19 @@ class Eye:
         self.cornea_center_to_rotation_center = cornea_center_to_rotation_center_default
         self.cornea_thickness_offset = cornea_thickness_offset_default
 
-        # Position corneal center relative to rotation center
-        cornea_z_offset = self.axial_length - 2 * self.cornea_center_to_rotation_center
-        self.pos_cornea = np.array([0, 0, -scale * cornea_z_offset, 1])
-
         # Inner corneal surface radius (scaled)
         self.r_cornea_inner = scale * r_cornea_inner_default
 
         # Inner corneal surface center
-        thickness_term = self.r_cornea - self.r_cornea_inner - scale * self.cornea_thickness_offset
-        self.cornea_inner_center = self.pos_cornea - np.array([0, 0, thickness_term, 0])
+        thickness_term = self.cornea.radius - self.r_cornea_inner - scale * self.cornea_thickness_offset
+        self.cornea_inner_center = self.cornea.center - np.array([0, 0, thickness_term, 0])
 
         # Refractive indices
         self.n_cornea = n_cornea_default
         self.n_aqueous_humor = n_aqueous_humor_default
 
         # Corneal apex (frontmost point)
-        self.pos_apex = self.pos_cornea + np.array([0, 0, -self.r_cornea, 0])
+        self.pos_apex = self.cornea.center + np.array([0, 0, -self.cornea.radius, 0])
 
         # Corneal depth (scaled)
         self.depth_cornea = scale * cornea_depth_default
@@ -217,12 +222,8 @@ class Eye:
         # Line 25: p=e.trans\p;
         p = np.linalg.solve(self.trans, p)
 
-        # Lines 27-28: within = ((p-e.pos_apex)'*(e.pos_cornea-e.pos_apex) / norm(e.pos_cornea-e.pos_apex) < e.depth_cornea);
-        diff = p - self.pos_apex
-        direction = self.pos_cornea - self.pos_apex
-        within = np.dot(diff, direction) / np.linalg.norm(direction) < self.depth_cornea
-
-        return within
+        # Use cornea object's point_within_cornea method
+        return self.cornea.point_within_cornea(p, self)
 
     def find_cr(self, l: Light, c: Camera) -> Optional[np.ndarray]:
         """Finds the position of a corneal reflex.
@@ -249,8 +250,8 @@ class Eye:
         cr = reflections.find_reflection(
             l._pos_homogeneous,
             c.trans[:, 3],
-            self.trans @ self.pos_cornea,
-            self.r_cornea,
+            self.trans @ self.cornea.center,
+            self.cornea.radius,
         )
 
         # Lines 29-31: if ~eye_point_within_cornea(e, cr), cr=[]; end
@@ -458,7 +459,7 @@ class Eye:
         Licensed under the GNU GPL v3.0 or later.
         """
         # Line 27: cc=e.trans*e.pos_cornea;
-        cc = self.trans @ self.pos_cornea
+        cc = self.trans @ self.cornea.center
 
         # Line 28: to_cam=c.trans(:,4)-cc;
         to_cam = c.trans[:, 3] - cc
@@ -473,7 +474,7 @@ class Eye:
         if abs(denominator) < 1e-10:  # Avoid division by zero
             return None
 
-        w = self.r_cornea / denominator
+        w = self.cornea.radius / denominator
 
         # Line 31: cr=cc+w*(l.pos-cc);
         cr = cc + w * light_to_cornea
@@ -514,10 +515,10 @@ class Eye:
 
         # Line 32-33: Compute refraction at surface of cornea
         # Compute corneal center position (4D homogeneous)
-        cornea_center = self.trans @ self.pos_cornea
+        cornea_center = self.trans @ self.cornea.center
 
         # refract_ray_sphere handles 3D/4D coordinates properly (fixes MATLAB's coordinate bug)
-        U0, Ud = refractions.refract_ray_sphere(R0, Rd, cornea_center, self.r_cornea, 1.0, self.n_cornea)
+        U0, Ud = refractions.refract_ray_sphere(R0, Rd, cornea_center, self.cornea.radius, 1.0, self.n_cornea)
 
         return U0, Ud
 
@@ -559,10 +560,10 @@ class Eye:
         """
         # Line 34-35: Compute refraction at outer surface of cornea
         # Compute corneal center positions (4D homogeneous)
-        cornea_center = self.trans @ self.pos_cornea
+        cornea_center = self.trans @ self.cornea.center
 
         # refract_ray_sphere handles 3D/4D coordinates properly (fixes MATLAB's coordinate bug)
-        O0, Od = refractions.refract_ray_sphere(R0, Rd, cornea_center, self.r_cornea, 1.0, self.n_cornea)
+        O0, Od = refractions.refract_ray_sphere(R0, Rd, cornea_center, self.cornea.radius, 1.0, self.n_cornea)
 
         if O0 is None or Od is None:
             return None, None, None
@@ -604,11 +605,11 @@ class Eye:
         Licensed under the GNU GPL v3.0 or later.
         """
         # Compute corneal center position (4D homogeneous)
-        cornea_center = self.trans @ self.pos_cornea
+        cornea_center = self.trans @ self.cornea.center
 
         # Line 28: I=find_refraction(C, O, e.trans*e.pos_cornea, e.r_cornea, 1, e.n_cornea);
         # find_refraction handles 3D/4D coordinates properly (fixes MATLAB's coordinate bug)
-        I = refractions.find_refraction(C, O, cornea_center, self.r_cornea, 1.0, self.n_cornea)
+        I = refractions.find_refraction(C, O, cornea_center, self.cornea.radius, 1.0, self.n_cornea)
 
         if I is None:
             return None

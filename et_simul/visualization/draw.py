@@ -64,7 +64,7 @@ def plot_eye_anatomy(eye=Eye(), target_point=(15e-3, 15e-3, 0), ax=None):
 
     # Calculate all key points in WORLD coordinates using eye.trans
     eye_rotation_center = eye.position
-    cornea_center_world = (eye.trans @ eye.pos_cornea)[:3]
+    cornea_center_world = (eye.trans @ eye.cornea.center)[:3]
     cornea_inner_center_world = (eye.trans @ eye.cornea_inner_center)[:3]
     pupil_center_world = (eye.trans @ eye.pupil.pos_pupil)[:3]
     fovea_world = (eye.trans @ np.append(eye.fovea_position, 1))[:3]
@@ -76,7 +76,7 @@ def plot_eye_anatomy(eye=Eye(), target_point=(15e-3, 15e-3, 0), ax=None):
 
     # Transform corneal surfaces to world coordinates
     # Create local corneal surface coordinates first
-    cornea_radius = eye.r_cornea
+    cornea_radius = eye.cornea.radius
     depth = eye.depth_cornea
     cap_angle = np.arccos((cornea_radius - depth) / cornea_radius)
     phi_cap = np.linspace(0, cap_angle, 20)
@@ -84,9 +84,9 @@ def plot_eye_anatomy(eye=Eye(), target_point=(15e-3, 15e-3, 0), ax=None):
     phi_grid, theta_grid = np.meshgrid(phi_cap, theta_full)
 
     # Outer corneal surface in local coordinates
-    x_outer_local = eye.pos_cornea[0] + cornea_radius * np.sin(phi_grid) * np.cos(theta_grid)
-    y_outer_local = eye.pos_cornea[1] + cornea_radius * np.sin(phi_grid) * np.sin(theta_grid)
-    z_outer_local = eye.pos_cornea[2] - cornea_radius * np.cos(phi_grid)
+    x_outer_local = eye.cornea.center[0] + cornea_radius * np.sin(phi_grid) * np.cos(theta_grid)
+    y_outer_local = eye.cornea.center[1] + cornea_radius * np.sin(phi_grid) * np.sin(theta_grid)
+    z_outer_local = eye.cornea.center[2] - cornea_radius * np.cos(phi_grid)
 
     # Inner corneal surface in local coordinates
     cornea_inner_radius = eye.r_cornea_inner
@@ -625,9 +625,9 @@ def prepare_eye_data_for_plots(eye, look_at_target, lights, camera):
     # Rotate the eye toward the target
     eye.look_at(look_at_target)
     # Get eye anatomy points
-    cornea_center = eye.pos_cornea
+    cornea_center = eye.cornea.center
     pupil_center = eye.pupil.pos_pupil
-    r_cornea = eye.r_cornea
+    r_cornea = eye.cornea.radius
     depth_cornea = eye.depth_cornea
 
     # Transform anatomical points to world coordinates

@@ -9,13 +9,14 @@ from et_simul.core import Eye, Camera, Light
 import matplotlib.pyplot as plt
 
 
-# Create an eye with a corneal radius of 7.98 mm and its optical axis points along
+# Create an eye with default corneal radius (7.98 mm) and its optical axis points along
 # the negative y-axis. (In the eye's local coordinate system, the optical axis
 # points along the negative z-axis. By specifying an eye-to-world transformation
 # matrix that rotates the coordinate system, we make the optical axis of the eye
 # point along the negative y-axis of the world coordinate system.)
+# For custom corneal radius, use: Eye(cornea=SphericalCornea(radius=desired_radius))
 rotation_matrix = np.array([[1, 0, 0], [0, 0, 1], [0, -1, 0]])
-e = Eye(r_cornea=7.98e-3, fovea_displacement=False)
+e = Eye(fovea_displacement=False)
 e.set_rest_orientation(rotation_matrix)
 
 e.position = np.array([0, 500e-3, 200e-3])

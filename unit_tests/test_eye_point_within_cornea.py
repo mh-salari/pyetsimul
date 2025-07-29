@@ -2,6 +2,7 @@
 
 import numpy as np
 from et_simul.core.eye import Eye
+from et_simul.core.cornea import SphericalCornea
 
 
 def test_basic_cases():
@@ -15,13 +16,13 @@ def test_basic_cases():
     assert e.point_within_cornea(p1)
 
     # Case 2: Point at cornea center (should be outside)
-    p2 = e.pos_cornea
+    p2 = e.cornea.center
     expected_p2 = np.array([0.000000, 0.000000, -0.004350, 1.000000])
     np.testing.assert_allclose(p2, expected_p2, rtol=1e-6, atol=1e-6)
     assert not e.point_within_cornea(p2)
 
     # Case 3: Point beyond cornea depth (should be outside)
-    direction = (e.pos_cornea - e.pos_apex) / np.linalg.norm(e.pos_cornea - e.pos_apex)
+    direction = (e.cornea.center - e.pos_apex) / np.linalg.norm(e.cornea.center - e.pos_apex)
     p3 = e.pos_apex + 2 * e.depth_cornea * direction
     expected_p3 = np.array([0.000000, 0.000000, -0.005250, 1.000000])
     np.testing.assert_allclose(p3, expected_p3, rtol=1e-6, atol=1e-6)
@@ -33,7 +34,7 @@ def test_boundary_cases():
     e = Eye()
 
     # Case 4: Point just inside boundary (should be within)
-    direction = (e.pos_cornea - e.pos_apex) / np.linalg.norm(e.pos_cornea - e.pos_apex)
+    direction = (e.cornea.center - e.pos_apex) / np.linalg.norm(e.cornea.center - e.pos_apex)
     p4 = e.pos_apex + (e.depth_cornea - 1e-6) * direction
     expected_p4 = np.array([0.000000, 0.000000, -0.008791, 1.000000])
     np.testing.assert_allclose(p4, expected_p4, rtol=1e-6, atol=1e-6)
@@ -47,7 +48,7 @@ def test_boundary_cases():
     assert e.point_within_cornea(p6)
 
     # Case 7: Point behind apex (should be within)
-    direction = (e.pos_cornea - e.pos_apex) / np.linalg.norm(e.pos_cornea - e.pos_apex)
+    direction = (e.cornea.center - e.pos_apex) / np.linalg.norm(e.cornea.center - e.pos_apex)
     p7 = e.pos_apex - 0.5 * e.depth_cornea * direction
     expected_p7 = np.array([0.000000, 0.000000, -0.014100, 1.000000])
     np.testing.assert_allclose(p7, expected_p7, rtol=1e-6, atol=1e-6)
@@ -58,14 +59,16 @@ def test_custom_eye():
     """Test with custom eye parameters and MATLAB reference values."""
     # Case 5: Custom eye with different cornea radius
     r_cornea_custom = 9e-3
-    e5 = Eye(r_cornea=r_cornea_custom)
+    # Create custom cornea with different radius (center=None for auto-positioning)
+    custom_cornea = SphericalCornea(radius=r_cornea_custom)
+    e5 = Eye(cornea=custom_cornea)
     p5 = e5.pos_apex
     expected_p5 = np.array([0.000000, 0.000000, -0.013906, 1.000000])
     np.testing.assert_allclose(p5, expected_p5, rtol=1e-6, atol=1e-6)
     assert e5.point_within_cornea(p5)
 
     # Verify custom radius was applied
-    assert np.isclose(e5.r_cornea, r_cornea_custom)
+    assert np.isclose(e5.cornea.radius, r_cornea_custom)
 
 
 def test_output_properties():
