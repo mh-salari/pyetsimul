@@ -9,7 +9,7 @@ from ..geometry.intersections import (
 )
 
 
-def reflect_objective(a, L, C, S0, Sr):
+def _reflect_objective_sphere(a, L, C, S0, Sr):
     """Objective function for reflection finding.
 
     This function is based on the original MATLAB implementation from the
@@ -61,7 +61,7 @@ def reflect_objective(a, L, C, S0, Sr):
         return angle_diff, U0
 
 
-def find_reflection(L, C, S0, Sr):
+def find_reflection_sphere(L, C, S0, Sr):
     """Finds position of a glint on the surface of a sphere.
 
     This function is based on the original MATLAB implementation from the
@@ -85,15 +85,101 @@ def find_reflection(L, C, S0, Sr):
     """
     try:
         # a=brentq(@(a) reflect_objective(a, L, C, S0, Sr), 0, 1)
-        a = brentq(lambda a: reflect_objective(a, L, C, S0, Sr)[0], 0, 1)
+        a = brentq(lambda a: _reflect_objective_sphere(a, L, C, S0, Sr)[0], 0, 1)
 
         # [dummy, U0]=reflect_objective(a, L, C, S0, Sr)
-        _, U0 = reflect_objective(a, L, C, S0, Sr)
+        _, U0 = _reflect_objective_sphere(a, L, C, S0, Sr)
 
         return U0
     except ValueError:
         warnings.warn(
             f"No glint found due to degenerate geometry: Light={L}, Camera={C}, Sphere center={S0}",
+            RuntimeWarning,
+        )
+        return None
+
+
+def _reflect_objective_spheroid(alpha, L, C, S0, a, b, c):
+    """Objective function for spheroid reflection finding.
+
+    Uses the same interpolation approach as the sphere version but projects
+    to the spheroid surface instead of sphere surface.
+    """
+    # Suppress numpy warnings to provide cleaner reflection error messages
+    with np.errstate(invalid="ignore", divide="ignore"):
+        # Extract 3D components
+        L_3d = L[:3] if len(L) > 3 else L
+        C_3d = C[:3] if len(C) > 3 else C
+        S0_3d = S0[:3] if len(S0) > 3 else S0
+
+        # to_c=(C-S0)/norm(C-S0)
+        to_c = (C_3d - S0_3d) / np.linalg.norm(C_3d - S0_3d)
+
+        # to_l=(L-S0)/norm(L-S0)
+        to_l = (L_3d - S0_3d) / np.linalg.norm(L_3d - S0_3d)
+
+        # n=alpha*to_c+(1-alpha)*to_l
+        n = alpha * to_c + (1 - alpha) * to_l
+
+        # n=n/norm(n)
+        n = n / np.linalg.norm(n)
+
+        # Project direction onto spheroid surface
+        # For spheroid: (x/a)² + (y/b)² + (z/c)² = 1
+        # Ray from center: S0 + t*n intersects at surface
+        # We need to solve: ((S0[0] + t*n[0])/a)² + ((S0[1] + t*n[1])/b)² + ((S0[2] + t*n[2])/c)² = 1
+        # Simplifying: (n[0]/a)²*t² + (n[1]/b)²*t² + (n[2]/c)²*t² = 1
+        # t² * (n[0]²/a² + n[1]²/b² + n[2]²/c²) = 1
+
+        scaling_factor = np.sqrt(n[0] ** 2 / a**2 + n[1] ** 2 / b**2 + n[2] ** 2 / c**2)
+        if scaling_factor == 0:
+            return float("inf"), None
+
+        t = 1.0 / scaling_factor
+        U0 = S0_3d + t * n
+
+        # angle_c=arccos(n'*(C-U0)/norm(C-U0)) with safe clipping
+        angle_c = np.arccos(np.clip(np.dot(n, (C_3d - U0) / np.linalg.norm(C_3d - U0)), -1, 1))
+
+        # angle_l=arccos(n'*(L-U0)/norm(L-U0)) with safe clipping
+        angle_l = np.arccos(np.clip(np.dot(n, (L_3d - U0) / np.linalg.norm(L_3d - U0)), -1, 1))
+
+        # angle_diff=angle_c-angle_l
+        angle_diff = angle_c - angle_l
+
+        # Return result in same coordinate type as input
+        if len(L) > 3 or len(C) > 3 or len(S0) > 3:
+            U0_result = np.array([U0[0], U0[1], U0[2], 1.0])
+        else:
+            U0_result = U0
+
+        return angle_diff, U0_result
+
+
+def find_reflection_spheroid(L, C, S0, a, b, c):
+    """Finds position of a glint on the surface of a spheroid.
+
+    Args:
+        L: Light source position
+        C: Camera position
+        S0: Spheroid center
+        a: Semi-axis length (x-axis)
+        b: Semi-axis length (y-axis)
+        c: Semi-axis length (z-axis, optical axis)
+
+    Returns:
+        U0: Position of glint on spheroid surface, or None if no reflection found
+    """
+    try:
+        # Use optimization approach similar to sphere case
+        alpha = brentq(lambda alpha: _reflect_objective_spheroid(alpha, L, C, S0, a, b, c)[0], 0, 1)
+
+        _, U0 = _reflect_objective_spheroid(alpha, L, C, S0, a, b, c)
+
+        return U0
+    except ValueError:
+        warnings.warn(
+            f"No glint found on spheroid: Light={L}, Camera={C}, Spheroid center={S0}",
             RuntimeWarning,
         )
         return None

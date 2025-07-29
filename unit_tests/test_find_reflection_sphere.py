@@ -1,7 +1,7 @@
-"""Unit tests for find_reflection function."""
+"""Unit tests for find_reflection_sphere function."""
 
 import numpy as np
-from et_simul.optics.reflections import find_reflection
+from et_simul.optics.reflections import find_reflection_sphere
 
 
 def test_specific_reflection_case():
@@ -12,7 +12,7 @@ def test_specific_reflection_case():
     S0 = np.array([0.05, 0, 1.0])  # Sphere center
     Sr = 0.8  # Sphere radius
 
-    U0 = find_reflection(L, C, S0, Sr)
+    U0 = find_reflection_sphere(L, C, S0, Sr)
 
     # MATLAB reference values
     expected_U0 = np.array([0.1472592734935877, -0.0408954315633531, 0.2069878958069135])
@@ -27,7 +27,7 @@ def test_output_properties():
     S0 = np.array([0.05, 0, 1.0])
     Sr = 0.8
 
-    U0 = find_reflection(L, C, S0, Sr)
+    U0 = find_reflection_sphere(L, C, S0, Sr)
 
     if U0 is not None:
         # Check types and shapes

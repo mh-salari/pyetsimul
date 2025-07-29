@@ -1,5 +1,4 @@
 import numpy as np
-from scipy.optimize import brentq
 import warnings
 
 
@@ -167,94 +166,51 @@ def intersect_ray_plane(R0, Rd, P0, Pn):
 
 def intersect_ray_spheroid(R0, Rd, S0, a, b, c):
     """
-    Find intersection between ray and prolate spheroid.
-
-    For prolate spheroid: a = b (equal horizontal/vertical radii), c ≠ a (different depth)
-    Spheroid equation: (x-S0x)²/a² + (y-S0y)²/b² + (z-S0z)²/c² = 1
+    Find intersection between ray and spheroid defined by
+    (x - S0x)^2/a^2 + (y - S0y)^2/b^2 + (z - S0z)^2/c^2 = 1.
 
     Args:
         R0: Ray origin (3D coordinates)
         Rd: Ray direction (3D coordinates)
         S0: Spheroid center (3D coordinates)
-        a: Semi-axis length in X direction (horizontal)
-        b: Semi-axis length in Y direction (vertical)
-        c: Semi-axis length in Z direction (anterior-posterior)
+        a, b, c: Semi-axis lengths along x, y, z axes respectively
 
     Returns:
-        Tuple of (pos, pos2) where pos is closer intersection, pos2 is farther.
-        Returns (None, None) if no intersection.
+        Tuple (pos1, pos2): Intersection points closer and farther from R0.
+        None if no intersection.
     """
-    # Extract 3D components
     R0_3d = R0[:3] if len(R0) == 4 else R0
     Rd_3d = Rd[:3] if len(Rd) == 4 else Rd
     S0_3d = S0[:3] if len(S0) == 4 else S0
 
-    # Normalize ray direction
     Rd_3d = Rd_3d / np.linalg.norm(Rd_3d)
+    R0_rel = R0_3d - S0_3d
 
-    # Translate coordinate system so spheroid center is at origin
-    R0_translated = R0_3d - S0_3d
+    # Quadratic coefficients for t where ray intersects spheroid
+    A = (Rd_3d[0] ** 2) / (a**2) + (Rd_3d[1] ** 2) / (b**2) + (Rd_3d[2] ** 2) / (c**2)
+    B = 2 * ((R0_rel[0] * Rd_3d[0]) / (a**2) + (R0_rel[1] * Rd_3d[1]) / (b**2) + (R0_rel[2] * Rd_3d[2]) / (c**2))
+    C = (R0_rel[0] ** 2) / (a**2) + (R0_rel[1] ** 2) / (b**2) + (R0_rel[2] ** 2) / (c**2) - 1
 
-    # Ray equation: P(t) = R0_translated + t * Rd_3d
-    # Spheroid equation: x²/a² + y²/b² + z²/c² = 1
+    disc = B**2 - 4 * A * C
+    if disc < 0:
+        return None, None  # No real roots, no intersection
 
-    def spheroid_equation(t):
-        """Evaluate spheroid equation at parameter t along ray."""
-        point = R0_translated + t * Rd_3d
-        x, y, z = point[0], point[1], point[2]
-        return (x**2 / a**2) + (y**2 / b**2) + (z**2 / c**2) - 1.0
+    sqrt_disc = np.sqrt(disc)
+    t1 = (-B - sqrt_disc) / (2 * A)
+    t2 = (-B + sqrt_disc) / (2 * A)
 
-    # Find intersections by searching for zeros
-    # Use reasonable search ranges based on spheroid dimensions
-    t_candidates = []
+    # Filter out intersections behind the ray origin (t < 0)
+    ts = [t for t in [t1, t2] if t >= 0]
 
-    # Estimate reasonable search bound based on spheroid size and ray origin distance
-    max_axis = max(a, b, c)
-    ray_origin_dist = np.linalg.norm(R0_translated)
-    search_bound = ray_origin_dist + 2 * max_axis  # Conservative bound
-
-    # Use fine-grained search to ensure we find roots
-    n_segments = 100
-    t_values = np.linspace(-search_bound, search_bound, n_segments + 1)
-
-    for i in range(n_segments):
-        t_min, t_max = t_values[i], t_values[i + 1]
-
-        try:
-            # Check if there's a sign change in this interval
-            f_min = spheroid_equation(t_min)
-            f_max = spheroid_equation(t_max)
-
-            if f_min * f_max < 0:  # Sign change indicates root
-                # Use Brent's method for robust root finding
-                t_root = brentq(spheroid_equation, t_min, t_max, xtol=1e-12)
-
-                # Verify this is actually a root
-                if abs(spheroid_equation(t_root)) < 1e-10:
-                    # Check if we already have this root (within tolerance)
-                    is_duplicate = any(abs(t_root - t_existing) < 1e-8 for t_existing in t_candidates)
-                    if not is_duplicate:
-                        t_candidates.append(t_root)
-
-        except (ValueError, RuntimeError):
-            # Root finding failed in this interval
-            continue
-
-    # Sort candidates by distance from ray origin
-    t_candidates.sort(key=abs)
-
-    if len(t_candidates) == 0:
+    if len(ts) == 0:
         return None, None
-    elif len(t_candidates) == 1:
-        # Only one intersection (tangent case)
-        t = t_candidates[0]
-        pos = R0_3d + t * Rd_3d
+    elif len(ts) == 1:
+        pos = R0_3d + ts[0] * Rd_3d
         return pos, None
     else:
-        # Two or more intersections - return closest two
-        t1, t2 = t_candidates[0], t_candidates[1]
-        pos1 = R0_3d + t1 * Rd_3d
-        pos2 = R0_3d + t2 * Rd_3d
+        ts.sort()
+        pos1 = R0_3d + ts[0] * Rd_3d
+        pos2 = R0_3d + ts[1] * Rd_3d
         return pos1, pos2
 
 

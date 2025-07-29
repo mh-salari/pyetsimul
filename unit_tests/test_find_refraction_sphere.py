@@ -1,7 +1,7 @@
-"""Unit tests for find_refraction function."""
+"""Unit tests for find_refraction_sphere function."""
 
 import numpy as np
-from et_simul.optics.refractions import find_refraction
+from et_simul.optics.refractions import find_refraction_sphere
 
 
 def test_basic_refraction():
@@ -16,7 +16,7 @@ def test_basic_refraction():
     O = np.array([2.0, 1.0, 3.0])
     C = np.array([15.0, 8.0, 12.0])
 
-    I = find_refraction(C, O, S0, Sr, n_outside, n_sphere)
+    I = find_refraction_sphere(C, O, S0, Sr, n_outside, n_sphere)
 
     # MATLAB reference values
     expected_I = np.array([6.6936966464330183, 3.5132501989855691, 6.5461055784992670])
@@ -41,7 +41,7 @@ def test_different_refractive_indices():
     O = np.array([-1.0, 2.0, -2.0])
     C = np.array([-8.0, 10.0, -15.0])
 
-    I = find_refraction(C, O, S0, Sr, n_outside, n_sphere)
+    I = find_refraction_sphere(C, O, S0, Sr, n_outside, n_sphere)
 
     # MATLAB reference values
     expected_I = np.array([-3.9369221058636397, 5.3748224021012501, -7.4573405767896075])
@@ -66,7 +66,7 @@ def test_large_sphere():
     O = np.array([5.0, -3.0, 8.0])
     C = np.array([80.0, -20.0, 60.0])
 
-    I = find_refraction(C, O, S0, Sr, n_outside, n_sphere)
+    I = find_refraction_sphere(C, O, S0, Sr, n_outside, n_sphere)
 
     # MATLAB reference values
     expected_I = np.array([37.3698407698170811, -10.7448391945206190, 31.4331581538096536])
@@ -89,7 +89,7 @@ def test_snells_law_verification():
     O = np.array([2.0, 1.0, 3.0])
     C = np.array([15.0, 8.0, 12.0])
 
-    I = find_refraction(C, O, S0, Sr, n_outside, n_sphere)
+    I = find_refraction_sphere(C, O, S0, Sr, n_outside, n_sphere)
     assert I is not None
 
     # Compute vectors
@@ -129,7 +129,7 @@ def test_output_properties():
     O = np.array([2.0, 1.0, 3.0])
     C = np.array([15.0, 8.0, 12.0])
 
-    I = find_refraction(C, O, S0, Sr, n_outside, n_sphere)
+    I = find_refraction_sphere(C, O, S0, Sr, n_outside, n_sphere)
 
     if I is not None and not np.any(np.isnan(I)):
         # Check types and shapes

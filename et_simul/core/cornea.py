@@ -3,6 +3,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Optional, TYPE_CHECKING
 from ..geometry import intersections
+from ..optics import reflections, refractions
 
 if TYPE_CHECKING:
     from .eye import Eye
@@ -14,11 +15,6 @@ class Cornea(ABC):
 
     This class defines the common interface that all corneal models must implement,
     ensuring that they can be used interchangeably within the eye model.
-
-    This class is based on the original MATLAB implementation from the
-    et_simul project — © 2008 Martin Böhme, University of Lübeck.
-    Python port © 2025 Mohammadhossein Salari.
-    Licensed under the GNU GPL v3.0 or later.
     """
 
     center: Optional[np.ndarray] = None
@@ -36,6 +32,25 @@ class Cornea(ABC):
     @abstractmethod
     def point_within_cornea(self, p: np.ndarray, eye: "Eye") -> bool:
         """Tests whether a point lies within the cornea boundaries."""
+        pass
+
+    @abstractmethod
+    def find_reflection(
+        self, light_pos: np.ndarray, camera_pos: np.ndarray, eye_transform: np.ndarray
+    ) -> Optional[np.ndarray]:
+        """Finds position of a glint on the corneal surface."""
+        pass
+
+    @abstractmethod
+    def find_refraction(
+        self,
+        camera_pos: np.ndarray,
+        object_pos: np.ndarray,
+        n_outside: float,
+        n_cornea: float,
+        eye_transform: np.ndarray,
+    ) -> Optional[np.ndarray]:
+        """Finds position where refraction occurs on the corneal surface."""
         pass
 
 
@@ -88,6 +103,27 @@ class SphericalCornea(Cornea):
         projection_distance = np.dot(diff[:3], direction[:3]) / np.linalg.norm(direction[:3])
         return projection_distance < eye.depth_cornea
 
+    def find_reflection(
+        self, light_pos: np.ndarray, camera_pos: np.ndarray, eye_transform: np.ndarray
+    ) -> Optional[np.ndarray]:
+        """Finds position of a glint on the spherical corneal surface."""
+        world_center = eye_transform @ self.center
+        return reflections.find_reflection_sphere(light_pos, camera_pos, world_center, self.radius)
+
+    def find_refraction(
+        self,
+        camera_pos: np.ndarray,
+        object_pos: np.ndarray,
+        n_outside: float,
+        n_cornea: float,
+        eye_transform: np.ndarray,
+    ) -> Optional[np.ndarray]:
+        """Finds position where refraction occurs on the spherical corneal surface."""
+        world_center = eye_transform @ self.center
+        return refractions.find_refraction_sphere(
+            camera_pos, object_pos, world_center, self.radius, n_outside, n_cornea
+        )
+
 
 @dataclass
 class SpheroidCornea(Cornea):
@@ -134,6 +170,27 @@ class SpheroidCornea(Cornea):
         diff = p_local - eye.pos_apex
         projection_distance = np.dot(diff[:3], direction[:3]) / np.linalg.norm(direction[:3])
         return projection_distance < eye.depth_cornea
+
+    def find_reflection(
+        self, light_pos: np.ndarray, camera_pos: np.ndarray, eye_transform: np.ndarray
+    ) -> Optional[np.ndarray]:
+        """Finds position of a glint on the spheroid corneal surface."""
+        world_center = eye_transform @ self.center
+        return reflections.find_reflection_spheroid(light_pos, camera_pos, world_center, self.a, self.b, self.c)
+
+    def find_refraction(
+        self,
+        camera_pos: np.ndarray,
+        object_pos: np.ndarray,
+        n_outside: float,
+        n_cornea: float,
+        eye_transform: np.ndarray,
+    ) -> Optional[np.ndarray]:
+        """Finds position where refraction occurs on the spheroid corneal surface."""
+        world_center = eye_transform @ self.center
+        return refractions.find_refraction_spheroid(
+            camera_pos, object_pos, world_center, self.a, self.b, self.c, n_outside, n_cornea
+        )
 
 
 def create_cornea(cornea_model_type: str, center: np.ndarray, **kwargs) -> Cornea:

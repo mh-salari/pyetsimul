@@ -3,12 +3,12 @@ from dataclasses import dataclass, field
 from typing import Optional, Union, List, Tuple
 from skimage.measure import EllipseModel
 
-from ..optics import reflections, refractions
+from ..optics import refractions
 from .camera import Camera
 from .light import Light
 from .coordinate_system import validate_orientation_matrix
 from .pupil import Pupil, create_pupil
-from .cornea import Cornea, SphericalCornea
+from .cornea import Cornea, SphericalCornea, SpheroidCornea
 
 
 @dataclass
@@ -206,7 +206,7 @@ class Eye:
         within=point_within_cornea(e, p) tests whether the point 'p', lying
         on the corneal sphere of the eye 'e', lies within the boundaries of the
         cornea, as defined by e.depth_cornea. This function is used by
-        find_cr() and find_refraction().
+        find_cr() and find_refraction_sphere().
 
         Args:
             p: Point to test (4D homogeneous coordinates)
@@ -247,12 +247,7 @@ class Eye:
         Licensed under the GNU GPL v3.0 or later.
         """
         # Line 26: cr=find_reflection(l.pos, c.trans(:,4), e.trans*e.pos_cornea, e.r_cornea);
-        cr = reflections.find_reflection(
-            l._pos_homogeneous,
-            c.trans[:, 3],
-            self.trans @ self.cornea.center,
-            self.cornea.radius,
-        )
+        cr = self.cornea.find_reflection(l._pos_homogeneous, c.trans[:, 3], self.trans)
 
         # Lines 29-31: if ~eye_point_within_cornea(e, cr), cr=[]; end
         if cr is not None and not self.point_within_cornea(cr):
@@ -517,8 +512,17 @@ class Eye:
         # Compute corneal center position (4D homogeneous)
         cornea_center = self.trans @ self.cornea.center
 
-        # refract_ray_sphere handles 3D/4D coordinates properly (fixes MATLAB's coordinate bug)
-        U0, Ud = refractions.refract_ray_sphere(R0, Rd, cornea_center, self.cornea.radius, 1.0, self.n_cornea)
+        # Use appropriate refraction method based on cornea type
+        if isinstance(self.cornea, SphericalCornea):
+            # refract_ray_sphere handles 3D/4D coordinates properly (fixes MATLAB's coordinate bug)
+            U0, Ud = refractions.refract_ray_sphere(R0, Rd, cornea_center, self.cornea.radius, 1.0, self.n_cornea)
+        elif isinstance(self.cornea, SpheroidCornea):
+            # Use spheroid refraction
+            U0, Ud = refractions.refract_ray_spheroid(
+                R0, Rd, cornea_center, self.cornea.a, self.cornea.b, self.cornea.c, 1.0, self.n_cornea
+            )
+        else:
+            raise NotImplementedError(f"Refraction not implemented for cornea type: {type(self.cornea)}")
 
         return U0, Ud
 
@@ -562,8 +566,17 @@ class Eye:
         # Compute corneal center positions (4D homogeneous)
         cornea_center = self.trans @ self.cornea.center
 
-        # refract_ray_sphere handles 3D/4D coordinates properly (fixes MATLAB's coordinate bug)
-        O0, Od = refractions.refract_ray_sphere(R0, Rd, cornea_center, self.cornea.radius, 1.0, self.n_cornea)
+        # Use appropriate refraction method based on cornea type
+        if isinstance(self.cornea, SphericalCornea):
+            # refract_ray_sphere handles 3D/4D coordinates properly (fixes MATLAB's coordinate bug)
+            O0, Od = refractions.refract_ray_sphere(R0, Rd, cornea_center, self.cornea.radius, 1.0, self.n_cornea)
+        elif isinstance(self.cornea, SpheroidCornea):
+            # Use spheroid refraction for outer surface
+            O0, Od = refractions.refract_ray_spheroid(
+                R0, Rd, cornea_center, self.cornea.a, self.cornea.b, self.cornea.c, 1.0, self.n_cornea
+            )
+        else:
+            raise NotImplementedError(f"Refraction not implemented for cornea type: {type(self.cornea)}")
 
         if O0 is None or Od is None:
             return None, None, None
@@ -604,12 +617,8 @@ class Eye:
         Python port © 2025 Mohammadhossein Salari.
         Licensed under the GNU GPL v3.0 or later.
         """
-        # Compute corneal center position (4D homogeneous)
-        cornea_center = self.trans @ self.cornea.center
 
-        # Line 28: I=find_refraction(C, O, e.trans*e.pos_cornea, e.r_cornea, 1, e.n_cornea);
-        # find_refraction handles 3D/4D coordinates properly (fixes MATLAB's coordinate bug)
-        I = refractions.find_refraction(C, O, cornea_center, self.cornea.radius, 1.0, self.n_cornea)
+        I = self.cornea.find_refraction(C, O, 1.0, self.n_cornea, self.trans)
 
         if I is None:
             return None
@@ -620,7 +629,7 @@ class Eye:
         else:
             I = I.copy()  # Already 4D
 
-        # Line 30-32: Check if point is within cornea
+        # Check if point is within cornea
         if not self.point_within_cornea(I):
             I = None
 

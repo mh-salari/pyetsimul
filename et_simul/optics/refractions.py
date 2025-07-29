@@ -3,7 +3,47 @@ from scipy.optimize import brentq
 from ..geometry.intersections import intersect_ray_sphere, intersect_ray_spheroid, spheroid_surface_normal
 
 
-def find_refraction(C, O, S0, Sr, n_outside, n_sphere):
+def _refraction_objective_sphere(a, C_3d, O_3d, S0_3d, Sr, n_outside, n_sphere):
+    """Objective function for finding refraction point on sphere surface.
+
+    Args:
+        a: Interpolation parameter between camera and object directions
+        C_3d: Camera position (3D)
+        O_3d: Object position (3D)
+        S0_3d: Sphere center (3D)
+        Sr: Sphere radius
+        n_outside: Refractive index outside sphere
+        n_sphere: Refractive index of sphere
+
+    Returns:
+        Tuple of (diff, U0) where diff is Snell's law difference and U0 is surface point
+    """
+    # Compute vectors from sphere center to camera and object
+    to_c = (C_3d - S0_3d) / np.linalg.norm(C_3d - S0_3d)
+    to_o = (O_3d - S0_3d) / np.linalg.norm(O_3d - S0_3d)
+
+    # Interpolate and normalize to get surface normal
+    n = a * to_c + (1 - a) * to_o
+    n = n / np.linalg.norm(n)
+
+    # Compute point on surface of sphere
+    U0 = S0_3d + Sr * n
+
+    # Compute angles with surface normal
+    cos_angle_c = np.dot(n, (C_3d - U0) / np.linalg.norm(C_3d - U0))
+    cos_angle_o = np.dot(n, (U0 - O_3d) / np.linalg.norm(U0 - O_3d))
+
+    # Safe sqrt to handle numerical errors
+    sin_angle_c = np.sqrt(max(0, 1 - cos_angle_c**2))
+    sin_angle_o = np.sqrt(max(0, 1 - cos_angle_o**2))
+
+    # Snell's law difference
+    diff = n_outside * sin_angle_c - n_sphere * sin_angle_o
+
+    return diff, U0
+
+
+def find_refraction_sphere(C, O, S0, Sr, n_outside, n_sphere):
     """Computes image produced by refracting sphere.
 
     This function is based on the original MATLAB implementation from the
@@ -11,7 +51,7 @@ def find_refraction(C, O, S0, Sr, n_outside, n_sphere):
     Python port © 2025 Mohammadhossein Salari.
     Licensed under the GNU GPL v3.0 or lat
 
-    I = find_refraction(C, O, S0, Sr, n_outside, n_sphere) finds the position
+    I = find_refraction_sphere(C, O, S0, Sr, n_outside, n_sphere) finds the position
     on a sphere with center S0 and radius Sr where a ray emanating from an
     object at a position 'O' inside the sphere is refracted to pass directly
     through point 'C' (this could be a camera, for example). The refractive
@@ -37,36 +77,10 @@ def find_refraction(C, O, S0, Sr, n_outside, n_sphere):
     # Determine output coordinate type from input (preserve input format)
     is_homogeneous = len(C) > 3 or len(O) > 3 or len(S0) > 3
 
-    def refraction_objective(a):
-        """Objective function for finding refraction point."""
-        # Compute vectors from sphere center to camera and object
-        to_c = (C_3d - S0_3d) / np.linalg.norm(C_3d - S0_3d)
-        to_o = (O_3d - S0_3d) / np.linalg.norm(O_3d - S0_3d)
-
-        # Interpolate and normalize to get surface normal
-        n = a * to_c + (1 - a) * to_o
-        n = n / np.linalg.norm(n)
-
-        # Compute point on surface of sphere
-        U0 = S0_3d + Sr * n
-
-        # Compute angles with surface normal
-        cos_angle_c = np.dot(n, (C_3d - U0) / np.linalg.norm(C_3d - U0))
-        cos_angle_o = np.dot(n, (U0 - O_3d) / np.linalg.norm(U0 - O_3d))
-
-        # Safe sqrt to handle numerical errors
-        sin_angle_c = np.sqrt(max(0, 1 - cos_angle_c**2))
-        sin_angle_o = np.sqrt(max(0, 1 - cos_angle_o**2))
-
-        # Snell's law difference
-        diff = n_outside * sin_angle_c - n_sphere * sin_angle_o
-
-        return diff, U0
-
     # Find zero of objective function
     try:
-        a = brentq(lambda x: refraction_objective(x)[0], 0, 1)
-        _, I_3d = refraction_objective(a)
+        a = brentq(lambda x: _refraction_objective_sphere(x, C_3d, O_3d, S0_3d, Sr, n_outside, n_sphere)[0], 0, 1)
+        _, I_3d = _refraction_objective_sphere(a, C_3d, O_3d, S0_3d, Sr, n_outside, n_sphere)
 
         # Return result in same coordinate type as input
         if is_homogeneous:
@@ -75,6 +89,121 @@ def find_refraction(C, O, S0, Sr, n_outside, n_sphere):
             return I_3d
     except (ValueError, RuntimeError):
         return None
+
+
+def _refraction_objective_spheroid(alpha, C_3d, O_3d, S0_3d, a, b, c, n_outside, n_spheroid):
+    """Objective function for finding refraction point on spheroid surface.
+
+    Args:
+        alpha: Interpolation parameter between camera and object directions
+        C_3d: Camera position (3D)
+        O_3d: Object position (3D)
+        S0_3d: Spheroid center (3D)
+        a: Semi-axis length (x-axis)
+        b: Semi-axis length (y-axis)
+        c: Semi-axis length (z-axis)
+        n_outside: Refractive index outside spheroid
+        n_spheroid: Refractive index of spheroid
+
+    Returns:
+        Tuple of (diff, intersection) where diff is Snell's law difference and intersection is surface point
+    """
+    # Interpolate between object and camera directions from spheroid center
+    to_c = (C_3d - S0_3d) / np.linalg.norm(C_3d - S0_3d)
+    to_o = (O_3d - S0_3d) / np.linalg.norm(O_3d - S0_3d)
+
+    # Interpolated direction (not necessarily normalized)
+    direction = alpha * to_c + (1 - alpha) * to_o
+    direction = direction / np.linalg.norm(direction)
+
+    # Find intersection with spheroid surface along this direction
+    intersection, _ = intersect_ray_spheroid(S0_3d, direction, S0_3d, a, b, c)
+    if intersection is None:
+        return float("inf"), None
+
+    # Get surface normal at intersection point
+    normal = spheroid_surface_normal(intersection, S0_3d, a, b, c)
+    if normal is None:
+        return float("inf"), None
+
+    # Compute angles with surface normal
+    to_camera = (C_3d - intersection) / np.linalg.norm(C_3d - intersection)
+    to_object = (intersection - O_3d) / np.linalg.norm(intersection - O_3d)
+
+    cos_angle_c = np.dot(normal, to_camera)
+    cos_angle_o = np.dot(normal, to_object)
+
+    # Safe sqrt to handle numerical errors
+    sin_angle_c = np.sqrt(max(0, 1 - cos_angle_c**2))
+    sin_angle_o = np.sqrt(max(0, 1 - cos_angle_o**2))
+
+    # Snell's law difference
+    diff = n_outside * sin_angle_c - n_spheroid * sin_angle_o
+
+    return diff, intersection
+
+
+def find_refraction_spheroid(C, O, S0, a, b, c, n_outside, n_spheroid):
+    """Computes image produced by refracting spheroid.
+
+    I = find_refraction_spheroid(C, O, S0, a, b, c, n_outside, n_spheroid) finds the position
+    on a spheroid with center S0 and semi-axes a, b, c where a ray emanating from an
+    object at a position 'O' inside the spheroid is refracted to pass directly
+    through point 'C' (this could be a camera, for example). The refractive
+    index of the spheroid is 'n_spheroid', that of the outside medium is
+    'n_outside'.
+
+    Args:
+        C: Camera/observer position (3D or 4D homogeneous)
+        O: Object position inside spheroid (3D or 4D homogeneous)
+        S0: Spheroid center (3D or 4D homogeneous)
+        a: Semi-axis length (x-axis)
+        b: Semi-axis length (y-axis)
+        c: Semi-axis length (z-axis, optical axis)
+        n_outside: Refractive index outside spheroid
+        n_spheroid: Refractive index of spheroid
+
+    Returns:
+        Position on spheroid surface where refraction occurs (same coordinate type as input), or None if not found.
+    """
+    # Extract 3D spatial components for calculations
+    C_3d = C[:3] if len(C) > 3 else C
+    O_3d = O[:3] if len(O) > 3 else O
+    S0_3d = S0[:3] if len(S0) > 3 else S0
+
+    print("At x=1, inputs are:")
+    print(f"C_3d={C_3d}, O_3d={O_3d}, S0_3d={S0_3d}, a={a}, b={b}, c={c}")
+
+    # Determine output coordinate type from input (preserve input format)
+    is_homogeneous = len(C) > 3 or len(O) > 3 or len(S0) > 3
+
+    print("is_homogeneous", is_homogeneous)
+    f0 = _refraction_objective_spheroid(0, C_3d, O_3d, S0_3d, a, b, c, n_outside, n_spheroid)[0]
+    f1 = _refraction_objective_spheroid(1, C_3d, O_3d, S0_3d, a, b, c, n_outside, n_spheroid)[0]
+
+    print(f"f(0) = {f0}, f(1) = {f1}")
+
+    if f0 * f1 > 0:
+        print("No sign change on [0,1], no root found")
+        return None
+
+    # Find zero of objective function
+    # try:
+    alpha = brentq(
+        lambda x: _refraction_objective_spheroid(x, C_3d, O_3d, S0_3d, a, b, c, n_outside, n_spheroid)[0], 0, 1
+    )
+    _, I_3d = _refraction_objective_spheroid(alpha, C_3d, O_3d, S0_3d, a, b, c, n_outside, n_spheroid)
+
+    if I_3d is None:
+        return None
+
+    # Return result in same coordinate type as input
+    if is_homogeneous:
+        return np.array([I_3d[0], I_3d[1], I_3d[2], 1.0])
+    else:
+        return I_3d
+    # except (ValueError, RuntimeError):
+    #     return None
 
 
 def refract_ray_sphere(R0, Rd, S0, Sr, n_outside, n_sphere):
