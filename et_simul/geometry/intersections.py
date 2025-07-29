@@ -164,33 +164,57 @@ def intersect_ray_plane(R0, Rd, P0, Pn):
     return intersection
 
 
-def intersect_ray_spheroid(R0, Rd, S0, a, b, c):
+def intersect_ray_conic(R0, Rd, S0, r_apical, Q):
     """
-    Find intersection between ray and spheroid defined by
-    (x - S0x)^2/a^2 + (y - S0y)^2/b^2 + (z - S0z)^2/c^2 = 1.
+    Find intersection between ray and conic section defined by the corneal asphericity equation:
+    x² + y² + pz² + 2rz = 0
+    where p = Q + 1, r is the apical radius, and Q is the asphericity parameter.
+
+    Note: Using +2rz (not -2rz) so the surface opens toward negative Z,
+    matching the eye coordinate system where the optical axis points along -Z.
+
+    This implements proper conic section geometry for realistic corneal modeling,
+    replacing the basic ellipsoid approximation.
 
     Args:
         R0: Ray origin (3D coordinates)
         Rd: Ray direction (3D coordinates)
-        S0: Spheroid center (3D coordinates)
-        a, b, c: Semi-axis lengths along x, y, z axes respectively
+        S0: Conic center (3D coordinates, typically corneal apex)
+        r_apical: Apical radius of curvature (meters)
+        Q: Asphericity parameter (Q < 0 for prolate, Q = 0 for sphere, Q > 0 for oblate)
 
     Returns:
         Tuple (pos1, pos2): Intersection points closer and farther from R0.
-        None if no intersection.
+        Returns (None, None) if no intersection.
     """
+    # Extract 3D components and normalize
     R0_3d = R0[:3] if len(R0) == 4 else R0
     Rd_3d = Rd[:3] if len(Rd) == 4 else Rd
     S0_3d = S0[:3] if len(S0) == 4 else S0
 
     Rd_3d = Rd_3d / np.linalg.norm(Rd_3d)
+
+    # Calculate p-value from Q-value
+    p = Q + 1
+
+    # Translate coordinates so conic center is at origin
     R0_rel = R0_3d - S0_3d
 
-    # Quadratic coefficients for t where ray intersects spheroid
-    A = (Rd_3d[0] ** 2) / (a**2) + (Rd_3d[1] ** 2) / (b**2) + (Rd_3d[2] ** 2) / (c**2)
-    B = 2 * ((R0_rel[0] * Rd_3d[0]) / (a**2) + (R0_rel[1] * Rd_3d[1]) / (b**2) + (R0_rel[2] * Rd_3d[2]) / (c**2))
-    C = (R0_rel[0] ** 2) / (a**2) + (R0_rel[1] ** 2) / (b**2) + (R0_rel[2] ** 2) / (c**2) - 1
+    # Ray equation: P(t) = R0_rel + t * Rd_3d
+    # Conic equation: x² + y² + pz² + 2rz = 0
+    # Substitute ray into conic: (R0x + t*Rdx)² + (R0y + t*Rdy)² + p(R0z + t*Rdz)² + 2r(R0z + t*Rdz) = 0
 
+    # Expand and collect coefficients of t² + bt + c = 0
+    # Coefficient of t²
+    A = Rd_3d[0] ** 2 + Rd_3d[1] ** 2 + p * Rd_3d[2] ** 2
+
+    # Coefficient of t
+    B = 2 * (R0_rel[0] * Rd_3d[0] + R0_rel[1] * Rd_3d[1] + p * R0_rel[2] * Rd_3d[2] + r_apical * Rd_3d[2])
+
+    # Constant term
+    C = R0_rel[0] ** 2 + R0_rel[1] ** 2 + p * R0_rel[2] ** 2 + 2 * r_apical * R0_rel[2]
+
+    # Solve quadratic equation
     disc = B**2 - 4 * A * C
     if disc < 0:
         return None, None  # No real roots, no intersection
@@ -214,35 +238,98 @@ def intersect_ray_spheroid(R0, Rd, S0, a, b, c):
         return pos1, pos2
 
 
-def spheroid_surface_normal(point, S0, a, b, c):
+def conic_surface_normal(point, S0, r_apical, Q):
     """
-    Calculate surface normal at a point on prolate spheroid.
+    Calculate surface normal at a point on conic section surface.
 
-    For spheroid equation: (x-S0x)²/a² + (y-S0y)²/b² + (z-S0z)²/c² = 1
-    Normal vector is gradient: ∇f = (2(x-S0x)/a², 2(y-S0y)/b², 2(z-S0z)/c²)
+    For conic equation: F(x,y,z) = x² + y² + pz² + 2rz = 0
+    where p = Q + 1, the normal vector is the gradient: ∇F = (2x, 2y, 2pz + 2r)
 
     Args:
-        point: Point on spheroid surface (3D coordinates)
-        S0: Spheroid center (3D coordinates)
-        a, b, c: Semi-axis lengths
+        point: Point on conic surface (3D coordinates)
+        S0: Conic center (3D coordinates, typically corneal apex)
+        r_apical: Apical radius of curvature (meters)
+        Q: Asphericity parameter (Q < 0 for prolate, Q = 0 for sphere, Q > 0 for oblate)
 
     Returns:
-        Unit normal vector pointing outward from spheroid surface
+        Unit normal vector pointing outward from conic surface
     """
     # Extract 3D components
     point_3d = point[:3] if len(point) == 4 else point
     S0_3d = S0[:3] if len(S0) == 4 else S0
 
-    # Translate to spheroid-centered coordinates
+    # Calculate p-value from Q-value
+    p = Q + 1
+
+    # Translate to conic-centered coordinates
     x, y, z = point_3d - S0_3d
 
-    # Calculate gradient (surface normal before normalization)
-    normal = np.array([2 * x / (a**2), 2 * y / (b**2), 2 * z / (c**2)])
+    # Calculate gradient: ∇F = (2x, 2y, 2pz + 2r)
+    normal = np.array([2 * x, 2 * y, 2 * p * z + 2 * r_apical])
 
     # Normalize to unit vector
     normal_magnitude = np.linalg.norm(normal)
     if normal_magnitude < 1e-15:
-        warnings.warn("Degenerate normal vector at spheroid center")
+        warnings.warn("Degenerate normal vector at conic apex", RuntimeWarning)
         return np.array([0, 0, 1])  # Default to z-axis
 
-    return normal / normal_magnitude
+    result = normal / normal_magnitude
+    return result
+
+
+def point_on_conic_surface(center, direction, r_apical, Q):
+    """
+    Find point on conic surface given direction from center.
+
+    Given a direction from the conic center, find the point where this direction
+    intersects the conic surface. This is useful for optical calculations.
+
+    Args:
+        center: Conic center (3D coordinates)
+        direction: Direction vector from center (3D coordinates, need not be normalized)
+        r_apical: Apical radius of curvature (meters)
+        Q: Asphericity parameter (Q < 0 for prolate, Q = 0 for sphere, Q > 0 for oblate)
+
+    Returns:
+        Point on conic surface, or None if no intersection found
+    """
+    # Extract 3D components and normalize direction
+    center_3d = center[:3] if len(center) == 4 else center
+    direction_3d = direction[:3] if len(direction) == 4 else direction
+    direction_normalized = direction_3d / np.linalg.norm(direction_3d)
+
+    # Calculate p-value from Q-value
+    p = Q + 1
+
+    # Ray from center: P(t) = t * direction (relative to center)
+    # Conic equation (relative to center): x² + y² + pz² + 2rz = 0
+    # Substitute: (t*dx)² + (t*dy)² + p(t*dz)² + 2r(t*dz) = 0
+    # Simplify: t²(dx² + dy² + p*dz²) + 2r*t*dz = 0
+    # Factor: t[t(dx² + dy² + p*dz²) + 2r*dz] = 0
+
+    dx, dy, dz = direction_normalized
+
+    # First solution is t = 0 (at center), which we don't want
+    # Second solution from: t(dx² + dy² + p*dz²) + 2r*dz = 0
+    # So: t = -2r*dz / (dx² + dy² + p*dz²)
+
+    denominator = dx**2 + dy**2 + p * dz**2
+    if abs(denominator) < 1e-15:
+        return None  # Degenerate case
+
+    if abs(dz) < 1e-15:
+        # Direction is perpendicular to z-axis, special case
+        # The equation becomes: t²(dx² + dy²) = 0, so t = 0 (only center)
+        return None
+
+    t = (-2 * r_apical * dz) / denominator
+
+    if t <= 0:
+        return None  # Point is behind or at center
+
+    # Calculate point on surface (relative to origin) and then translate
+    surface_point = t * direction_normalized
+
+    # Translate back to the original coordinate system
+    result = center_3d + surface_point
+    return result

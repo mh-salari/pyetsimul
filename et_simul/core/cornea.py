@@ -126,45 +126,51 @@ class SphericalCornea(Cornea):
 
 
 @dataclass
-class SpheroidCornea(Cornea):
-    """Represents a cornea with a prolate spheroid surface.
+class ConicCornea(Cornea):
+    """Represents a cornea with a conic section surface.
 
-    This model provides a more realistic representation of the corneal shape.
+    This model provides a realistic representation of corneal shape using proper
+    conic section geometry with asphericity parameter Q-value, replacing the
+    basic ellipsoid approximation with mathematically accurate corneal modeling.
 
     Attributes:
-        center (np.ndarray): The 4D homogeneous coordinate of the spheroid center.
-        a (float): Semi-axis length (x-axis).
-        b (float): Semi-axis length (y-axis).
-        c (float): Semi-axis length (z-axis, optical axis).
-        Q (float): Asphericity parameter (conic constant). Q < 0 for prolate spheroid.
+        center (np.ndarray): The 4D homogeneous coordinate of the conic center (typically corneal apex).
+        r_apical (float): Apical radius of curvature in meters.
+        Q (float): Asphericity parameter (conic constant):
+                  - Q = 0: Perfect sphere
+                  - Q < 0: Prolate conic (typical cornea, flattens toward periphery)
+                  - Q > 0: Oblate conic (steepens toward periphery)
     """
 
-    a: float = 7.98e-3  # Default semi-axis length (x-axis)
-    b: float = 7.98e-3  # Default semi-axis length (y-axis)
-    c: float = 7.98e-3  # Default semi-axis length (z-axis, optical axis)
-    Q: float = -0.18  # Default Q-value for anterior cornea
+    r_apical: float = 7.98e-3  # Default apical radius of curvature (meters)
+    Q: float = -0.18  # Default Q-value for anterior cornea (prolate)
 
     def __post_init__(self):
-        if not (self.a == self.b and self.a != self.c):
-            # This can be a warning or an error depending on desired strictness
-            print(f"Warning: For a prolate spheroid, expected a = b ≠ c. Got a={self.a}, b={self.b}, c={self.c}")
+        # Validate Q parameter ranges
+        if self.Q > 1:
+            print(f"Warning: Q = {self.Q} > 1 may represent unusual corneal geometry")
+
+        # Calculate p-value for reference
+        p = self.Q + 1
+        if p <= 0:
+            print(f"Warning: p-value = {p} ≤ 0 may cause numerical issues in conic calculations")
 
     def intersect(self, ray_origin: np.ndarray, ray_direction: np.ndarray) -> Optional[np.ndarray]:
-        """Calculates intersection for a spheroid cornea.
+        """Calculates intersection for a conic cornea.
 
         Returns the intersection point closer to the ray origin.
         """
-        pos, _ = intersections.intersect_ray_spheroid(ray_origin, ray_direction, self.center, self.a, self.b, self.c)
+        pos, _ = intersections.intersect_ray_conic(ray_origin, ray_direction, self.center, self.r_apical, self.Q)
         return pos
 
     def normal_at(self, point: np.ndarray) -> np.ndarray:
-        """Calculates the normal vector for a spheroid surface."""
-        return intersections.spheroid_surface_normal(point, self.center, self.a, self.b, self.c)
+        """Calculates the normal vector for a conic surface."""
+        return intersections.conic_surface_normal(point, self.center, self.r_apical, self.Q)
 
     def point_within_cornea(self, p: np.ndarray, eye: "Eye") -> bool:
-        """Tests whether a point lies within the spheroid cornea boundaries."""
-        # For a spheroid, this check is more complex than for a sphere.
-        # A common simplification is to still use the axial depth.
+        """Tests whether a point lies within the conic cornea boundaries."""
+        # For a conic section, this check uses the axial depth approximation.
+        # This is appropriate since the Q-value primarily affects peripheral curvature.
         p_local = np.linalg.solve(eye.trans, p)
         direction = self.center - eye.pos_apex
         diff = p_local - eye.pos_apex
@@ -174,9 +180,9 @@ class SpheroidCornea(Cornea):
     def find_reflection(
         self, light_pos: np.ndarray, camera_pos: np.ndarray, eye_transform: np.ndarray
     ) -> Optional[np.ndarray]:
-        """Finds position of a glint on the spheroid corneal surface."""
+        """Finds position of a glint on the conic corneal surface."""
         world_center = eye_transform @ self.center
-        return reflections.find_reflection_spheroid(light_pos, camera_pos, world_center, self.a, self.b, self.c)
+        return reflections.find_reflection_conic(light_pos, camera_pos, world_center, self.r_apical, self.Q)
 
     def find_refraction(
         self,
@@ -186,10 +192,10 @@ class SpheroidCornea(Cornea):
         n_cornea: float,
         eye_transform: np.ndarray,
     ) -> Optional[np.ndarray]:
-        """Finds position where refraction occurs on the spheroid corneal surface."""
+        """Finds position where refraction occurs on the conic corneal surface."""
         world_center = eye_transform @ self.center
-        return refractions.find_refraction_spheroid(
-            camera_pos, object_pos, world_center, self.a, self.b, self.c, n_outside, n_cornea
+        return refractions.find_refraction_conic(
+            camera_pos, object_pos, world_center, self.r_apical, self.Q, n_outside, n_cornea
         )
 
 
@@ -198,11 +204,11 @@ def create_cornea(cornea_model_type: str, center: np.ndarray, **kwargs) -> Corne
 
     Args:
         cornea_model_type (str): The type of cornea model to create.
-                                 Supported types: "spherical", "spheroid".
+                                 Supported types: "spherical", "conic".
         center (np.ndarray): The center of the cornea.
         **kwargs: Additional parameters required for the specific cornea model.
                   For "spherical": radius (float)
-                  For "spheroid": a, b, c (float), Q (float, optional)
+                  For "conic": r_apical (float), Q (float, optional)
 
     Returns:
         Cornea: An instance of the specified Cornea subclass.
@@ -214,15 +220,12 @@ def create_cornea(cornea_model_type: str, center: np.ndarray, **kwargs) -> Corne
         if "radius" not in kwargs:
             raise ValueError("'radius' is required for spherical cornea model.")
         return SphericalCornea(center=center, radius=kwargs["radius"])
-    elif cornea_model_type == "spheroid":
-        required_keys = ["a", "b", "c"]
-        if not all(key in kwargs for key in required_keys):
-            raise ValueError("'a', 'b', and 'c' are required for spheroid cornea model.")
-        return SpheroidCornea(
+    elif cornea_model_type == "conic":
+        if "r_apical" not in kwargs:
+            raise ValueError("'r_apical' is required for conic cornea model.")
+        return ConicCornea(
             center=center,
-            a=kwargs["a"],
-            b=kwargs["b"],
-            c=kwargs["c"],
+            r_apical=kwargs["r_apical"],
             Q=kwargs.get("Q", -0.18),  # Use default if not provided
         )
     else:

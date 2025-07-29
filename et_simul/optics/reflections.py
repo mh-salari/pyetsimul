@@ -4,8 +4,8 @@ from scipy.optimize import brentq
 from ..geometry.intersections import (
     intersect_ray_circle,
     intersect_ray_sphere,
-    intersect_ray_spheroid,
-    spheroid_surface_normal,
+    intersect_ray_conic,
+    conic_surface_normal,
 )
 
 
@@ -99,12 +99,15 @@ def find_reflection_sphere(L, C, S0, Sr):
         return None
 
 
-def _reflect_objective_spheroid(alpha, L, C, S0, a, b, c):
-    """Objective function for spheroid reflection finding.
+def _reflect_objective_conic(alpha, L, C, S0, r_apical, Q):
+    """Objective function for conic section reflection finding.
 
     Uses the same interpolation approach as the sphere version but projects
-    to the spheroid surface instead of sphere surface.
+    to the conic surface using proper conic section geometry.
     """
+    # Import here to avoid circular import
+    from ..geometry.intersections import point_on_conic_surface, conic_surface_normal
+
     # Suppress numpy warnings to provide cleaner reflection error messages
     with np.errstate(invalid="ignore", divide="ignore"):
         # Extract 3D components
@@ -124,25 +127,19 @@ def _reflect_objective_spheroid(alpha, L, C, S0, a, b, c):
         # n=n/norm(n)
         n = n / np.linalg.norm(n)
 
-        # Project direction onto spheroid surface
-        # For spheroid: (x/a)² + (y/b)² + (z/c)² = 1
-        # Ray from center: S0 + t*n intersects at surface
-        # We need to solve: ((S0[0] + t*n[0])/a)² + ((S0[1] + t*n[1])/b)² + ((S0[2] + t*n[2])/c)² = 1
-        # Simplifying: (n[0]/a)²*t² + (n[1]/b)²*t² + (n[2]/c)²*t² = 1
-        # t² * (n[0]²/a² + n[1]²/b² + n[2]²/c²) = 1
-
-        scaling_factor = np.sqrt(n[0] ** 2 / a**2 + n[1] ** 2 / b**2 + n[2] ** 2 / c**2)
-        if scaling_factor == 0:
+        # Project direction onto conic surface using proper conic geometry
+        U0 = point_on_conic_surface(S0_3d, n, r_apical, Q)
+        if U0 is None:
             return float("inf"), None
 
-        t = 1.0 / scaling_factor
-        U0 = S0_3d + t * n
+        # Get surface normal at intersection point
+        surface_normal = conic_surface_normal(U0, S0_3d, r_apical, Q)
 
-        # angle_c=arccos(n'*(C-U0)/norm(C-U0)) with safe clipping
-        angle_c = np.arccos(np.clip(np.dot(n, (C_3d - U0) / np.linalg.norm(C_3d - U0)), -1, 1))
+        # angle_c=arccos(surface_normal'*(C-U0)/norm(C-U0)) with safe clipping
+        angle_c = np.arccos(np.clip(np.dot(surface_normal, (C_3d - U0) / np.linalg.norm(C_3d - U0)), -1, 1))
 
-        # angle_l=arccos(n'*(L-U0)/norm(L-U0)) with safe clipping
-        angle_l = np.arccos(np.clip(np.dot(n, (L_3d - U0) / np.linalg.norm(L_3d - U0)), -1, 1))
+        # angle_l=arccos(surface_normal'*(L-U0)/norm(L-U0)) with safe clipping
+        angle_l = np.arccos(np.clip(np.dot(surface_normal, (L_3d - U0) / np.linalg.norm(L_3d - U0)), -1, 1))
 
         # angle_diff=angle_c-angle_l
         angle_diff = angle_c - angle_l
@@ -156,30 +153,37 @@ def _reflect_objective_spheroid(alpha, L, C, S0, a, b, c):
         return angle_diff, U0_result
 
 
-def find_reflection_spheroid(L, C, S0, a, b, c):
-    """Finds position of a glint on the surface of a spheroid.
+def find_reflection_conic(L, C, S0, r_apical, Q):
+    """Finds position of a glint on the surface of a conic section.
 
     Args:
         L: Light source position
         C: Camera position
-        S0: Spheroid center
-        a: Semi-axis length (x-axis)
-        b: Semi-axis length (y-axis)
-        c: Semi-axis length (z-axis, optical axis)
+        S0: Conic center (typically corneal apex)
+        r_apical: Apical radius of curvature (meters)
+        Q: Asphericity parameter (Q < 0 for prolate, Q = 0 for sphere, Q > 0 for oblate)
 
     Returns:
-        U0: Position of glint on spheroid surface, or None if no reflection found
+        U0: Position of glint on conic surface, or None if no reflection found
     """
-    try:
-        # Use optimization approach similar to sphere case
-        alpha = brentq(lambda alpha: _reflect_objective_spheroid(alpha, L, C, S0, a, b, c)[0], 0, 1)
 
-        _, U0 = _reflect_objective_spheroid(alpha, L, C, S0, a, b, c)
+    try:
+        # Test objective function at bounds
+        obj_0, U0_0 = _reflect_objective_conic(0.0, L, C, S0, r_apical, Q)
+        obj_1, U0_1 = _reflect_objective_conic(1.0, L, C, S0, r_apical, Q)
+
+        if obj_0 == float("inf") or obj_1 == float("inf"):
+            return None
+
+        # Use optimization approach similar to sphere case
+        alpha = brentq(lambda alpha: _reflect_objective_conic(alpha, L, C, S0, r_apical, Q)[0], 0, 1)
+
+        _, U0 = _reflect_objective_conic(alpha, L, C, S0, r_apical, Q)
 
         return U0
     except ValueError:
         warnings.warn(
-            f"No glint found on spheroid: Light={L}, Camera={C}, Spheroid center={S0}",
+            f"No glint found on conic surface: Light={L}, Camera={C}, Conic center={S0}",
             RuntimeWarning,
         )
         return None
@@ -305,23 +309,22 @@ def reflect_ray_sphere(R0, Rd, S0, Sr):
     return U0, Ud
 
 
-def reflect_ray_spheroid(R0, Rd, S0, a, b, c):
+def reflect_ray_conic(R0, Rd, S0, r_apical, Q):
     """
-    Reflect ray at surface of prolate spheroid.
+    Reflect ray at surface of conic section.
 
-    This is the spheroid equivalent of reflect_ray_sphere() used in the eye simulator.
+    This is the conic equivalent of reflect_ray_sphere() used in the eye simulator.
 
     Args:
         R0: Ray origin (3D or 4D homogeneous)
         Rd: Ray direction (3D or 4D homogeneous)
-        S0: Spheroid center (3D or 4D homogeneous)
-        a: Semi-axis length in X direction (horizontal)
-        b: Semi-axis length in Y direction (vertical)
-        c: Semi-axis length in Z direction (anterior-posterior)
+        S0: Conic center (3D or 4D homogeneous, typically corneal apex)
+        r_apical: Apical radius of curvature (meters)
+        Q: Asphericity parameter (Q < 0 for prolate, Q = 0 for sphere, Q > 0 for oblate)
 
     Returns:
         Tuple of (U0, Ud) where:
-        - U0: Intersection point on spheroid surface
+        - U0: Intersection point on conic surface
         - Ud: Reflected ray direction
         Returns (None, None) if no intersection.
     """
@@ -335,7 +338,7 @@ def reflect_ray_spheroid(R0, Rd, S0, a, b, c):
     Rd_normalized = Rd_3d / np.linalg.norm(Rd_3d)
 
     # Step 1: Find intersection point
-    U0, _ = intersect_ray_spheroid(R0, Rd, S0, a, b, c)
+    U0, _ = intersect_ray_conic(R0, Rd, S0, r_apical, Q)
 
     if U0 is None:
         return None, None
@@ -344,10 +347,10 @@ def reflect_ray_spheroid(R0, Rd, S0, a, b, c):
     U0_3d = U0[:3] if len(U0) > 3 else U0
 
     # Step 2: Calculate surface normal at intersection point
-    N = spheroid_surface_normal(U0, S0, a, b, c)
+    N = conic_surface_normal(U0, S0, r_apical, Q)
 
     # For reflection, we typically want outward-pointing normal
-    # Check if normal points outward from spheroid center
+    # Check if normal points outward from conic center
     S0_3d = S0[:3] if len(S0) > 3 else S0
     center_to_point = U0_3d - S0_3d
     if np.dot(N, center_to_point) < 0:  # Normal points inward

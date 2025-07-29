@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.optimize import brentq
-from ..geometry.intersections import intersect_ray_sphere, intersect_ray_spheroid, spheroid_surface_normal
+from ..geometry.intersections import intersect_ray_sphere, intersect_ray_conic, conic_surface_normal
 
 
 def _refraction_objective_sphere(a, C_3d, O_3d, S0_3d, Sr, n_outside, n_sphere):
@@ -84,31 +84,34 @@ def find_refraction_sphere(C, O, S0, Sr, n_outside, n_sphere):
 
         # Return result in same coordinate type as input
         if is_homogeneous:
-            return np.array([I_3d[0], I_3d[1], I_3d[2], 1.0])
+            result = np.array([I_3d[0], I_3d[1], I_3d[2], 1.0])
         else:
-            return I_3d
+            result = I_3d
+        return result
     except (ValueError, RuntimeError):
         return None
 
 
-def _refraction_objective_spheroid(alpha, C_3d, O_3d, S0_3d, a, b, c, n_outside, n_spheroid):
-    """Objective function for finding refraction point on spheroid surface.
+def _refraction_objective_conic(alpha, C_3d, O_3d, S0_3d, r_apical, Q, n_outside, n_conic):
+    """Objective function for finding refraction point on conic surface.
 
     Args:
         alpha: Interpolation parameter between camera and object directions
         C_3d: Camera position (3D)
         O_3d: Object position (3D)
-        S0_3d: Spheroid center (3D)
-        a: Semi-axis length (x-axis)
-        b: Semi-axis length (y-axis)
-        c: Semi-axis length (z-axis)
-        n_outside: Refractive index outside spheroid
-        n_spheroid: Refractive index of spheroid
+        S0_3d: Conic center (3D, typically corneal apex)
+        r_apical: Apical radius of curvature (meters)
+        Q: Asphericity parameter (Q < 0 for prolate, Q = 0 for sphere, Q > 0 for oblate)
+        n_outside: Refractive index outside conic
+        n_conic: Refractive index of conic
 
     Returns:
         Tuple of (diff, intersection) where diff is Snell's law difference and intersection is surface point
     """
-    # Interpolate between object and camera directions from spheroid center
+    # Import here to avoid circular import
+    from ..geometry.intersections import point_on_conic_surface, conic_surface_normal
+
+    # Interpolate between object and camera directions from conic center
     to_c = (C_3d - S0_3d) / np.linalg.norm(C_3d - S0_3d)
     to_o = (O_3d - S0_3d) / np.linalg.norm(O_3d - S0_3d)
 
@@ -116,13 +119,13 @@ def _refraction_objective_spheroid(alpha, C_3d, O_3d, S0_3d, a, b, c, n_outside,
     direction = alpha * to_c + (1 - alpha) * to_o
     direction = direction / np.linalg.norm(direction)
 
-    # Find intersection with spheroid surface along this direction
-    intersection, _ = intersect_ray_spheroid(S0_3d, direction, S0_3d, a, b, c)
+    # Find intersection with conic surface along this direction
+    intersection = point_on_conic_surface(S0_3d, direction, r_apical, Q)
     if intersection is None:
         return float("inf"), None
 
     # Get surface normal at intersection point
-    normal = spheroid_surface_normal(intersection, S0_3d, a, b, c)
+    normal = conic_surface_normal(intersection, S0_3d, r_apical, Q)
     if normal is None:
         return float("inf"), None
 
@@ -138,72 +141,96 @@ def _refraction_objective_spheroid(alpha, C_3d, O_3d, S0_3d, a, b, c, n_outside,
     sin_angle_o = np.sqrt(max(0, 1 - cos_angle_o**2))
 
     # Snell's law difference
-    diff = n_outside * sin_angle_c - n_spheroid * sin_angle_o
+    diff = n_outside * sin_angle_c - n_conic * sin_angle_o
 
     return diff, intersection
 
 
-def find_refraction_spheroid(C, O, S0, a, b, c, n_outside, n_spheroid):
-    """Computes image produced by refracting spheroid.
+def find_refraction_conic(C, O, S0, r_apical, Q, n_outside, n_conic):
+    """Computes image produced by refracting conic section.
 
-    I = find_refraction_spheroid(C, O, S0, a, b, c, n_outside, n_spheroid) finds the position
-    on a spheroid with center S0 and semi-axes a, b, c where a ray emanating from an
-    object at a position 'O' inside the spheroid is refracted to pass directly
+    I = find_refraction_conic(C, O, S0, r_apical, Q, n_outside, n_conic) finds the position
+    on a conic surface with center S0 and asphericity Q where a ray emanating from an
+    object at a position 'O' inside the conic is refracted to pass directly
     through point 'C' (this could be a camera, for example). The refractive
-    index of the spheroid is 'n_spheroid', that of the outside medium is
-    'n_outside'.
+    index of the conic is 'n_conic', that of the outside medium is 'n_outside'.
 
     Args:
         C: Camera/observer position (3D or 4D homogeneous)
-        O: Object position inside spheroid (3D or 4D homogeneous)
-        S0: Spheroid center (3D or 4D homogeneous)
-        a: Semi-axis length (x-axis)
-        b: Semi-axis length (y-axis)
-        c: Semi-axis length (z-axis, optical axis)
-        n_outside: Refractive index outside spheroid
-        n_spheroid: Refractive index of spheroid
+        O: Object position inside conic (3D or 4D homogeneous)
+        S0: Conic center (3D or 4D homogeneous, typically corneal apex)
+        r_apical: Apical radius of curvature (meters)
+        Q: Asphericity parameter (Q < 0 for prolate, Q = 0 for sphere, Q > 0 for oblate)
+        n_outside: Refractive index outside conic
+        n_conic: Refractive index of conic
 
     Returns:
-        Position on spheroid surface where refraction occurs (same coordinate type as input), or None if not found.
+        Position on conic surface where refraction occurs (same coordinate type as input), or None if not found.
     """
     # Extract 3D spatial components for calculations
     C_3d = C[:3] if len(C) > 3 else C
     O_3d = O[:3] if len(O) > 3 else O
     S0_3d = S0[:3] if len(S0) > 3 else S0
 
-    print("At x=1, inputs are:")
-    print(f"C_3d={C_3d}, O_3d={O_3d}, S0_3d={S0_3d}, a={a}, b={b}, c={c}")
-
     # Determine output coordinate type from input (preserve input format)
     is_homogeneous = len(C) > 3 or len(O) > 3 or len(S0) > 3
 
-    print("is_homogeneous", is_homogeneous)
-    f0 = _refraction_objective_spheroid(0, C_3d, O_3d, S0_3d, a, b, c, n_outside, n_spheroid)[0]
-    f1 = _refraction_objective_spheroid(1, C_3d, O_3d, S0_3d, a, b, c, n_outside, n_spheroid)[0]
+    # --- Start of fix ---
+    # The conic surface opens toward -z. The objective function interpolates a direction
+    # between the object and camera. If this direction's z-component is positive,
+    # it points away from the surface, and there's no intersection, causing the
+    # objective to return 'inf' and the solver to fail.
+    # We must limit the search interval for the interpolation parameter 'alpha'
+    # to a range that produces valid directions.
 
-    print(f"f(0) = {f0}, f(1) = {f1}")
+    to_c = (C_3d - S0_3d) / np.linalg.norm(C_3d - S0_3d)
+    to_o = (O_3d - S0_3d) / np.linalg.norm(O_3d - S0_3d)
 
-    if f0 * f1 > 0:
-        print("No sign change on [0,1], no root found")
-        return None
+    to_c_z = to_c[2]
+    to_o_z = to_o[2]
 
-    # Find zero of objective function
-    # try:
-    alpha = brentq(
-        lambda x: _refraction_objective_spheroid(x, C_3d, O_3d, S0_3d, a, b, c, n_outside, n_spheroid)[0], 0, 1
-    )
-    _, I_3d = _refraction_objective_spheroid(alpha, C_3d, O_3d, S0_3d, a, b, c, n_outside, n_spheroid)
-
-    if I_3d is None:
-        return None
-
-    # Return result in same coordinate type as input
-    if is_homogeneous:
-        return np.array([I_3d[0], I_3d[1], I_3d[2], 1.0])
+    # Calculate the alpha at which the direction's z-component is zero
+    # alpha * to_c_z + (1-alpha) * to_o_z = 0  => alpha = -to_o_z / (to_c_z - to_o_z)
+    if abs(to_c_z - to_o_z) < 1e-9:
+        # This can happen if both points are on a plane perpendicular to the z-axis
+        # relative to the conic center. If the direction doesn't point towards -z, no solution.
+        if to_c_z >= 0:
+            return None
+        upper_bound = 1.0
     else:
-        return I_3d
-    # except (ValueError, RuntimeError):
-    #     return None
+        alpha_zero = -to_o_z / (to_c_z - to_o_z)
+        # The valid search range is [0, alpha_zero]. We use a slightly smaller
+        # upper bound to avoid floating point issues at the boundary.
+        upper_bound = min(1.0, max(0, alpha_zero - 1e-9))
+
+    # Check if there's a sign change in the objective function over the valid range
+    f0, _ = _refraction_objective_conic(0, C_3d, O_3d, S0_3d, r_apical, Q, n_outside, n_conic)
+    f1, _ = _refraction_objective_conic(upper_bound, C_3d, O_3d, S0_3d, r_apical, Q, n_outside, n_conic)
+    # --- End of fix ---
+
+    if np.isinf(f0) or np.isinf(f1) or f0 * f1 > 0:
+        return None  # No sign change, no root found
+
+    try:
+        # Find zero of objective function within the valid range
+        alpha = brentq(
+            lambda x: _refraction_objective_conic(x, C_3d, O_3d, S0_3d, r_apical, Q, n_outside, n_conic)[0],
+            0,
+            upper_bound,
+        )
+        _, I_3d = _refraction_objective_conic(alpha, C_3d, O_3d, S0_3d, r_apical, Q, n_outside, n_conic)
+
+        if I_3d is None:
+            return None
+
+        # Return result in same coordinate type as input
+        if is_homogeneous:
+            result = np.array([I_3d[0], I_3d[1], I_3d[2], 1.0])
+        else:
+            result = I_3d
+        return result
+    except (ValueError, RuntimeError):
+        return None
 
 
 def refract_ray_sphere(R0, Rd, S0, Sr, n_outside, n_sphere):
@@ -289,25 +316,25 @@ def refract_ray_sphere(R0, Rd, S0, Sr, n_outside, n_sphere):
         return U0, Ud_3d
 
 
-def refract_ray_spheroid(R0, Rd, S0, a, b, c, n_outside, n_spheroid):
+def refract_ray_conic(R0, Rd, S0, r_apical, Q, n_outside, n_conic):
     """
-    Refract ray at surface of prolate spheroid.
+    Refract ray at surface of conic section.
 
-    This is the spheroid equivalent of refract_ray_sphere() used in the eye simulator.
+    This is the conic equivalent of refract_ray_sphere() used in the eye simulator,
+    implementing proper corneal asphericity with Q-value.
 
     Args:
         R0: Ray origin (3D or 4D homogeneous)
         Rd: Ray direction (3D or 4D homogeneous)
-        S0: Spheroid center (3D or 4D homogeneous)
-        a: Semi-axis length in X direction (horizontal)
-        b: Semi-axis length in Y direction (vertical)
-        c: Semi-axis length in Z direction (anterior-posterior)
-        n_outside: Refractive index outside spheroid (e.g., air = 1.0)
-        n_spheroid: Refractive index of spheroid (e.g., cornea = 1.376)
+        S0: Conic center (3D or 4D homogeneous, typically corneal apex)
+        r_apical: Apical radius of curvature (meters)
+        Q: Asphericity parameter (Q < 0 for prolate, Q = 0 for sphere, Q > 0 for oblate)
+        n_outside: Refractive index outside conic (e.g., air = 1.0)
+        n_conic: Refractive index of conic (e.g., cornea = 1.376)
 
     Returns:
         Tuple of (U0, Ud) where:
-        - U0: Intersection point on spheroid surface
+        - U0: Intersection point on conic surface
         - Ud: Refracted ray direction
         Returns (None, None) if no intersection or total internal reflection.
     """
@@ -321,7 +348,7 @@ def refract_ray_spheroid(R0, Rd, S0, a, b, c, n_outside, n_spheroid):
     Rd_normalized = Rd_3d / np.linalg.norm(Rd_3d)
 
     # Step 1: Find intersection point
-    U0, _ = intersect_ray_spheroid(R0, Rd, S0, a, b, c)
+    U0, _ = intersect_ray_conic(R0, Rd, S0, r_apical, Q)
 
     if U0 is None:
         return None, None
@@ -330,9 +357,9 @@ def refract_ray_spheroid(R0, Rd, S0, a, b, c, n_outside, n_spheroid):
     U0_3d = U0[:3] if len(U0) > 3 else U0
 
     # Step 2: Calculate surface normal at intersection point
-    N = spheroid_surface_normal(U0, S0, a, b, c)
+    N = conic_surface_normal(U0, S0, r_apical, Q)
 
-    # For refraction, we need inward-pointing normal (toward spheroid interior)
+    # For refraction, we need inward-pointing normal (toward conic interior)
     # Check if normal points outward and flip if needed
     S0_3d = S0[:3] if len(S0) > 3 else S0
     center_to_point = U0_3d - S0_3d
@@ -341,7 +368,7 @@ def refract_ray_spheroid(R0, Rd, S0, a, b, c, n_outside, n_spheroid):
 
     # Step 3: Apply Snell's law
     costh1 = np.dot(Rd_normalized, N)
-    costh2_squared = 1 - (n_outside / n_spheroid) ** 2 * (1 - costh1**2)
+    costh2_squared = 1 - (n_outside / n_conic) ** 2 * (1 - costh1**2)
 
     # Check for total internal reflection
     if costh2_squared < 0:
@@ -350,7 +377,7 @@ def refract_ray_spheroid(R0, Rd, S0, a, b, c, n_outside, n_spheroid):
     costh2 = np.sqrt(costh2_squared)
 
     # Snell's law refraction formula
-    Ud_3d = (n_outside / n_spheroid) * Rd_normalized + (costh2 - (n_outside / n_spheroid) * costh1) * N
+    Ud_3d = (n_outside / n_conic) * Rd_normalized + (costh2 - (n_outside / n_conic) * costh1) * N
 
     # Step 4: Return results in same coordinate type as input
     if is_homogeneous:

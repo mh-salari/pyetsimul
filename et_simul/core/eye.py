@@ -8,7 +8,7 @@ from .camera import Camera
 from .light import Light
 from .coordinate_system import validate_orientation_matrix
 from .pupil import Pupil, create_pupil
-from .cornea import Cornea, SphericalCornea, SpheroidCornea
+from .cornea import Cornea, SphericalCornea, ConicCornea
 
 
 @dataclass
@@ -77,7 +77,7 @@ class Eye:
     """
 
     # Instance parameters
-    cornea: Optional[Cornea] = None  # Cornea object (SphericalCornea or SpheroidCornea)
+    cornea: Optional[Cornea] = None  # Cornea object (SphericalCornea or ConicCornea)
     fovea_displacement: bool = True
     fovea_alpha_deg: float = 6.0  # Horizontal fovea displacement (degrees)
     fovea_beta_deg: float = 2.0  # Vertical fovea displacement (degrees)
@@ -118,7 +118,12 @@ class Eye:
             self.cornea = SphericalCornea(radius=r_cornea_default)
 
         # Calculate scale factor based on corneal radius
-        scale = self.cornea.radius / r_cornea_default
+        if isinstance(self.cornea, SphericalCornea):
+            scale = self.cornea.radius / r_cornea_default
+        elif isinstance(self.cornea, ConicCornea):
+            scale = self.cornea.r_apical / r_cornea_default
+        else:
+            raise NotImplementedError(f"Scale calculation not implemented for cornea type: {type(self.cornea)}")
 
         # Calculate anatomical position if center not provided
         if self.cornea.center is None:
@@ -139,7 +144,14 @@ class Eye:
         self.r_cornea_inner = scale * r_cornea_inner_default
 
         # Inner corneal surface center
-        thickness_term = self.cornea.radius - self.r_cornea_inner - scale * self.cornea_thickness_offset
+        if isinstance(self.cornea, SphericalCornea):
+            thickness_term = self.cornea.radius - self.r_cornea_inner - scale * self.cornea_thickness_offset
+        elif isinstance(self.cornea, ConicCornea):
+            thickness_term = self.cornea.r_apical - self.r_cornea_inner - scale * self.cornea_thickness_offset
+        else:
+            raise NotImplementedError(
+                f"Inner surface calculation not implemented for cornea type: {type(self.cornea)}"
+            )
         self.cornea_inner_center = self.cornea.center - np.array([0, 0, thickness_term, 0])
 
         # Refractive indices
@@ -147,7 +159,12 @@ class Eye:
         self.n_aqueous_humor = n_aqueous_humor_default
 
         # Corneal apex (frontmost point)
-        self.pos_apex = self.cornea.center + np.array([0, 0, -self.cornea.radius, 0])
+        if isinstance(self.cornea, SphericalCornea):
+            self.pos_apex = self.cornea.center + np.array([0, 0, -self.cornea.radius, 0])
+        elif isinstance(self.cornea, ConicCornea):
+            self.pos_apex = self.cornea.center + np.array([0, 0, -self.cornea.r_apical, 0])
+        else:
+            raise NotImplementedError(f"Apex calculation not implemented for cornea type: {type(self.cornea)}")
 
         # Corneal depth (scaled)
         self.depth_cornea = scale * cornea_depth_default
@@ -469,7 +486,15 @@ class Eye:
         if abs(denominator) < 1e-10:  # Avoid division by zero
             return None
 
-        w = self.cornea.radius / denominator
+        # Get corneal radius based on cornea type
+        if isinstance(self.cornea, SphericalCornea):
+            corneal_radius = self.cornea.radius
+        elif isinstance(self.cornea, ConicCornea):
+            corneal_radius = self.cornea.r_apical
+        else:
+            raise NotImplementedError(f"Simple CR not implemented for cornea type: {type(self.cornea)}")
+
+        w = corneal_radius / denominator
 
         # Line 31: cr=cc+w*(l.pos-cc);
         cr = cc + w * light_to_cornea
@@ -516,10 +541,10 @@ class Eye:
         if isinstance(self.cornea, SphericalCornea):
             # refract_ray_sphere handles 3D/4D coordinates properly (fixes MATLAB's coordinate bug)
             U0, Ud = refractions.refract_ray_sphere(R0, Rd, cornea_center, self.cornea.radius, 1.0, self.n_cornea)
-        elif isinstance(self.cornea, SpheroidCornea):
-            # Use spheroid refraction
-            U0, Ud = refractions.refract_ray_spheroid(
-                R0, Rd, cornea_center, self.cornea.a, self.cornea.b, self.cornea.c, 1.0, self.n_cornea
+        elif isinstance(self.cornea, ConicCornea):
+            # Use conic section refraction
+            U0, Ud = refractions.refract_ray_conic(
+                R0, Rd, cornea_center, self.cornea.r_apical, self.cornea.Q, 1.0, self.n_cornea
             )
         else:
             raise NotImplementedError(f"Refraction not implemented for cornea type: {type(self.cornea)}")
@@ -570,10 +595,10 @@ class Eye:
         if isinstance(self.cornea, SphericalCornea):
             # refract_ray_sphere handles 3D/4D coordinates properly (fixes MATLAB's coordinate bug)
             O0, Od = refractions.refract_ray_sphere(R0, Rd, cornea_center, self.cornea.radius, 1.0, self.n_cornea)
-        elif isinstance(self.cornea, SpheroidCornea):
-            # Use spheroid refraction for outer surface
-            O0, Od = refractions.refract_ray_spheroid(
-                R0, Rd, cornea_center, self.cornea.a, self.cornea.b, self.cornea.c, 1.0, self.n_cornea
+        elif isinstance(self.cornea, ConicCornea):
+            # Use conic section refraction for outer surface
+            O0, Od = refractions.refract_ray_conic(
+                R0, Rd, cornea_center, self.cornea.r_apical, self.cornea.Q, 1.0, self.n_cornea
             )
         else:
             raise NotImplementedError(f"Refraction not implemented for cornea type: {type(self.cornea)}")
@@ -635,7 +660,7 @@ class Eye:
 
         return I
 
-    def get_pupil_boundary_in_camera_image(self, c: Camera, use_refraction: bool = True) -> np.ndarray:
+    def get_pupil_boundary_in_camera_image(self, c: Camera, use_refraction: bool = True) -> Optional[np.ndarray]:
         """Computes image of pupil boundary.
 
         X = get_pupil_boundary_in_camera_image(e, c) returns a 2×M matrix of points
@@ -676,19 +701,23 @@ class Eye:
                         X = img_homo.reshape(-1, 1)
                     else:
                         X = np.column_stack([X, img_homo])
-
             # Line 40-41: Project to camera and filter valid points
             if X.shape[1] > 0:
                 X_proj, _, valid = c.project(X)
                 X = X_proj[:, valid]
             else:
-                X = np.zeros((2, 0))
+                # If no points found after refraction, return None
+                return None
         else:
             # Direct projection without refraction - use the correct approach
-            X_proj, _, _ = c.project(pupil)
-            X = X_proj
+            X_proj, _, valid = c.project(pupil)
+            X = X_proj[:, valid]
 
-        return X
+        # If after all processing, there are no valid points, return None
+        if X.shape[1] == 0:
+            return None
+        else:
+            return X
 
     def get_pupil_center_in_world(self) -> np.ndarray:
         """Get the pupil center position in world coordinates.
