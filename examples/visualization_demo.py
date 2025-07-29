@@ -84,7 +84,7 @@ def main():
             print(" CR not found - may be outside corneal boundaries")
 
     # Create the visualization
-    plot_setup_and_camera_view(e, target_point, lights, c, cr_3d_list)
+    plot_setup_and_camera_view(e, target_point, c, lights=lights)
 
     print("\nDisplaying eye tracking setup...")
     print("Close the plot window when done.")

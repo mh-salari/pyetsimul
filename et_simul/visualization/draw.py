@@ -348,11 +348,12 @@ def plot_setup(
     )
 
     # Add scene elements - multiple lights
-    light_colors = ["yellow", "orange", "gold", "khaki"]  # Colors for different lights
-    for i, light in enumerate(lights):
-        light_pos = to_3d(light.position)
-        color = light_colors[i % len(light_colors)]
-        ax1.scatter(*light_pos, color=color, s=200, marker="*", label=f"Light Source {i + 1}")
+    if lights is not None:
+        light_colors = ["yellow", "orange", "gold", "khaki"]  # Colors for different lights
+        for i, light in enumerate(lights):
+            light_pos = to_3d(light.position)
+            color = light_colors[i % len(light_colors)]
+            ax1.scatter(*light_pos, color=color, s=200, marker="*", label=f"Light Source {i + 1}")
 
     camera_pos = camera.position
     ax1.scatter(*camera_pos, color="black", s=200, marker="s", label="Camera")
@@ -419,7 +420,15 @@ def plot_setup(
         target_world = to_3d(look_at_target) if len(look_at_target) == 4 else np.array(look_at_target)
 
         # Find min/max of all objects
-        all_points = np.array([eye_center, camera_pos, target_world])
+        all_points = [eye_center, camera_pos, target_world]
+
+        # Include calibration points in bounds calculation if provided
+        if calib_points is not None:
+            calib_array = np.array(calib_points)
+            if calib_array.ndim == 2 and calib_array.shape[1] == 3:
+                all_points.extend(calib_array.tolist())
+
+        all_points = np.array(all_points)
         min_coords = np.min(all_points, axis=0)
         max_coords = np.max(all_points, axis=0)
 
@@ -667,13 +676,14 @@ def prepare_eye_data_for_plots(eye, look_at_target, lights, camera):
     }
 
     # Get camera image data
-    camera_image = camera.take_image(eye, lights)
+    camera_image = camera.take_image(eye, lights if lights is not None else [])
 
     # Calculate 3D CR positions for each light
     cr_3d_list = []
-    for light in lights:
-        cr_3d = eye.find_cr(light, camera)
-        cr_3d_list.append(cr_3d)
+    if lights is not None:
+        for light in lights:
+            cr_3d = eye.find_cr(light, camera)
+            cr_3d_list.append(cr_3d)
 
     return {
         "eye_data": eye_data,
@@ -685,13 +695,13 @@ def prepare_eye_data_for_plots(eye, look_at_target, lights, camera):
 def plot_setup_and_camera_view(
     eye,
     look_at_target,
-    lights,
     camera,
+    lights=None,
+    calib_points=None,
     ax1=None,
     ax2=None,
     fig=None,
     ref_bounds=None,
-    calib_points=None,
 ):
     """Create comprehensive eye tracking visualization with 3D setup and camera view.
 
