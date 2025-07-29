@@ -74,15 +74,16 @@ def test_output_properties():
     n_sphere = 1.5
 
     U0, Ud = refract_ray_sphere(R0, Rd, S0, Sr, n_outside, n_sphere)
+    assert U0 is not None, "U0 should not be None for these inputs"
+    assert Ud is not None, "Ud should not be None for these inputs"
 
-    if U0 is not None and Ud is not None:
-        # Check types and shapes
-        assert isinstance(U0, np.ndarray)
-        assert isinstance(Ud, np.ndarray)
-        assert U0.shape == (3,)
-        assert Ud.shape == (3,)
-        assert U0.dtype == np.float64
-        assert Ud.dtype == np.float64
+    # Check types and shapes
+    assert isinstance(U0, np.ndarray)
+    assert isinstance(Ud, np.ndarray)
+    assert U0.shape == (3,)
+    assert Ud.shape == (3,)
+    assert U0.dtype == np.float64
+    assert Ud.dtype == np.float64
 
-        # Refracted direction should be unit vector
-        assert np.isclose(np.linalg.norm(Ud), 1.0, rtol=1e-12)
+    # Refracted direction should be unit vector
+    assert np.isclose(np.linalg.norm(Ud), 1.0, rtol=1e-12)

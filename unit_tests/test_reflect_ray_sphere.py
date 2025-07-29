@@ -112,18 +112,19 @@ def test_output_properties():
     Sr = 2.0
 
     U0, Ud = reflect_ray_sphere(R0, Rd, S0, Sr)
+    assert U0 is not None, "U0 should not be None for these inputs"
+    assert Ud is not None, "Ud should not be None for these inputs"
 
-    if U0 is not None and Ud is not None:
-        # Check types and shapes
-        assert isinstance(U0, np.ndarray)
-        assert isinstance(Ud, np.ndarray)
-        assert U0.dtype == np.float64
-        assert Ud.dtype == np.float64
-        assert U0.shape == (3,) or U0.shape == (4,)  # Can be 3D or 4D
-        assert Ud.shape == (3,) or Ud.shape == (4,)  # Can be 3D or 4D
+    # Check types and shapes
+    assert isinstance(U0, np.ndarray)
+    assert isinstance(Ud, np.ndarray)
+    assert U0.dtype == np.float64
+    assert Ud.dtype == np.float64
+    assert U0.shape == (3,) or U0.shape == (4,)  # Can be 3D or 4D
+    assert Ud.shape == (3,) or Ud.shape == (4,)  # Can be 3D or 4D
 
-        # Reflected direction should be normalized
-        if Ud.shape == (3,):
-            assert np.isclose(np.linalg.norm(Ud), 1.0, rtol=1e-12)
-        else:  # 4D homogeneous
-            assert np.isclose(np.linalg.norm(Ud[:3]), 1.0, rtol=1e-12)
+    # Reflected direction should be normalized
+    if Ud.shape == (3,):
+        assert np.isclose(np.linalg.norm(Ud), 1.0, rtol=1e-12)
+    else:  # 4D homogeneous
+        assert np.isclose(np.linalg.norm(Ud[:3]), 1.0, rtol=1e-12)

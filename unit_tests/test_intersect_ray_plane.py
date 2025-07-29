@@ -115,21 +115,20 @@ def test_output_properties():
     Pn = np.array([0.0, 0.0, 1.0])
 
     x = intersect_ray_plane(R0, Rd, P0, Pn)
+    assert x is not None, "x should not be None for these inputs"
 
-    if x is not None:
-        # Check types and shapes
-        assert isinstance(x, np.ndarray)
-        assert x.dtype == np.float64
-        assert x.shape == (3,)
+    # Check types and shapes
+    assert isinstance(x, np.ndarray)
+    assert x.dtype == np.float64
+    assert x.shape == (3,)
 
-        # Point should be on plane: (x-P0)·Pn = 0
-        plane_equation = np.dot(x - P0, Pn)
-        assert abs(plane_equation) < 1e-14
+    # Point should be on plane: (x-P0)·Pn = 0
+    plane_equation = np.dot(x - P0, Pn)
+    assert abs(plane_equation) < 1e-14
 
-        # Point should be on ray: x = R0 + t*Rd for some t
-        if not np.allclose(Rd, 0):
-            # Find parameter t
-            non_zero_idx = np.nonzero(Rd)[0][0]
-            t = (x[non_zero_idx] - R0[non_zero_idx]) / Rd[non_zero_idx]
-            x_on_ray = R0 + t * Rd
-            np.testing.assert_allclose(x, x_on_ray, rtol=1e-12)
+    # Point should be on ray: x = R0 + t*Rd for some t
+    if not np.allclose(Rd, 0):
+        non_zero_idx = np.nonzero(Rd)[0][0]
+        t = (x[non_zero_idx] - R0[non_zero_idx]) / Rd[non_zero_idx]
+        x_on_ray = R0 + t * Rd
+        np.testing.assert_allclose(x, x_on_ray, rtol=1e-12)

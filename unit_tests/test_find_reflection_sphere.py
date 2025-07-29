@@ -29,11 +29,11 @@ def test_output_properties():
 
     U0 = find_reflection_sphere(L, C, S0, Sr)
 
-    if U0 is not None:
-        # Check types and shapes
-        assert isinstance(U0, np.ndarray)
-        assert U0.dtype == np.float64
-        assert U0.shape == (3,)
+    assert U0 is not None, "U0 should not be None for these inputs"
+    # Check types and shapes
+    assert isinstance(U0, np.ndarray)
+    assert U0.dtype == np.float64
+    assert U0.shape == (3,)
 
-        # Should be finite values
-        assert np.all(np.isfinite(U0))
+    # Should be finite values
+    assert np.all(np.isfinite(U0))

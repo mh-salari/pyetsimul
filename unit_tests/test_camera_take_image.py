@@ -184,12 +184,12 @@ def test_camera_take_image_output_structure():
     assert isinstance(camimg["cr"], list)
     assert len(camimg["cr"]) == 1
 
-    if camimg["pc"] is not None:
-        assert isinstance(camimg["pc"], (np.ndarray, tuple, list))
-        if isinstance(camimg["pc"], np.ndarray):
-            assert camimg["pc"].shape == (2,)
-        else:
-            assert len(camimg["pc"]) == 2
+    assert camimg["pc"] is not None, "camimg['pc'] should not be None"
+    assert isinstance(camimg["pc"], (np.ndarray, tuple, list))
+    if isinstance(camimg["pc"], np.ndarray):
+        assert camimg["pc"].shape == (2,)
+    else:
+        assert len(camimg["pc"]) == 2
 
     assert isinstance(camimg["pupil"], np.ndarray)
     assert camimg["pupil"].shape[0] == 2

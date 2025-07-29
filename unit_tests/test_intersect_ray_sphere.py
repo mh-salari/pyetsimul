@@ -106,23 +106,24 @@ def test_output_properties():
     Sr = 1.0
 
     pos1, pos2 = intersect_ray_sphere(R0, Rd, S0, Sr)
+    assert pos1 is not None, "pos1 should not be None for these inputs"
+    assert pos2 is not None, "pos2 should not be None for these inputs"
 
-    if pos1 is not None and pos2 is not None:
-        # Check types and shapes
-        assert isinstance(pos1, np.ndarray)
-        assert isinstance(pos2, np.ndarray)
-        assert pos1.dtype == np.float64
-        assert pos2.dtype == np.float64
-        assert pos1.shape == (3,)
-        assert pos2.shape == (3,)
+    # Check types and shapes
+    assert isinstance(pos1, np.ndarray)
+    assert isinstance(pos2, np.ndarray)
+    assert pos1.dtype == np.float64
+    assert pos2.dtype == np.float64
+    assert pos1.shape == (3,)
+    assert pos2.shape == (3,)
 
-        # Both points should be on sphere surface
-        dist1 = np.linalg.norm(pos1 - S0)
-        dist2 = np.linalg.norm(pos2 - S0)
-        assert np.isclose(dist1, Sr, rtol=1e-12)
-        assert np.isclose(dist2, Sr, rtol=1e-12)
+    # Both points should be on sphere surface
+    dist1 = np.linalg.norm(pos1 - S0)
+    dist2 = np.linalg.norm(pos2 - S0)
+    assert np.isclose(dist1, Sr, rtol=1e-12)
+    assert np.isclose(dist2, Sr, rtol=1e-12)
 
-        # pos1 should be closer to ray origin than pos2
-        dist_to_origin1 = np.linalg.norm(pos1 - R0)
-        dist_to_origin2 = np.linalg.norm(pos2 - R0)
-        assert dist_to_origin1 <= dist_to_origin2
+    # pos1 should be closer to ray origin than pos2
+    dist_to_origin1 = np.linalg.norm(pos1 - R0)
+    dist_to_origin2 = np.linalg.norm(pos2 - R0)
+    assert dist_to_origin1 <= dist_to_origin2

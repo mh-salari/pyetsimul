@@ -116,20 +116,20 @@ def test_output_properties():
     Cr = 1.0
 
     pos = intersect_ray_circle(R0, Rd, C0, Cr)
+    assert pos is not None, "pos should not be None for these inputs"
 
-    if pos is not None:
-        # Check types and shapes
-        assert isinstance(pos, np.ndarray)
-        assert pos.dtype == np.float64
-        assert pos.shape == (2,)
+    # Check types and shapes
+    assert isinstance(pos, np.ndarray)
+    assert pos.dtype == np.float64
+    assert pos.shape == (2,)
 
-        # Point should be on circle surface
-        dist_to_center = np.linalg.norm(pos - C0)
-        assert np.isclose(dist_to_center, Cr, rtol=1e-12)
+    # Point should be on circle surface
+    dist_to_center = np.linalg.norm(pos - C0)
+    assert np.isclose(dist_to_center, Cr, rtol=1e-12)
 
-        # Point should be on ray: pos = R0 + t*Rd for some t
-        if not np.allclose(Rd, 0):
-            non_zero_idx = np.nonzero(Rd)[0][0]
-            t = (pos[non_zero_idx] - R0[non_zero_idx]) / Rd[non_zero_idx]
-            pos_on_ray = R0 + t * Rd
-            np.testing.assert_allclose(pos, pos_on_ray, rtol=1e-12)
+    # Point should be on ray: pos = R0 + t*Rd for some t
+    if not np.allclose(Rd, 0):
+        non_zero_idx = np.nonzero(Rd)[0][0]
+        t = (pos[non_zero_idx] - R0[non_zero_idx]) / Rd[non_zero_idx]
+        pos_on_ray = R0 + t * Rd
+        np.testing.assert_allclose(pos, pos_on_ray, rtol=1e-12)

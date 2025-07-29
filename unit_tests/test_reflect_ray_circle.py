@@ -110,15 +110,16 @@ def test_output_properties():
     Cr = 2.0
 
     S0, Sd = reflect_ray_circle(R0, Rd, C0, Cr)
+    assert S0 is not None, "S0 should not be None for these inputs"
+    assert Sd is not None, "Sd should not be None for these inputs"
 
-    if S0 is not None and Sd is not None:
-        # Check types and shapes
-        assert isinstance(S0, np.ndarray)
-        assert isinstance(Sd, np.ndarray)
-        assert S0.dtype == np.float64
-        assert Sd.dtype == np.float64
-        assert S0.shape == (2,)
-        assert Sd.shape == (2,)
+    # Check types and shapes
+    assert isinstance(S0, np.ndarray)
+    assert isinstance(Sd, np.ndarray)
+    assert S0.dtype == np.float64
+    assert Sd.dtype == np.float64
+    assert S0.shape == (2,)
+    assert Sd.shape == (2,)
 
-        # Reflected direction should be normalized
-        assert np.isclose(np.linalg.norm(Sd), 1.0, rtol=1e-12)
+    # Reflected direction should be normalized
+    assert np.isclose(np.linalg.norm(Sd), 1.0, rtol=1e-12)

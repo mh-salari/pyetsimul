@@ -93,18 +93,20 @@ def test_output_properties():
     Rd = np.array([0.0, 0.0, -1.0])
 
     O0, I0, Id = e.refract_ray_advanced(R0, Rd)
+    assert O0 is not None, "O0 should not be None for these inputs"
+    assert I0 is not None, "I0 should not be None for these inputs"
+    assert Id is not None, "Id should not be None for these inputs"
 
-    if O0 is not None and I0 is not None and Id is not None:
-        # Check types and shapes
-        assert isinstance(O0, np.ndarray)
-        assert isinstance(I0, np.ndarray)
-        assert isinstance(Id, np.ndarray)
-        assert O0.dtype == np.float64
-        assert I0.dtype == np.float64
-        assert Id.dtype == np.float64
-        assert O0.shape == (3,)
-        assert I0.shape == (3,)
-        assert Id.shape == (3,)
+    # Check types and shapes
+    assert isinstance(O0, np.ndarray)
+    assert isinstance(I0, np.ndarray)
+    assert isinstance(Id, np.ndarray)
+    assert O0.dtype == np.float64
+    assert I0.dtype == np.float64
+    assert Id.dtype == np.float64
+    assert O0.shape == (3,)
+    assert I0.shape == (3,)
+    assert Id.shape == (3,)
 
-        # Final direction should be normalized
-        assert np.isclose(np.linalg.norm(Id), 1.0, rtol=1e-12)
+    # Final direction should be normalized
+    assert np.isclose(np.linalg.norm(Id), 1.0, rtol=1e-12)

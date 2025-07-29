@@ -71,44 +71,6 @@ def test_camera_pointed_at_eye():
         assert abs(py - my) < tolerance, f"Point {i}: Y mismatch {py} vs {my}"
 
 
-def test_eye_rotated_away_no_pupil_visible():
-    """Test eye rotated to position where pupil cannot be seen by camera."""
-    # Create eye and camera
-    e = Eye(fovea_displacement=False)
-    c = Camera()
-
-    # Position eye
-    eye_pos = np.array([0, 500e-3, 200e-3])
-    e.trans[0:3, 3] = eye_pos
-
-    # Set up camera pointed at eye
-    c.trans[0:3, 0:3] = np.array([[1, 0, 0], [0, 0, -1], [0, 1, 0]])
-    c.rest_trans = c.trans.copy()
-    c.point_at(e.trans[:, 3])
-    c.err = 0
-    c.err_type = "uniform"
-
-    # Eye looks 180 degrees away (directly away from camera)
-    # This should make the pupil not visible to the camera
-    away_target = np.array([0.0, 1.0, 0.0, 1.0]) * 0.5  # Look directly away from camera
-    e.look_at(away_target)
-
-    # Get pupil image
-    N = 20
-    X = e.get_pupil_boundary_in_camera_image(c, N)
-
-    # When eye is rotated away such that pupil is not visible,
-    # should return None or significantly fewer points
-    if X is not None:
-        # The pupil may still be partially visible depending on eye geometry
-        # Just verify we get a valid result structure
-        assert X.shape[0] == 2
-        assert X.shape[1] <= N
-    else:
-        # No points visible (acceptable behavior)
-        assert X is None
-
-
 def test_output_properties():
     """Test that output has correct properties when pupil is visible."""
     e = Eye(fovea_displacement=False)
@@ -128,12 +90,13 @@ def test_output_properties():
 
     X = e.get_pupil_boundary_in_camera_image(c, 20)
 
-    if X is not None:
-        # Check types and shapes
-        assert isinstance(X, np.ndarray)
-        assert X.dtype == np.float64
-        assert X.shape[0] == 2
-        assert X.shape[1] == 20
+    assert X is not None, "X should not be None for these inputs"
 
-        # All values should be finite
-        assert np.all(np.isfinite(X))
+    # Check types and shapes
+    assert isinstance(X, np.ndarray)
+    assert X.dtype == np.float64
+    assert X.shape[0] == 2
+    assert X.shape[1] == 20
+
+    # All values should be finite
+    assert np.all(np.isfinite(X))

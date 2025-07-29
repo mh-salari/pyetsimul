@@ -89,10 +89,10 @@ def test_output_properties():
     c.trans[0:3, 3] = np.array([30, 0, -40])
 
     cr = e.find_cr_simple(l, c)
+    assert cr is not None, "cr should not be None for these inputs"
 
-    if cr is not None:
-        # Check types and shapes
-        assert isinstance(cr, np.ndarray)
-        assert cr.dtype == np.float64
-        assert cr.shape == (4,)
-        assert cr[3] == 1.0  # Homogeneous coordinate
+    # Check types and shapes
+    assert isinstance(cr, np.ndarray)
+    assert cr.dtype == np.float64
+    assert cr.shape == (4,)
+    assert cr[3] == 1.0  # Homogeneous coordinate

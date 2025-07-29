@@ -78,10 +78,10 @@ def test_output_properties():
     O = np.array([0.5, 0.2, -4.0, 1.0])
 
     I = e.find_refraction(C, O)
+    assert I is not None, "I should not be None for these inputs"
 
-    if I is not None:
-        # Check types and shapes
-        assert isinstance(I, np.ndarray)
-        assert I.dtype == np.float64
-        assert I.shape == (4,)
-        assert I[3] == 1.0  # Homogeneous coordinate
+    # Check types and shapes
+    assert isinstance(I, np.ndarray)
+    assert I.dtype == np.float64
+    assert I.shape == (4,)
+    assert I[3] == 1.0  # Homogeneous coordinate

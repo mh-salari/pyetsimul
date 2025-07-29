@@ -130,9 +130,10 @@ def test_output_properties():
     C = np.array([15.0, 8.0, 12.0])
 
     I = find_refraction_sphere(C, O, S0, Sr, n_outside, n_sphere)
+    assert I is not None, "I should not be None for these inputs"
+    assert not np.any(np.isnan(I)), "I should not contain NaN values"
 
-    if I is not None and not np.any(np.isnan(I)):
-        # Check types and shapes
-        assert isinstance(I, np.ndarray)
-        assert I.shape == (3,)
-        assert I.dtype == np.float64
+    # Check types and shapes
+    assert isinstance(I, np.ndarray)
+    assert I.shape == (3,)
+    assert I.dtype == np.float64
