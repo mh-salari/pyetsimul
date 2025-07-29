@@ -6,6 +6,7 @@ from skimage.measure import EllipseModel
 from ..optics import reflections, refractions
 from .camera import Camera
 from .light import Light
+from .coordinate_system import validate_orientation_matrix
 
 
 @dataclass
@@ -173,17 +174,8 @@ class Eye:
         Raises:
             ValueError: If the matrix is not right-handed (det ≠ +1)
         """
-        # Validate that the matrix is right-handed
-        det = np.linalg.det(value)
-        if abs(det - 1.0) > 1e-6:
-            if abs(det + 1.0) < 1e-6:
-                raise ValueError(
-                    "Left-handed coordinate system detected. Eye orientation must be right-handed (det = +1)."
-                )
-            else:
-                raise ValueError(
-                    f"Invalid rotation matrix (det = {det:.3f}). Determinant must be +1 for a proper rotation matrix."
-                )
+        # Validate orientation matrix
+        validate_orientation_matrix(value, "Eye")
 
         self._rest_orientation = value.copy()
         self.trans[:3, :3] = value

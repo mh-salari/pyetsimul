@@ -4,6 +4,7 @@ import numpy as np
 import pytest
 from et_simul.core.eye import Eye
 from et_simul.core.camera import Camera
+from et_simul.core import enforce_right_handed_coordinates, is_right_handed_enforced
 
 
 def test_eye_valid_right_handed_orientation():
@@ -54,3 +55,57 @@ def test_camera_invalid_matrix_rejected():
 
     with pytest.raises(ValueError, match="Invalid rotation matrix"):
         camera.orientation = scaled
+
+
+def test_coordinate_system_enforcement_flag():
+    """Test that the coordinate system enforcement flag works correctly."""
+    # Store original state
+    original_state = is_right_handed_enforced()
+
+    try:
+        # Test default behavior (right-handed enforced)
+        enforce_right_handed_coordinates(True)
+        assert is_right_handed_enforced()
+
+        eye = Eye()
+        camera = Camera()
+
+        # Valid matrices
+        right_handed = np.eye(3)  # Identity matrix (det = +1)
+        left_handed = np.array([[1, 0, 0], [0, -1, 0], [0, 0, 1]])  # det = -1
+
+        # Right-handed should work when enforcement is enabled
+        eye.set_rest_orientation(right_handed)
+        camera.orientation = right_handed
+
+        # Left-handed should fail when enforcement is enabled
+        with pytest.raises(ValueError, match="Left-handed coordinate system detected"):
+            eye.set_rest_orientation(left_handed)
+
+        with pytest.raises(ValueError, match="Left-handed coordinate system detected"):
+            camera.orientation = left_handed
+
+        # Disable enforcement
+        enforce_right_handed_coordinates(False)
+        assert not is_right_handed_enforced()
+
+        # Both should work when enforcement is disabled
+        eye.set_rest_orientation(left_handed)
+        eye.set_rest_orientation(right_handed)
+        camera.orientation = left_handed
+        camera.orientation = right_handed
+
+        # Re-enable enforcement
+        enforce_right_handed_coordinates(True)
+        assert is_right_handed_enforced()
+
+        # Left-handed should fail again
+        with pytest.raises(ValueError, match="Left-handed coordinate system detected"):
+            eye.set_rest_orientation(left_handed)
+
+        with pytest.raises(ValueError, match="Left-handed coordinate system detected"):
+            camera.orientation = left_handed
+
+    finally:
+        # Restore original state
+        enforce_right_handed_coordinates(original_state)

@@ -4,6 +4,7 @@ from dataclasses import dataclass, field
 from typing import Tuple, Union, List, Dict, Any, TYPE_CHECKING
 
 from .light import Light
+from .coordinate_system import validate_orientation_matrix
 
 if TYPE_CHECKING:
     from .eye import Eye
@@ -93,17 +94,8 @@ class Camera:
         Raises:
             ValueError: If the matrix is not right-handed (det ≠ +1)
         """
-        # Validate that the matrix is right-handed
-        det = np.linalg.det(value)
-        if abs(det - 1.0) > 1e-6:
-            if abs(det + 1.0) < 1e-6:
-                raise ValueError(
-                    "Left-handed coordinate system detected. Camera orientation must be right-handed (det = +1)."
-                )
-            else:
-                raise ValueError(
-                    f"Invalid rotation matrix (det = {det:.3f}). Determinant must be +1 for a proper rotation matrix."
-                )
+        # Validate orientation matrix
+        validate_orientation_matrix(value, "Camera")
 
         self.trans[:3, :3] = value
 

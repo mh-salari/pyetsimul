@@ -5,7 +5,7 @@ from et_simul.performance_analysis import (
     accuracy_at_calibration_points,
 )
 from et_simul.performance_analysis.analysis_utils import print_error_summary
-from et_simul.core import Light, Camera, Eye
+from et_simul.core import Light, Camera, Eye, enforce_right_handed_coordinates
 import numpy as np
 import argparse
 
@@ -44,9 +44,13 @@ def main():
     )
     print(f"Using interpolation method: {args.method}\n")
 
+    # Disable right-handed enforcement for this test
+    # We do this so we can compare results with the original Matlab implementation
+    enforce_right_handed_coordinates(False)
+
     # Create eye configuration
     eye = Eye()
-    eye.set_rest_orientation(np.array([[1, 0, 0], [0, 0, 1], [0, -1, 0]]))
+    eye.set_rest_orientation(np.array([[1, 0, 0], [0, 0, 1], [0, 1, 0]]))
     eye.position = eye_position
 
     # Create camera configuration
