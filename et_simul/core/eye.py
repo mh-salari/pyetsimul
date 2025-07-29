@@ -1,4 +1,5 @@
 import numpy as np
+import warnings
 from dataclasses import dataclass, field
 from typing import Optional, Union, List, Tuple
 from skimage.measure import EllipseModel
@@ -706,7 +707,8 @@ class Eye:
                 X_proj, _, valid = c.project(X)
                 X = X_proj[:, valid]
             else:
-                # If no points found after refraction, return None
+                # If no points found after refraction, check for problematic configurations
+                self._check_eye_camera_configuration(c)
                 return None
         else:
             # Direct projection without refraction - use the correct approach
@@ -715,6 +717,8 @@ class Eye:
 
         # If after all processing, there are no valid points, return None
         if X.shape[1] == 0:
+            # Check for problematic eye-camera configurations and issue warnings
+            self._check_eye_camera_configuration(c)
             return None
         else:
             return X
@@ -915,3 +919,44 @@ class Eye:
 
         # Convert to degrees
         return angle_kappa_rad * 180.0 / np.pi
+
+    def _check_eye_camera_configuration(self, camera: Camera) -> None:
+        """Check for problematic eye-camera configurations and issue warnings.
+
+        Args:
+            camera: Camera object to check against
+        """
+        # Eye's gaze direction in world coordinates
+        eye_gaze = self.orientation @ np.array([0, 0, -1])
+
+        # Camera's viewing direction (negative of optical axis)
+        camera_viewing = -camera.orientation[:, 2]
+
+        # Vector from camera to eye
+        camera_to_eye = self.position - camera.position
+        if np.linalg.norm(camera_to_eye) == 0:
+            warnings.warn("Eye and camera are at the same position. This may result in no visible pupil.", UserWarning)
+            return
+
+        camera_to_eye_norm = camera_to_eye / np.linalg.norm(camera_to_eye)
+
+        # Check if eye is behind camera (dot product < 0)
+        behind_camera = np.dot(camera_to_eye_norm, camera_viewing) < 0
+
+        # Check if eye and camera face same direction (dot product > threshold)
+        same_direction = np.dot(eye_gaze, camera_viewing) > 0.7
+
+        if behind_camera:
+            warnings.warn(
+                f"Eye appears to be positioned behind camera. "
+                f"Eye position: {self.position}, Camera position: {camera.position}. "
+                f"This results in no visible pupil.",
+                UserWarning,
+            )
+        elif same_direction:
+            warnings.warn(
+                f"Eye and camera appear to face the same direction (dot product: {np.dot(eye_gaze, camera_viewing):.3f}). "
+                f"Camera may be seeing the back of the eye, resulting in no visible pupil. "
+                f"Consider adjusting eye or camera orientation.",
+                UserWarning,
+            )
