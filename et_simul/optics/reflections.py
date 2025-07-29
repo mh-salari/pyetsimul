@@ -1,7 +1,12 @@
 import numpy as np
 import warnings
 from scipy.optimize import brentq
-from ..geometry.intersections import intersect_ray_circle, intersect_ray_sphere
+from ..geometry.intersections import (
+    intersect_ray_circle,
+    intersect_ray_sphere,
+    intersect_ray_spheroid,
+    spheroid_surface_normal,
+)
 
 
 def reflect_objective(a, L, C, S0, Sr):
@@ -212,3 +217,69 @@ def reflect_ray_sphere(R0, Rd, S0, Sr):
         Ud = Ud_3d
 
     return U0, Ud
+
+
+def reflect_ray_spheroid(R0, Rd, S0, a, b, c):
+    """
+    Reflect ray at surface of prolate spheroid.
+
+    This is the spheroid equivalent of reflect_ray_sphere() used in the eye simulator.
+
+    Args:
+        R0: Ray origin (3D or 4D homogeneous)
+        Rd: Ray direction (3D or 4D homogeneous)
+        S0: Spheroid center (3D or 4D homogeneous)
+        a: Semi-axis length in X direction (horizontal)
+        b: Semi-axis length in Y direction (vertical)
+        c: Semi-axis length in Z direction (anterior-posterior)
+
+    Returns:
+        Tuple of (U0, Ud) where:
+        - U0: Intersection point on spheroid surface
+        - Ud: Reflected ray direction
+        Returns (None, None) if no intersection.
+    """
+    # Extract 3D spatial components for calculations
+    Rd_3d = Rd[:3] if len(Rd) > 3 else Rd
+
+    # Determine output coordinate type from ray inputs
+    is_homogeneous = len(R0) > 3 or len(Rd) > 3
+
+    # Normalize ray direction (using 3D spatial components)
+    Rd_normalized = Rd_3d / np.linalg.norm(Rd_3d)
+
+    # Step 1: Find intersection point
+    U0, _ = intersect_ray_spheroid(R0, Rd, S0, a, b, c)
+
+    if U0 is None:
+        return None, None
+
+    # Extract 3D components from intersection result
+    U0_3d = U0[:3] if len(U0) > 3 else U0
+
+    # Step 2: Calculate surface normal at intersection point
+    N = spheroid_surface_normal(U0, S0, a, b, c)
+
+    # For reflection, we typically want outward-pointing normal
+    # Check if normal points outward from spheroid center
+    S0_3d = S0[:3] if len(S0) > 3 else S0
+    center_to_point = U0_3d - S0_3d
+    if np.dot(N, center_to_point) < 0:  # Normal points inward
+        N = -N  # Flip to point outward
+
+    # Step 3: Apply reflection formula
+    # Standard reflection: Ud = Rd - 2*N*(Rd·N)
+    Ud_3d = Rd_normalized - 2 * N * np.dot(Rd_normalized, N)
+
+    # Step 4: Return results in same coordinate type as input
+    if is_homogeneous:
+        # Format U0 as homogeneous position (w=1) if not already
+        if len(U0) == 3:
+            U0_out = np.array([U0[0], U0[1], U0[2], 1.0])
+        else:
+            U0_out = U0
+        # Format Ud as homogeneous direction (w=0)
+        Ud = np.array([Ud_3d[0], Ud_3d[1], Ud_3d[2], 0.0])
+        return U0_out, Ud
+    else:
+        return U0, Ud_3d

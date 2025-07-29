@@ -1,6 +1,6 @@
 import numpy as np
 from scipy.optimize import brentq
-from ..geometry.intersections import intersect_ray_sphere
+from ..geometry.intersections import intersect_ray_sphere, intersect_ray_spheroid, spheroid_surface_normal
 
 
 def find_refraction(C, O, S0, Sr, n_outside, n_sphere):
@@ -147,6 +147,83 @@ def refract_ray_sphere(R0, Rd, S0, Sr, n_outside, n_sphere):
     Ud_3d = (n_outside / n_sphere) * Rd_normalized + (costh2 - (n_outside / n_sphere) * costh1) * N
 
     # Return results in same coordinate type as input
+    if is_homogeneous:
+        # Format U0 as homogeneous position (w=1) if not already
+        if len(U0) == 3:
+            U0_out = np.array([U0[0], U0[1], U0[2], 1.0])
+        else:
+            U0_out = U0
+        # Format Ud as homogeneous direction (w=0)
+        Ud = np.array([Ud_3d[0], Ud_3d[1], Ud_3d[2], 0.0])
+        return U0_out, Ud
+    else:
+        return U0, Ud_3d
+
+
+def refract_ray_spheroid(R0, Rd, S0, a, b, c, n_outside, n_spheroid):
+    """
+    Refract ray at surface of prolate spheroid.
+
+    This is the spheroid equivalent of refract_ray_sphere() used in the eye simulator.
+
+    Args:
+        R0: Ray origin (3D or 4D homogeneous)
+        Rd: Ray direction (3D or 4D homogeneous)
+        S0: Spheroid center (3D or 4D homogeneous)
+        a: Semi-axis length in X direction (horizontal)
+        b: Semi-axis length in Y direction (vertical)
+        c: Semi-axis length in Z direction (anterior-posterior)
+        n_outside: Refractive index outside spheroid (e.g., air = 1.0)
+        n_spheroid: Refractive index of spheroid (e.g., cornea = 1.376)
+
+    Returns:
+        Tuple of (U0, Ud) where:
+        - U0: Intersection point on spheroid surface
+        - Ud: Refracted ray direction
+        Returns (None, None) if no intersection or total internal reflection.
+    """
+    # Extract 3D spatial components for calculations
+    Rd_3d = Rd[:3] if len(Rd) > 3 else Rd
+
+    # Determine output coordinate type from ray inputs
+    is_homogeneous = len(R0) > 3 or len(Rd) > 3
+
+    # Normalize ray direction (using 3D spatial components)
+    Rd_normalized = Rd_3d / np.linalg.norm(Rd_3d)
+
+    # Step 1: Find intersection point
+    U0, _ = intersect_ray_spheroid(R0, Rd, S0, a, b, c)
+
+    if U0 is None:
+        return None, None
+
+    # Extract 3D components from intersection result
+    U0_3d = U0[:3] if len(U0) > 3 else U0
+
+    # Step 2: Calculate surface normal at intersection point
+    N = spheroid_surface_normal(U0, S0, a, b, c)
+
+    # For refraction, we need inward-pointing normal (toward spheroid interior)
+    # Check if normal points outward and flip if needed
+    S0_3d = S0[:3] if len(S0) > 3 else S0
+    center_to_point = U0_3d - S0_3d
+    if np.dot(N, center_to_point) > 0:  # Normal points outward
+        N = -N  # Flip to point inward
+
+    # Step 3: Apply Snell's law
+    costh1 = np.dot(Rd_normalized, N)
+    costh2_squared = 1 - (n_outside / n_spheroid) ** 2 * (1 - costh1**2)
+
+    # Check for total internal reflection
+    if costh2_squared < 0:
+        return U0, None
+
+    costh2 = np.sqrt(costh2_squared)
+
+    # Snell's law refraction formula
+    Ud_3d = (n_outside / n_spheroid) * Rd_normalized + (costh2 - (n_outside / n_spheroid) * costh1) * N
+
+    # Step 4: Return results in same coordinate type as input
     if is_homogeneous:
         # Format U0 as homogeneous position (w=1) if not already
         if len(U0) == 3:
