@@ -9,7 +9,7 @@ from .camera import Camera
 from .light import Light
 from .coordinate_system import validate_orientation_matrix
 from .pupil import Pupil, create_pupil
-from .cornea import Cornea, SphericalCornea, ConicCornea
+from .cornea import SphericalCornea
 
 
 @dataclass
@@ -45,12 +45,7 @@ class Eye:
 
     - 'n_aqueous_humor' is the refractive index of the aqueous humor.
 
-    - 'pos_apex' is the position of the apex (the frontmost part of the
-      cornea).
-
-    - 'depth_cornea' is the distance, measured on the optical axis, between
-      the cornea apex and the projection of the limbus (the boundary of the
-      cornea) onto the optical axis.
+    - Corneal geometry (apex position, depth, etc.) is handled by the cornea object.
 
     - 'pos_pupil' is the position of the center of the pupil.
 
@@ -78,7 +73,7 @@ class Eye:
     """
 
     # Instance parameters
-    cornea: Optional[Cornea] = None  # Cornea object (SphericalCornea or ConicCornea)
+    cornea: Optional[SphericalCornea] = None  # Spherical cornea object
     fovea_displacement: bool = True
     fovea_alpha_deg: float = 6.0  # Horizontal fovea displacement (degrees)
     fovea_beta_deg: float = 2.0  # Vertical fovea displacement (degrees)
@@ -87,96 +82,44 @@ class Eye:
     # These fields are calculated in __post_init__
     trans: np.ndarray = field(init=False)
     _rest_orientation: np.ndarray = field(init=False)
-    r_cornea_inner: float = field(init=False)
-    axial_length: float = field(init=False)  # Calculated axial length (m)
-    cornea_center_to_rotation_center: float = field(init=False)  # Calculated distance (m)
-    cornea_thickness_offset: float = field(init=False)  # Calculated thickness offset (m)
-    cornea_inner_center: np.ndarray = field(init=False)
-    n_cornea: float = field(init=False)
+    axial_length: float = field(init=False)  # Total axial length of eye (m)
     n_aqueous_humor: float = field(init=False)
-    pos_apex: np.ndarray = field(init=False)
-    depth_cornea: float = field(init=False)
     pupil: Pupil = field(init=False)  # Pupil object that handles all pupil calculations
 
     def __post_init__(self) -> None:
         """Initializes the eye's anatomical properties based on constructor parameters."""
-        # Default constants for scaling (meters) from Boff and Lincoln [1988, Section 1.210]
-        r_cornea_default = 7.98e-3  # Default outer corneal radius (m)
-        r_cornea_inner_default = 6.22e-3  # Default inner corneal radius (m)
-        cornea_depth_default = 3.54e-3  # Corneal depth (distance from apex to limbus projection) (m)
+        # General eye constants (not cornea-specific)
         pupil_radius_default = 3e-3  # Default pupil radius (m)
-        n_cornea_default = 1.376  # Refractive index of cornea
         n_aqueous_humor_default = 1.336  # Refractive index of aqueous humor
         axial_length_default = 24.75e-3  # Default total axial length of eye (m)
-        cornea_center_to_rotation_center_default = (
-            10.20e-3  # Default distance from corneal center to rotation center (m)
-        )
-
-        cornea_thickness_offset_default = 1.15e-3  # Default corneal thickness offset (m)
 
         # Create default cornea if none provided
         if self.cornea is None:
-            self.cornea = SphericalCornea(radius=r_cornea_default)
+            self.cornea = SphericalCornea()
 
-        # Calculate scale factor based on corneal radius
-        if isinstance(self.cornea, SphericalCornea):
-            scale = self.cornea.radius / r_cornea_default
-        elif isinstance(self.cornea, ConicCornea):
-            scale = self.cornea.r_apical / r_cornea_default
-        else:
-            raise NotImplementedError(f"Scale calculation not implemented for cornea type: {type(self.cornea)}")
-
-        # Calculate anatomical position if center not provided
-        if self.cornea.center is None:
-            cornea_z_offset = axial_length_default - 2 * cornea_center_to_rotation_center_default
-            self.cornea.center = np.array([0, 0, -scale * cornea_z_offset, 1])
+        # Setup cornea-specific geometry (this handles all sphere-specific scaling)
+        self.cornea.setup_eye_geometry(axial_length_default)
 
         # Initialize transformation matrix (identity at rest position)
         self.trans = np.eye(4)
         self._rest_orientation = np.eye(3)
         self.trans[:3, :3] = self._rest_orientation
 
-        # Set anatomical parameters (original MATLAB scaling)
+        # Set general anatomical parameters
         self.axial_length = axial_length_default
-        self.cornea_center_to_rotation_center = cornea_center_to_rotation_center_default
-        self.cornea_thickness_offset = cornea_thickness_offset_default
-
-        # Inner corneal surface radius (scaled)
-        self.r_cornea_inner = scale * r_cornea_inner_default
-
-        # Inner corneal surface center
-        if isinstance(self.cornea, SphericalCornea):
-            thickness_term = self.cornea.radius - self.r_cornea_inner - scale * self.cornea_thickness_offset
-        elif isinstance(self.cornea, ConicCornea):
-            thickness_term = self.cornea.r_apical - self.r_cornea_inner - scale * self.cornea_thickness_offset
-        else:
-            raise NotImplementedError(
-                f"Inner surface calculation not implemented for cornea type: {type(self.cornea)}"
-            )
-        self.cornea_inner_center = self.cornea.center - np.array([0, 0, thickness_term, 0])
 
         # Refractive indices
-        self.n_cornea = n_cornea_default
         self.n_aqueous_humor = n_aqueous_humor_default
 
-        # Corneal apex (frontmost point)
-        if isinstance(self.cornea, SphericalCornea):
-            self.pos_apex = self.cornea.center + np.array([0, 0, -self.cornea.radius, 0])
-        elif isinstance(self.cornea, ConicCornea):
-            self.pos_apex = self.cornea.center + np.array([0, 0, -self.cornea.r_apical, 0])
-        else:
-            raise NotImplementedError(f"Apex calculation not implemented for cornea type: {type(self.cornea)}")
+        # Create pupil object - calculate pupil position and scale radius
+        pupil_position = self.get_pupil_position()
+        # Scale pupil radius based on corneal scaling factor
+        scale = self.cornea.get_scale_factor()
+        scaled_pupil_radius = pupil_radius_default * scale
+        x_pupil = scaled_pupil_radius * np.array([1, 0, 0, 0])
+        y_pupil = scaled_pupil_radius * np.array([0, 1, 0, 0])
 
-        # Corneal depth (scaled)
-        self.depth_cornea = scale * cornea_depth_default
-
-        # Create pupil object using factory pattern
-        pos_pupil = self.pos_apex + np.array([0, 0, scale * cornea_depth_default, 0])
-        pupil_radius_scaled = scale * pupil_radius_default
-        x_pupil = pupil_radius_scaled * np.array([1, 0, 0, 0])
-        y_pupil = pupil_radius_scaled * np.array([0, 1, 0, 0])
-
-        self.pupil = create_pupil(pupil_type=self.pupil_type, pos_pupil=pos_pupil, x_pupil=x_pupil, y_pupil=y_pupil)
+        self.pupil = create_pupil(pupil_type=self.pupil_type, pos_pupil=pupil_position, x_pupil=x_pupil, y_pupil=y_pupil)
 
     @property
     def orientation(self) -> np.ndarray:
@@ -223,7 +166,7 @@ class Eye:
 
         within=point_within_cornea(e, p) tests whether the point 'p', lying
         on the corneal sphere of the eye 'e', lies within the boundaries of the
-        cornea, as defined by e.depth_cornea. This function is used by
+        cornea, as defined by the cornea's depth. This function is used by
         find_cr() and find_refraction_sphere().
 
         Args:
@@ -429,6 +372,19 @@ class Eye:
 
         return pupil_boundary, pupil_center
 
+    def get_pupil_position(self) -> np.ndarray:
+        """Calculate the pupil position based on corneal geometry.
+        
+        The pupil is positioned behind the corneal apex by the corneal depth.
+        This delegates to the cornea to get its apex and depth.
+        
+        Returns:
+            4D homogeneous coordinates of pupil center position
+        """
+        apex = self.cornea.get_apex_position()
+        corneal_depth = self.cornea.get_corneal_depth()
+        return apex + np.array([0, 0, corneal_depth, 0])
+
     def get_pupil_radii(self) -> tuple[float, float]:
         """Returns the current pupil radii from both axes.
 
@@ -487,15 +443,7 @@ class Eye:
         if abs(denominator) < 1e-10:  # Avoid division by zero
             return None
 
-        # Get corneal radius based on cornea type
-        if isinstance(self.cornea, SphericalCornea):
-            corneal_radius = self.cornea.radius
-        elif isinstance(self.cornea, ConicCornea):
-            corneal_radius = self.cornea.r_apical
-        else:
-            raise NotImplementedError(f"Simple CR not implemented for cornea type: {type(self.cornea)}")
-
-        w = corneal_radius / denominator
+        w = self.cornea.anterior_radius / denominator
 
         # Line 31: cr=cc+w*(l.pos-cc);
         cr = cc + w * light_to_cornea
@@ -538,17 +486,10 @@ class Eye:
         # Compute corneal center position (4D homogeneous)
         cornea_center = self.trans @ self.cornea.center
 
-        # Use appropriate refraction method based on cornea type
-        if isinstance(self.cornea, SphericalCornea):
-            # refract_ray_sphere handles 3D/4D coordinates properly (fixes MATLAB's coordinate bug)
-            U0, Ud = refractions.refract_ray_sphere(R0, Rd, cornea_center, self.cornea.radius, 1.0, self.n_cornea)
-        elif isinstance(self.cornea, ConicCornea):
-            # Use conic section refraction
-            U0, Ud = refractions.refract_ray_conic(
-                R0, Rd, cornea_center, self.cornea.r_apical, self.cornea.Q, 1.0, self.n_cornea
-            )
-        else:
-            raise NotImplementedError(f"Refraction not implemented for cornea type: {type(self.cornea)}")
+        # refract_ray_sphere handles 3D/4D coordinates properly (fixes MATLAB's coordinate bug)
+        U0, Ud = refractions.refract_ray_sphere(
+            R0, Rd, cornea_center, self.cornea.anterior_radius, 1.0, self.cornea.refractive_index
+        )
 
         return U0, Ud
 
@@ -592,29 +533,23 @@ class Eye:
         # Compute corneal center positions (4D homogeneous)
         cornea_center = self.trans @ self.cornea.center
 
-        # Use appropriate refraction method based on cornea type
-        if isinstance(self.cornea, SphericalCornea):
-            # refract_ray_sphere handles 3D/4D coordinates properly (fixes MATLAB's coordinate bug)
-            O0, Od = refractions.refract_ray_sphere(R0, Rd, cornea_center, self.cornea.radius, 1.0, self.n_cornea)
-        elif isinstance(self.cornea, ConicCornea):
-            # Use conic section refraction for outer surface
-            O0, Od = refractions.refract_ray_conic(
-                R0, Rd, cornea_center, self.cornea.r_apical, self.cornea.Q, 1.0, self.n_cornea
-            )
-        else:
-            raise NotImplementedError(f"Refraction not implemented for cornea type: {type(self.cornea)}")
+        # refract_ray_sphere handles 3D/4D coordinates properly (fixes MATLAB's coordinate bug)
+        O0, Od = refractions.refract_ray_sphere(
+            R0, Rd, cornea_center, self.cornea.anterior_radius, 1.0, self.cornea.refractive_index
+        )
 
         if O0 is None or Od is None:
             return None, None, None
 
         # Line 38-39: Compute refraction at inner surface of cornea
-        inner_center = self.trans @ self.cornea_inner_center
+        posterior_center = self.trans @ self.cornea.get_posterior_center()
+        # Use spherical refraction for posterior surface
         I0, Id = refractions.refract_ray_sphere(
             O0,
             Od,
-            inner_center,
-            self.r_cornea_inner,
-            self.n_cornea,
+            posterior_center,
+            self.cornea.posterior_radius,
+            self.cornea.refractive_index,
             self.n_aqueous_humor,
         )
 
@@ -644,7 +579,7 @@ class Eye:
         Licensed under the GNU GPL v3.0 or later.
         """
 
-        I = self.cornea.find_refraction(C, O, 1.0, self.n_cornea, self.trans)
+        I = self.cornea.find_refraction(C, O, 1.0, self.cornea.refractive_index, self.trans)
 
         if I is None:
             return None

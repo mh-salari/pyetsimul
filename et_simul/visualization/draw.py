@@ -65,19 +65,20 @@ def plot_eye_anatomy(eye=Eye(), target_point=(15e-3, 15e-3, 0), ax=None):
     # Calculate all key points in WORLD coordinates using eye.trans
     eye_rotation_center = eye.position
     cornea_center_world = (eye.trans @ eye.cornea.center)[:3]
-    cornea_inner_center_world = (eye.trans @ eye.cornea_inner_center)[:3]
+    cornea_inner_center_world = (eye.trans @ eye.cornea.get_posterior_center())[:3]
     pupil_center_world = (eye.trans @ eye.pupil.pos_pupil)[:3]
     fovea_world = (eye.trans @ np.append(eye.fovea_position, 1))[:3]
 
     # Eye sphere parameters
     main_eye_radius = eye.axial_length / 2
-    limbus_z_local = eye.pos_apex[2] + eye.depth_cornea
+    apex_pos = eye.cornea.get_apex_position()
+    limbus_z_local = apex_pos[2] + eye.cornea.get_corneal_depth()
     limbus_point_world = (eye.trans @ np.array([0, 0, limbus_z_local, 1]))[:3]
 
     # Transform corneal surfaces to world coordinates
     # Create local corneal surface coordinates first
-    cornea_radius = eye.cornea.radius
-    depth = eye.depth_cornea
+    cornea_radius = eye.cornea.anterior_radius
+    depth = eye.cornea.get_corneal_depth()
     cap_angle = np.arccos((cornea_radius - depth) / cornea_radius)
     phi_cap = np.linspace(0, cap_angle, 20)
     theta_full = np.linspace(0, 2 * np.pi, 50)
@@ -89,10 +90,11 @@ def plot_eye_anatomy(eye=Eye(), target_point=(15e-3, 15e-3, 0), ax=None):
     z_outer_local = eye.cornea.center[2] - cornea_radius * np.cos(phi_grid)
 
     # Inner corneal surface in local coordinates
-    cornea_inner_radius = eye.r_cornea_inner
-    x_inner_local = eye.cornea_inner_center[0] + cornea_inner_radius * np.sin(phi_grid) * np.cos(theta_grid)
-    y_inner_local = eye.cornea_inner_center[1] + cornea_inner_radius * np.sin(phi_grid) * np.sin(theta_grid)
-    z_inner_local = eye.cornea_inner_center[2] - cornea_inner_radius * np.cos(phi_grid)
+    cornea_inner_radius = eye.cornea.posterior_radius
+    cornea_inner_center = eye.cornea.get_posterior_center()
+    x_inner_local = cornea_inner_center[0] + cornea_inner_radius * np.sin(phi_grid) * np.cos(theta_grid)
+    y_inner_local = cornea_inner_center[1] + cornea_inner_radius * np.sin(phi_grid) * np.sin(theta_grid)
+    z_inner_local = cornea_inner_center[2] - cornea_inner_radius * np.cos(phi_grid)
 
     # Transform corneal surfaces
     x_outer_world, y_outer_world, z_outer_world = transform_surface(
@@ -116,7 +118,8 @@ def plot_eye_anatomy(eye=Eye(), target_point=(15e-3, 15e-3, 0), ax=None):
     x_eye_world, y_eye_world, z_eye_world = transform_surface(x_eye_local, y_eye_local, z_eye_local, eye.trans)
 
     # Mask out the front part where cornea is
-    limbus_z_local = eye.pos_apex[2] + eye.depth_cornea
+    apex_pos2 = eye.cornea.get_apex_position()
+    limbus_z_local = apex_pos2[2] + eye.cornea.get_corneal_depth()
     optical_axis_world = (eye.trans @ np.array([0, 0, -1, 0]))[:3]
     optical_axis_unit = optical_axis_world / np.linalg.norm(optical_axis_world)
 
@@ -627,8 +630,8 @@ def prepare_eye_data_for_plots(eye, look_at_target, lights, camera):
     # Get eye anatomy points
     cornea_center = eye.cornea.center
     pupil_center = eye.pupil.pos_pupil
-    r_cornea = eye.cornea.radius
-    depth_cornea = eye.depth_cornea
+    r_cornea = eye.cornea.anterior_radius
+    depth_cornea = eye.cornea.get_corneal_depth()
 
     # Transform anatomical points to world coordinates
     cornea_center_world = transform_point(cornea_center)

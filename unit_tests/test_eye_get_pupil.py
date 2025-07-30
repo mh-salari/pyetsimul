@@ -130,7 +130,7 @@ def test_custom_n_8():
 def test_custom_corneal_radius():
     """Test get_pupil with custom corneal radius and MATLAB reference values."""
     r_cornea_custom = 10e-3  # 10mm corneal radius
-    e = Eye(cornea=SphericalCornea(radius=r_cornea_custom))
+    e = Eye(cornea=SphericalCornea(anterior_radius=r_cornea_custom))
     e.pupil.N = 12  # Set pupil resolution to 12
     X = e.get_pupil()
 
@@ -227,7 +227,7 @@ def test_custom_rest_position():
             [-np.sin(theta), 0, np.cos(theta)],
         ]
     )
-    e = Eye(cornea=SphericalCornea(radius=7.98e-3))
+    e = Eye(cornea=SphericalCornea(anterior_radius=7.98e-3))
     e.set_rest_orientation(custom_rest)
     e.pupil.N = 6  # Set pupil resolution to 6
     X = e.get_pupil()

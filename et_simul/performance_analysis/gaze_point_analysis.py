@@ -59,7 +59,8 @@ def accuracy_over_gaze_points(
     errs_deg = np.zeros((grid_size, grid_size))
 
     # Output eye measurements
-    apex_cornea_dist = np.linalg.norm(e.pos_apex - e.cornea.center)
+    apex_pos = e.cornea.get_apex_position()
+    apex_cornea_dist = np.linalg.norm(apex_pos - e.cornea.center)
     cornea_pupil_dist = np.linalg.norm(e.cornea.center - e.pupil.pos_pupil)
 
     print(f"Corneal radius: {apex_cornea_dist * 1e3:.3g} mm")

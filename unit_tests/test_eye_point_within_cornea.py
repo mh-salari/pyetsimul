@@ -10,7 +10,7 @@ def test_basic_cases():
     e = Eye()
 
     # Case 1: Point at apex (should be within)
-    p1 = e.pos_apex
+    p1 = e.cornea.get_apex_position()
     expected_p1 = np.array([0.000000, 0.000000, -0.012330, 1.000000])
     np.testing.assert_allclose(p1, expected_p1, rtol=1e-6, atol=1e-6)
     assert e.point_within_cornea(p1)
@@ -22,8 +22,10 @@ def test_basic_cases():
     assert not e.point_within_cornea(p2)
 
     # Case 3: Point beyond cornea depth (should be outside)
-    direction = (e.cornea.center - e.pos_apex) / np.linalg.norm(e.cornea.center - e.pos_apex)
-    p3 = e.pos_apex + 2 * e.depth_cornea * direction
+    direction = (e.cornea.center - e.cornea.get_apex_position()) / np.linalg.norm(
+        e.cornea.center - e.cornea.get_apex_position()
+    )
+    p3 = e.cornea.get_apex_position() + 2 * e.cornea.get_corneal_depth() * direction
     expected_p3 = np.array([0.000000, 0.000000, -0.005250, 1.000000])
     np.testing.assert_allclose(p3, expected_p3, rtol=1e-6, atol=1e-6)
     assert not e.point_within_cornea(p3)
@@ -34,22 +36,26 @@ def test_boundary_cases():
     e = Eye()
 
     # Case 4: Point just inside boundary (should be within)
-    direction = (e.cornea.center - e.pos_apex) / np.linalg.norm(e.cornea.center - e.pos_apex)
-    p4 = e.pos_apex + (e.depth_cornea - 1e-6) * direction
+    direction = (e.cornea.center - e.cornea.get_apex_position()) / np.linalg.norm(
+        e.cornea.center - e.cornea.get_apex_position()
+    )
+    p4 = e.cornea.get_apex_position() + (e.cornea.get_corneal_depth() - 1e-6) * direction
     expected_p4 = np.array([0.000000, 0.000000, -0.008791, 1.000000])
     np.testing.assert_allclose(p4, expected_p4, rtol=1e-6, atol=1e-6)
     assert e.point_within_cornea(p4)
 
     # Case 6: Point perpendicular to cornea direction (should be within)
     perp_direction = np.array([1, 0, 0, 0])
-    p6 = e.pos_apex + 0.001 * perp_direction
+    p6 = e.cornea.get_apex_position() + 0.001 * perp_direction
     expected_p6 = np.array([0.001000, 0.000000, -0.012330, 1.000000])
     np.testing.assert_allclose(p6, expected_p6, rtol=1e-6, atol=1e-6)
     assert e.point_within_cornea(p6)
 
     # Case 7: Point behind apex (should be within)
-    direction = (e.cornea.center - e.pos_apex) / np.linalg.norm(e.cornea.center - e.pos_apex)
-    p7 = e.pos_apex - 0.5 * e.depth_cornea * direction
+    direction = (e.cornea.center - e.cornea.get_apex_position()) / np.linalg.norm(
+        e.cornea.center - e.cornea.get_apex_position()
+    )
+    p7 = e.cornea.get_apex_position() - 0.5 * e.cornea.get_corneal_depth() * direction
     expected_p7 = np.array([0.000000, 0.000000, -0.014100, 1.000000])
     np.testing.assert_allclose(p7, expected_p7, rtol=1e-6, atol=1e-6)
     assert e.point_within_cornea(p7)
@@ -60,25 +66,25 @@ def test_custom_eye():
     # Case 5: Custom eye with different cornea radius
     r_cornea_custom = 9e-3
     # Create custom cornea with different radius (center=None for auto-positioning)
-    custom_cornea = SphericalCornea(radius=r_cornea_custom)
+    custom_cornea = SphericalCornea(anterior_radius=r_cornea_custom)
     e5 = Eye(cornea=custom_cornea)
-    p5 = e5.pos_apex
+    p5 = e5.cornea.get_apex_position()
     expected_p5 = np.array([0.000000, 0.000000, -0.013906, 1.000000])
     np.testing.assert_allclose(p5, expected_p5, rtol=1e-6, atol=1e-6)
     assert e5.point_within_cornea(p5)
 
     # Verify custom radius was applied
-    assert np.isclose(e5.cornea.radius, r_cornea_custom)
+    assert np.isclose(e5.cornea.anterior_radius, r_cornea_custom)
 
 
 def test_output_properties():
     """Test that output has correct properties."""
     e = Eye()
-    result = e.point_within_cornea(e.pos_apex)
+    result = e.point_within_cornea(e.cornea.get_apex_position())
 
     # Check return type
     assert isinstance(result, (bool, np.bool_))
 
     # Test consistency across multiple calls
-    result2 = e.point_within_cornea(e.pos_apex)
+    result2 = e.point_within_cornea(e.cornea.get_apex_position())
     assert result == result2
