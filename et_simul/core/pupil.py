@@ -23,11 +23,14 @@ class Pupil(ABC):
         self.N = N  # Number of boundary points for this pupil
 
     @abstractmethod
-    def get_boundary_points(self) -> np.ndarray:
+    def get_boundary_points(self, N: Optional[int] = None) -> np.ndarray:
         """Generate pupil boundary points.
 
+        Args:
+            N: Number of boundary points (defaults to self.N if not provided)
+
         Returns:
-            4×N matrix of points on pupil boundary (where N = self.N)
+            4×N matrix of points on pupil boundary
         """
         pass
 
@@ -85,17 +88,22 @@ class EllipticalPupil(Pupil):
         y_pupil: 4D vector defining Y-axis radius/direction
     """
 
-    def get_boundary_points(self) -> np.ndarray:
+    def get_boundary_points(self, N: Optional[int] = None) -> np.ndarray:
         """Generate elliptical pupil boundary points using parametric representation.
 
+        Args:
+            N: Number of boundary points (defaults to self.N if not provided)
+
         Returns:
-            4×N matrix of points on pupil boundary (where N = self.N)
+            4×N matrix of points on pupil boundary
         """
-        alpha = 2 * np.pi * np.arange(self.N) / self.N
+        if N is None:
+            N = self.N
+        alpha = 2 * np.pi * np.arange(N) / N
 
         # Parametric pupil boundary: pos_pupil + cos(α)*x_pupil + sin(α)*y_pupil
         pupil_points = (
-            np.tile(self.pos_pupil.reshape(-1, 1), (1, self.N))
+            np.tile(self.pos_pupil.reshape(-1, 1), (1, N))
             + self.x_pupil.reshape(-1, 1) @ np.cos(alpha).reshape(1, -1)
             + self.y_pupil.reshape(-1, 1) @ np.sin(alpha).reshape(1, -1)
         )
@@ -286,13 +294,18 @@ class RealisticPupil(Pupil):
         self.x_pupil = avg_radius_m * np.array([1, 0, 0, 0])
         self.y_pupil = avg_radius_m * np.array([0, 1, 0, 0])
 
-    def get_boundary_points(self) -> np.ndarray:
+    def get_boundary_points(self, N: Optional[int] = None) -> np.ndarray:
         """Generate realistic pupil boundary points using Fourier series.
 
+        Args:
+            N: Number of boundary points (defaults to self.N if not provided)
+
         Returns:
-            4×N matrix of points on pupil boundary (where N = self.N)
+            4×N matrix of points on pupil boundary
         """
-        theta = np.linspace(0, 2 * np.pi, self.N, endpoint=False)
+        if N is None:
+            N = self.N
+        theta = np.linspace(0, 2 * np.pi, N, endpoint=False)
 
         # Start with average radius (in mm)
         radius_mm = np.full_like(theta, self.params.base_radius)
@@ -312,7 +325,7 @@ class RealisticPupil(Pupil):
         y = radius_m * np.sin(theta)
 
         # Create 4×N homogeneous coordinate matrix centered at pupil position
-        pupil_points = np.zeros((4, self.N))
+        pupil_points = np.zeros((4, N))
         pupil_points[0, :] = self.pos_pupil[0] + x
         pupil_points[1, :] = self.pos_pupil[1] + y
         pupil_points[2, :] = self.pos_pupil[2]
