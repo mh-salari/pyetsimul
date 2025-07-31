@@ -48,10 +48,7 @@ class PredictionResult:
 def _predict_base(et, camimg):
     """Prediction function helper for Hennessey et al.
 
-    This function is based on the original MATLAB implementation from the
-    et_simul project — © 2008 Martin Böhme, University of Lübeck.
-    Python port © 2025 Mohammadhossein Salari.
-    Licensed under the GNU GPL v3.0 or later.
+
 
     Args:
         et: Eye tracker structure
@@ -204,10 +201,7 @@ def _predict_base(et, camimg):
 def predict(et, camimg) -> PredictionResult:
     """Prediction function for Hennessey et al.'s method.
 
-    This function is based on the original MATLAB implementation from the
-    et_simul project — © 2008 Martin Böhme, University of Lübeck.
-    Python port © 2025 Mohammadhossein Salari.
-    Licensed under the GNU GPL v3.0 or later.
+
 
     Args:
         et: Eye tracker structure
@@ -260,10 +254,7 @@ def predict(et, camimg) -> PredictionResult:
 def _apply_recalibration(state, gaze):
     """Apply Hennessey's recalibration procedure.
 
-    This function is based on the original MATLAB implementation from the
-    et_simul project — © 2008 Martin Böhme, University of Lübeck.
-    Python port © 2025 Mohammadhossein Salari.
-    Licensed under the GNU GPL v3.0 or later.
+
 
     Args:
         state: Recalibration state from recalib_hennessey_calib

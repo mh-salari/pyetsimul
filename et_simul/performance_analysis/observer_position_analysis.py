@@ -18,10 +18,7 @@ def accuracy_over_observer_positions(
 ):
     """Computes gaze error at different observer positions.
 
-    This function is based on the original MATLAB implementation from the
-    et_simul project — © 2008 Martin Böhme, University of Lübeck.
-    Python port © 2025 Mohammadhossein Salari.
-    Licensed under the GNU GPL v3.0 or lat
+
 
     Analyzes eye tracker robustness by testing gaze estimation with the observer
     at various positions while looking at a fixed target point.

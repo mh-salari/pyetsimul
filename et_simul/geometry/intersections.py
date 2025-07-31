@@ -5,10 +5,7 @@ import warnings
 def intersect_ray_sphere(R0, Rd, S0, Sr):
     """Finds intersection between ray and sphere.
 
-    This function is based on the original MATLAB implementation from the
-    et_simul project — © 2008 Martin Böhme, University of Lübeck.
-    Python port © 2025 Mohammadhossein Salari.
-    Licensed under the GNU GPL v3.0 or lat
+
 
     [pos, pos2] = intersect_ray_sphere(R0, Rd, S0, Sr) finds the intersection
     between a ray (specified by its origin 'R0' and direction 'Rd') and a
@@ -71,10 +68,7 @@ def intersect_ray_sphere(R0, Rd, S0, Sr):
 def intersect_ray_circle(R0, Rd, C0, Cr):
     """Finds intersection between ray and circle.
 
-    This function is based on the original MATLAB implementation from the
-    et_simul project — © 2008 Martin Böhme, University of Lübeck.
-    Python port © 2025 Mohammadhossein Salari.
-    Licensed under the GNU GPL v3.0 or lat
+
 
     pos = intersect_ray_circle(R0, Rd, C0, Cr) finds the intersection (in
     2-D) between a ray (specified by its origin 'R0' and direction 'Rd') and
@@ -121,10 +115,7 @@ def intersect_ray_circle(R0, Rd, C0, Cr):
 def intersect_ray_plane(R0, Rd, P0, Pn):
     """Finds intersection between ray and plane.
 
-    This function is based on the original MATLAB implementation from the
-    et_simul project — © 2008 Martin Böhme, University of Lübeck.
-    Python port © 2025 Mohammadhossein Salari.
-    Licensed under the GNU GPL v3.0 or lat
+
 
     pos = intersect_ray_plane(R0, Rd, P0, Pn) finds the intersection
     between a ray (specified by its origin 'R0' and direction 'Rd') and

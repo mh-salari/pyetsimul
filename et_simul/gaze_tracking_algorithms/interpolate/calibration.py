@@ -26,13 +26,7 @@ def calibrate(eye_tracker, calib_data):
 
 
 def _calibrate_1d(eye_tracker, calib_data):
-    """Calibrate with 1D polynomial (shared features for x and y).
-
-    This function is based on the original MATLAB implementation from the
-    et_simul project — © 2008 Martin Böhme, University of Lübeck.
-    Python port © 2025 Mohammadhossein Salari.
-    Licensed under the GNU GPL v3.0 or later.
-    """
+    """Calibrate with 1D polynomial (shared features for x and y)."""
 
     # Get feature size from first valid calibration point
     feature_size = None

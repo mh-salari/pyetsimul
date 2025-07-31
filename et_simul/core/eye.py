@@ -177,10 +177,7 @@ class Eye:
         Returns:
             bool: True if point lies within cornea boundaries, False otherwise
 
-        This function is based on the original MATLAB implementation from the
-        et_simul project — © 2008 Martin Böhme, University of Lübeck.
-        Python port © 2025 Mohammadhossein Salari.
-        Licensed under the GNU GPL v3.0 or later.
+
         """
         # Line 25: p=e.trans\p;
         p = np.linalg.solve(self.trans, p)
@@ -204,13 +201,10 @@ class Eye:
         Returns:
             4D homogeneous position of corneal reflex, or None if not within cornea
 
-        This function is based on the original MATLAB implementation from the
-        et_simul project — © 2008 Martin Böhme, University of Lübeck.
-        Python port © 2025 Mohammadhossein Salari.
-        Licensed under the GNU GPL v3.0 or later.
+
         """
         # Line 26: cr=find_reflection(l.pos, c.trans(:,4), e.trans*e.pos_cornea, e.r_cornea);
-        cr = self.cornea.find_reflection(l._pos_homogeneous, c.trans[:, 3], self.trans)
+        cr = self.cornea.find_reflection(l.position, c.trans[:, 3], self.trans)
 
         # Lines 29-31: if ~eye_point_within_cornea(e, cr), cr=[]; end
         if cr is not None and not self.point_within_cornea(cr):
@@ -234,10 +228,7 @@ class Eye:
         Returns:
             3x3 rotation matrix A representing the eye rotation
 
-        This function is based on the original MATLAB implementation from the
-        et_simul project — © 2008 Martin Böhme, University of Lübeck.
-        Python port © 2025 Mohammadhossein Salari.
-        Licensed under the GNU GPL v3.0 or later.
+
         """
         # Lines 25-27: Normalize out_rest and out_new
         out_rest = out_rest / np.linalg.norm(out_rest)
@@ -281,10 +272,7 @@ class Eye:
         Args:
             pos: Three-dimensional position in world coordinates to look at
 
-        This function is based on the original MATLAB implementation from the
-        et_simul project — © 2008 Martin Böhme, University of Lübeck.
-        Python port © 2025 Mohammadhossein Salari.
-        Licensed under the GNU GPL v3.0 or later.
+
         """
         # Line 31: out=pos(1:3)-e.trans(1:3,4);
         out = pos[:3] - self.position
@@ -329,10 +317,7 @@ class Eye:
         Returns:
             4×N matrix of points in world coordinates on pupil boundary
 
-        This function is based on the original MATLAB implementation from the
-        et_simul project — © 2008 Martin Böhme, University of Lübeck.
-        Python port © 2025 Mohammadhossein Salari.
-        Licensed under the GNU GPL v3.0 or later.
+
         """
         # Get pupil boundary points from pupil object
         pupil_points = self.pupil.get_boundary_points()
@@ -424,10 +409,7 @@ class Eye:
         Returns:
             4D homogeneous position of corneal reflex, or None if not found
 
-        This function is based on the original MATLAB implementation from the
-        et_simul project — © 2008 Martin Böhme, University of Lübeck.
-        Python port © 2025 Mohammadhossein Salari.
-        Licensed under the GNU GPL v3.0 or later.
+
         """
         # Line 27: cc=e.trans*e.pos_cornea;
         cc = self.trans @ self.cornea.center
@@ -478,10 +460,7 @@ class Eye:
             Tuple of (U0, Ud) where U0 is intersection point, Ud is refracted direction.
             Returns (None, None) if ray doesn't strike eye.
 
-        This function is based on the original MATLAB implementation from the
-        et_simul project — © 2008 Martin Böhme, University of Lübeck.
-        Python port © 2025 Mohammadhossein Salari.
-        Licensed under the GNU GPL v3.0 or later.
+
         """
 
         # Line 32-33: Compute refraction at surface of cornea
@@ -526,10 +505,7 @@ class Eye:
             - Id: Direction of ray exiting inner surface
             Returns (None, None, None) if ray doesn't strike eye.
 
-        This function is based on the original MATLAB implementation from the
-        et_simul project — © 2008 Martin Böhme, University of Lübeck.
-        Python port © 2025 Mohammadhossein Salari.
-        Licensed under the GNU GPL v3.0 or later.
+
         """
         # Line 34-35: Compute refraction at outer surface of cornea
         # Compute corneal center positions (4D homogeneous)
@@ -575,10 +551,7 @@ class Eye:
         Returns:
             4D homogeneous position on corneal surface where refraction occurs, or None
 
-        This function is based on the original MATLAB implementation from the
-        et_simul project — © 2008 Martin Böhme, University of Lübeck.
-        Python port © 2025 Mohammadhossein Salari.
-        Licensed under the GNU GPL v3.0 or later.
+
         """
 
         I = self.cornea.find_refraction(C, O, 1.0, self.cornea.refractive_index, self.trans)
@@ -614,10 +587,7 @@ class Eye:
         Returns:
             2×M matrix of pupil boundary points in camera image
 
-        This function is based on the original MATLAB implementation from the
-        et_simul project — © 2008 Martin Böhme, University of Lübeck.
-        Python port © 2025 Mohammadhossein Salari.
-        Licensed under the GNU GPL v3.0 or later.
+
         """
         # Line 31: pupil=eye_get_pupil(e);
         pupil = self.get_pupil()
@@ -686,10 +656,7 @@ class Eye:
             - pupil: 2×N matrix of pupil boundary points in camera image
             - pc: 2-element vector with pupil center position, or None if not found
 
-        This function is based on the original MATLAB implementation from the
-        et_simul project — © 2008 Martin Böhme, University of Lübeck.
-        Python port © 2025 Mohammadhossein Salari.
-        Licensed under the GNU GPL v3.0 or later.
+
         """
         # Get pupil image (with or without refraction)
         pupil = self.get_pupil_boundary_in_camera_image(c, use_refraction=use_refraction)

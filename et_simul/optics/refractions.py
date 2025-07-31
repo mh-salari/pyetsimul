@@ -46,10 +46,7 @@ def _refraction_objective_sphere(a, C_3d, O_3d, S0_3d, Sr, n_outside, n_sphere):
 def find_refraction_sphere(C, O, S0, Sr, n_outside, n_sphere):
     """Computes image produced by refracting sphere.
 
-    This function is based on the original MATLAB implementation from the
-    et_simul project — © 2008 Martin Böhme, University of Lübeck.
-    Python port © 2025 Mohammadhossein Salari.
-    Licensed under the GNU GPL v3.0 or lat
+
 
     I = find_refraction_sphere(C, O, S0, Sr, n_outside, n_sphere) finds the position
     on a sphere with center S0 and radius Sr where a ray emanating from an
@@ -236,10 +233,7 @@ def find_refraction_conic(C, O, S0, r, k, n_outside, n_conic):
 def refract_ray_sphere(R0, Rd, S0, Sr, n_outside, n_sphere):
     """Refracts ray at surface of sphere.
 
-    This function is based on the original MATLAB implementation from the
-    et_simul project — © 2008 Martin Böhme, University of Lübeck.
-    Python port © 2025 Mohammadhossein Salari.
-    Licensed under the GNU GPL v3.0 or lat
+
 
     [U0, Ud] = refract_ray_sphere(R0, Rd, S0, Sr, n_outside, n_sphere) finds
     the point 'U0' at which a ray (specified by its origin 'R0' and direction

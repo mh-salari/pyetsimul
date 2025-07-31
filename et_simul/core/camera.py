@@ -60,10 +60,7 @@ class Camera:
       'uniform': A uniform distribution between -err and +err for both the x
       and y coordinate
 
-    This class is based on the original MATLAB implementation from the
-    et_simul project — © 2008 Martin Böhme, University of Lübeck.
-    Python port © 2025 Mohammadhossein Salari.
-    Licensed under the GNU GPL v3.0 or later.
+
     """
 
     focal_length: float = 2880

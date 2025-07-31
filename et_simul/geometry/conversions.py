@@ -4,10 +4,7 @@ import numpy as np
 def gaze2angle(gaze, rest_pos=None):
     """Determines rotation angles of the eye from given gaze direction.
 
-    This function is based on the original MATLAB implementation from the
-    et_simul project — © 2008 Martin Böhme, University of Lübeck.
-    Python port © 2025 Mohammadhossein Salari.
-    Licensed under the GNU GPL v3.0 or later.
+
 
     angles = gaze2angle(gaze, rest_pos) calculates the rotation angles of the
     eye for the gaze direction 'gaze', relative to the rest position of the
@@ -50,10 +47,7 @@ def gaze2angle(gaze, rest_pos=None):
 def angle2gaze(angles, rest_pos=None):
     """Calculates gaze direction from rotation angles.
 
-    This function is based on the original MATLAB implementation from the
-    et_simul project — © 2008 Martin Böhme, University of Lübeck.
-    Python port © 2025 Mohammadhossein Salari.
-    Licensed under the GNU GPL v3.0 or lat
+
 
     gaze = angle2gaze(angles, rest_pos) calculates a gaze direction from
     Euler rotation angles. angles(1) is the rotation angle in the

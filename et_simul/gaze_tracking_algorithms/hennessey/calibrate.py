@@ -10,10 +10,7 @@ from .prediction import _predict_base
 def hennessey_calib(et, calib_data):
     """Calibration function for Hennessey et al.'s method.
 
-    This function is based on the original MATLAB implementation from the
-    et_simul project — © 2008 Martin Böhme, University of Lübeck.
-    Python port © 2025 Mohammadhossein Salari.
-    Licensed under the GNU GPL v3.0 or lat
+
 
 
     Args:
@@ -58,10 +55,7 @@ def hennessey_calib(et, calib_data):
 def recalib_hennessey_calib(gaze_measured, gaze_desired):
     """Calibrate Hennessey's recalibration procedure.
 
-    This function is based on the original MATLAB implementation from the
-    et_simul project — © 2008 Martin Böhme, University of Lübeck.
-    Python port © 2025 Mohammadhossein Salari.
-    Licensed under the GNU GPL v3.0 or lat
+
 
     Args:
         gaze_measured: 2×n matrix of estimated gaze positions on screen

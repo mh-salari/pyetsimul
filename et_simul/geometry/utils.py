@@ -4,10 +4,7 @@ import numpy as np
 def lines_closest_point(p1, d1, p2, d2):
     """Computes points where two lines are closest.
 
-    This function is based on the original MATLAB implementation from the
-    et_simul project — © 2008 Martin Böhme, University of Lübeck.
-    Python port © 2025 Mohammadhossein Salari.
-    Licensed under the GNU GPL v3.0 or lat
+
 
     [x1, x2] = lines_closest_point(p1, d1, p2, d2) computes the points of
     closest proximity between the two lines given by the point 'p1' and the
@@ -50,10 +47,7 @@ def lines_closest_point(p1, d1, p2, d2):
 def line_intersect_2d(p11, p12, p21, p22):
     """Computes intersection of two-dimensional lines.
 
-    This function is based on the original MATLAB implementation from the
-    et_simul project — © 2008 Martin Böhme, University of Lübeck.
-    Python port © 2025 Mohammadhossein Salari.
-    Licensed under the GNU GPL v3.0 or lat
+
 
     p = line_intersect_2d(p11, p12, p21, p22) computes the intersection (in
     2D) of the line through 'p11' and 'p12' with the line through 'p21' and
