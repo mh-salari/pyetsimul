@@ -164,24 +164,18 @@ def intersect_ray_plane(R0, Rd, P0, Pn):
     return intersection
 
 
-def intersect_ray_conic(R0, Rd, S0, r_apical, Q):
+def intersect_ray_conic(R0, Rd, S0, r, k):
     """
-    Find intersection between ray and conic section defined by the corneal asphericity equation:
-    x² + y² + pz² + 2rz = 0
-    where p = Q + 1, r is the apical radius, and Q is the asphericity parameter.
-
-    Note: Using +2rz (not -2rz) so the surface opens toward negative Z,
-    matching the eye coordinate system where the optical axis points along -Z.
-
-    This implements proper conic section geometry for realistic corneal modeling,
-    replacing the basic ellipsoid approximation.
+    Find intersection between ray and conic section using correct formula:
+    x² + y² + (1+k)z² = R²/(1+k)
+    where R = r is the radius parameter and k is the conic constant.
 
     Args:
         R0: Ray origin (3D coordinates)
         Rd: Ray direction (3D coordinates)
         S0: Conic center (3D coordinates, typically corneal apex)
-        r_apical: Apical radius of curvature (meters)
-        Q: Asphericity parameter (Q < 0 for prolate, Q = 0 for sphere, Q > 0 for oblate)
+        r: Radius parameter (R in the formula, meters)
+        k: Conic constant (k < 0 for prolate, k = 0 for sphere, k > 0 for oblate)
 
     Returns:
         Tuple (pos1, pos2): Intersection points closer and farther from R0.
@@ -194,25 +188,25 @@ def intersect_ray_conic(R0, Rd, S0, r_apical, Q):
 
     Rd_3d = Rd_3d / np.linalg.norm(Rd_3d)
 
-    # Calculate p-value from Q-value
-    p = Q + 1
+    # Calculate (1+k) value from k-value
+    one_plus_k = 1 + k
 
     # Translate coordinates so conic center is at origin
     R0_rel = R0_3d - S0_3d
 
     # Ray equation: P(t) = R0_rel + t * Rd_3d
-    # Conic equation: x² + y² + pz² + 2rz = 0
-    # Substitute ray into conic: (R0x + t*Rdx)² + (R0y + t*Rdy)² + p(R0z + t*Rdz)² + 2r(R0z + t*Rdz) = 0
+    # Conic equation: x² + y² + (1+k)z² = R²/(1+k)
+    # Substitute ray into conic: (R0x + t*Rdx)² + (R0y + t*Rdy)² + (1+k)(R0z + t*Rdz)² = R²/(1+k)
 
-    # Expand and collect coefficients of t² + bt + c = 0
+    # Expand and collect coefficients of At² + Bt + C = 0
     # Coefficient of t²
-    A = Rd_3d[0] ** 2 + Rd_3d[1] ** 2 + p * Rd_3d[2] ** 2
+    A = Rd_3d[0] ** 2 + Rd_3d[1] ** 2 + one_plus_k * Rd_3d[2] ** 2
 
     # Coefficient of t
-    B = 2 * (R0_rel[0] * Rd_3d[0] + R0_rel[1] * Rd_3d[1] + p * R0_rel[2] * Rd_3d[2] + r_apical * Rd_3d[2])
+    B = 2 * (R0_rel[0] * Rd_3d[0] + R0_rel[1] * Rd_3d[1] + one_plus_k * R0_rel[2] * Rd_3d[2])
 
     # Constant term
-    C = R0_rel[0] ** 2 + R0_rel[1] ** 2 + p * R0_rel[2] ** 2 + 2 * r_apical * R0_rel[2]
+    C = R0_rel[0] ** 2 + R0_rel[1] ** 2 + one_plus_k * R0_rel[2] ** 2 - (r**2 / one_plus_k)
 
     # Solve quadratic equation
     disc = B**2 - 4 * A * C
@@ -238,18 +232,18 @@ def intersect_ray_conic(R0, Rd, S0, r_apical, Q):
         return pos1, pos2
 
 
-def conic_surface_normal(point, S0, r_apical, Q):
+def conic_surface_normal(point, S0, r, k):
     """
     Calculate surface normal at a point on conic section surface.
 
-    For conic equation: F(x,y,z) = x² + y² + pz² + 2rz = 0
-    where p = Q + 1, the normal vector is the gradient: ∇F = (2x, 2y, 2pz + 2r)
+    For conic equation: F(x,y,z) = x² + y² + (1+k)z² - R²/(1+k) = 0
+    the normal vector is the gradient: ∇F = (2x, 2y, 2(1+k)z)
 
     Args:
         point: Point on conic surface (3D coordinates)
         S0: Conic center (3D coordinates, typically corneal apex)
-        r_apical: Apical radius of curvature (meters)
-        Q: Asphericity parameter (Q < 0 for prolate, Q = 0 for sphere, Q > 0 for oblate)
+        r: Radius parameter (R in the formula, meters)
+        k: Conic constant (k < 0 for prolate, k = 0 for sphere, k > 0 for oblate)
 
     Returns:
         Unit normal vector pointing outward from conic surface
@@ -258,14 +252,14 @@ def conic_surface_normal(point, S0, r_apical, Q):
     point_3d = point[:3] if len(point) == 4 else point
     S0_3d = S0[:3] if len(S0) == 4 else S0
 
-    # Calculate p-value from Q-value
-    p = Q + 1
+    # Calculate (1+k) value from k-value
+    one_plus_k = 1 + k
 
     # Translate to conic-centered coordinates
     x, y, z = point_3d - S0_3d
 
-    # Calculate gradient: ∇F = (2x, 2y, 2pz + 2r)
-    normal = np.array([2 * x, 2 * y, 2 * p * z + 2 * r_apical])
+    # Calculate gradient: ∇F = (2x, 2y, 2(1+k)z)
+    normal = np.array([2 * x, 2 * y, 2 * one_plus_k * z])
 
     # Normalize to unit vector
     normal_magnitude = np.linalg.norm(normal)
@@ -277,18 +271,18 @@ def conic_surface_normal(point, S0, r_apical, Q):
     return result
 
 
-def point_on_conic_surface(center, direction, r_apical, Q):
+def point_on_conic_surface(center, direction, r, k):
     """
     Find point on conic surface given direction from center.
 
     Given a direction from the conic center, find the point where this direction
-    intersects the conic surface. This is useful for optical calculations.
+    intersects the conic surface using the correct formula: x² + y² + (1+k)z² = R²/(1+k)
 
     Args:
         center: Conic center (3D coordinates)
         direction: Direction vector from center (3D coordinates, need not be normalized)
-        r_apical: Apical radius of curvature (meters)
-        Q: Asphericity parameter (Q < 0 for prolate, Q = 0 for sphere, Q > 0 for oblate)
+        r: Radius parameter (R in the formula, meters)
+        k: Conic constant (k < 0 for prolate, k = 0 for sphere, k > 0 for oblate)
 
     Returns:
         Point on conic surface, or None if no intersection found
@@ -298,34 +292,25 @@ def point_on_conic_surface(center, direction, r_apical, Q):
     direction_3d = direction[:3] if len(direction) == 4 else direction
     direction_normalized = direction_3d / np.linalg.norm(direction_3d)
 
-    # Calculate p-value from Q-value
-    p = Q + 1
+    # Calculate (1+k) value from k-value
+    one_plus_k = 1 + k
 
     # Ray from center: P(t) = t * direction (relative to center)
-    # Conic equation (relative to center): x² + y² + pz² + 2rz = 0
-    # Substitute: (t*dx)² + (t*dy)² + p(t*dz)² + 2r(t*dz) = 0
-    # Simplify: t²(dx² + dy² + p*dz²) + 2r*t*dz = 0
-    # Factor: t[t(dx² + dy² + p*dz²) + 2r*dz] = 0
+    # Conic equation (relative to center): x² + y² + (1+k)z² = R²/(1+k)
+    # Substitute: (t*dx)² + (t*dy)² + (1+k)(t*dz)² = R²/(1+k)
+    # Simplify: t²(dx² + dy² + (1+k)*dz²) = R²/(1+k)
+    # Solve for t: t = ±R/√((1+k)(dx² + dy² + (1+k)*dz²))
 
     dx, dy, dz = direction_normalized
 
-    # First solution is t = 0 (at center), which we don't want
-    # Second solution from: t(dx² + dy² + p*dz²) + 2r*dz = 0
-    # So: t = -2r*dz / (dx² + dy² + p*dz²)
-
-    denominator = dx**2 + dy**2 + p * dz**2
+    denominator = dx**2 + dy**2 + one_plus_k * dz**2
     if abs(denominator) < 1e-15:
         return None  # Degenerate case
 
-    if abs(dz) < 1e-15:
-        # Direction is perpendicular to z-axis, special case
-        # The equation becomes: t²(dx² + dy²) = 0, so t = 0 (only center)
-        return None
-
-    t = (-2 * r_apical * dz) / denominator
-
-    if t <= 0:
-        return None  # Point is behind or at center
+    # For the corneal surface facing -z direction (toward camera), use:
+    # t = +R/√((1+k)(dx² + dy² + (1+k)dz²))
+    # This ensures the apex is at [0, 0, -R/(1+k)] as required
+    t = r / np.sqrt(one_plus_k * denominator)
 
     # Calculate point on surface (relative to origin) and then translate
     surface_point = t * direction_normalized

@@ -99,7 +99,7 @@ def find_reflection_sphere(L, C, S0, Sr):
         return None
 
 
-def _reflect_objective_conic(alpha, L, C, S0, r_apical, Q):
+def _reflect_objective_conic(alpha, L, C, S0, r, k):
     """Objective function for conic section reflection finding.
 
     Uses the same interpolation approach as the sphere version but projects
@@ -128,12 +128,12 @@ def _reflect_objective_conic(alpha, L, C, S0, r_apical, Q):
         n = n / np.linalg.norm(n)
 
         # Project direction onto conic surface using proper conic geometry
-        U0 = point_on_conic_surface(S0_3d, n, r_apical, Q)
+        U0 = point_on_conic_surface(S0_3d, n, r, k)
         if U0 is None:
             return float("inf"), None
 
         # Get surface normal at intersection point
-        surface_normal = conic_surface_normal(U0, S0_3d, r_apical, Q)
+        surface_normal = conic_surface_normal(U0, S0_3d, r, k)
 
         # angle_c=arccos(surface_normal'*(C-U0)/norm(C-U0)) with safe clipping
         angle_c = np.arccos(np.clip(np.dot(surface_normal, (C_3d - U0) / np.linalg.norm(C_3d - U0)), -1, 1))
@@ -153,15 +153,15 @@ def _reflect_objective_conic(alpha, L, C, S0, r_apical, Q):
         return angle_diff, U0_result
 
 
-def find_reflection_conic(L, C, S0, r_apical, Q):
+def find_reflection_conic(L, C, S0, r, k):
     """Finds position of a glint on the surface of a conic section.
 
     Args:
         L: Light source position
         C: Camera position
         S0: Conic center (typically corneal apex)
-        r_apical: Apical radius of curvature (meters)
-        Q: Asphericity parameter (Q < 0 for prolate, Q = 0 for sphere, Q > 0 for oblate)
+        r: Radius of curvature at apex (meters)
+        k: Conic constant (k < 0 for prolate, k = 0 for sphere, k > 0 for oblate)
 
     Returns:
         U0: Position of glint on conic surface, or None if no reflection found
@@ -169,16 +169,16 @@ def find_reflection_conic(L, C, S0, r_apical, Q):
 
     try:
         # Test objective function at bounds
-        obj_0, U0_0 = _reflect_objective_conic(0.0, L, C, S0, r_apical, Q)
-        obj_1, U0_1 = _reflect_objective_conic(1.0, L, C, S0, r_apical, Q)
+        obj_0, U0_0 = _reflect_objective_conic(0.0, L, C, S0, r, k)
+        obj_1, U0_1 = _reflect_objective_conic(1.0, L, C, S0, r, k)
 
         if obj_0 == float("inf") or obj_1 == float("inf"):
             return None
 
         # Use optimization approach similar to sphere case
-        alpha = brentq(lambda alpha: _reflect_objective_conic(alpha, L, C, S0, r_apical, Q)[0], 0, 1)
+        alpha = brentq(lambda alpha: _reflect_objective_conic(alpha, L, C, S0, r, k)[0], 0, 1)
 
-        _, U0 = _reflect_objective_conic(alpha, L, C, S0, r_apical, Q)
+        _, U0 = _reflect_objective_conic(alpha, L, C, S0, r, k)
 
         return U0
     except ValueError:
@@ -309,7 +309,7 @@ def reflect_ray_sphere(R0, Rd, S0, Sr):
     return U0, Ud
 
 
-def reflect_ray_conic(R0, Rd, S0, r_apical, Q):
+def reflect_ray_conic(R0, Rd, S0, r_apical, k):
     """
     Reflect ray at surface of conic section.
 
@@ -319,8 +319,8 @@ def reflect_ray_conic(R0, Rd, S0, r_apical, Q):
         R0: Ray origin (3D or 4D homogeneous)
         Rd: Ray direction (3D or 4D homogeneous)
         S0: Conic center (3D or 4D homogeneous, typically corneal apex)
-        r_apical: Apical radius of curvature (meters)
-        Q: Asphericity parameter (Q < 0 for prolate, Q = 0 for sphere, Q > 0 for oblate)
+        r_apical: Radius parameter (R in the formula, meters)
+        k: Conic constant (k < 0 for prolate, k = 0 for sphere, k > 0 for oblate)
 
     Returns:
         Tuple of (U0, Ud) where:
@@ -338,7 +338,7 @@ def reflect_ray_conic(R0, Rd, S0, r_apical, Q):
     Rd_normalized = Rd_3d / np.linalg.norm(Rd_3d)
 
     # Step 1: Find intersection point
-    U0, _ = intersect_ray_conic(R0, Rd, S0, r_apical, Q)
+    U0, _ = intersect_ray_conic(R0, Rd, S0, r_apical, k)
 
     if U0 is None:
         return None, None
@@ -347,7 +347,7 @@ def reflect_ray_conic(R0, Rd, S0, r_apical, Q):
     U0_3d = U0[:3] if len(U0) > 3 else U0
 
     # Step 2: Calculate surface normal at intersection point
-    N = conic_surface_normal(U0, S0, r_apical, Q)
+    N = conic_surface_normal(U0, S0, r_apical, k)
 
     # For reflection, we typically want outward-pointing normal
     # Check if normal points outward from conic center

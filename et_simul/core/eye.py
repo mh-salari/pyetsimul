@@ -119,7 +119,9 @@ class Eye:
         x_pupil = scaled_pupil_radius * np.array([1, 0, 0, 0])
         y_pupil = scaled_pupil_radius * np.array([0, 1, 0, 0])
 
-        self.pupil = create_pupil(pupil_type=self.pupil_type, pos_pupil=pupil_position, x_pupil=x_pupil, y_pupil=y_pupil)
+        self.pupil = create_pupil(
+            pupil_type=self.pupil_type, pos_pupil=pupil_position, x_pupil=x_pupil, y_pupil=y_pupil
+        )
 
     @property
     def orientation(self) -> np.ndarray:
@@ -374,10 +376,10 @@ class Eye:
 
     def get_pupil_position(self) -> np.ndarray:
         """Calculate the pupil position based on corneal geometry.
-        
+
         The pupil is positioned behind the corneal apex by the corneal depth.
         This delegates to the cornea to get its apex and depth.
-        
+
         Returns:
             4D homogeneous coordinates of pupil center position
         """

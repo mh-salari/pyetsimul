@@ -92,7 +92,7 @@ def find_refraction_sphere(C, O, S0, Sr, n_outside, n_sphere):
         return None
 
 
-def _refraction_objective_conic(alpha, C_3d, O_3d, S0_3d, r_apical, Q, n_outside, n_conic):
+def _refraction_objective_conic(alpha, C_3d, O_3d, S0_3d, r, k, n_outside, n_conic):
     """Objective function for finding refraction point on conic surface.
 
     Args:
@@ -100,8 +100,8 @@ def _refraction_objective_conic(alpha, C_3d, O_3d, S0_3d, r_apical, Q, n_outside
         C_3d: Camera position (3D)
         O_3d: Object position (3D)
         S0_3d: Conic center (3D, typically corneal apex)
-        r_apical: Apical radius of curvature (meters)
-        Q: Asphericity parameter (Q < 0 for prolate, Q = 0 for sphere, Q > 0 for oblate)
+        r: Radius of curvature at apex (meters)
+        k: Conic constant (k < 0 for prolate, k = 0 for sphere, k > 0 for oblate)
         n_outside: Refractive index outside conic
         n_conic: Refractive index of conic
 
@@ -120,12 +120,12 @@ def _refraction_objective_conic(alpha, C_3d, O_3d, S0_3d, r_apical, Q, n_outside
     direction = direction / np.linalg.norm(direction)
 
     # Find intersection with conic surface along this direction
-    intersection = point_on_conic_surface(S0_3d, direction, r_apical, Q)
+    intersection = point_on_conic_surface(S0_3d, direction, r, k)
     if intersection is None:
         return float("inf"), None
 
     # Get surface normal at intersection point
-    normal = conic_surface_normal(intersection, S0_3d, r_apical, Q)
+    normal = conic_surface_normal(intersection, S0_3d, r, k)
     if normal is None:
         return float("inf"), None
 
@@ -146,11 +146,11 @@ def _refraction_objective_conic(alpha, C_3d, O_3d, S0_3d, r_apical, Q, n_outside
     return diff, intersection
 
 
-def find_refraction_conic(C, O, S0, r_apical, Q, n_outside, n_conic):
+def find_refraction_conic(C, O, S0, r, k, n_outside, n_conic):
     """Computes image produced by refracting conic section.
 
-    I = find_refraction_conic(C, O, S0, r_apical, Q, n_outside, n_conic) finds the position
-    on a conic surface with center S0 and asphericity Q where a ray emanating from an
+    I = find_refraction_conic(C, O, S0, r, k, n_outside, n_conic) finds the position
+    on a conic surface with center S0 and conic constant k where a ray emanating from an
     object at a position 'O' inside the conic is refracted to pass directly
     through point 'C' (this could be a camera, for example). The refractive
     index of the conic is 'n_conic', that of the outside medium is 'n_outside'.
@@ -159,8 +159,8 @@ def find_refraction_conic(C, O, S0, r_apical, Q, n_outside, n_conic):
         C: Camera/observer position (3D or 4D homogeneous)
         O: Object position inside conic (3D or 4D homogeneous)
         S0: Conic center (3D or 4D homogeneous, typically corneal apex)
-        r_apical: Apical radius of curvature (meters)
-        Q: Asphericity parameter (Q < 0 for prolate, Q = 0 for sphere, Q > 0 for oblate)
+        r: Radius of curvature at apex (meters)
+        k: Conic constant (k < 0 for prolate, k = 0 for sphere, k > 0 for oblate)
         n_outside: Refractive index outside conic
         n_conic: Refractive index of conic
 
@@ -204,8 +204,8 @@ def find_refraction_conic(C, O, S0, r_apical, Q, n_outside, n_conic):
         upper_bound = min(1.0, max(0, alpha_zero - 1e-9))
 
     # Check if there's a sign change in the objective function over the valid range
-    f0, _ = _refraction_objective_conic(0, C_3d, O_3d, S0_3d, r_apical, Q, n_outside, n_conic)
-    f1, _ = _refraction_objective_conic(upper_bound, C_3d, O_3d, S0_3d, r_apical, Q, n_outside, n_conic)
+    f0, _ = _refraction_objective_conic(0, C_3d, O_3d, S0_3d, r, k, n_outside, n_conic)
+    f1, _ = _refraction_objective_conic(upper_bound, C_3d, O_3d, S0_3d, r, k, n_outside, n_conic)
     # --- End of fix ---
 
     if np.isinf(f0) or np.isinf(f1) or f0 * f1 > 0:
@@ -214,11 +214,11 @@ def find_refraction_conic(C, O, S0, r_apical, Q, n_outside, n_conic):
     try:
         # Find zero of objective function within the valid range
         alpha = brentq(
-            lambda x: _refraction_objective_conic(x, C_3d, O_3d, S0_3d, r_apical, Q, n_outside, n_conic)[0],
+            lambda x: _refraction_objective_conic(x, C_3d, O_3d, S0_3d, r, k, n_outside, n_conic)[0],
             0,
             upper_bound,
         )
-        _, I_3d = _refraction_objective_conic(alpha, C_3d, O_3d, S0_3d, r_apical, Q, n_outside, n_conic)
+        _, I_3d = _refraction_objective_conic(alpha, C_3d, O_3d, S0_3d, r, k, n_outside, n_conic)
 
         if I_3d is None:
             return None
@@ -316,19 +316,19 @@ def refract_ray_sphere(R0, Rd, S0, Sr, n_outside, n_sphere):
         return U0, Ud_3d
 
 
-def refract_ray_conic(R0, Rd, S0, r_apical, Q, n_outside, n_conic):
+def refract_ray_conic(R0, Rd, S0, r_apical, k, n_outside, n_conic):
     """
     Refract ray at surface of conic section.
 
     This is the conic equivalent of refract_ray_sphere() used in the eye simulator,
-    implementing proper corneal asphericity with Q-value.
+    implementing proper corneal asphericity with k-value.
 
     Args:
         R0: Ray origin (3D or 4D homogeneous)
         Rd: Ray direction (3D or 4D homogeneous)
         S0: Conic center (3D or 4D homogeneous, typically corneal apex)
-        r_apical: Apical radius of curvature (meters)
-        Q: Asphericity parameter (Q < 0 for prolate, Q = 0 for sphere, Q > 0 for oblate)
+        r_apical: Radius parameter (R in the formula, meters)
+        k: Conic constant (k < 0 for prolate, k = 0 for sphere, k > 0 for oblate)
         n_outside: Refractive index outside conic (e.g., air = 1.0)
         n_conic: Refractive index of conic (e.g., cornea = 1.376)
 
@@ -348,7 +348,7 @@ def refract_ray_conic(R0, Rd, S0, r_apical, Q, n_outside, n_conic):
     Rd_normalized = Rd_3d / np.linalg.norm(Rd_3d)
 
     # Step 1: Find intersection point
-    U0, _ = intersect_ray_conic(R0, Rd, S0, r_apical, Q)
+    U0, _ = intersect_ray_conic(R0, Rd, S0, r_apical, k)
 
     if U0 is None:
         return None, None
@@ -357,7 +357,7 @@ def refract_ray_conic(R0, Rd, S0, r_apical, Q, n_outside, n_conic):
     U0_3d = U0[:3] if len(U0) > 3 else U0
 
     # Step 2: Calculate surface normal at intersection point
-    N = conic_surface_normal(U0, S0, r_apical, Q)
+    N = conic_surface_normal(U0, S0, r_apical, k)
 
     # For refraction, we need inward-pointing normal (toward conic interior)
     # Check if normal points outward and flip if needed

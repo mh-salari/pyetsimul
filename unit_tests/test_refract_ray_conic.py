@@ -5,7 +5,7 @@ from et_simul.optics.refractions import refract_ray_sphere, refract_ray_conic
 
 
 def test_conic_equals_sphere_refraction():
-    """Test conic refraction with Q=0 gives sphere behavior (accounting for center shift)."""
+    """Test conic refraction with k=0 gives sphere behavior."""
     # Off-axis ray for realistic refraction
     R0 = np.array([-1.0, 0.5, -2.0])
     Rd = np.array([0.2, -0.1, 1.0])
@@ -14,17 +14,17 @@ def test_conic_equals_sphere_refraction():
     n_outside = 1.0
     n_inside = 1.5
 
-    # For Q=0, we want both to create equivalent spheres at the same location
+    # For k=0, both should create equivalent spheres at the same location
     sphere_center = np.array([0.0, 0.0, 0.0])  # Sphere at origin
-    conic_center = np.array([0.0, 0.0, radius])  # Conic offset by +r to create sphere at origin
+    conic_center = np.array([0.0, 0.0, 0.0])  # Conic also at origin
 
     # Sphere function with proper center
     sphere_U0, sphere_Ud = refract_ray_sphere(R0, Rd, sphere_center, radius, n_outside, n_inside)
 
-    # Conic function with Q=0
-    r_apical = radius
-    Q = 0.0  # Q=0 represents a perfect sphere
-    conic_U0, conic_Ud = refract_ray_conic(R0, Rd, conic_center, r_apical, Q, n_outside, n_inside)
+    # Conic function with k=0
+    r_param = radius
+    k = 0.0  # k=0 represents a perfect sphere
+    conic_U0, conic_Ud = refract_ray_conic(R0, Rd, conic_center, r_param, k, n_outside, n_inside)
 
     # Should match the sphere centered at origin
     assert sphere_U0 is not None, "sphere_U0 should not be None"

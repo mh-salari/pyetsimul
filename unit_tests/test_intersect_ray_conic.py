@@ -5,23 +5,23 @@ from et_simul.geometry.intersections import intersect_ray_sphere, intersect_ray_
 
 
 def test_conic_equals_sphere_on_axis():
-    """Test conic with Q=0 gives sphere behavior (accounting for center shift)."""
+    """Test conic with k=0 gives sphere behavior."""
     # On-axis ray
     R0 = np.array([0.0, 0.0, -2.0])
     Rd = np.array([0.0, 0.0, 1.0])
     radius = 1.0
 
-    # For Q=0, we want both to create equivalent spheres at the same location
+    # For k=0, both should create equivalent spheres at the same location
     sphere_center = np.array([0.0, 0.0, 0.0])  # Sphere at origin
-    conic_center = np.array([0.0, 0.0, radius])  # Conic offset by +r to create sphere at origin
+    conic_center = np.array([0.0, 0.0, 0.0])  # Conic also at origin
 
     # Sphere function with proper center
     sphere_pos1, sphere_pos2 = intersect_ray_sphere(R0, Rd, sphere_center, radius)
 
-    # Conic function with Q=0
-    r_apical = radius
-    Q = 0.0  # Q=0 represents a perfect sphere
-    conic_pos1, conic_pos2 = intersect_ray_conic(R0, Rd, conic_center, r_apical, Q)
+    # Conic function with k=0
+    r_param = radius
+    k = 0.0  # k=0 represents a perfect sphere
+    conic_pos1, conic_pos2 = intersect_ray_conic(R0, Rd, conic_center, r_param, k)
 
     # Should match the sphere centered at origin
     assert sphere_pos1 is not None and conic_pos1 is not None
@@ -31,24 +31,24 @@ def test_conic_equals_sphere_on_axis():
 
 
 def test_conic_equals_sphere_off_axis():
-    """Test conic with Q=0 gives sphere behavior for off-axis ray (accounting for center shift)."""
+    """Test conic with k=0 gives sphere behavior for off-axis ray."""
     # Off-axis ray
     R0 = np.array([-1.5, 0.5, -2.0])
     Rd = np.array([0.3, -0.1, 1.0])
     Rd = Rd / np.linalg.norm(Rd)
     radius = 1.0
 
-    # For Q=0, we want both to create equivalent spheres at the same location
+    # For k=0, both should create equivalent spheres at the same location
     sphere_center = np.array([0.0, 0.0, 0.0])  # Sphere at origin
-    conic_center = np.array([0.0, 0.0, radius])  # Conic offset by +r to create sphere at origin
+    conic_center = np.array([0.0, 0.0, 0.0])  # Conic also at origin
 
     # Sphere function with proper center
     sphere_pos1, sphere_pos2 = intersect_ray_sphere(R0, Rd, sphere_center, radius)
 
-    # Conic function with Q=0
-    r_apical = radius
-    Q = 0.0  # Q=0 represents a perfect sphere
-    conic_pos1, conic_pos2 = intersect_ray_conic(R0, Rd, conic_center, r_apical, Q)
+    # Conic function with k=0
+    r_param = radius
+    k = 0.0  # k=0 represents a perfect sphere
+    conic_pos1, conic_pos2 = intersect_ray_conic(R0, Rd, conic_center, r_param, k)
 
     # Should match the sphere centered at origin
     assert sphere_pos1 is not None, "sphere_pos1 should not be None"
