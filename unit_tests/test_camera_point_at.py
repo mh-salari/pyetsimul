@@ -8,7 +8,7 @@ def test_point_at_basic():
     """Test basic point_at functionality."""
     c = Camera()
     original_trans = c.trans.copy()
-    target = np.array([5.0, 3.0, -10.0])
+    target = np.array([5.0, 3.0, -10.0, 1.0])
 
     c.point_at(target)
 
@@ -28,7 +28,7 @@ def test_point_at_vs_pan_tilt():
     """Test difference between point_at and pan_tilt regarding rest_trans."""
     c1 = Camera()
     c2 = Camera()
-    target = np.array([2.0, 4.0, -8.0])
+    target = np.array([2.0, 4.0, -8.0, 1.0])
 
     # Test pan_tilt (should not change rest_trans)
     original_rest = c1.rest_trans.copy()
@@ -47,7 +47,7 @@ def test_output_properties():
     """Test that point_at maintains proper camera properties."""
     c = Camera()
     original_focal_length = c.focal_length
-    target = np.array([1.0, -2.0, -5.0])
+    target = np.array([1.0, -2.0, -5.0, 1.0])
 
     c.point_at(target)
 

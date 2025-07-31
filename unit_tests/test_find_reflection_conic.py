@@ -7,13 +7,13 @@ from et_simul.optics.reflections import find_reflection_sphere, find_reflection_
 def test_conic_equals_sphere_reflection():
     """Test conic reflection with k=0 gives sphere behavior."""
     # Realistic eye tracking geometry based on example.py
-    L = np.array([200e-3, 0, 0])  # Light position (200mm in x)
-    C = np.array([0, 0, -50e-3])  # Camera position (50mm in front, facing -z)
+    L = np.array([200e-3, 0, 0, 1.0])  # Light position (200mm in x)
+    C = np.array([0, 0, -50e-3, 1.0])  # Camera position (50mm in front, facing -z)
     radius = 7.98e-3  # Realistic corneal radius
 
     # For k=0, both should create equivalent spheres at the same location
-    sphere_center = np.array([0.0, 0.0, 0.0])  # Sphere at origin
-    conic_center = np.array([0.0, 0.0, 0.0])  # Conic also at origin
+    sphere_center = np.array([0.0, 0.0, 0.0, 1.0])  # Sphere at origin
+    conic_center = np.array([0.0, 0.0, 0.0, 1.0])  # Conic also at origin
 
     # Sphere function with proper center
     sphere_U0 = find_reflection_sphere(L, C, sphere_center, radius)
@@ -31,9 +31,9 @@ def test_conic_equals_sphere_reflection():
 
 def test_conic_output_properties():
     """Test that conic reflection output has correct properties."""
-    L = np.array([200e-3, 0, 0])  # Realistic light position
-    C = np.array([0, 0, -50e-3])  # Realistic camera position
-    S0 = np.array([0.0, 0.0, 0.0])  # Conic center at origin
+    L = np.array([200e-3, 0, 0, 1.0])  # Realistic light position
+    C = np.array([0, 0, -50e-3, 1.0])  # Realistic camera position
+    S0 = np.array([0.0, 0.0, 0.0, 1.0])  # Conic center at origin
     r_param = 7.98e-3  # Radius parameter
     k = -0.18  # Typical prolate cornea
 
@@ -43,7 +43,7 @@ def test_conic_output_properties():
     # Check types and shapes
     assert isinstance(U0, np.ndarray)
     assert U0.dtype == np.float64
-    assert U0.shape == (3,)
+    assert U0.shape == (4,)
 
     # Should be finite values
     assert np.all(np.isfinite(U0))
@@ -51,9 +51,9 @@ def test_conic_output_properties():
 
 def test_prolate_vs_oblate_conic():
     """Test that prolate and oblate conics give different results."""
-    L = np.array([200e-3, 0, 0])  # Realistic light position
-    C = np.array([0, 0, -50e-3])  # Realistic camera position
-    S0 = np.array([0.0, 0.0, 0.0])  # Conic center at origin
+    L = np.array([200e-3, 0, 0, 1.0])  # Realistic light position
+    C = np.array([0, 0, -50e-3, 1.0])  # Realistic camera position
+    S0 = np.array([0.0, 0.0, 0.0, 1.0])  # Conic center at origin
     r_param = 7.98e-3  # Radius parameter
 
     # Prolate conic (typical cornea)

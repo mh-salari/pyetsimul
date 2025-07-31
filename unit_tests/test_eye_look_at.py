@@ -7,7 +7,7 @@ from et_simul.core.eye import Eye
 def test_look_at_with_foveal_displacement():
     """Test look_at with foveal displacement enabled (default)."""
     e = Eye()
-    target = np.array([12, -7, -30])
+    target = np.array([12, -7, -30, 1.0])
     initial_position = e.position.copy()
 
     e.look_at(target)
@@ -31,7 +31,7 @@ def test_look_at_with_foveal_displacement():
 def test_look_at_without_foveal_displacement():
     """Test look_at with foveal displacement disabled."""
     e = Eye(fovea_displacement=False)
-    target = np.array([12, -7, -30])
+    target = np.array([12, -7, -30, 1.0])
     initial_position = e.position.copy()
 
     e.look_at(target)
@@ -55,7 +55,7 @@ def test_look_at_without_foveal_displacement():
 def test_output_properties():
     """Test that look_at output has correct properties."""
     e = Eye()
-    target = np.array([10, 5, -30])
+    target = np.array([10, 5, -30, 1.0])
 
     # look_at doesn't return anything (void method)
     e.look_at(target)

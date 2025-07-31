@@ -7,16 +7,16 @@ from et_simul.optics.reflections import reflect_ray_sphere
 def test_basic_center_reflection():
     """Test basic center front reflection with MATLAB reference values."""
     # Ray hitting sphere dead center from front
-    R0 = np.array([0.0, 0.0, -5.0])  # Ray origin
-    Rd = np.array([0.0, 0.0, 1.0])  # Ray direction (unit vector)
-    S0 = np.array([0.0, 0.0, 0.0])  # Sphere center
+    R0 = np.array([0.0, 0.0, -5.0, 1.0])  # Ray origin
+    Rd = np.array([0.0, 0.0, 1.0, 0.0])  # Ray direction (unit vector)
+    S0 = np.array([0.0, 0.0, 0.0, 1.0])  # Sphere center
     Sr = 2.0  # Sphere radius
 
     U0, Ud = reflect_ray_sphere(R0, Rd, S0, Sr)
 
     # MATLAB reference values
-    expected_U0 = np.array([0.0000000000000000, 0.0000000000000000, -2.0000000000000000])
-    expected_Ud = np.array([0.0000000000000000, 0.0000000000000000, -1.0000000000000000])
+    expected_U0 = np.array([0.0, 0.0, -2.0, 1.0])
+    expected_Ud = np.array([0.0, 0.0, -1.0, 0.0])
 
     assert U0 is not None
     assert Ud is not None
@@ -27,16 +27,16 @@ def test_basic_center_reflection():
 def test_angled_reflection():
     """Test angled reflection with MATLAB reference values."""
     # Angled ray with non-normalized input direction
-    R0 = np.array([0.0, 0.0, 0.0])  # Ray origin
-    Rd = np.array([1.0, 1.0, 1.0])  # Ray direction (not unit)
-    S0 = np.array([0.0, 0.0, 0.0])  # Sphere center
+    R0 = np.array([0.0, 0.0, 0.0, 1.0])  # Ray origin
+    Rd = np.array([1.0, 1.0, 1.0, 0.0])  # Ray direction (not unit)
+    S0 = np.array([0.0, 0.0, 0.0, 1.0])  # Sphere center
     Sr = 1.5  # Sphere radius
 
     U0, Ud = reflect_ray_sphere(R0, Rd, S0, Sr)
 
     # MATLAB reference values
-    expected_U0 = np.array([-0.8660254037844397, -0.8660254037844397, -0.8660254037844397])
-    expected_Ud = np.array([-0.5773502691896256, -0.5773502691896256, -0.5773502691896256])
+    expected_U0 = np.array([-0.8660254037844397, -0.8660254037844397, -0.8660254037844397, 1.0])
+    expected_Ud = np.array([-0.5773502691896256, -0.5773502691896256, -0.5773502691896256, 0.0])
 
     assert U0 is not None
     assert Ud is not None
@@ -50,9 +50,9 @@ def test_angled_reflection():
 def test_ray_missing_sphere():
     """Test ray that misses sphere - should return None."""
     # Ray that doesn't intersect sphere
-    R0 = np.array([0.0, 0.0, 0.0])  # Ray origin
-    Rd = np.array([1.0, 0.0, 0.0])  # Ray direction
-    S0 = np.array([0.0, 5.0, 0.0])  # Sphere center (away from ray)
+    R0 = np.array([0.0, 0.0, 0.0, 1.0])  # Ray origin
+    Rd = np.array([1.0, 0.0, 0.0, 0.0])  # Ray direction
+    S0 = np.array([0.0, 5.0, 0.0, 1.0])  # Sphere center (away from ray)
     Sr = 1.0  # Sphere radius
 
     U0, Ud = reflect_ray_sphere(R0, Rd, S0, Sr)
@@ -75,18 +75,18 @@ def test_homogeneous_coordinates():
     # MATLAB reference values (4D)
     expected_U0 = np.array(
         [
-            1.0000000000000000,
-            0.0000000000000000,
-            -2.0000000000000000,
-            1.0000000000000000,
+            1.0,
+            0.0,
+            -2.0,
+            1.0,
         ]
     )
     expected_Ud = np.array(
         [
-            0.0000000000000000,
-            0.0000000000000000,
-            -1.0000000000000000,
-            0.0000000000000000,
+            0.0,
+            0.0,
+            -1.0,
+            0.0,
         ]
     )
 
@@ -106,9 +106,9 @@ def test_homogeneous_coordinates():
 
 def test_output_properties():
     """Test that output has correct properties."""
-    R0 = np.array([0.0, 0.0, -5.0])
-    Rd = np.array([0.0, 0.0, 1.0])
-    S0 = np.array([0.0, 0.0, 0.0])
+    R0 = np.array([0.0, 0.0, -5.0, 1.0])
+    Rd = np.array([0.0, 0.0, 1.0, 0.0])
+    S0 = np.array([0.0, 0.0, 0.0, 1.0])
     Sr = 2.0
 
     U0, Ud = reflect_ray_sphere(R0, Rd, S0, Sr)
@@ -120,11 +120,9 @@ def test_output_properties():
     assert isinstance(Ud, np.ndarray)
     assert U0.dtype == np.float64
     assert Ud.dtype == np.float64
-    assert U0.shape == (3,) or U0.shape == (4,)  # Can be 3D or 4D
-    assert Ud.shape == (3,) or Ud.shape == (4,)  # Can be 3D or 4D
+    assert U0.shape == (4,)
+    assert Ud.shape == (4,)
 
     # Reflected direction should be normalized
-    if Ud.shape == (3,):
-        assert np.isclose(np.linalg.norm(Ud), 1.0, rtol=1e-12)
-    else:  # 4D homogeneous
-        assert np.isclose(np.linalg.norm(Ud[:3]), 1.0, rtol=1e-12)
+
+    assert np.isclose(np.linalg.norm(Ud[:3]), 1.0, rtol=1e-12)

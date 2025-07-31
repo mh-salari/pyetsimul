@@ -9,7 +9,7 @@ from et_simul.core.camera import Camera
 def test_basic_corneal_reflex():
     """Test basic corneal reflex with MATLAB reference values."""
     e = Eye()
-    l = Light(position=np.array([0, 0, -50]))
+    l = Light(position=np.array([0, 0, -50, 1]))
     c = Camera()
 
     # Position camera to the side
@@ -21,9 +21,9 @@ def test_basic_corneal_reflex():
     expected_cr = np.array(
         [
             0.0025236951722993,
-            0.0000000000000000,
+            0.0,
             -0.0119204268490828,
-            1.0000000000000000,
+            1.0,
         ]
     )
 
@@ -37,7 +37,7 @@ def test_basic_corneal_reflex():
 def test_different_positions():
     """Test corneal reflex with different light and camera positions."""
     e = Eye()
-    l = Light(position=np.array([20, 15, -60]))
+    l = Light(position=np.array([20, 15, -60, 1]))
     c = Camera()
 
     # Camera at different position
@@ -51,7 +51,7 @@ def test_different_positions():
             -0.0011496765821543,
             0.0020336905185480,
             -0.0119803831247988,
-            1.0000000000000000,
+            1.0,
         ]
     )
 
@@ -63,7 +63,7 @@ def test_different_positions():
 def test_light_behind_eye():
     """Test case where light is behind eye - should return None."""
     e = Eye()
-    l = Light(position=np.array([0, 0, 50]))
+    l = Light(position=np.array([0, 0, 50, 1]))
     c = Camera()
 
     # Camera in front
@@ -77,35 +77,25 @@ def test_light_behind_eye():
 
 def test_reflex_outside_cornea_boundary():
     """Test case where reflex falls outside cornea boundary - should return None."""
+    e = Eye()
+    l = Light(position=np.array([5, 30, -40, 1]))
+    c = Camera()
 
+    # Eye looking straight down
+    target_down = np.array([0, -100, 0, 1])
+    e.look_at(target_down)
+    c.trans[0:3, 3] = np.array([10, 60, -25])
 
-e = Eye()
-l = Light(
-    position=np.array(
-        [
-            5,
-            30,
-            -40,
-        ]
-    )
-)
-c = Camera()
+    cr = e.find_cr(l, c)
 
-# Eye looking straight down
-target_down = np.array([0, -100, 0])
-e.look_at(target_down)
-c.trans[0:3, 3] = np.array([10, 60, -25])
-
-cr = e.find_cr(l, c)
-
-# Should return None when reflection is outside cornea boundary
-assert cr is None
+    # Should return None when reflection is outside cornea boundary
+    assert cr is None
 
 
 def test_output_properties():
     """Test that output has correct properties."""
     e = Eye()
-    l = Light(position=np.array([0, 0, -50]))
+    l = Light(position=np.array([0, 0, -50, 1]))
     c = Camera()
     c.trans[0:3, 3] = np.array([30, 0, -40])
 

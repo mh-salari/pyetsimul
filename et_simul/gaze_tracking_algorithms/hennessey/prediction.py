@@ -146,9 +146,6 @@ def _predict_base(et, camimg):
                     new_points = np.zeros((4, j + 1))
                     new_points[:, : pupil_points.shape[1]] = pupil_points
                     pupil_points = new_points
-                # Convert 3D point to homogeneous coordinates if needed
-                if pt.shape[0] == 3:
-                    pt = np.append(pt, 1)
                 pupil_points[:, j] = pt
 
         # Line 74: pc_estim=mean(pupil_points,2);
@@ -174,9 +171,6 @@ def _predict_base(et, camimg):
         pc_estim_tuple = intersect_ray_sphere(U0, Ud, cc_estim, rpc_assumed)
         if pc_estim_tuple[0] is not None:
             pc_estim = pc_estim_tuple[0]  # Take closer intersection
-            # Convert to homogeneous coordinates if needed
-            if pc_estim.shape[0] == 3:
-                pc_estim = np.append(pc_estim, 1)
         else:
             pc_estim = np.zeros(4)
     else:

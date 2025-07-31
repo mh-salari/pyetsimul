@@ -8,8 +8,8 @@ def test_basic_pan_tilt():
     """Test basic pan/tilt operation with MATLAB reference values."""
     c = Camera()
 
-    # Target point
-    look_at = np.array([10.0, 5.0, -20.0])
+    # Target point (4D homogeneous coordinates)
+    look_at = np.array([10.0, 5.0, -20.0, 1.0])
 
     # Apply pan/tilt
     c.pan_tilt(look_at)
@@ -21,25 +21,25 @@ def test_basic_pan_tilt():
                 0.8944271909999159,
                 -0.0975900072948533,
                 -0.4364357804719848,
-                0.0000000000000000,
+                0.0,
             ],
             [
-                0.0000000000000000,
+                0.0,
                 0.9759000729485332,
                 -0.2182178902359924,
-                0.0000000000000000,
+                0.0,
             ],
             [
                 0.4472135954999580,
                 0.1951800145897066,
                 0.8728715609439696,
-                0.0000000000000000,
+                0.0,
             ],
             [
-                0.0000000000000000,
-                0.0000000000000000,
-                0.0000000000000000,
-                1.0000000000000000,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
             ],
         ]
     )
@@ -58,8 +58,8 @@ def test_modified_rest_trans():
     c.trans = c.trans @ translation_matrix
     c.rest_trans = c.trans.copy()  # Update rest position
 
-    # Target point
-    look_at = np.array([8.0, 4.0, -15.0])
+    # Target point (4D homogeneous coordinates)
+    look_at = np.array([8.0, 4.0, -15.0, 1.0])
 
     # Apply pan/tilt
     c.pan_tilt(look_at)
@@ -71,25 +71,25 @@ def test_modified_rest_trans():
                 0.9486832980505138,
                 -0.0493864798324795,
                 -0.3123475237772121,
-                2.0000000000000000,
+                2.0,
             ],
             [
-                0.0000000000000000,
+                0.0,
                 0.9877295966495896,
                 -0.1561737618886061,
-                1.0000000000000000,
+                1.0,
             ],
             [
                 0.3162277660168379,
                 0.1481594394974385,
                 0.9370425713316364,
-                3.0000000000000000,
+                3.0,
             ],
             [
-                0.0000000000000000,
-                0.0000000000000000,
-                0.0000000000000000,
-                1.0000000000000000,
+                0.0,
+                0.0,
+                0.0,
+                1.0,
             ],
         ]
     )
@@ -102,7 +102,7 @@ def test_output_properties():
     """Test that pan_tilt maintains proper camera properties."""
     c = Camera()
     original_focal_length = c.focal_length
-    target = np.array([10.0, 5.0, -20.0])
+    target = np.array([10.0, 5.0, -20.0, 1.0])
 
     c.pan_tilt(target)
 

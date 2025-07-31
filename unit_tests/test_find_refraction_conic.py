@@ -12,12 +12,12 @@ def test_conic_equals_sphere_refraction():
     n_inside = 1.376  # Cornea
 
     # Object behind cornea (pupil), camera in front
-    O = np.array([0.0, 0.0, -6e-3])  # Object 6mm behind origin (pupil)
-    C = np.array([0.0, 0.0, 50e-3])  # Camera 50mm in front
+    O = np.array([0.0, 0.0, -6e-3, 1.0])  # Object 6mm behind origin (pupil)
+    C = np.array([0.0, 0.0, 50e-3, 1.0])  # Camera 50mm in front
 
     # For k=0, both should create equivalent spheres at the same location
-    sphere_center = np.array([0.0, 0.0, 0.0])  # Sphere at origin
-    conic_center = np.array([0.0, 0.0, 0.0])  # Conic also at origin
+    sphere_center = np.array([0.0, 0.0, 0.0, 1.0])  # Sphere at origin
+    conic_center = np.array([0.0, 0.0, 0.0, 1.0])  # Conic also at origin
 
     # Sphere function with proper center
     sphere_I = find_refraction_sphere(C, O, sphere_center, radius, n_outside, n_inside)
@@ -36,22 +36,22 @@ def test_conic_equals_sphere_refraction():
 def test_conic_refraction_basic():
     """Test basic conic refraction scenario."""
     # Realistic conic parameters
-    S0 = np.array([0.0, 0.0, 0.0])  # Conic center at origin
+    S0 = np.array([0.0, 0.0, 0.0, 1.0])  # Conic center at origin
     r_param = 7.98e-3  # Radius parameter
     k = -0.18  # Typical prolate cornea
     n_outside = 1.0  # Air
     n_conic = 1.376  # Cornea
 
     # Realistic eye tracking geometry
-    O = np.array([0.0, 0.0, -6e-3])  # Object behind cornea (pupil)
-    C = np.array([0.0, 0.0, 50e-3])  # Camera in front
+    O = np.array([0.0, 0.0, -6e-3, 1.0])  # Object behind cornea (pupil)
+    C = np.array([0.0, 0.0, 50e-3, 1.0])  # Camera in front
 
     I = find_refraction_conic(C, O, S0, r_param, k, n_outside, n_conic)
     assert I is not None, "I should not be None for this basic refraction scenario"
 
     # Check types and shapes
     assert isinstance(I, np.ndarray)
-    assert I.shape == (3,)
+    assert I.shape == (4,)
     assert I.dtype == np.float64
 
     # Should be finite values
@@ -60,12 +60,12 @@ def test_conic_refraction_basic():
 
 def test_different_k_values():
     """Test that different k values give different refraction results."""
-    S0 = np.array([0.0, 0.0, 0.0])  # Conic center at origin
+    S0 = np.array([0.0, 0.0, 0.0, 1.0])  # Conic center at origin
     r_param = 7.98e-3  # Radius parameter
     n_outside = 1.0
     n_conic = 1.376
-    O = np.array([0.0, 0.0, -6e-3])  # Realistic object position (pupil)
-    C = np.array([0.0, 0.0, 50e-3])  # Realistic camera position
+    O = np.array([0.0, 0.0, -6e-3, 1.0])  # Realistic object position (pupil)
+    C = np.array([0.0, 0.0, 50e-3, 1.0])  # Realistic camera position
 
     # Prolate conic (typical cornea)
     k_prolate = -0.18
@@ -92,13 +92,13 @@ def test_different_k_values():
 
 def test_conic_output_properties():
     """Test that conic refraction output has correct properties."""
-    S0 = np.array([0.0, 0.0, 0.0])  # Conic center at origin
+    S0 = np.array([0.0, 0.0, 0.0, 1.0])  # Conic center at origin
     r_param = 7.98e-3  # Radius parameter
     k = -0.18
     n_outside = 1.0
     n_conic = 1.376
-    O = np.array([0.0, 0.0, -6e-3])  # Realistic object position
-    C = np.array([0.0, 0.0, 50e-3])  # Realistic camera position
+    O = np.array([0.0, 0.0, -6e-3, 1.0])  # Realistic object position
+    C = np.array([0.0, 0.0, 50e-3, 1.0])  # Realistic camera position
 
     I = find_refraction_conic(C, O, S0, r_param, k, n_outside, n_conic)
     assert I is not None, "I should not be None for these inputs"
@@ -106,7 +106,7 @@ def test_conic_output_properties():
     # Check types and shapes
     assert isinstance(I, np.ndarray)
     assert I.dtype == np.float64
-    assert I.shape == (3,)
+    assert I.shape == (4,)
 
     # Should be finite values
     assert np.all(np.isfinite(I))
@@ -115,22 +115,22 @@ def test_conic_output_properties():
 def test_realistic_corneal_parameters():
     """Test with realistic corneal parameters."""
     # Realistic corneal geometry
-    S0 = np.array([0.0, 0.0, 0.0])  # Conic center at origin
+    S0 = np.array([0.0, 0.0, 0.0, 1.0])  # Conic center at origin
     r_param = 7.98e-3  # 7.98mm radius parameter
     k = -0.18  # Typical anterior cornea conic constant
     n_outside = 1.0  # Air
     n_cornea = 1.376  # Cornea
 
     # Object behind cornea (pupil), camera in front
-    O = np.array([0.0, 0.0, -0.006])  # Object 6mm behind origin
-    C = np.array([0.0, 0.0, 0.05])  # Camera 5cm in front
+    O = np.array([0.0, 0.0, -0.006, 1.0])  # Object 6mm behind origin
+    C = np.array([0.0, 0.0, 0.05, 1.0])  # Camera 5cm in front
 
     I = find_refraction_conic(C, O, S0, r_param, k, n_outside, n_cornea)
     assert I is not None, "I should not be None for realistic corneal parameters"
 
     # Should be somewhere on the corneal surface
     assert isinstance(I, np.ndarray)
-    assert I.shape == (3,)
+    assert I.shape == (4,)
     assert np.all(np.isfinite(I))
 
     # Z-coordinate should be near corneal surface

@@ -26,13 +26,13 @@ def main():
     rest_orientation = np.array([[1, 0, 0], [0, 0, 1], [0, -1, 0]])
     e.set_rest_orientation(rest_orientation)
 
-    eye_position = [0, 250e-3, 100e-3]
+    eye_position = np.array([0, 250e-3, 100e-3, 1.0])
     e.position = eye_position
 
     # Create two light sources for dual-light eye tracking
-    l1 = Light(position=np.array([100e-3, 0, 0]))  # Right side light
+    l1 = Light(position=np.array([100e-3, 0, 0, 1.0]))  # Right side light
 
-    l2 = Light(position=np.array([-100e-3, 0, 0]))  # Left side light (symmetric)
+    l2 = Light(position=np.array([-100e-3, 0, 0, 1.0]))  # Left side light (symmetric)
 
     lights = [l1, l2]
 

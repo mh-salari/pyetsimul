@@ -7,66 +7,32 @@ class Light:
     """Light source for generating corneal reflections.
 
     Creates a light object positioned at the specified world coordinates.
-    The position is stored internally as homogeneous coordinates [x, y, z, 1].
+    Accepts 4D homogeneous coordinates [x, y, z, 1].
 
     Args:
-        position: 3D position vector [x, y, z] in meters
+        position: 4D homogeneous position vector [x, y, z, 1] in meters
 
-    This class is based on the original MATLAB implementation from the
-    et_simul project — © 2008 Martin Böhme, University of Lübeck.
-    Python port © 2025 Mohammadhossein Salari.
-    Licensed under the GNU GPL v3.0 or later.
+
     """
 
-    _position: np.ndarray = field(init=False, repr=False)
-    _pos_homogeneous: np.ndarray = field(init=False, repr=False)
+    position: np.ndarray = field(init=False)
 
     def __init__(self, position: np.ndarray):
-        """Initialize light with either 3D Euclidean or 4D homogeneous coordinates.
+        """Initialize light with 4D homogeneous coordinates.
 
         Args:
-            position: Either [x, y, z] or [x, y, z, 1] coordinates in meters
+            position: [x, y, z, 1] homogeneous coordinates in meters
         """
         position = np.array(position, dtype=float)
 
-        if len(position) == 3:
-            # Euclidean coordinates
-            self.position = position
-        elif len(position) == 4:
-            # Homogeneous coordinates [x, y, z, 1]
-            if position[3] != 1:
-                raise ValueError("Homogeneous coordinates must have w=1, got w={position[3]}")
-            self.pos_homogeneous = position
-        else:
-            raise ValueError(f"Position must be 3D or 4D coordinates, got {len(position)}D")
+        if len(position) != 4:
+            raise ValueError(f"Position must be 4D homogeneous coordinates [x,y,z,1], got {len(position)}D")
 
-    @property
-    def position(self) -> np.ndarray:
-        return self._position
+        if position[3] != 1:
+            raise ValueError(f"Homogeneous coordinates must have w=1, got w={position[3]}")
 
-    @position.setter
-    def position(self, value: np.ndarray) -> None:
-        value = np.array(value, dtype=float)
-        if len(value) != 3:
-            raise ValueError(f"Must be 3D coordinates, got {len(value)}D")
-        self._position = value
-        self._pos_homogeneous = np.array([value[0], value[1], value[2], 1])
-
-    @property
-    def pos_homogeneous(self) -> np.ndarray:
-        return self._pos_homogeneous
-
-    @pos_homogeneous.setter
-    def pos_homogeneous(self, value: np.ndarray) -> None:
-        value = np.array(value, dtype=float)
-        if len(value) != 4:
-            raise ValueError(f"Must be 4D homogeneous coordinates, got {len(value)}D")
-        if value[3] != 1:
-            raise ValueError(f"Homogeneous coordinates must have w=1, got w={value[3]}")
-
-        self._pos_homogeneous = value
-        self._position = value[:3]  # Sync back to position
+        self.position = position
 
     def __repr__(self) -> str:
         """String representation showing the light position."""
-        return f"Light(position={self._position})"
+        return f"Light(position={self.position})"

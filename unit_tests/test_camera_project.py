@@ -22,7 +22,7 @@ def test_mixed_points_in_out_bounds():
     x, dist, valid_condition = c.project(pos)
 
     # Expected distances
-    expected_dist = np.array([200.000000, 200.000000, 300.000000])
+    expected_dist = np.array([200.0, 200.0, 300.0])
 
     # Check that invalid points are set to NaN (points 1 and 2 are out of bounds)
     assert np.isnan(x[0, 0]) and np.isnan(x[1, 0])
@@ -57,7 +57,7 @@ def test_all_points_outside_bounds():
 
     x, dist, valid_condition = c.project(pos)
 
-    expected_dist = np.array([200.000000, 200.000000, 200.000000])
+    expected_dist = np.array([200.0, 200.0, 200.0])
 
     # Check that all points are set to NaN
     assert np.isnan(x).all()

@@ -7,13 +7,13 @@ from et_simul.geometry.intersections import intersect_ray_sphere, intersect_ray_
 def test_conic_equals_sphere_on_axis():
     """Test conic with k=0 gives sphere behavior."""
     # On-axis ray
-    R0 = np.array([0.0, 0.0, -2.0])
-    Rd = np.array([0.0, 0.0, 1.0])
+    R0 = np.array([0.0, 0.0, -2.0, 1.0])  # Ray origin
+    Rd = np.array([0.0, 0.0, 1.0, 0.0])  # Ray direction
     radius = 1.0
 
     # For k=0, both should create equivalent spheres at the same location
-    sphere_center = np.array([0.0, 0.0, 0.0])  # Sphere at origin
-    conic_center = np.array([0.0, 0.0, 0.0])  # Conic also at origin
+    sphere_center = np.array([0.0, 0.0, 0.0, 1.0])  # Sphere at origin
+    conic_center = np.array([0.0, 0.0, 0.0, 1.0])  # Conic also at origin
 
     # Sphere function with proper center
     sphere_pos1, sphere_pos2 = intersect_ray_sphere(R0, Rd, sphere_center, radius)
@@ -33,14 +33,14 @@ def test_conic_equals_sphere_on_axis():
 def test_conic_equals_sphere_off_axis():
     """Test conic with k=0 gives sphere behavior for off-axis ray."""
     # Off-axis ray
-    R0 = np.array([-1.5, 0.5, -2.0])
-    Rd = np.array([0.3, -0.1, 1.0])
-    Rd = Rd / np.linalg.norm(Rd)
+    R0 = np.array([-1.5, 0.5, -2.0, 1.0])
+    Rd = np.array([0.3, -0.1, 1.0, 0.0])
+    Rd[:3] = Rd[:3] / np.linalg.norm(Rd[:3])
     radius = 1.0
 
     # For k=0, both should create equivalent spheres at the same location
-    sphere_center = np.array([0.0, 0.0, 0.0])  # Sphere at origin
-    conic_center = np.array([0.0, 0.0, 0.0])  # Conic also at origin
+    sphere_center = np.array([0.0, 0.0, 0.0, 1.0])  # Sphere at origin
+    conic_center = np.array([0.0, 0.0, 0.0, 1.0])  # Conic also at origin
 
     # Sphere function with proper center
     sphere_pos1, sphere_pos2 = intersect_ray_sphere(R0, Rd, sphere_center, radius)

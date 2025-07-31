@@ -7,95 +7,95 @@ from et_simul.optics.refractions import find_refraction_sphere
 def test_basic_refraction():
     """Test basic refraction scenario with MATLAB reference values."""
     # Define sphere
-    S0 = np.array([0.0, 0.0, 0.0])  # Sphere center
+    S0 = np.array([0.0, 0.0, 0.0, 1.0])  # Sphere center
     Sr = 10.0  # Sphere radius
     n_outside = 1.0  # Air
     n_sphere = 1.5  # Glass
 
     # Object inside sphere, camera outside
-    O = np.array([2.0, 1.0, 3.0])
-    C = np.array([15.0, 8.0, 12.0])
+    O = np.array([2.0, 1.0, 3.0, 1.0])
+    C = np.array([15.0, 8.0, 12.0, 1.0])
 
     I = find_refraction_sphere(C, O, S0, Sr, n_outside, n_sphere)
 
     # MATLAB reference values
-    expected_I = np.array([6.6936966464330183, 3.5132501989855691, 6.5461055784992670])
+    expected_I = np.array([6.6936966464330183, 3.5132501989855691, 6.5461055784992670, 1.0])
 
     assert I is not None
     np.testing.assert_allclose(I, expected_I, rtol=1e-10, atol=1e-10)
 
     # Verify point is on sphere surface
-    dist_from_center = np.linalg.norm(I - S0)
+    dist_from_center = np.linalg.norm(I[:3] - S0[:3])
     np.testing.assert_allclose(dist_from_center, Sr, rtol=1e-15, atol=1e-15)
 
 
 def test_different_refractive_indices():
     """Test refraction with different refractive indices and MATLAB reference values."""
     # Define sphere
-    S0 = np.array([0.0, 0.0, 0.0])
+    S0 = np.array([0.0, 0.0, 0.0, 1.0])
     Sr = 10.0
     n_outside = 1.33  # Water
     n_sphere = 1.4  # Different glass
 
     # Different positions
-    O = np.array([-1.0, 2.0, -2.0])
-    C = np.array([-8.0, 10.0, -15.0])
+    O = np.array([-1.0, 2.0, -2.0, 1.0])
+    C = np.array([-8.0, 10.0, -15.0, 1.0])
 
     I = find_refraction_sphere(C, O, S0, Sr, n_outside, n_sphere)
 
     # MATLAB reference values
-    expected_I = np.array([-3.9369221058636397, 5.3748224021012501, -7.4573405767896075])
+    expected_I = np.array([-3.9369221058636397, 5.3748224021012501, -7.4573405767896075, 1.0])
 
     assert I is not None
     np.testing.assert_allclose(I, expected_I, rtol=1e-10, atol=1e-10)
 
     # Verify point is on sphere surface
-    dist_from_center = np.linalg.norm(I - S0)
+    dist_from_center = np.linalg.norm(I[:3] - S0[:3])
     np.testing.assert_allclose(dist_from_center, Sr, rtol=1e-15, atol=1e-15)
 
 
 def test_large_sphere():
     """Test refraction with large sphere and MATLAB reference values."""
     # Define large sphere
-    S0 = np.array([0.0, 0.0, 0.0])
+    S0 = np.array([0.0, 0.0, 0.0, 1.0])
     Sr = 50.0  # Large radius
     n_outside = 1.0
     n_sphere = 1.5
 
     # Scaled positions
-    O = np.array([5.0, -3.0, 8.0])
-    C = np.array([80.0, -20.0, 60.0])
+    O = np.array([5.0, -3.0, 8.0, 1.0])
+    C = np.array([80.0, -20.0, 60.0, 1.0])
 
     I = find_refraction_sphere(C, O, S0, Sr, n_outside, n_sphere)
 
     # MATLAB reference values
-    expected_I = np.array([37.3698407698170811, -10.7448391945206190, 31.4331581538096536])
+    expected_I = np.array([37.3698407698170811, -10.7448391945206190, 31.4331581538096536, 1.0])
 
     assert I is not None
     np.testing.assert_allclose(I, expected_I, rtol=1e-10, atol=1e-10)
 
     # Verify point is on sphere surface
-    dist_from_center = np.linalg.norm(I - S0)
+    dist_from_center = np.linalg.norm(I[:3] - S0[:3])
     np.testing.assert_allclose(dist_from_center, Sr, rtol=1e-15, atol=1e-15)
 
 
 def test_snells_law_verification():
     """Test that solution satisfies Snell's law with MATLAB reference values."""
     # Use same setup as basic test
-    S0 = np.array([0.0, 0.0, 0.0])
+    S0 = np.array([0.0, 0.0, 0.0, 1.0])
     Sr = 10.0
     n_outside = 1.0
     n_sphere = 1.5
-    O = np.array([2.0, 1.0, 3.0])
-    C = np.array([15.0, 8.0, 12.0])
+    O = np.array([2.0, 1.0, 3.0, 1.0])
+    C = np.array([15.0, 8.0, 12.0, 1.0])
 
     I = find_refraction_sphere(C, O, S0, Sr, n_outside, n_sphere)
     assert I is not None
 
     # Compute vectors
-    n_surface = (I - S0) / np.linalg.norm(I - S0)
-    ray_incident = (I - O) / np.linalg.norm(I - O)
-    ray_refracted = (C - I) / np.linalg.norm(C - I)
+    n_surface = (I[:3] - S0[:3]) / np.linalg.norm(I[:3] - S0[:3])
+    ray_incident = (I[:3] - O[:3]) / np.linalg.norm(I[:3] - O[:3])
+    ray_refracted = (C[:3] - I[:3]) / np.linalg.norm(C[:3] - I[:3])
 
     # MATLAB reference values
     expected_n_surface = np.array([0.669370, 0.351325, 0.654611])
@@ -122,12 +122,12 @@ def test_snells_law_verification():
 
 def test_output_properties():
     """Test that output has correct properties."""
-    S0 = np.array([0.0, 0.0, 0.0])
+    S0 = np.array([0.0, 0.0, 0.0, 1.0])
     Sr = 10.0
     n_outside = 1.0
     n_sphere = 1.5
-    O = np.array([2.0, 1.0, 3.0])
-    C = np.array([15.0, 8.0, 12.0])
+    O = np.array([2.0, 1.0, 3.0, 1.0])
+    C = np.array([15.0, 8.0, 12.0, 1.0])
 
     I = find_refraction_sphere(C, O, S0, Sr, n_outside, n_sphere)
     assert I is not None, "I should not be None for these inputs"
@@ -135,5 +135,5 @@ def test_output_properties():
 
     # Check types and shapes
     assert isinstance(I, np.ndarray)
-    assert I.shape == (3,)
+    assert I.shape == (4,)
     assert I.dtype == np.float64

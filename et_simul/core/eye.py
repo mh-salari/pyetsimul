@@ -155,13 +155,16 @@ class Eye:
 
     @property
     def position(self) -> np.ndarray:
-        """Get/set the eye's position in world coordinates (3D vector)."""
-        return self.trans[:3, 3]
+        """Get/set the eye's position in world coordinates (4D homogeneous)."""
+        return self.trans[:, 3]
 
     @position.setter
     def position(self, value: np.ndarray) -> None:
         """Set the eye's position and update transformation matrix."""
-        self.trans[:3, 3] = value
+        value = np.asarray(value)
+        if len(value) != 4 or value[3] != 1.0:
+            raise ValueError(f"Position must be 4D homogeneous coordinates [x,y,z,1], got {value}")
+        self.trans[:, 3] = value
 
     def point_within_cornea(self, p: np.ndarray) -> bool:
         """Tests whether a point lies within the cornea.
@@ -270,12 +273,14 @@ class Eye:
         optical axis).
 
         Args:
-            pos: Three-dimensional position in world coordinates to look at
-
-
+            pos: Position in world coordinates to look at (4D homogeneous)
         """
+        pos = np.asarray(pos)
+        if len(pos) != 4 or pos[3] != 1.0:
+            raise ValueError(f"Position must be 4D homogeneous coordinates [x,y,z,1], got {pos}")
+
         # Line 31: out=pos(1:3)-e.trans(1:3,4);
-        out = pos[:3] - self.position
+        out = pos[:3] - self.position[:3]
         # Line 32: out=out/norm(out);
         out = out / np.linalg.norm(out)
 
@@ -421,7 +426,7 @@ class Eye:
         to_cam = to_cam / np.linalg.norm(to_cam)
 
         # Line 30: w=e.r_cornea/(2*(l.pos-cc)'*to_cam);
-        light_to_cornea = l._pos_homogeneous - cc
+        light_to_cornea = l.position - cc
         denominator = 2 * np.dot(light_to_cornea, to_cam)
 
         if abs(denominator) < 1e-10:  # Avoid division by zero
@@ -558,12 +563,6 @@ class Eye:
 
         if I is None:
             return None
-
-        # Ensure result is in 4D homogeneous coordinates for point_within_cornea
-        if len(I) == 3:
-            I = np.array([I[0], I[1], I[2], 1.0])
-        else:
-            I = I.copy()  # Already 4D
 
         # Check if point is within cornea
         if not self.point_within_cornea(I):
@@ -790,7 +789,7 @@ class Eye:
         fovea_z = retina_distance * np.cos(alpha) * np.cos(beta)  # Along optical axis
 
         # Position in eye coordinate system (relative to eye rotation center)
-        fovea_position = np.array([fovea_x, fovea_y, fovea_z])
+        fovea_position = np.array([fovea_x, fovea_y, fovea_z, 1])
 
         return fovea_position
 
@@ -814,7 +813,7 @@ class Eye:
         visual_axis = fovea_pos / np.linalg.norm(fovea_pos)
 
         # Optical axis points along -Z direction in eye coordinates
-        optical_axis = np.array([0, 0, -1])
+        optical_axis = np.array([0, 0, -1, 1])  # 4D homogeneous coordinates
 
         # Calculate angle between visual and optical axes
         dot_product = np.dot(visual_axis, optical_axis)
@@ -836,8 +835,8 @@ class Eye:
         # Camera's viewing direction (negative of optical axis)
         camera_viewing = -camera.orientation[:, 2]
 
-        # Vector from camera to eye
-        camera_to_eye = self.position - camera.position
+        # Vector from camera to eye (use spatial components only)
+        camera_to_eye = self.position[:3] - camera.position
         if np.linalg.norm(camera_to_eye) == 0:
             warnings.warn("Eye and camera are at the same position. This may result in no visible pupil.", UserWarning)
             return

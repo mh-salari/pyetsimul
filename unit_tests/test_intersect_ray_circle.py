@@ -15,7 +15,7 @@ def test_normal_intersection():
     pos = intersect_ray_circle(R0, Rd, C0, Cr)
 
     # MATLAB reference values
-    expected_pos = np.array([0.0000000000000000, -1.0000000000000000])
+    expected_pos = np.array([0.0, -1.0])
 
     assert pos is not None
     np.testing.assert_allclose(pos, expected_pos, rtol=1e-14, atol=1e-15)
@@ -32,7 +32,7 @@ def test_tangent_intersection():
     pos = intersect_ray_circle(R0, Rd, C0, Cr)
 
     # MATLAB reference values
-    expected_pos = np.array([1.0000000000000000, 0.0000000000000000])
+    expected_pos = np.array([1.0, 0.0])
 
     assert pos is not None
     np.testing.assert_allclose(pos, expected_pos, rtol=1e-14, atol=1e-15)
@@ -63,7 +63,7 @@ def test_ray_inside_circle():
     pos = intersect_ray_circle(R0, Rd, C0, Cr)
 
     # MATLAB reference values (returns the intersection behind the ray origin)
-    expected_pos = np.array([-2.0000000000000000, 0.0000000000000000])
+    expected_pos = np.array([-2.0, 0.0])
 
     assert pos is not None
     np.testing.assert_allclose(pos, expected_pos, rtol=1e-14, atol=1e-15)
@@ -80,7 +80,7 @@ def test_non_unit_direction():
     pos = intersect_ray_circle(R0, Rd, C0, Cr)
 
     # MATLAB reference values (same as unit direction case)
-    expected_pos = np.array([0.0000000000000000, -1.0000000000000000])
+    expected_pos = np.array([0.0, -1.0])
 
     assert pos is not None
     np.testing.assert_allclose(pos, expected_pos, rtol=1e-14, atol=1e-15)

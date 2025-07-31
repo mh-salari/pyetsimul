@@ -5,8 +5,6 @@ import warnings
 def intersect_ray_sphere(R0, Rd, S0, Sr):
     """Finds intersection between ray and sphere.
 
-
-
     [pos, pos2] = intersect_ray_sphere(R0, Rd, S0, Sr) finds the intersection
     between a ray (specified by its origin 'R0' and direction 'Rd') and a
     sphere (center 'S0' and radius 'Sr'). The intersection that is closer to
@@ -14,31 +12,25 @@ def intersect_ray_sphere(R0, Rd, S0, Sr):
     'pos2'. [] is returned for 'pos' and 'pos2' if the ray does not intersect
     the sphere.
 
-    3D or homogeneous coordinates may be passed in; 3D coordinates
-    are returned.
-
     Args:
-        R0: Ray origin (3D or homogeneous coordinates)
-        Rd: Ray direction (3D or homogeneous coordinates)
-        S0: Sphere center (3D or homogeneous coordinates)
+        R0: Ray origin (4D homogeneous)
+        Rd: Ray direction (4D homogeneous)
+        S0: Sphere center (4D homogeneous)
         Sr: Sphere radius
 
     Returns:
         Tuple of (pos, pos2) where pos is closer intersection, pos2 is farther.
-        Both are 3D coordinates. Returns (None, None) if no intersection.
+        Both are 4D homogeneous coordinates. Returns (None, None) if no intersection.
     """
+    # Normalize ray direction using spatial component
+    Rd_normalized = Rd[:3] / np.linalg.norm(Rd[:3])
 
-    # Extract 3D components for calculations
-    R0_3d = R0[:3] if len(R0) == 4 else R0
-    Rd_3d = Rd[:3] if len(Rd) == 4 else Rd
-    S0_3d = S0[:3] if len(S0) == 4 else S0
-
-    # Normalize direction of ray
-    Rd_3d = Rd_3d / np.linalg.norm(Rd_3d)
-
-    # Quadratic equation coefficients
-    b = 2 * (Rd_3d[0] * (R0_3d[0] - S0_3d[0]) + Rd_3d[1] * (R0_3d[1] - S0_3d[1]) + Rd_3d[2] * (R0_3d[2] - S0_3d[2]))
-    c = (R0_3d[0] - S0_3d[0]) ** 2 + (R0_3d[1] - S0_3d[1]) ** 2 + (R0_3d[2] - S0_3d[2]) ** 2 - Sr**2
+    # Work with 4D homogeneous coordinates for vector operations
+    R0_to_S0 = R0 - S0
+    
+    # Quadratic equation coefficients using spatial components
+    b = 2 * np.dot(Rd_normalized, R0_to_S0[:3])
+    c = np.dot(R0_to_S0[:3], R0_to_S0[:3]) - Sr**2
 
     # discriminant
     disc = b**2 - 4 * c
@@ -58,10 +50,12 @@ def intersect_ray_sphere(R0, Rd, S0, Sr):
             t = t2
             t_ = t1
 
-        # Compute intersection points - always return 3D coordinates
-        pos = R0_3d + t * Rd_3d
-        pos2 = R0_3d + t_ * Rd_3d
-
+        # Compute intersection points directly in 4D homogeneous space
+        pos = R0.copy()
+        pos[:3] = R0[:3] + t * Rd_normalized
+        
+        pos2 = R0.copy()
+        pos2[:3] = R0[:3] + t_ * Rd_normalized
         return pos, pos2
 
 
@@ -115,8 +109,6 @@ def intersect_ray_circle(R0, Rd, C0, Cr):
 def intersect_ray_plane(R0, Rd, P0, Pn):
     """Finds intersection between ray and plane.
 
-
-
     pos = intersect_ray_plane(R0, Rd, P0, Pn) finds the intersection
     between a ray (specified by its origin 'R0' and direction 'Rd') and
     a plane (specified by point 'P0' on the plane and normal vector 'Pn').
@@ -128,76 +120,63 @@ def intersect_ray_plane(R0, Rd, P0, Pn):
         (x - P0) · Pn = 0
 
     Args:
-        R0: Ray origin (3D coordinates)
-        Rd: Ray direction (3D coordinates)
-        P0: Point on plane (3D coordinates)
-        Pn: Plane normal vector (3D coordinates)
+        R0: Ray origin (4D homogeneous)
+        Rd: Ray direction (4D homogeneous)
+        P0: Point on plane (4D homogeneous)
+        Pn: Plane normal vector (4D homogeneous)
 
     Returns:
-        Intersection point (3D coordinates), or None if ray is parallel to plane
+        Intersection point (4D homogeneous), or None if ray is parallel to plane
     """
-    # Normalize plane normal
-    Pn = Pn / np.linalg.norm(Pn)
+    # Normalize plane normal using spatial component
+    Pn_normalized = Pn[:3] / np.linalg.norm(Pn[:3])
 
     # Check if ray is parallel to plane
-    denom = np.dot(Rd, Pn)
+    denom = np.dot(Rd[:3], Pn_normalized)
 
     if abs(denom) < 1e-15:  # Ray is parallel to plane
         return None
 
+    # Work with 4D homogeneous vectors
+    P0_to_R0 = P0 - R0
+    
     # Solve for parameter t: (R0 + t*Rd - P0) · Pn = 0
     # t = (P0 - R0) · Pn / (Rd · Pn)
-    t = np.dot(P0 - R0, Pn) / denom
+    t = np.dot(P0_to_R0[:3], Pn_normalized) / denom
 
-    # Calculate intersection point
-    intersection = R0 + t * Rd
-
+    # Calculate intersection point directly in 4D homogeneous space
+    intersection = R0.copy()
+    intersection[:3] = R0[:3] + t * Rd[:3]
+    
     return intersection
 
 
 def intersect_ray_conic(R0, Rd, S0, r, k):
     """
-    Find intersection between ray and conic section using correct formula:
-    x² + y² + (1+k)z² = R²/(1+k)
-    where R = r is the radius parameter and k is the conic constant.
+    Find intersection between ray and conic section.
 
     Args:
-        R0: Ray origin (3D coordinates)
-        Rd: Ray direction (3D coordinates)
-        S0: Conic center (3D coordinates, typically corneal apex)
+        R0: Ray origin (4D homogeneous)
+        Rd: Ray direction (4D homogeneous)
+        S0: Conic center (4D homogeneous, typically corneal apex)
         r: Radius parameter (R in the formula, meters)
         k: Conic constant (k < 0 for prolate, k = 0 for sphere, k > 0 for oblate)
 
     Returns:
-        Tuple (pos1, pos2): Intersection points closer and farther from R0.
+        Tuple (pos1, pos2): Intersection points closer and farther from R0 (4D homogeneous).
         Returns (None, None) if no intersection.
     """
-    # Extract 3D components and normalize
-    R0_3d = R0[:3] if len(R0) == 4 else R0
-    Rd_3d = Rd[:3] if len(Rd) == 4 else Rd
-    S0_3d = S0[:3] if len(S0) == 4 else S0
+    # Normalize ray direction using spatial component
+    Rd_normalized = Rd[:3] / np.linalg.norm(Rd[:3])
 
-    Rd_3d = Rd_3d / np.linalg.norm(Rd_3d)
+    # Translate coordinates so conic center is at origin using 4D operations
+    R0_rel_vec = R0 - S0
+    R0_rel = R0_rel_vec[:3]
 
-    # Calculate (1+k) value from k-value
-    one_plus_k = 1 + k
-
-    # Translate coordinates so conic center is at origin
-    R0_rel = R0_3d - S0_3d
-
-    # Ray equation: P(t) = R0_rel + t * Rd_3d
-    # Conic equation: x² + y² + (1+k)z² = R²/(1+k)
-    # Substitute ray into conic: (R0x + t*Rdx)² + (R0y + t*Rdy)² + (1+k)(R0z + t*Rdz)² = R²/(1+k)
-
-    # Expand and collect coefficients of At² + Bt + C = 0
-    # Coefficient of t²
-    A = Rd_3d[0] ** 2 + Rd_3d[1] ** 2 + one_plus_k * Rd_3d[2] ** 2
-
-    # Coefficient of t
-    B = 2 * (R0_rel[0] * Rd_3d[0] + R0_rel[1] * Rd_3d[1] + one_plus_k * R0_rel[2] * Rd_3d[2])
-
-    # Constant term
-    C = R0_rel[0] ** 2 + R0_rel[1] ** 2 + one_plus_k * R0_rel[2] ** 2 - (r**2 / one_plus_k)
+    # Conic equation: x^2 + y^2 + (1+k)z^2 - r^2 = 0
+    A = Rd_normalized[0] ** 2 + Rd_normalized[1] ** 2 + (1 + k) * Rd_normalized[2] ** 2
+    B = 2 * (R0_rel[0] * Rd_normalized[0] + R0_rel[1] * Rd_normalized[1] + (1 + k) * R0_rel[2] * Rd_normalized[2])
+    C = R0_rel[0] ** 2 + R0_rel[1] ** 2 + (1 + k) * R0_rel[2] ** 2 - r**2
 
     # Solve quadratic equation
     disc = B**2 - 4 * A * C
@@ -214,12 +193,16 @@ def intersect_ray_conic(R0, Rd, S0, r, k):
     if len(ts) == 0:
         return None, None
     elif len(ts) == 1:
-        pos = R0_3d + ts[0] * Rd_3d
+        pos = R0.copy()
+        pos[:3] = R0[:3] + ts[0] * Rd_normalized
         return pos, None
     else:
         ts.sort()
-        pos1 = R0_3d + ts[0] * Rd_3d
-        pos2 = R0_3d + ts[1] * Rd_3d
+        pos1 = R0.copy()
+        pos1[:3] = R0[:3] + ts[0] * Rd_normalized
+        
+        pos2 = R0.copy()
+        pos2[:3] = R0[:3] + ts[1] * Rd_normalized
         return pos1, pos2
 
 
@@ -227,30 +210,24 @@ def conic_surface_normal(point, S0, r, k):
     """
     Calculate surface normal at a point on conic section surface.
 
-    For conic equation: F(x,y,z) = x² + y² + (1+k)z² - R²/(1+k) = 0
+    For conic equation: F(x,y,z) = x² + y² + (1+k)z² - r² = 0
     the normal vector is the gradient: ∇F = (2x, 2y, 2(1+k)z)
 
     Args:
-        point: Point on conic surface (3D coordinates)
-        S0: Conic center (3D coordinates, typically corneal apex)
+        point: Point on conic surface (4D homogeneous)
+        S0: Conic center (4D homogeneous, typically corneal apex)
         r: Radius parameter (R in the formula, meters)
         k: Conic constant (k < 0 for prolate, k = 0 for sphere, k > 0 for oblate)
 
     Returns:
-        Unit normal vector pointing outward from conic surface
+        Unit normal vector pointing outward from conic surface (3D)
     """
-    # Extract 3D components
-    point_3d = point[:3] if len(point) == 4 else point
-    S0_3d = S0[:3] if len(S0) == 4 else S0
-
-    # Calculate (1+k) value from k-value
-    one_plus_k = 1 + k
-
-    # Translate to conic-centered coordinates
-    x, y, z = point_3d - S0_3d
+    # Work with 4D homogeneous coordinates, use spatial components for calculations
+    point_to_S0 = point - S0
+    x, y, z = point_to_S0[:3]
 
     # Calculate gradient: ∇F = (2x, 2y, 2(1+k)z)
-    normal = np.array([2 * x, 2 * y, 2 * one_plus_k * z])
+    normal = np.array([2 * x, 2 * y, 2 * (1 + k) * z])
 
     # Normalize to unit vector
     normal_magnitude = np.linalg.norm(normal)
@@ -267,45 +244,32 @@ def point_on_conic_surface(center, direction, r, k):
     Find point on conic surface given direction from center.
 
     Given a direction from the conic center, find the point where this direction
-    intersects the conic surface using the correct formula: x² + y² + (1+k)z² = R²/(1+k)
+    intersects the conic surface.
 
     Args:
-        center: Conic center (3D coordinates)
-        direction: Direction vector from center (3D coordinates, need not be normalized)
+        center: Conic center (4D homogeneous)
+        direction: Direction vector from center (3D, not homogeneous)
         r: Radius parameter (R in the formula, meters)
         k: Conic constant (k < 0 for prolate, k = 0 for sphere, k > 0 for oblate)
 
     Returns:
-        Point on conic surface, or None if no intersection found
+        Point on conic surface (4D homogeneous), or None if no intersection found
     """
-    # Extract 3D components and normalize direction
-    center_3d = center[:3] if len(center) == 4 else center
-    direction_3d = direction[:3] if len(direction) == 4 else direction
-    direction_normalized = direction_3d / np.linalg.norm(direction_3d)
+    # Normalize direction using spatial component
+    direction_normalized = direction[:3] / np.linalg.norm(direction[:3])
 
-    # Calculate (1+k) value from k-value
-    one_plus_k = 1 + k
-
-    # Ray from center: P(t) = t * direction (relative to center)
-    # Conic equation (relative to center): x² + y² + (1+k)z² = R²/(1+k)
-    # Substitute: (t*dx)² + (t*dy)² + (1+k)(t*dz)² = R²/(1+k)
-    # Simplify: t²(dx² + dy² + (1+k)*dz²) = R²/(1+k)
-    # Solve for t: t = ±R/√((1+k)(dx² + dy² + (1+k)*dz²))
-
+    # Conic equation: x^2 + y^2 + (1+k)z^2 = r^2
+    # Ray from center: P(t) = t * direction
+    # Substitute: t^2 * (dx^2 + dy^2 + (1+k)dz^2) = r^2
     dx, dy, dz = direction_normalized
+    denominator = dx**2 + dy**2 + (1 + k) * dz**2
 
-    denominator = dx**2 + dy**2 + one_plus_k * dz**2
     if abs(denominator) < 1e-15:
         return None  # Degenerate case
 
-    # For the corneal surface facing -z direction (toward camera), use:
-    # t = +R/√((1+k)(dx² + dy² + (1+k)dz²))
-    # This ensures the apex is at [0, 0, -R/(1+k)] as required
-    t = r / np.sqrt(one_plus_k * denominator)
+    t = r / np.sqrt(denominator)
 
-    # Calculate point on surface (relative to origin) and then translate
-    surface_point = t * direction_normalized
-
-    # Translate back to the original coordinate system
-    result = center_3d + surface_point
+    # Calculate point on surface and return in 4D homogeneous coordinates
+    result = center.copy()
+    result[:3] = center[:3] + t * direction_normalized
     return result

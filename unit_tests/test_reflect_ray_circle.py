@@ -15,8 +15,8 @@ def test_basic_center_reflection():
     S0, Sd = reflect_ray_circle(R0, Rd, C0, Cr)
 
     # MATLAB reference values
-    expected_S0 = np.array([0.0000000000000000, -2.0000000000000000])
-    expected_Sd = np.array([0.0000000000000000, -1.0000000000000000])
+    expected_S0 = np.array([0.0, -2.0])
+    expected_Sd = np.array([0.0, -1.0])
 
     assert S0 is not None
     assert Sd is not None
@@ -78,8 +78,8 @@ def test_grazing_incidence():
     S0, Sd = reflect_ray_circle(R0, Rd, C0, Cr)
 
     # MATLAB reference values
-    expected_S0 = np.array([-1.0000000000000000, 0.0000000000000000])
-    expected_Sd = np.array([-1.0000000000000000, 0.0000000000000000])
+    expected_S0 = np.array([-1.0, 0.0])
+    expected_Sd = np.array([-1.0, 0.0])
 
     assert S0 is not None
     assert Sd is not None

@@ -23,8 +23,8 @@ def plot_axis(ax, center, trans_matrix, axis_idx, label, color, length=0.003):
     """Plot a single axis with arrow and label"""
     axis_local = np.zeros(4)
     axis_local[axis_idx] = 1
-    axis_world = (trans_matrix @ axis_local)[:3]
-    axis_end = center + length * axis_world
+    axis_world = trans_matrix @ axis_local
+    axis_end = center + length * axis_world[:3]
 
     ax.quiver(
         center[0],
@@ -49,7 +49,7 @@ def plot_axis(ax, center, trans_matrix, axis_idx, label, color, length=0.003):
     )
 
 
-def plot_eye_anatomy(eye=Eye(), target_point=(15e-3, 15e-3, 0), ax=None):
+def plot_eye_anatomy(eye=Eye(), target_point=(15e-3, 15e-3, 0, 1), ax=None):
     """Plot 3D eye anatomy with transformed coordinates.
 
     Args:
@@ -64,16 +64,16 @@ def plot_eye_anatomy(eye=Eye(), target_point=(15e-3, 15e-3, 0), ax=None):
 
     # Calculate all key points in WORLD coordinates using eye.trans
     eye_rotation_center = eye.position
-    cornea_center_world = (eye.trans @ eye.cornea.center)[:3]
-    cornea_inner_center_world = (eye.trans @ eye.cornea.get_posterior_center())[:3]
-    pupil_center_world = (eye.trans @ eye.pupil.pos_pupil)[:3]
-    fovea_world = (eye.trans @ np.append(eye.fovea_position, 1))[:3]
+    cornea_center_world = eye.trans @ eye.cornea.center
+    cornea_inner_center_world = eye.trans @ eye.cornea.get_posterior_center()
+    pupil_center_world = eye.trans @ eye.pupil.pos_pupil
+    fovea_world = eye.trans @ eye.fovea_position
 
     # Eye sphere parameters
     main_eye_radius = eye.axial_length / 2
     apex_pos = eye.cornea.get_apex_position()
     limbus_z_local = apex_pos[2] + eye.cornea.get_corneal_depth()
-    limbus_point_world = (eye.trans @ np.array([0, 0, limbus_z_local, 1]))[:3]
+    limbus_point_world = eye.trans @ np.array([0, 0, limbus_z_local, 1])
 
     # Transform corneal surfaces to world coordinates
     # Create local corneal surface coordinates first
@@ -120,16 +120,18 @@ def plot_eye_anatomy(eye=Eye(), target_point=(15e-3, 15e-3, 0), ax=None):
     # Mask out the front part where cornea is
     apex_pos2 = eye.cornea.get_apex_position()
     limbus_z_local = apex_pos2[2] + eye.cornea.get_corneal_depth()
-    optical_axis_world = (eye.trans @ np.array([0, 0, -1, 0]))[:3]
+    optical_axis_world = eye.trans @ np.array([0, 0, -1, 0])
     optical_axis_unit = optical_axis_world / np.linalg.norm(optical_axis_world)
 
     # Calculate limbus position projection
-    limbus_point_world = (eye.trans @ np.array([0, 0, limbus_z_local, 1]))[:3]
-    limbus_projection = np.dot(limbus_point_world - eye_rotation_center, optical_axis_unit)
+    limbus_point_world = eye.trans @ np.array([0, 0, limbus_z_local, 1])
+    limbus_projection = np.dot(limbus_point_world[:3] - eye_rotation_center[:3], optical_axis_unit[:3])
 
     # Calculate projections for all eye points
-    eye_vectors = np.stack([x_eye_world, y_eye_world, z_eye_world]) - np.array(eye_rotation_center).reshape(3, 1, 1)
-    projections = np.einsum("i,ijk->jk", optical_axis_unit, eye_vectors)
+    eye_vectors = np.stack([x_eye_world, y_eye_world, z_eye_world]) - np.array(eye_rotation_center[:3]).reshape(
+        3, 1, 1
+    )
+    projections = np.einsum("i,ijk->jk", optical_axis_unit[:3], eye_vectors)
 
     # Apply mask to keep only back part of eye
     mask = projections <= limbus_projection
@@ -176,28 +178,28 @@ def plot_eye_anatomy(eye=Eye(), target_point=(15e-3, 15e-3, 0), ax=None):
 
     # Plot reference points
     ax.scatter(
-        *eye_rotation_center,
+        *eye_rotation_center[:3],
         color="black",
         s=120,
         marker="x",
         label="Eye Rotation Center",
     )
     ax.scatter(
-        *cornea_center_world,
+        *cornea_center_world[:3],
         color="darkblue",
         s=20,
         marker="o",
         label="Outer Cornea Center",
     )
     ax.scatter(
-        *cornea_inner_center_world,
+        *cornea_inner_center_world[:3],
         color="purple",
         s=20,
         marker="o",
         label="Inner Cornea Center",
     )
-    ax.scatter(*pupil_center_world, color="red", s=20, marker="o", label="Pupil Center")
-    ax.scatter(*fovea_world, color="orange", s=80, marker="*", label="Fovea")
+    ax.scatter(*pupil_center_world[:3], color="red", s=20, marker="o", label="Pupil Center")
+    ax.scatter(*fovea_world[:3], color="orange", s=80, marker="*", label="Fovea")
 
     # Plot pupil boundary
     theta_pupil = np.linspace(0, 2 * np.pi, 50)
@@ -242,12 +244,12 @@ def plot_eye_anatomy(eye=Eye(), target_point=(15e-3, 15e-3, 0), ax=None):
     )
 
     # Plot target point
-    ax.scatter(*target_point, color="green", s=100, marker="^", label="Target Point")
+    ax.scatter(*target_point[:3], color="green", s=100, marker="^", label="Target Point")
 
     # Plot all three axes
     axes_data = [(0, "X", "red"), (1, "Y", "green"), (2, "Z", "blue")]
     for axis_idx, label, color in axes_data:
-        plot_axis(ax, eye_rotation_center, eye.trans, axis_idx, label, color)
+        plot_axis(ax, eye_rotation_center[:3], eye.trans, axis_idx, label, color)
 
     # Set labels and properties
     ax.set_xlabel("X (m)")
@@ -263,11 +265,6 @@ def plot_eye_anatomy(eye=Eye(), target_point=(15e-3, 15e-3, 0), ax=None):
         plt.show()
 
     return ax
-
-
-def to_3d(point):
-    """Convert homogeneous (4D) coordinates to 3D Cartesian for plotting."""
-    return point[:3] if len(point) > 3 else point
 
 
 """Eye tracking setup visualization module.
@@ -314,13 +311,13 @@ def plot_setup(
 
     # Mark key anatomical points
     ax1.scatter(
-        *eye_data["cornea_center_world"],
+        *eye_data["cornea_center_world"][:3],
         color="green",
         s=100,
         label="Cornea Center",
     )
     ax1.scatter(
-        *eye_data["pupil_world"],
+        *eye_data["pupil_world"][:3],
         color="cornflowerblue",
         s=100,
         label="Pupil Center",
@@ -337,8 +334,6 @@ def plot_setup(
     )
 
     # Draw visual axis to target
-    if len(look_at_target) == 3:
-        look_at_target = np.append(look_at_target, 1)
     target_world = look_at_target
 
     ax1.plot(
@@ -354,14 +349,14 @@ def plot_setup(
     if lights is not None:
         light_colors = ["yellow", "orange", "gold", "khaki"]  # Colors for different lights
         for i, light in enumerate(lights):
-            light_pos = to_3d(light.position)
+            light_pos = light.position
             color = light_colors[i % len(light_colors)]
-            ax1.scatter(*light_pos, color=color, s=200, marker="*", label=f"Light Source {i + 1}")
+            ax1.scatter(*light_pos[:3], color=color, s=200, marker="*", label=f"Light Source {i + 1}")
 
     camera_pos = camera.position
-    ax1.scatter(*camera_pos, color="black", s=200, marker="s", label="Camera")
+    ax1.scatter(*camera_pos[:3], color="black", s=200, marker="s", label="Camera")
 
-    ax1.scatter(*to_3d(target_world), color="magenta", s=150, marker="D", label="Gaze Target")
+    ax1.scatter(*target_world[:3], color="magenta", s=150, marker="D", label="Gaze Target")
 
     # Add corneal reflections if provided
     if cr_3d_list is not None:
@@ -375,7 +370,7 @@ def plot_setup(
             if cr_3d is not None:
                 color = cr_colors[i % len(cr_colors)]
                 ax1.scatter(
-                    *to_3d(cr_3d),
+                    *cr_3d[:3],
                     color=color,
                     s=80,
                     marker="o",
@@ -386,7 +381,7 @@ def plot_setup(
 
                 # Get corresponding light position
                 light = lights[i]
-                light_pos = to_3d(light.position)
+                light_pos = light.position
 
                 # Draw light ray paths (only from light to CR, not to camera)
                 ax1.plot(
@@ -419,8 +414,8 @@ def plot_setup(
     else:
         # Calculate bounds that include eye, camera, and target with equal aspect ratio
         eye_center = eye_data["cornea_center_world"]
-        camera_pos = to_3d(camera.trans[:, 3])
-        target_world = to_3d(look_at_target) if len(look_at_target) == 4 else np.array(look_at_target)
+        camera_pos = camera.trans[:, 3]
+        target_world = look_at_target
 
         # Find min/max of all objects
         all_points = [eye_center, camera_pos, target_world]
@@ -432,8 +427,8 @@ def plot_setup(
                 all_points.extend(calib_array.tolist())
 
         all_points = np.array(all_points)
-        min_coords = np.min(all_points, axis=0)
-        max_coords = np.max(all_points, axis=0)
+        min_coords = np.min(all_points[:, :3], axis=0)
+        max_coords = np.max(all_points[:, :3], axis=0)
 
         # Add padding and make all axes have same range
         padding = 0.02  # 20mm padding
@@ -620,10 +615,7 @@ def prepare_eye_data_for_plots(eye, look_at_target, lights, camera):
 
     # Calculate all values once
     def transform_point(point):
-        if len(point) == 3:
-            point = np.append(point, 1)  # Convert to homogeneous coordinates
-        world_point = eye.trans @ point
-        return to_3d(world_point)  # Convert back to 3D for plotting
+        return eye.trans @ point
 
     # Rotate the eye toward the target
     eye.look_at(look_at_target)
@@ -654,8 +646,9 @@ def prepare_eye_data_for_plots(eye, look_at_target, lights, camera):
     for i in range(X_cornea.shape[0]):
         for j in range(X_cornea.shape[1]):
             if not np.isnan(X_cornea[i, j]):
-                point = to_3d(cornea_center) + np.array([X_cornea[i, j], Y_cornea[i, j], Z_cornea[i, j]])
-                point_world = transform_point(np.append(point, 1))
+                point = cornea_center[:3] + np.array([X_cornea[i, j], Y_cornea[i, j], Z_cornea[i, j]])
+                point_homogeneous = np.array([point[0], point[1], point[2], 1.0])
+                point_world = transform_point(point_homogeneous)
                 X_cornea[i, j] = point_world[0]
                 Y_cornea[i, j] = point_world[1]
                 Z_cornea[i, j] = point_world[2]
@@ -675,7 +668,7 @@ def prepare_eye_data_for_plots(eye, look_at_target, lights, camera):
         "pupil_world": pupil_world,
         "optical_axis_end": optical_axis_end,
         "axial_length": eye.axial_length,
-        "eye_rotation_center": to_3d(eye.position),
+        "eye_rotation_center": eye.position,
     }
 
     # Get camera image data

@@ -7,14 +7,14 @@ from et_simul.optics.reflections import reflect_ray_sphere, reflect_ray_conic
 def test_conic_equals_sphere_reflection():
     """Test conic reflection with k=0 gives sphere behavior."""
     # Off-axis ray for realistic reflection
-    R0 = np.array([-1.0, 0.5, -2.0])
-    Rd = np.array([0.2, -0.1, 1.0])
-    Rd = Rd / np.linalg.norm(Rd)
+    R0 = np.array([-1.0, 0.5, -2.0, 1.0])
+    Rd = np.array([0.2, -0.1, 1.0, 0.0])
+    Rd[:3] = Rd[:3] / np.linalg.norm(Rd[:3])
     radius = 1.0
 
     # For k=0, both should create equivalent spheres at the same location
-    sphere_center = np.array([0.0, 0.0, 0.0])  # Sphere at origin
-    conic_center = np.array([0.0, 0.0, 0.0])  # Conic also at origin
+    sphere_center = np.array([0.0, 0.0, 0.0, 1.0])  # Sphere at origin
+    conic_center = np.array([0.0, 0.0, 0.0, 1.0])  # Conic also at origin
 
     # Sphere function with proper center
     sphere_U0, sphere_Ud = reflect_ray_sphere(R0, Rd, sphere_center, radius)

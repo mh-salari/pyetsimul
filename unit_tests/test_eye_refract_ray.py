@@ -9,17 +9,17 @@ def test_basic_ray_refraction():
     e = Eye(fovea_displacement=False)
 
     # Ray from outside eye - origin and direction
-    R0 = np.array([5.0, 2.0, 50.0])
-    Rd = np.array([-0.1, -0.04, -1.0])
+    R0 = np.array([5.0, 2.0, 50.0, 1.0])
+    Rd = np.array([-0.1, -0.04, -1.0, 0.0])
 
     # Normalize direction vector (as done in MATLAB)
-    Rd = Rd / np.linalg.norm(Rd)
+    Rd[:3] = Rd[:3] / np.linalg.norm(Rd[:3])
 
     U0, Ud = e.refract_ray(R0, Rd)
 
     # MATLAB reference values
-    expected_U0 = np.array([0.0003620467382754, 0.0001448186953101, 0.0036204673827527])
-    expected_Ud = np.array([-0.0846693339523489, -0.0338677335809380, -0.9958333598098410])
+    expected_U0 = np.array([0.0003620467382754, 0.0001448186953101, 0.0036204673827527, 1.0])
+    expected_Ud = np.array([-0.0846693339523489, -0.0338677335809380, -0.9958333598098410, 0.0])
 
     assert U0 is not None
     assert Ud is not None
@@ -27,7 +27,7 @@ def test_basic_ray_refraction():
     np.testing.assert_allclose(Ud, expected_Ud, rtol=1e-12, atol=1e-15)
 
     # Test that refracted direction is normalized
-    assert abs(np.linalg.norm(Ud) - 1.0) < 1e-15
+    assert abs(np.linalg.norm(Ud[:3]) - 1.0) < 1e-15
 
 
 def test_optical_axis_ray():
@@ -35,14 +35,14 @@ def test_optical_axis_ray():
     e = Eye(fovea_displacement=False)
 
     # Ray along optical axis
-    R0 = np.array([0.0, 0.0, 30.0])
-    Rd = np.array([0.0, 0.0, -1.0])
+    R0 = np.array([0.0, 0.0, 30.0, 1.0])
+    Rd = np.array([0.0, 0.0, -1.0, 0.0])
 
     U0, Ud = e.refract_ray(R0, Rd)
 
     # MATLAB reference values
-    expected_U0 = np.array([0.0000000000000000, 0.0000000000000000, 0.0036299999993510])
-    expected_Ud = np.array([0.0000000000000000, 0.0000000000000000, -1.0000000000000000])
+    expected_U0 = np.array([0.0, 0.0, 0.0036299999993510, 1.0])
+    expected_Ud = np.array([0.0, 0.0, -1.0, 0.0])
 
     assert U0 is not None
     assert Ud is not None
@@ -50,7 +50,7 @@ def test_optical_axis_ray():
     np.testing.assert_allclose(Ud, expected_Ud, rtol=1e-12, atol=1e-15)
 
     # Test that refracted direction is normalized
-    assert abs(np.linalg.norm(Ud) - 1.0) < 1e-15
+    assert abs(np.linalg.norm(Ud[:3]) - 1.0) < 1e-15
 
 
 def test_ray_missing_eye():
@@ -58,8 +58,8 @@ def test_ray_missing_eye():
     e = Eye(fovea_displacement=False)
 
     # Ray that misses the eye completely
-    R0 = np.array([20.0, 20.0, 50.0])
-    Rd = np.array([0.0, 0.0, -1.0])
+    R0 = np.array([20.0, 20.0, 50.0, 1.0])
+    Rd = np.array([0.0, 0.0, -1.0, 0.0])
 
     U0, Ud = e.refract_ray(R0, Rd)
 
@@ -82,13 +82,13 @@ def test_homogeneous_coordinates():
     U0, Ud = e.refract_ray(R0, Rd)
 
     # MATLAB reference values (4D)
-    expected_U0 = np.array([0.0002718158445933, 0.0001359079222967, 0.0036242112612399, 1.0000000000000000])
+    expected_U0 = np.array([0.0002718158445933, 0.0001359079222967, 0.0036242112612399, 1.0])
     expected_Ud = np.array(
         [
             -0.0636298985212294,
             -0.0318149492606147,
             -0.9974663127232531,
-            0.0000000000000000,
+            0.0,
         ]
     )
 
@@ -105,9 +105,9 @@ def test_output_properties():
     """Test that output has correct properties."""
     e = Eye(fovea_displacement=False)
 
-    R0 = np.array([5.0, 2.0, 50.0])
-    Rd = np.array([-0.1, -0.04, -1.0])
-    Rd = Rd / np.linalg.norm(Rd)
+    R0 = np.array([5.0, 2.0, 50.0, 1.0])
+    Rd = np.array([-0.1, -0.04, -1.0, 0.0])
+    Rd[:3] = Rd[:3] / np.linalg.norm(Rd[:3])
 
     U0, Ud = e.refract_ray(R0, Rd)
     assert U0 is not None, "U0 should not be None for these inputs"
@@ -118,8 +118,8 @@ def test_output_properties():
     assert isinstance(Ud, np.ndarray)
     assert U0.dtype == np.float64
     assert Ud.dtype == np.float64
-    assert U0.shape == (3,) or U0.shape == (4,)  # Can be 3D or 4D
-    assert Ud.shape == (3,) or Ud.shape == (4,)  # Can be 3D or 4D
+    assert U0.shape == (4,) or U0.shape == (4,)  # Can be 3D or 4D
+    assert Ud.shape == (4,) or Ud.shape == (4,)  # Can be 3D or 4D
 
     # Refracted direction should be normalized
     if Ud.shape == (3,):

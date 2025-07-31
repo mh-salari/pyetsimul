@@ -7,16 +7,16 @@ from et_simul.optics.refractions import refract_ray_sphere, refract_ray_conic
 def test_conic_equals_sphere_refraction():
     """Test conic refraction with k=0 gives sphere behavior."""
     # Off-axis ray for realistic refraction
-    R0 = np.array([-1.0, 0.5, -2.0])
-    Rd = np.array([0.2, -0.1, 1.0])
+    R0 = np.array([-1.0, 0.5, -2.0, 1.0])
+    Rd = np.array([0.2, -0.1, 1.0, 0.0])
     Rd = Rd / np.linalg.norm(Rd)
     radius = 1.0
     n_outside = 1.0
     n_inside = 1.5
 
     # For k=0, both should create equivalent spheres at the same location
-    sphere_center = np.array([0.0, 0.0, 0.0])  # Sphere at origin
-    conic_center = np.array([0.0, 0.0, 0.0])  # Conic also at origin
+    sphere_center = np.array([0.0, 0.0, 0.0, 1.0])  # Sphere at origin
+    conic_center = np.array([0.0, 0.0, 0.0, 1.0])  # Conic also at origin
 
     # Sphere function with proper center
     sphere_U0, sphere_Ud = refract_ray_sphere(R0, Rd, sphere_center, radius, n_outside, n_inside)

@@ -64,7 +64,7 @@ def accuracy_over_gaze_points(
     print(f"Pupil radius:   {cornea_pupil_dist * 1e3:.3g} mm")
 
     # Set observer position for testing
-    e.position = observer_pos_test[:3]
+    e.position = observer_pos_test
 
     # Main analysis loop - varying gaze target points
     for i in range(len(X)):

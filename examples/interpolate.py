@@ -38,7 +38,7 @@ def main():
 
     print("=== Python Interpolate Test (System Integration) ===\n")
 
-    eye_position = np.array(args.eye_position)
+    eye_position = np.array(args.eye_position + [1])
     print(
         f"Using eye position: X={eye_position[0] * 1000:.1f}mm, Y={eye_position[1] * 1000:.1f}mm, Z={eye_position[2] * 1000:.1f}mm"
     )
@@ -58,10 +58,10 @@ def main():
     cam.orientation = np.array([[1, 0, 0], [0, 0, -1], [0, 1, 0]])
     cam.rest_trans = cam.trans.copy()
     # Point camera at the eye position
-    cam.point_at(eye.position.tolist() + [1])
+    cam.point_at(eye.position.tolist())
 
     # Create light configuration
-    light = Light(position=np.array([200e-3, 0, 350e-3]))
+    light = Light(position=np.array([200e-3, 0, 350e-3, 1]))
 
     # Create calibration grid
     calib_points = [

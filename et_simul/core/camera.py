@@ -127,10 +127,7 @@ class Camera:
             - dist: 1×n array of distances from camera along optical axis
             - valid: 1×n boolean array indicating points within image bounds
 
-        This function is based on the original MATLAB implementation from the
-        et_simul project — © 2008 Martin Böhme, University of Lübeck.
-        Python port © 2025 Mohammadhossein Salari.
-        Licensed under the GNU GPL v3.0 or later.
+
         """
         # Handle single point case
         if pos.ndim == 1:
@@ -192,10 +189,7 @@ class Camera:
         Returns:
             4xn matrix of homogeneous 3D points
 
-        This function is based on the original MATLAB implementation from the
-        et_simul project — © 2008 Martin Böhme, University of Lübeck.
-        Python port © 2025 Mohammadhossein Salari.
-        Licensed under the GNU GPL v3.0 or later.
+
         """
         # Handle single point case
         if X.ndim == 1:
@@ -230,19 +224,14 @@ class Camera:
 
         Args:
             c: Camera structure
-            look_at: Point to look at in world coordinates (3D or 4D homogeneous)
+            look_at: Point to look at in world coordinates (4D homogeneous)
 
         Returns:
             Camera structure with updated transformation matrix
-
-        This function is based on the original MATLAB implementation from the
-        et_simul project — © 2008 Martin Böhme, University of Lübeck.
-        Python port © 2025 Mohammadhossein Salari.
-        Licensed under the GNU GPL v3.0 or later.
         """
-        # Lines 27-29: Extend 'look_at' to homogeneous coordinates if necessary
-        if len(look_at) < 4:
-            look_at = np.array([look_at[0], look_at[1], look_at[2], 1])
+        look_at = np.asarray(look_at)
+        if len(look_at) != 4 or look_at[3] != 1.0:
+            raise ValueError(f"look_at must be 4D homogeneous coordinates [x,y,z,1], got {look_at}")
 
         # Line 32: axis=c.rest_trans\look_at;
         axis = np.linalg.solve(self.rest_trans, look_at)
@@ -293,15 +282,12 @@ class Camera:
 
         Args:
             c: Camera structure
-            point_at: Point to point at in world coordinates (3D or 4D homogeneous)
+            point_at: Point to point at in world coordinates (4D homogeneous)
 
         Returns:
             Camera structure with updated transformation and rest transformation matrices
 
-        This function is based on the original MATLAB implementation from the
-        et_simul project — © 2008 Martin Böhme, University of Lübeck.
-        Python port © 2025 Mohammadhossein Salari.
-        Licensed under the GNU GPL v3.0 or later.
+
         """
         # Line 30: c.rest_trans=c.trans;
         self.rest_trans = self.trans.copy()
@@ -343,10 +329,7 @@ class Camera:
         Returns:
             dict: Camera image structure containing 'cr', 'pc', and 'pupil' fields
 
-        This function is based on the original MATLAB implementation from the
-        et_simul project — © 2008 Martin Böhme, University of Lübeck.
-        Python port © 2025 Mohammadhossein Salari.
-        Licensed under the GNU GPL v3.0 or later.
+
         """
 
         camimg = {}

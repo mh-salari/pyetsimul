@@ -13,13 +13,13 @@ def test_camera_pointed_at_eye():
     c = Camera()
 
     # Position eye at [0, 500mm, 200mm]
-    eye_pos = np.array([0, 500e-3, 200e-3])
-    e.trans[0:3, 3] = eye_pos
+    eye_pos = np.array([0, 500e-3, 200e-3, 1.0])
+    e.position = eye_pos
 
     # Set up camera with proper orientation and point at eye
     c.trans[0:3, 0:3] = np.array([[1, 0, 0], [0, 0, -1], [0, 1, 0]])
     c.rest_trans = c.trans.copy()
-    c.point_at(e.trans[:, 3])
+    c.point_at(e.position)
 
     # Disable camera error for consistent results
     c.err = 0
@@ -78,12 +78,12 @@ def test_output_properties():
     c = Camera()
 
     # Basic setup for visible pupil
-    eye_pos = np.array([0, 500e-3, 200e-3])
-    e.trans[0:3, 3] = eye_pos
+    eye_pos = np.array([0, 500e-3, 200e-3, 1.0])
+    e.position = eye_pos
 
     c.trans[0:3, 0:3] = np.array([[1, 0, 0], [0, 0, -1], [0, 1, 0]])
     c.rest_trans = c.trans.copy()
-    c.point_at(e.trans[:, 3])
+    c.point_at(e.position)
     c.err = 0
     c.err_type = "uniform"
 
@@ -109,13 +109,13 @@ def test_eye_facing_away_from_camera():
     c = Camera()
 
     # Position eye at [0, 500mm, 200mm]
-    eye_pos = np.array([0, 500e-3, 200e-3])
-    e.trans[0:3, 3] = eye_pos
+    eye_pos = np.array([0, 500e-3, 200e-3, 1.0])
+    e.position = eye_pos
 
     # Set up camera with proper orientation pointing at eye
     c.trans[0:3, 0:3] = np.array([[1, 0, 0], [0, 0, -1], [0, 1, 0]])
     c.rest_trans = c.trans.copy()
-    c.point_at(e.trans[:, 3])
+    c.point_at(e.position)
 
     # Set eye rest orientation same as camera (both looking in same direction)
     e.set_rest_orientation(np.array([[1, 0, 0], [0, 0, -1], [0, 1, 0]]))
@@ -127,8 +127,8 @@ def test_eye_facing_away_from_camera():
     # Eye looks away from camera (same direction as camera viewing direction)
     # Camera views in direction [0, 1, 0] (positive y), so make eye look that way too
     camera_viewing_direction = -c.orientation[:, 2]  # negative of optical axis
-    eye_target = e.position + camera_viewing_direction
-    eye_target_homo = np.array([eye_target[0], eye_target[1], eye_target[2], 1])
+    eye_target_homo = e.position.copy()
+    eye_target_homo[:3] += camera_viewing_direction
     e.look_at(eye_target_homo)
 
     # Test that warning is generated and method returns None
@@ -156,8 +156,8 @@ def test_eye_behind_camera():
     # Position eye behind camera (negative y direction if camera looks in +y)
     c.trans[0:3, 0:3] = np.array([[1, 0, 0], [0, 0, -1], [0, 1, 0]])
     c.rest_trans = c.trans.copy()
-    eye_pos = np.array([0, -500e-3, 0])  # Behind camera
-    e.trans[0:3, 3] = eye_pos
+    eye_pos = np.array([0, -500e-3, 0, 1.0])  # Behind camera
+    e.position = eye_pos
 
     # Set eye rest orientation
     e.set_rest_orientation(np.array([[1, 0, 0], [0, 0, -1], [0, 1, 0]]))
@@ -189,13 +189,13 @@ def test_eye_rotated_90_degrees():
     c = Camera()
 
     # Position eye at [0, 500mm, 200mm]
-    eye_pos = np.array([0, 500e-3, 200e-3])
-    e.trans[0:3, 3] = eye_pos
+    eye_pos = np.array([0, 500e-3, 200e-3, 1.0])
+    e.position = eye_pos
 
     # Set up camera with proper orientation pointing at eye
     c.trans[0:3, 0:3] = np.array([[1, 0, 0], [0, 0, -1], [0, 1, 0]])
     c.rest_trans = c.trans.copy()
-    c.point_at(e.trans[:, 3])
+    c.point_at(e.position)
 
     # Set eye rest orientation same as camera initially
     e.set_rest_orientation(np.array([[1, 0, 0], [0, 0, -1], [0, 1, 0]]))

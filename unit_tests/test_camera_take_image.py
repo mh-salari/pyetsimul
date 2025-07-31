@@ -10,13 +10,13 @@ def test_camera_take_image_with_refraction():
     """Test camera take_image with refraction using actual MATLAB reference values."""
     # Create eye and camera setup (matching MATLAB test)
     e = Eye(fovea_displacement=False)
-    e.trans[0:3, 3] = [0, 500e-3, 200e-3]  # Eye at [0, 500mm, 200mm]
+    e.position = np.array([0, 500e-3, 200e-3, 1.0])  # Eye at [0, 500mm, 200mm]
 
     # Camera at origin pointing at eye
     c = Camera()
     c.trans[0:3, 0:3] = np.array([[1, 0, 0], [0, 0, -1], [0, 1, 0]])  # Hennessey-style rotation
     c.rest_trans = c.trans.copy()
-    c.point_at(e.trans[:, 3])  # Point at eye
+    c.point_at(e.position)  # Point at eye
     c.err = 0
     c.err_type = "uniform"
 
@@ -26,12 +26,12 @@ def test_camera_take_image_with_refraction():
     # Create light sources (typical eye tracker setup)
     lights = []
 
-    # Light 1: right side, low
-    light1 = Light(position=np.array([200e-3, 0, 50e-3]))
+    # Light 1: right side, low (4D homogeneous)
+    light1 = Light(position=np.array([200e-3, 0, 50e-3, 1]))
     lights.append(light1)
 
-    # Light 2: right side, high
-    light2 = Light(position=np.array([200e-3, 0, 300e-3]))
+    # Light 2: right side, high (4D homogeneous)
+    light2 = Light(position=np.array([200e-3, 0, 300e-3, 1]))
     lights.append(light2)
 
     # Take image with refraction
@@ -42,9 +42,9 @@ def test_camera_take_image_with_refraction():
         [8.0091797595, 1.8590841799],  # Light 1 CR
         [8.5048679096, 11.8448574197],  # Light 2 CR
     ]
-    expected_pc = [0.0, 0.0]  # MATLAB: [-0.0000000000, 0.0000000000]
+    expected_pc = [0.0, 0.0]  # MATLAB: [-0.0000, 0.0000]
     expected_pupil_points = [
-        [18.2201323223, 0.0000000000],  # pupil[:,0]
+        [18.2201323223, 0.0000],  # pupil[:,0]
         [17.3283755729, -5.6303305273],  # pupil[:,1]
         [14.7403966885, -10.7095250739],  # pupil[:,2]
         [10.7095250739, -14.7403966885],  # pupil[:,3]
@@ -94,12 +94,12 @@ def test_camera_take_image_without_refraction():
 
     e.look_at(np.array([0, 0, 0, 1]))
 
-    # Same light sources
+    # Same light sources (4D homogeneous)
     lights = []
-    light1 = Light(position=np.array([200e-3, 0, 50e-3]))
+    light1 = Light(position=np.array([200e-3, 0, 50e-3, 1]))
     lights.append(light1)
 
-    light2 = Light(position=np.array([200e-3, 0, 300e-3]))
+    light2 = Light(position=np.array([200e-3, 0, 300e-3, 1]))
     lights.append(light2)
 
     # Take image without refraction
@@ -109,7 +109,7 @@ def test_camera_take_image_without_refraction():
     expected_cr = [[8.0091797595, 1.8590841799], [8.5048679096, 11.8448574197]]
     expected_pc_simple = [0.0, 0.0]
     expected_pupil_points_simple = [
-        [16.3103041184, 0.0000000000],
+        [16.3103041184, 0.0000],
         [15.5120210145, -5.0401611560],
         [13.1953132152, -9.5869562212],
         [9.5869562212, -13.1953132152],
@@ -168,8 +168,8 @@ def test_camera_take_image_output_structure():
 
     e.look_at(np.array([0, 0, 0, 1]))
 
-    # Single light source
-    light = Light(position=np.array([200e-3, 0, 50e-3]))
+    # Single light source (4D homogeneous)
+    light = Light(position=np.array([200e-3, 0, 50e-3, 1]))
     lights = [light]
 
     camimg = c.take_image(e, lights, use_refraction=True)

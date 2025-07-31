@@ -39,7 +39,7 @@ def accuracy_over_observer_positions(
     et.run_calibration(e)
 
     # Define observer position grid - move observer by ±movement_range from calibration position
-    calib_x, calib_y, calib_z = e.position
+    calib_x, calib_y, calib_z = e.position[:3]
     X = np.linspace(calib_x - movement_range, calib_x + movement_range, grid_size)  # ±movement_range from calib X
     Y = np.linspace(calib_y - movement_range, calib_y + movement_range, grid_size)  # ±movement_range from calib Y
     Z = calib_z  # Fix Z to calibration position
@@ -61,7 +61,7 @@ def accuracy_over_observer_positions(
     for i in range(len(X)):
         for j in range(len(Y)):
             # Move observer to test position [X[i], Y[j], Z]
-            e.position = np.array([X[i], Y[j], Z])
+            e.position = np.array([X[i], Y[j], Z, 1])
 
             # Get predicted gaze position directly
             predicted_gaze = et.estimate_gaze_at(e, gaze_target)
