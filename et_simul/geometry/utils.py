@@ -1,7 +1,14 @@
 import numpy as np
+from typing import Tuple, Union
+from ..types import Point3D, Point4D, Vector3D, CoordinateType
 
 
-def lines_closest_point(p1, d1, p2, d2):
+def lines_closest_point(
+    p1: CoordinateType,
+    d1: Union[Vector3D, Point4D],
+    p2: CoordinateType,
+    d2: Union[Vector3D, Point4D],
+) -> Tuple[CoordinateType, CoordinateType]:
     """Computes points where two lines are closest.
 
 
@@ -44,7 +51,7 @@ def lines_closest_point(p1, d1, p2, d2):
     return x1, x2
 
 
-def line_intersect_2d(p11, p12, p21, p22):
+def line_intersect_2d(p11: Point3D, p12: Point3D, p21: Point3D, p22: Point3D) -> Point3D:
     """Computes intersection of two-dimensional lines.
 
 

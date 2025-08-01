@@ -1,7 +1,9 @@
 import numpy as np
+from typing import Optional
+from ..types import Point3D, Point4D, CoordinateType, RotationMatrix
 
 
-def gaze2angle(gaze, rest_pos=None):
+def gaze2angle(gaze: CoordinateType, rest_pos: Optional[RotationMatrix] = None) -> Point3D:
     """Determines rotation angles of the eye from given gaze direction.
 
 
@@ -44,7 +46,7 @@ def gaze2angle(gaze, rest_pos=None):
     return angles
 
 
-def angle2gaze(angles, rest_pos=None):
+def angle2gaze(angles: Point3D, rest_pos: Optional[RotationMatrix] = None) -> Point4D:
     """Calculates gaze direction from rotation angles.
 
 
@@ -92,7 +94,9 @@ def angle2gaze(angles, rest_pos=None):
     return gaze
 
 
-def calculate_angular_error_degrees(actual_point, predicted_point, observer_pos):
+def calculate_angular_error_degrees(
+    actual_point: Point3D, predicted_point: Point3D, observer_pos: CoordinateType
+) -> float:
     """Calculate angular error in degrees between two gaze points.
 
     This function computes the angular error between actual and predicted gaze positions

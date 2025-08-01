@@ -1,5 +1,6 @@
 import numpy as np
 from dataclasses import dataclass, field
+from ..types import Point3D
 
 
 @dataclass
@@ -15,9 +16,9 @@ class Light:
 
     """
 
-    position: np.ndarray = field(init=False)
+    position: Point3D = field(init=False)
 
-    def __init__(self, position: np.ndarray):
+    def __init__(self, position: Point3D):
         """Initialize light with 4D homogeneous coordinates.
 
         Args:

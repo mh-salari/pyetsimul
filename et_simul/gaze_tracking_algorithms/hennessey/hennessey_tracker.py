@@ -3,6 +3,8 @@
 Eye tracker that uses Hennessey et al.'s method.
 """
 
+from typing import List, Dict, Any, Optional
+from ...types import Point4D
 from et_simul.core import EyeTracker
 from .calibrate import hennessey_calib
 from .prediction import predict, PredictionResult
@@ -19,7 +21,7 @@ class HennesseyTracker(EyeTracker):
     """
 
     @classmethod
-    def setup(cls, cameras, lights, calib_points, params=None):
+    def setup(cls, cameras: List, lights: List, calib_points: Point4D, params: Optional[Dict[str, Any]] = None):
         """Create an eye tracker that uses Hennessey et al.'s method.
 
         Args:
@@ -59,7 +61,7 @@ class HennesseyTracker(EyeTracker):
 
         return tracker
 
-    def calibrate(self, calib_data):
+    def calibrate(self, calib_data: List[Dict[str, Any]]) -> None:
         """Calibration function for Hennessey method.
 
         Based on hennessey_calib.m
@@ -67,7 +69,7 @@ class HennesseyTracker(EyeTracker):
 
         hennessey_calib(self, calib_data)
 
-    def predict_gaze(self, camimg) -> PredictionResult:
+    def predict_gaze(self, camimg: List[Dict[str, Any]]) -> PredictionResult:
         """Predict gaze position for Hennessey method.
 
         Based on hennessey_eval.m and hennessey_eval_base.m

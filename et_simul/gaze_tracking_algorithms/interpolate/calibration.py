@@ -4,9 +4,10 @@ Handles polynomial regression calibration for both 1D and 2D polynomial models.
 """
 
 import numpy as np
+from typing import List, Dict, Any
 
 
-def calibrate(eye_tracker, calib_data):
+def calibrate(eye_tracker, calib_data: List[Dict[str, Any]]) -> None:
     """Calibrate the interpolation eye tracker using polynomial regression.
 
     Automatically detects 1D vs 2D polynomials based on feature shape and
@@ -25,7 +26,7 @@ def calibrate(eye_tracker, calib_data):
         _calibrate_1d(eye_tracker, calib_data)
 
 
-def _calibrate_1d(eye_tracker, calib_data):
+def _calibrate_1d(eye_tracker, calib_data: List[Dict[str, Any]]) -> None:
     """Calibrate with 1D polynomial (shared features for x and y)."""
 
     # Get feature size from first valid calibration point
@@ -58,7 +59,7 @@ def _calibrate_1d(eye_tracker, calib_data):
     eye_tracker.state["A"] = eye_tracker.calib_points @ np.linalg.pinv(X)
 
 
-def _calibrate_2d(eye_tracker, calib_data):
+def _calibrate_2d(eye_tracker, calib_data: List[Dict[str, Any]]) -> None:
     """Calibrate with 2D polynomial (separate features for x and y)."""
     # Get feature matrix size from first valid calibration point
     feature_matrix = None

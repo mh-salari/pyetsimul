@@ -7,12 +7,13 @@ system with cameras, lights, calibration points, and algorithm functions.
 import numpy as np
 import copy
 from dataclasses import dataclass, field
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, Tuple
 from abc import ABC, abstractmethod
 
 from .camera import Camera
 from .light import Light
 from .eye import Eye
+from ..types import Point4D, Point3D
 
 
 @dataclass
@@ -32,7 +33,7 @@ class EyeTracker(ABC):
     lights: List[Light] = field(default_factory=list)
 
     # Calibration
-    calib_points: Optional[np.ndarray] = None
+    calib_points: Optional[Point4D] = None
 
     # Algorithm state/parameters
     state: Dict[str, Any] = field(default_factory=dict)
@@ -83,6 +84,8 @@ class EyeTracker(ABC):
             # Take images from all cameras
             calib_data[i] = {}
             calib_data[i]["camimg"] = [None] * len(self.cameras)
+            # Store the target gaze position for this calibration point
+            calib_data[i]["gaze"] = np.array([self.calib_points[0, i], self.calib_points[1, i]])
 
             for iCamera, cam in enumerate(self.cameras):
                 camimg = cam.take_image(eye, self.lights, use_refraction=self.use_refraction)
@@ -111,7 +114,7 @@ class EyeTracker(ABC):
 
         return calib_data
 
-    def estimate_gaze_at(self, eye: Eye, look_at_pos: np.ndarray) -> Optional[Any]:
+    def estimate_gaze_at(self, eye: Eye, look_at_pos: Point3D) -> Optional[Any]:
         """Estimate gaze position when eye looks at a target.
 
         Generic gaze estimation that works for all eye tracker types.
@@ -135,7 +138,7 @@ class EyeTracker(ABC):
         # Get gaze prediction - returns None if prediction fails
         return self.predict_gaze(camimg)
 
-    def calculate_gaze_error(self, eye: Eye, look_at_pos: np.ndarray) -> tuple[float, float]:
+    def calculate_gaze_error(self, eye: Eye, look_at_pos: Point3D) -> Tuple[float, float]:
         """Calculate gaze estimation error.
 
         Generic error calculation that works for all eye tracker types.

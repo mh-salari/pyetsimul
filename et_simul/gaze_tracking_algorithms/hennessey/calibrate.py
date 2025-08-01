@@ -4,10 +4,12 @@ Calibration function for Hennessey et al.'s method.
 """
 
 import numpy as np
+from typing import List, Dict, Any
+from ...types import Point4D
 from .prediction import _predict_base
 
 
-def hennessey_calib(et, calib_data):
+def hennessey_calib(et, calib_data: List[Dict[str, Any]]) -> None:
     """Calibration function for Hennessey et al.'s method.
 
 
@@ -52,7 +54,7 @@ def hennessey_calib(et, calib_data):
     # Skipping them to keep implementation focused
 
 
-def recalib_hennessey_calib(gaze_measured, gaze_desired):
+def recalib_hennessey_calib(gaze_measured: Point4D, gaze_desired: Point4D) -> Dict[str, Point4D]:
     """Calibrate Hennessey's recalibration procedure.
 
 

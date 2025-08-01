@@ -5,17 +5,20 @@ The gaze target is fixed while observer position varies.
 """
 
 import numpy as np
+from typing import Dict
 from ..geometry.conversions import calculate_angular_error_degrees
 from .analysis_utils import plot_error_vectors, calculate_error_statistics
+from ..core import Eye, EyeTracker
+from ..types import Point3D
 
 
 def accuracy_over_observer_positions(
-    et,
-    eye,
-    gaze_target=np.array([0, 200e-3]),
-    movement_range=50e-3,
-    grid_size=16,
-):
+    et: EyeTracker,
+    eye: Eye,
+    gaze_target: Point3D = np.array([0, 200e-3]),
+    movement_range: float = 50e-3,
+    grid_size: int = 16,
+) -> Dict[str, Dict[str, float]]:
     """Computes gaze error at different observer positions.
 
 

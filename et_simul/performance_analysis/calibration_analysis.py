@@ -6,12 +6,14 @@ at the original calibration points to assess calibration quality.
 
 import numpy as np
 import copy
+from typing import Dict, List
 from ..geometry.conversions import calculate_angular_error_degrees
 from .analysis_utils import calculate_error_statistics, plt
 from ..visualization import prepare_eye_data_for_plots, plot_setup
+from ..core import Eye, EyeTracker
 
 
-def accuracy_at_calibration_points(et, eye):
+def accuracy_at_calibration_points(et: EyeTracker, eye: Eye) -> Dict[str, Dict[str, float]]:
     """Computes gaze error at calibration points to assess calibration quality.
 
     This function calibrates the eye tracker and then tests its accuracy by
@@ -136,7 +138,17 @@ def accuracy_at_calibration_points(et, eye):
     return errors
 
 
-def _create_interactive_calibration_plot(et, eye, X, Y, U, V, predicted_points, valid_mask, errs_deg):
+def _create_interactive_calibration_plot(
+    et: EyeTracker,
+    eye: Eye,
+    X: np.ndarray,
+    Y: np.ndarray,
+    U: np.ndarray,
+    V: np.ndarray,
+    predicted_points: List,
+    valid_mask: np.ndarray,
+    errs_deg: np.ndarray,
+) -> None:
     """Create interactive calibration plot with keyboard controls."""
     # Create figure with two subplots: 3D setup and 2D calibration analysis
     fig = plt.figure(figsize=(20, 8))
@@ -396,7 +408,7 @@ def _create_interactive_calibration_plot(et, eye, X, Y, U, V, predicted_points, 
     plt.show()
 
 
-def _print_polynomial_parameters(et):
+def _print_polynomial_parameters(et: EyeTracker) -> None:
     """Print polynomial parameters from calibrated eye tracker."""
     print("\nPolynomial Parameters:")
     print("-" * 40)

@@ -2,6 +2,7 @@ import numpy as np
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Tuple, Optional
+from ..types import Point4D, TransformationMatrix
 
 
 class Pupil(ABC):
@@ -16,14 +17,14 @@ class Pupil(ABC):
         y_pupil: 4D vector defining Y-axis radius/direction
     """
 
-    def __init__(self, pos_pupil: np.ndarray, x_pupil: np.ndarray, y_pupil: np.ndarray, N: int = 100):
+    def __init__(self, pos_pupil: Point4D, x_pupil: Point4D, y_pupil: Point4D, N: int = 100):
         self.pos_pupil = pos_pupil
         self.x_pupil = x_pupil
         self.y_pupil = y_pupil
         self.N = N  # Number of boundary points for this pupil
 
     @abstractmethod
-    def get_boundary_points(self, N: Optional[int] = None) -> np.ndarray:
+    def get_boundary_points(self, N: Optional[int] = None) -> Point4D:
         """Generate pupil boundary points.
 
         Args:
@@ -53,7 +54,7 @@ class Pupil(ABC):
         """
         pass
 
-    def get_center_world_coords(self, eye_transform: np.ndarray) -> np.ndarray:
+    def get_center_world_coords(self, eye_transform: TransformationMatrix) -> Point4D:
         """Get pupil center in world coordinates.
 
         Args:
@@ -88,7 +89,7 @@ class EllipticalPupil(Pupil):
         y_pupil: 4D vector defining Y-axis radius/direction
     """
 
-    def get_boundary_points(self, N: Optional[int] = None) -> np.ndarray:
+    def get_boundary_points(self, N: Optional[int] = None) -> Point4D:
         """Generate elliptical pupil boundary points using parametric representation.
 
         Args:
@@ -205,9 +206,9 @@ class RealisticPupil(Pupil):
 
     def __init__(
         self,
-        pos_pupil: np.ndarray,
-        x_pupil: np.ndarray,
-        y_pupil: np.ndarray,
+        pos_pupil: Point4D,
+        x_pupil: Point4D,
+        y_pupil: Point4D,
         params: Optional[RealisticPupilParams] = None,
         N: int = 360,
     ):
@@ -294,7 +295,7 @@ class RealisticPupil(Pupil):
         self.x_pupil = avg_radius_m * np.array([1, 0, 0, 0])
         self.y_pupil = avg_radius_m * np.array([0, 1, 0, 0])
 
-    def get_boundary_points(self, N: Optional[int] = None) -> np.ndarray:
+    def get_boundary_points(self, N: Optional[int] = None) -> Point4D:
         """Generate realistic pupil boundary points using Fourier series.
 
         Args:
@@ -391,7 +392,7 @@ class RealisticPupil(Pupil):
         return np.sqrt(nc_squared)
 
 
-def create_pupil(pupil_type: str, pos_pupil: np.ndarray, x_pupil: np.ndarray, y_pupil: np.ndarray, **kwargs) -> Pupil:
+def create_pupil(pupil_type: str, pos_pupil: Point4D, x_pupil: Point4D, y_pupil: Point4D, **kwargs) -> Pupil:
     """Factory function to create pupil instances.
 
     Args:

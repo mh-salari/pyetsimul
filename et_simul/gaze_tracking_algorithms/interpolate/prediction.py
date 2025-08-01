@@ -7,6 +7,7 @@ calibrated polynomial regression models.
 import numpy as np
 from dataclasses import dataclass
 from typing import Optional
+from ...types import Point3D, Point4D
 
 
 @dataclass
@@ -23,16 +24,16 @@ class PredictionResult:
         prediction_successful: Whether prediction was successful
     """
 
-    gaze_point: Optional[np.ndarray] = None
-    pc: Optional[np.ndarray] = None
-    cr: Optional[np.ndarray] = None
-    pcr_vector: Optional[np.ndarray] = None
+    gaze_point: Optional[Point3D] = None
+    pc: Optional[Point3D] = None
+    cr: Optional[Point3D] = None
+    pcr_vector: Optional[Point3D] = None
     polynomial_name: Optional[str] = None
-    feature_vector: Optional[np.ndarray] = None
+    feature_vector: Optional[Point4D] = None
     prediction_successful: bool = False
 
     @property
-    def gaze(self) -> Optional[np.ndarray]:
+    def gaze(self) -> Optional[Point3D]:
         """Convenience property to access gaze point."""
         return self.gaze_point
 

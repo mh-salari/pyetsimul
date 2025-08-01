@@ -6,10 +6,11 @@ Exactly matches MATLAB hennessey_eval() and hennessey_eval_base().
 
 import numpy as np
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, List, Dict, Any, Tuple
 from skimage.measure import EllipseModel
 from et_simul.geometry.intersections import intersect_ray_sphere, intersect_ray_plane
 from et_simul.optics.refractions import refract_ray_sphere
+from ...types import Point4D, Point3D
 from .estimate_cc import estimate_cc_hennessey
 
 
@@ -27,16 +28,16 @@ class PredictionResult:
         prediction_successful: Whether prediction was successful
     """
 
-    gaze_point: Optional[np.ndarray] = None
-    pc: Optional[np.ndarray] = None
-    cr: Optional[np.ndarray] = None
-    cc: Optional[np.ndarray] = None
-    gaze3d: Optional[np.ndarray] = None
+    gaze_point: Optional[Point3D] = None
+    pc: Optional[Point4D] = None
+    cr: Optional[Point3D] = None
+    cc: Optional[Point4D] = None
+    gaze3d: Optional[Point4D] = None
     r_pupil: Optional[float] = None
     prediction_successful: bool = False
 
     @property
-    def gaze(self) -> Optional[np.ndarray]:
+    def gaze(self) -> Optional[Point3D]:
         """Convenience property to access gaze point."""
         return self.gaze_point
 
@@ -45,7 +46,9 @@ class PredictionResult:
         return self.prediction_successful
 
 
-def _predict_base(et, camimg):
+def _predict_base(
+    et, camimg: List[Dict[str, Any]]
+) -> Tuple[Optional[Point3D], Optional[Point4D], Optional[Point4D], Optional[Point4D], Optional[float]]:
     """Prediction function helper for Hennessey et al.
 
 
@@ -192,7 +195,7 @@ def _predict_base(et, camimg):
     return gaze, cc_estim, gaze3d, pc_estim, r_pupil
 
 
-def predict(et, camimg) -> PredictionResult:
+def predict(et, camimg: List[Dict[str, Any]]) -> PredictionResult:
     """Prediction function for Hennessey et al.'s method.
 
 
@@ -245,7 +248,7 @@ def predict(et, camimg) -> PredictionResult:
     return result
 
 
-def _apply_recalibration(state, gaze):
+def _apply_recalibration(state: Dict[str, Point4D], gaze: Point3D) -> Point3D:
     """Apply Hennessey's recalibration procedure.
 
 

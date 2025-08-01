@@ -8,6 +8,7 @@ from ..optics import refractions
 from .camera import Camera
 from .light import Light
 from .coordinate_system import validate_orientation_matrix
+from ..types import Point3D, Point4D, Vector3D, TransformationMatrix, RotationMatrix
 from .pupil import Pupil, create_pupil
 from .cornea import SphericalCornea
 
@@ -80,8 +81,8 @@ class Eye:
     pupil_type: str = "elliptical"  # Pupil type: "elliptical" (default), "realistic"
 
     # These fields are calculated in __post_init__
-    trans: np.ndarray = field(init=False)
-    _rest_orientation: np.ndarray = field(init=False)
+    trans: TransformationMatrix = field(init=False)
+    _rest_orientation: RotationMatrix = field(init=False)
     axial_length: float = field(init=False)  # Total axial length of eye (m)
     n_aqueous_humor: float = field(init=False)
     pupil: Pupil = field(init=False)  # Pupil object that handles all pupil calculations
@@ -124,16 +125,16 @@ class Eye:
         )
 
     @property
-    def orientation(self) -> np.ndarray:
+    def orientation(self) -> RotationMatrix:
         """Get/set the eye's current orientation (3x3 rotation matrix)."""
         return self.trans[:3, :3]
 
     @orientation.setter
-    def orientation(self, value: np.ndarray) -> None:
+    def orientation(self, value: RotationMatrix) -> None:
         """Set the eye's current orientation and update transformation matrix."""
         self.trans[:3, :3] = value
 
-    def set_rest_orientation(self, value: np.ndarray) -> None:
+    def set_rest_orientation(self, value: RotationMatrix) -> None:
         """Set the rest orientation and initialize current orientation to match.
 
         Args:
@@ -149,24 +150,24 @@ class Eye:
         self.trans[:3, :3] = value
 
     @property
-    def rest_orientation(self) -> np.ndarray:
+    def rest_orientation(self) -> RotationMatrix:
         """Get the rest orientation (read-only)."""
         return self._rest_orientation.copy()
 
     @property
-    def position(self) -> np.ndarray:
+    def position(self) -> Point3D:
         """Get/set the eye's position in world coordinates (4D homogeneous)."""
         return self.trans[:, 3]
 
     @position.setter
-    def position(self, value: np.ndarray) -> None:
+    def position(self, value: Point3D) -> None:
         """Set the eye's position and update transformation matrix."""
         value = np.asarray(value)
         if len(value) != 4 or value[3] != 1.0:
             raise ValueError(f"Position must be 4D homogeneous coordinates [x,y,z,1], got {value}")
         self.trans[:, 3] = value
 
-    def point_within_cornea(self, p: np.ndarray) -> bool:
+    def point_within_cornea(self, p: Point4D) -> bool:
         """Tests whether a point lies within the cornea.
 
         within=point_within_cornea(e, p) tests whether the point 'p', lying
@@ -188,7 +189,7 @@ class Eye:
         # Use cornea object's point_within_cornea method
         return self.cornea.point_within_cornea(p, self)
 
-    def find_cr(self, l: Light, c: Camera) -> Optional[np.ndarray]:
+    def find_cr(self, l: Light, c: Camera) -> Optional[Point4D]:
         """Finds the position of a corneal reflex.
 
         cr = find_cr(e, l, c) finds the position of the corneal reflex
@@ -216,7 +217,7 @@ class Eye:
         return cr
 
     @staticmethod
-    def listings_law(out_rest: np.ndarray, out_new: np.ndarray) -> np.ndarray:
+    def listings_law(out_rest: Vector3D, out_new: Vector3D) -> Vector3D:
         """Uses Listing's law to compute a matrix for eye rotation.
 
         A = listings_law(out_rest, out_new) uses Listing's law to compute a
@@ -261,7 +262,7 @@ class Eye:
 
         return A
 
-    def look_at(self, pos: Union[np.ndarray, List[float]]) -> None:
+    def look_at(self, pos: Union[Point4D, List[float]]) -> None:
         """Rotates an eye to look at a given position in space.
 
         e=eye_look_at(e, pos) rotates the eye 'e' to look at the
@@ -312,7 +313,7 @@ class Eye:
             # Line 45: e.trans(1:3, 1:3)=e.trans(1:3, 1:3)*B*A;
             self.orientation = self.orientation @ B @ A
 
-    def get_pupil(self) -> np.ndarray:
+    def get_pupil(self) -> Point4D:
         """Returns an array of points describing the pupil boundary.
 
         X = get_pupil(e) returns a 4×N matrix of points (in world
@@ -334,7 +335,7 @@ class Eye:
 
     def get_pupil_in_camera_image(
         self, c: Camera, use_refraction: bool = True, center_method: str = "ellipse"
-    ) -> Tuple[np.ndarray, Optional[np.ndarray]]:
+    ) -> Tuple[Point4D, Optional[Point3D]]:
         """Gets pupil boundary and center in camera image using specified method.
 
         Args:
@@ -364,7 +365,7 @@ class Eye:
 
         return pupil_boundary, pupil_center
 
-    def get_pupil_position(self) -> np.ndarray:
+    def get_pupil_position(self) -> Point4D:
         """Calculate the pupil position based on corneal geometry.
 
         The pupil is positioned behind the corneal apex by the corneal depth.
@@ -397,7 +398,7 @@ class Eye:
         """
         self.pupil.set_radii(x_radius, y_radius)
 
-    def find_cr_simple(self, l: Light, c: Camera) -> Optional[np.ndarray]:
+    def find_cr_simple(self, l: Light, c: Camera) -> Optional[Point4D]:
         """Finds the position of a corneal reflex (simplified).
 
         cr = find_cr_simple(e, l, c) finds the position of the corneal reflex
@@ -443,7 +444,7 @@ class Eye:
 
         return cr
 
-    def refract_ray(self, R0: np.ndarray, Rd: np.ndarray) -> Tuple[Optional[np.ndarray], Optional[np.ndarray]]:
+    def refract_ray(self, R0: Point4D, Rd: Vector3D) -> Tuple[Optional[Point4D], Optional[Vector3D]]:
         """Computes refraction of ray at cornea surface.
 
         [U0, Ud] = refract_ray(e, R0, Rd) takes a ray (specified by its
@@ -480,8 +481,8 @@ class Eye:
         return U0, Ud
 
     def refract_ray_advanced(
-        self, R0: np.ndarray, Rd: np.ndarray
-    ) -> Tuple[Optional[np.ndarray], Optional[np.ndarray], Optional[np.ndarray]]:
+        self, R0: Point4D, Rd: Vector3D
+    ) -> Tuple[Optional[Point4D], Optional[Vector3D], Optional[Point4D]]:
         """Computes refraction at both surfaces of cornea.
 
         [O0, I0, Id] = refract_ray_advanced(e, R0, Rd) takes a ray (specified by its
@@ -538,7 +539,7 @@ class Eye:
 
         return O0, I0, Id
 
-    def find_refraction(self, C: np.ndarray, O: np.ndarray) -> Optional[np.ndarray]:
+    def find_refraction(self, C: Point4D, O: Point4D) -> Optional[Point4D]:
         """Computes observed position of intraocular objects.
 
         I = find_refraction(e, C, O) computes the position at which a camera
@@ -570,7 +571,7 @@ class Eye:
 
         return I
 
-    def get_pupil_boundary_in_camera_image(self, c: Camera, use_refraction: bool = True) -> Optional[np.ndarray]:
+    def get_pupil_boundary_in_camera_image(self, c: Camera, use_refraction: bool = True) -> Optional[Point4D]:
         """Computes image of pupil boundary.
 
         X = get_pupil_boundary_in_camera_image(e, c) returns a 2×M matrix of points
@@ -629,7 +630,7 @@ class Eye:
         else:
             return X
 
-    def get_pupil_center_in_world(self) -> np.ndarray:
+    def get_pupil_center_in_world(self) -> Point4D:
         """Get the pupil center position in world coordinates.
 
         Returns:
@@ -639,7 +640,7 @@ class Eye:
 
     def get_pupil_ellipse_in_camera_image(
         self, c: Camera, use_refraction: bool = True
-    ) -> Tuple[np.ndarray, Optional[np.ndarray]]:
+    ) -> Tuple[Point4D, Optional[Point3D]]:
         """Determines pupil ellipse in camera image.
 
         [pupil, pc] = get_pupil_ellipse_in_camera_image(e, c) finds the image of the pupil border in the camera image
@@ -667,7 +668,7 @@ class Eye:
 
     def get_pupil_center_of_mass_in_camera_image(
         self, c: Camera, use_refraction: bool = True
-    ) -> Tuple[np.ndarray, Optional[np.ndarray]]:
+    ) -> Tuple[Point4D, Optional[Point3D]]:
         """Determines pupil center using center of mass calculation.
 
         [pupil, pc] = get_pupil_center_of_mass_in_camera_image(e, c) finds the image of the pupil border
@@ -691,7 +692,7 @@ class Eye:
 
         return pupil, pc
 
-    def _fit_ellipse_center(self, pupil: np.ndarray) -> Optional[np.ndarray]:
+    def _fit_ellipse_center(self, pupil: Point4D) -> Optional[Point3D]:
         """Fit ellipse to pupil boundary points and return center.
 
         Args:
@@ -711,7 +712,7 @@ class Eye:
         # Not enough points for ellipse fitting or fitting failed
         return None
 
-    def _calculate_center_of_mass(self, pupil: np.ndarray, camera_resolution: np.ndarray) -> Optional[np.ndarray]:
+    def _calculate_center_of_mass(self, pupil: Point4D, camera_resolution: Point3D) -> Optional[Point3D]:
         """Calculate center of mass from pupil boundary points using binary mask.
 
         Args:
@@ -764,7 +765,7 @@ class Eye:
         return np.array([x_camera, y_camera])
 
     @property
-    def fovea_position(self) -> np.ndarray:
+    def fovea_position(self) -> Point4D:
         """Calculate the 3D position of the fovea on the retinal surface.
 
         Based on our simplified spherical eye model where:

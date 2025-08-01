@@ -4,9 +4,10 @@ Based on various eye tracking calibration papers with different polynomial formu
 """
 
 import numpy as np
+from typing import Callable
 
 
-def hennessey_2008(x, y):
+def hennessey_2008(x: float, y: float) -> np.ndarray:
     """Hennessey et al. (2008) polynomial: [x*y, x, y, 1]
 
     Mathematical model (1D - shared features):
@@ -22,7 +23,7 @@ def hennessey_2008(x, y):
     return np.array([x * y, x, y, 1])
 
 
-def hoorman_2008(x, y):
+def hoorman_2008(x: float, y: float) -> np.ndarray:
     """Hoorman et al. (2008) polynomial: [[x, 1], [y, 1]]
 
     Mathematical model (2D - separate features):
@@ -38,7 +39,7 @@ def hoorman_2008(x, y):
     return np.array([[x, 1], [y, 1]])
 
 
-def cerrolaza_2008(x, y):
+def cerrolaza_2008(x: float, y: float) -> np.ndarray:
     """Cerrolaza et al. (2008) polynomial: [x², y², x*y, x, y, 1]
 
     Mathematical model (1D - shared features):
@@ -54,7 +55,7 @@ def cerrolaza_2008(x, y):
     return np.array([x**2, y**2, x * y, x, y, 1])
 
 
-def second_order(x, y):
+def second_order(x: float, y: float) -> np.ndarray:
     """Second-order polynomial: [x²*y², x², y², x*y, x, y, 1]
 
     Mathematical model (1D - shared features):
@@ -70,7 +71,7 @@ def second_order(x, y):
     return np.array([x**2 * y**2, x**2, y**2, x * y, x, y, 1])
 
 
-def zhu_ji_2005(x, y):
+def zhu_ji_2005(x: float, y: float) -> np.ndarray:
     """Zhu and Ji (2005) polynomial: [[x*y, x, y, 1], [y², x, y, 1]]
 
     Mathematical model (2D - separate features):
@@ -86,7 +87,7 @@ def zhu_ji_2005(x, y):
     return np.array([[x * y, x, y, 1], [y**2, x, y, 1]])
 
 
-def cerrolaza_villanueva_2008(x, y):
+def cerrolaza_villanueva_2008(x: float, y: float) -> np.ndarray:
     """Cerrolaza and Villanueva (2008) polynomial: [[x², x, y, 1, 0], [x²*y, x², x*y, y, 1]]
 
     Mathematical model (2D - separate features):
@@ -102,7 +103,7 @@ def cerrolaza_villanueva_2008(x, y):
     return np.array([[x**2, x, y, 1, 0], [x**2 * y, x**2, x * y, y, 1]])
 
 
-def blignaut_wium_2013(x, y):
+def blignaut_wium_2013(x: float, y: float) -> np.ndarray:
     """Blignaut and Wium (2013) polynomial: [[1, x, x³, y², x*y, 0, 0], [1, x, x², y, y², x*y, x²*y]]
 
     Mathematical model (2D - separate features):
@@ -130,7 +131,7 @@ POLYNOMIALS = {
 }
 
 
-def get_polynomial(name="cerrolaza_2008"):
+def get_polynomial(name: str = "cerrolaza_2008") -> Callable[[float, float], np.ndarray]:
     """Get polynomial function by name.
 
     Args:

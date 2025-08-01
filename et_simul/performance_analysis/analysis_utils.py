@@ -6,26 +6,28 @@ to ensure consistency and reduce code duplication.
 
 import numpy as np
 import matplotlib.pyplot as plt
+from typing import Dict, Tuple
+from ..types import Point3D, Vector3D
 
 
 def plot_error_vectors(
-    X,
-    Y,
-    U,
-    V,
-    errors,
-    title_prefix="",
-    convert_to_mm=True,
-    width=0.001,
-    max_arrow_ratio=0.3,
-    mark_target_positions=False,
-    mark_predicted_positions=False,
-    show_grid=True,
-    auto_adjust_limits=True,
-    figure_size=(10, 8),
-    xlabel="Observer X position (mm)",
-    ylabel="Observer Y position (mm)",
-):
+    X: Point3D,
+    Y: Point3D,
+    U: Vector3D,
+    V: Vector3D,
+    errors: Dict[str, Dict[str, float]],
+    title_prefix: str = "",
+    convert_to_mm: bool = True,
+    width: float = 0.001,
+    max_arrow_ratio: float = 0.3,
+    mark_target_positions: bool = False,
+    mark_predicted_positions: bool = False,
+    show_grid: bool = True,
+    auto_adjust_limits: bool = True,
+    figure_size: Tuple[int, int] = (10, 8),
+    xlabel: str = "Observer X position (mm)",
+    ylabel: str = "Observer Y position (mm)",
+) -> None:
     """Plot error vectors with adaptive scaling .
 
     Features:
@@ -175,7 +177,7 @@ def plot_error_vectors(
     plt.show()
 
 
-def calculate_error_statistics(U, V, errs_deg):
+def calculate_error_statistics(U: Vector3D, V: Vector3D, errs_deg: Point3D) -> Dict[str, Dict[str, float]]:
     """Calculate error statistics for plotting and analysis.
 
     Args:
@@ -216,7 +218,7 @@ def calculate_error_statistics(U, V, errs_deg):
     }
 
 
-def print_error_summary(errors, title="Error Summary"):
+def print_error_summary(errors: Dict[str, Dict[str, float]], title: str = "Error Summary") -> None:
     """Print formatted error statistics summary.
 
     Args:

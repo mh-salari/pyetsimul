@@ -8,6 +8,7 @@ from .polynomials import get_polynomial
 from .calibration import calibrate
 from .prediction import predict, PredictionResult
 import numpy as np
+from typing import List, Dict, Any
 
 
 class InterpolationTracker(EyeTracker):
@@ -18,7 +19,9 @@ class InterpolationTracker(EyeTracker):
     """
 
     @classmethod
-    def setup(cls, cameras, lights, calib_points, polynomial, use_refraction=True):
+    def setup(
+        cls, cameras: List, lights: List, calib_points: List, polynomial: str, use_refraction: bool = True
+    ) -> "InterpolationTracker":
         """Create interpolation eye tracker setup.
 
         Args:
@@ -38,7 +41,7 @@ class InterpolationTracker(EyeTracker):
         tracker.polynomial_func = get_polynomial(polynomial)
         return tracker
 
-    def calibrate(self, calib_data):
+    def calibrate(self, calib_data: List[Dict[str, Any]]) -> None:
         """Calibration function for pupil-CR interpolation.
 
         Automatically detects 1D vs 2D polynomials based on feature shape.
@@ -48,7 +51,7 @@ class InterpolationTracker(EyeTracker):
         """
         calibrate(self, calib_data)
 
-    def predict_gaze(self, camimg) -> PredictionResult:
+    def predict_gaze(self, camimg: List[Dict[str, Any]]) -> PredictionResult:
         """Predict gaze from pupil-corneal reflection vector.
 
         Uses the calibrated polynomial model to predict screen gaze coordinates

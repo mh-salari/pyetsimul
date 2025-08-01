@@ -1,9 +1,13 @@
 import numpy as np
+from typing import Optional, Tuple
 from scipy.optimize import brentq
+from ..types import Point4D
 from ..geometry.intersections import intersect_ray_sphere, intersect_ray_conic, conic_surface_normal
 
 
-def _refraction_objective_sphere(a, C, O, S0, Sr, n_outside, n_sphere):
+def _refraction_objective_sphere(
+    a: float, C: Point4D, O: Point4D, S0: Point4D, Sr: float, n_outside: float, n_sphere: float
+) -> Tuple[float, Point4D]:
     """Objective function for finding refraction point on sphere surface.
 
     Args:
@@ -48,7 +52,9 @@ def _refraction_objective_sphere(a, C, O, S0, Sr, n_outside, n_sphere):
     return diff, U0
 
 
-def find_refraction_sphere(C, O, S0, Sr, n_outside, n_sphere):
+def find_refraction_sphere(
+    C: Point4D, O: Point4D, S0: Point4D, Sr: float, n_outside: float, n_sphere: float
+) -> Optional[Point4D]:
     """Computes image produced by refracting sphere.
 
 
@@ -80,7 +86,9 @@ def find_refraction_sphere(C, O, S0, Sr, n_outside, n_sphere):
         return None
 
 
-def _refraction_objective_conic(alpha, C, O, S0, r, k, n_outside, n_conic):
+def _refraction_objective_conic(
+    alpha: float, C: Point4D, O: Point4D, S0: Point4D, r: float, k: float, n_outside: float, n_conic: float
+) -> Tuple[float, Optional[Point4D]]:
     """Objective function for finding refraction point on conic surface.
 
     Args:
@@ -136,7 +144,9 @@ def _refraction_objective_conic(alpha, C, O, S0, r, k, n_outside, n_conic):
     return diff, intersection
 
 
-def find_refraction_conic(C, O, S0, r, k, n_outside, n_conic):
+def find_refraction_conic(
+    C: Point4D, O: Point4D, S0: Point4D, r: float, k: float, n_outside: float, n_conic: float
+) -> Optional[Point4D]:
     """Computes image produced by refracting conic section.
 
     I = find_refraction_conic(C, O, S0, r, k, n_outside, n_conic) finds the position
@@ -189,7 +199,9 @@ def find_refraction_conic(C, O, S0, r, k, n_outside, n_conic):
         return None
 
 
-def refract_ray_sphere(R0, Rd, S0, Sr, n_outside, n_sphere):
+def refract_ray_sphere(
+    R0: Point4D, Rd: Point4D, S0: Point4D, Sr: float, n_outside: float, n_sphere: float
+) -> Tuple[Optional[Point4D], Optional[Point4D]]:
     """Refracts ray at surface of sphere.
 
     [U0, Ud] = refract_ray_sphere(R0, Rd, S0, Sr, n_outside, n_sphere) finds
@@ -244,7 +256,9 @@ def refract_ray_sphere(R0, Rd, S0, Sr, n_outside, n_sphere):
     return U0, Ud
 
 
-def refract_ray_conic(R0, Rd, S0, r_apical, k, n_outside, n_conic):
+def refract_ray_conic(
+    R0: Point4D, Rd: Point4D, S0: Point4D, r_apical: float, k: float, n_outside: float, n_conic: float
+) -> Tuple[Optional[Point4D], Optional[Point4D]]:
     """
     Refract ray at surface of conic section.
 

@@ -30,7 +30,7 @@ def test_oblique_incidence():
     """Test oblique incidence refraction with MATLAB reference values."""
     # Diagonal ray - relevant to off-axis eye tracking scenarios
     R0 = np.array([-3.0, 0.0, 0.0, 1.0])  # Ray origin
-    Rd = np.array([1.0/np.sqrt(2), 0.0, 1.0/np.sqrt(2), 0.0])  # Ray direction (diagonal, normalized)
+    Rd = np.array([1.0 / np.sqrt(2), 0.0, 1.0 / np.sqrt(2), 0.0])  # Ray direction (diagonal, normalized)
     S0 = np.array([0.0, 0.0, 5.0, 1.0])  # Sphere center
     Sr = 2.0  # Sphere radius
     n_outside = 1.0  # Air

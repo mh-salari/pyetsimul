@@ -87,4 +87,3 @@ def test_output_properties():
     assert angles.shape == (2,)
     assert isinstance(gaze_back, np.ndarray)
     assert gaze_back.shape == (4,)  # Should be 4D homogeneous vector
-

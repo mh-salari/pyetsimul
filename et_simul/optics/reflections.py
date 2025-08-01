@@ -1,6 +1,8 @@
 import numpy as np
 import warnings
+from typing import Optional, Tuple
 from scipy.optimize import brentq
+from ..types import Point3D, Point4D, Vector3D
 from ..geometry.intersections import (
     intersect_ray_circle,
     intersect_ray_sphere,
@@ -9,7 +11,7 @@ from ..geometry.intersections import (
 )
 
 
-def _reflect_objective_sphere(a, L, C, S0, Sr):
+def _reflect_objective_sphere(a: float, L: Point4D, C: Point4D, S0: Point4D, Sr: float) -> Tuple[float, Point4D]:
     """Objective function for reflection finding.
 
     Helper function used by find_reflection to locate glint positions on spherical
@@ -36,11 +38,11 @@ def _reflect_objective_sphere(a, L, C, S0, Sr):
         to_l = L_vec[:3] / np.linalg.norm(L_vec[:3])
         n = a * to_c + (1 - a) * to_l
         n = n / np.linalg.norm(n)
-        
+
         # Create 4D homogeneous point
         U0 = S0.copy()
         U0[:3] = S0[:3] + Sr * n
-        
+
         # Calculate angles using 4D coordinates
         C_to_U0 = C - U0
         L_to_U0 = L - U0
@@ -50,7 +52,7 @@ def _reflect_objective_sphere(a, L, C, S0, Sr):
         return angle_diff, U0
 
 
-def find_reflection_sphere(L, C, S0, Sr):
+def find_reflection_sphere(L: Point4D, C: Point4D, S0: Point4D, Sr: float) -> Optional[Point4D]:
     """Finds position of a glint on the surface of a sphere.
 
     U0 = find_reflection(L, C, S0, Sr) finds the position on a sphere with
@@ -80,7 +82,9 @@ def find_reflection_sphere(L, C, S0, Sr):
         return None
 
 
-def _reflect_objective_conic(alpha, L, C, S0, r, k):
+def _reflect_objective_conic(
+    alpha: float, L: Point4D, C: Point4D, S0: Point4D, r: float, k: float
+) -> Tuple[float, Optional[Point4D]]:
     """Objective function for conic section reflection finding.
 
     Uses the same interpolation approach as the sphere version but projects
@@ -104,7 +108,7 @@ def _reflect_objective_conic(alpha, L, C, S0, r, k):
             return float("inf"), None
 
         surface_normal = conic_surface_normal(U0, S0, r, k)
-        
+
         # Calculate angles using 4D homogeneous coordinates
         C_to_U0 = C - U0
         L_to_U0 = L - U0
@@ -115,7 +119,7 @@ def _reflect_objective_conic(alpha, L, C, S0, r, k):
         return angle_diff, U0
 
 
-def find_reflection_conic(L, C, S0, r, k):
+def find_reflection_conic(L: Point4D, C: Point4D, S0: Point4D, r: float, k: float) -> Optional[Point4D]:
     """Finds position of a glint on the surface of a conic section.
 
     Args:
@@ -140,7 +144,9 @@ def find_reflection_conic(L, C, S0, r, k):
         return None
 
 
-def reflect_ray_circle(R0, Rd, C0, Cr):
+def reflect_ray_circle(
+    R0: Point3D, Rd: Vector3D, C0: Point3D, Cr: float
+) -> Tuple[Optional[Point3D], Optional[Vector3D]]:
     """Reflects ray on circle.
 
 
@@ -184,7 +190,9 @@ def reflect_ray_circle(R0, Rd, C0, Cr):
     return S0, Sd
 
 
-def reflect_ray_sphere(R0, Rd, S0, Sr):
+def reflect_ray_sphere(
+    R0: Point4D, Rd: Point4D, S0: Point4D, Sr: float
+) -> Tuple[Optional[Point4D], Optional[Point4D]]:
     """Reflects ray on sphere.
 
     [U0, Ud] = reflect_ray_sphere(R0, Rd, S0, Sr) find the point 'U0' at
@@ -226,7 +234,9 @@ def reflect_ray_sphere(R0, Rd, S0, Sr):
     return U0, Ud
 
 
-def reflect_ray_conic(R0, Rd, S0, r_apical, k):
+def reflect_ray_conic(
+    R0: Point4D, Rd: Point4D, S0: Point4D, r_apical: float, k: float
+) -> Tuple[Optional[Point4D], Optional[Point4D]]:
     """
     Reflect ray at surface of conic section.
 

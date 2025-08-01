@@ -6,12 +6,15 @@ simulation components including eyes, cameras, lights, and complete scenes.
 
 import numpy as np
 import matplotlib.pyplot as plt
+from typing import Optional, List, Dict, Any, Tuple
+
+from et_simul.core import Eye, Camera, Light
+from ..types import Point3D, Point4D, Vector3D, TransformationMatrix
 
 
-from et_simul.core import Eye
-
-
-def transform_surface(x_local, y_local, z_local, trans_matrix):
+def transform_surface(
+    x_local: Vector3D, y_local: Vector3D, z_local: Vector3D, trans_matrix: TransformationMatrix
+) -> Tuple[Vector3D, Vector3D, Vector3D]:
     """Transform surface coordinates to world coordinates"""
     ones = np.ones_like(x_local)
     local_coords = np.stack([x_local, y_local, z_local, ones], axis=0)
@@ -19,7 +22,15 @@ def transform_surface(x_local, y_local, z_local, trans_matrix):
     return world_coords[0], world_coords[1], world_coords[2]
 
 
-def plot_axis(ax, center, trans_matrix, axis_idx, label, color, length=0.003):
+def plot_axis(
+    ax,
+    center: Point3D,
+    trans_matrix: TransformationMatrix,
+    axis_idx: int,
+    label: str,
+    color: str,
+    length: float = 0.003,
+) -> None:
     """Plot a single axis with arrow and label"""
     axis_local = np.zeros(4)
     axis_local[axis_idx] = 1
@@ -49,7 +60,7 @@ def plot_axis(ax, center, trans_matrix, axis_idx, label, color, length=0.003):
     )
 
 
-def plot_eye_anatomy(eye=Eye(), target_point=(15e-3, 15e-3, 0, 1), ax=None):
+def plot_eye_anatomy(eye: Eye = Eye(), target_point: Point4D = (15e-3, 15e-3, 0, 1), ax=None):
     """Plot 3D eye anatomy with transformed coordinates.
 
     Args:
@@ -276,14 +287,14 @@ setups, including 3D scene views and camera image views.
 
 def plot_setup(
     ax1,
-    eye_data,
-    look_at_target,
-    lights,
-    camera,
-    cr_3d_list=None,
-    ref_bounds=None,
-    calib_points=None,
-):
+    eye_data: Dict[str, Any],
+    look_at_target: Point4D,
+    lights: Optional[List[Light]],
+    camera: Camera,
+    cr_3d_list: Optional[List[Optional[Point4D]]] = None,
+    ref_bounds: Optional[Dict[str, Tuple[float, float]]] = None,
+    calib_points: Optional[Point4D] = None,
+) -> None:
     """Plot the 3D eye tracking setup visualization.
 
     Args:
@@ -468,10 +479,10 @@ def plot_setup(
 
 def plot_camera_view_of_eye(
     ax2,
-    camera_image,
-    camera,
-    cr_3d_list=None,
-):
+    camera_image: Dict[str, Any],
+    camera: Camera,
+    cr_3d_list: Optional[List[Optional[Point4D]]] = None,
+) -> None:
     """Plot the camera view of the eye.
 
     Args:
@@ -600,7 +611,9 @@ def plot_camera_view_of_eye(
                 )
 
 
-def prepare_eye_data_for_plots(eye, look_at_target, lights, camera):
+def prepare_eye_data_for_plots(
+    eye: Eye, look_at_target: Point4D, lights: Optional[List[Light]], camera: Camera
+) -> Dict[str, Any]:
     """Prepare eye visualization data for plotting.
 
     Args:

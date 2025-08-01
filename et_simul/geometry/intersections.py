@@ -1,8 +1,12 @@
 import numpy as np
 import warnings
+from typing import Optional, Tuple
+from ..types import Point3D, Point4D, Vector3D
 
 
-def intersect_ray_sphere(R0, Rd, S0, Sr):
+def intersect_ray_sphere(
+    R0: Point4D, Rd: Point4D, S0: Point4D, Sr: float
+) -> Tuple[Optional[Point4D], Optional[Point4D]]:
     """Finds intersection between ray and sphere.
 
     [pos, pos2] = intersect_ray_sphere(R0, Rd, S0, Sr) finds the intersection
@@ -27,7 +31,7 @@ def intersect_ray_sphere(R0, Rd, S0, Sr):
 
     # Work with 4D homogeneous coordinates for vector operations
     R0_to_S0 = R0 - S0
-    
+
     # Quadratic equation coefficients using spatial components
     b = 2 * np.dot(Rd_normalized, R0_to_S0[:3])
     c = np.dot(R0_to_S0[:3], R0_to_S0[:3]) - Sr**2
@@ -53,13 +57,13 @@ def intersect_ray_sphere(R0, Rd, S0, Sr):
         # Compute intersection points directly in 4D homogeneous space
         pos = R0.copy()
         pos[:3] = R0[:3] + t * Rd_normalized
-        
+
         pos2 = R0.copy()
         pos2[:3] = R0[:3] + t_ * Rd_normalized
         return pos, pos2
 
 
-def intersect_ray_circle(R0, Rd, C0, Cr):
+def intersect_ray_circle(R0: Point3D, Rd: Vector3D, C0: Point3D, Cr: float) -> Optional[Point3D]:
     """Finds intersection between ray and circle.
 
 
@@ -106,7 +110,7 @@ def intersect_ray_circle(R0, Rd, C0, Cr):
         return pos
 
 
-def intersect_ray_plane(R0, Rd, P0, Pn):
+def intersect_ray_plane(R0: Point4D, Rd: Point4D, P0: Point4D, Pn: Point4D) -> Optional[Point4D]:
     """Finds intersection between ray and plane.
 
     pos = intersect_ray_plane(R0, Rd, P0, Pn) finds the intersection
@@ -139,7 +143,7 @@ def intersect_ray_plane(R0, Rd, P0, Pn):
 
     # Work with 4D homogeneous vectors
     P0_to_R0 = P0 - R0
-    
+
     # Solve for parameter t: (R0 + t*Rd - P0) · Pn = 0
     # t = (P0 - R0) · Pn / (Rd · Pn)
     t = np.dot(P0_to_R0[:3], Pn_normalized) / denom
@@ -147,11 +151,13 @@ def intersect_ray_plane(R0, Rd, P0, Pn):
     # Calculate intersection point directly in 4D homogeneous space
     intersection = R0.copy()
     intersection[:3] = R0[:3] + t * Rd[:3]
-    
+
     return intersection
 
 
-def intersect_ray_conic(R0, Rd, S0, r, k):
+def intersect_ray_conic(
+    R0: Point4D, Rd: Point4D, S0: Point4D, r: float, k: float
+) -> Tuple[Optional[Point4D], Optional[Point4D]]:
     """
     Find intersection between ray and conic section.
 
@@ -200,13 +206,13 @@ def intersect_ray_conic(R0, Rd, S0, r, k):
         ts.sort()
         pos1 = R0.copy()
         pos1[:3] = R0[:3] + ts[0] * Rd_normalized
-        
+
         pos2 = R0.copy()
         pos2[:3] = R0[:3] + ts[1] * Rd_normalized
         return pos1, pos2
 
 
-def conic_surface_normal(point, S0, r, k):
+def conic_surface_normal(point: Point4D, S0: Point4D, r: float, k: float) -> Vector3D:
     """
     Calculate surface normal at a point on conic section surface.
 
@@ -239,7 +245,7 @@ def conic_surface_normal(point, S0, r, k):
     return result
 
 
-def point_on_conic_surface(center, direction, r, k):
+def point_on_conic_surface(center: Point4D, direction: Vector3D, r: float, k: float) -> Optional[Point4D]:
     """
     Find point on conic surface given direction from center.
 

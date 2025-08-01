@@ -6,6 +6,7 @@ can be disabled to allow left-handed systems for compatibility with legacy setup
 """
 
 import numpy as np
+from ..types import RotationMatrix
 
 # Global flag to enforce right-handed coordinate systems
 _ENFORCE_RIGHT_HANDED = True
@@ -31,7 +32,7 @@ def is_right_handed_enforced() -> bool:
     return _ENFORCE_RIGHT_HANDED
 
 
-def validate_orientation_matrix(matrix: np.ndarray, object_name: str = "object") -> None:
+def validate_orientation_matrix(matrix: RotationMatrix, object_name: str = "object") -> None:
     """Validate that an orientation matrix is a proper rotation matrix.
 
     Args:

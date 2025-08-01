@@ -2,9 +2,13 @@
 
 import numpy as np
 from scipy.optimize import minimize
+from typing import List, Optional, Dict, Any, Tuple
+from ...types import Point4D, Vector3D
 
 
-def estimate_cc_hennessey(c, l, cr, r_cornea_assumed=None):
+def estimate_cc_hennessey(
+    c, l: List, cr: List[Optional[Point4D]], r_cornea_assumed: Optional[float] = None
+) -> Optional[Point4D]:
     """Estimates pos. of cornea center (Hennessey's method).
 
 
@@ -114,7 +118,7 @@ def estimate_cc_hennessey(c, l, cr, r_cornea_assumed=None):
     return cc_triang
 
 
-def objective_func(params, gx):
+def objective_func(params: Dict[str, Any], gx: Vector3D) -> Tuple[float, Vector3D]:
     """Objective function for cornea center estimation.
 
 

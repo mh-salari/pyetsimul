@@ -4,6 +4,7 @@ from typing import Tuple, Union, List, Dict, Any, TYPE_CHECKING
 
 from .light import Light
 from .coordinate_system import validate_orientation_matrix
+from ..types import TransformationMatrix, RotationMatrix, Point2D, Point3D, Point4D
 
 if TYPE_CHECKING:
     from .eye import Eye
@@ -64,11 +65,11 @@ class Camera:
     """
 
     focal_length: float = 2880
-    resolution: np.ndarray = field(default_factory=lambda: np.array([1280, 1024]))
+    resolution: Point2D = field(default_factory=lambda: np.array([1280, 1024]))
     err: float = 0.0
     err_type: str = "gaussian"
-    trans: np.ndarray = field(default_factory=lambda: np.eye(4))
-    rest_trans: np.ndarray = field(init=False)
+    trans: TransformationMatrix = field(default_factory=lambda: np.eye(4))
+    rest_trans: TransformationMatrix = field(init=False)
 
     def __post_init__(self) -> None:
         """Initialize camera with default values."""
@@ -76,12 +77,12 @@ class Camera:
         self.rest_trans = self.trans.copy()
 
     @property
-    def orientation(self) -> np.ndarray:
+    def orientation(self) -> RotationMatrix:
         """Get/set the camera's orientation (3x3 rotation matrix)."""
         return self.trans[:3, :3]
 
     @orientation.setter
-    def orientation(self, value: np.ndarray) -> None:
+    def orientation(self, value: RotationMatrix) -> None:
         """Set the camera's orientation matrix.
 
         Args:
@@ -96,15 +97,15 @@ class Camera:
         self.trans[:3, :3] = value
 
     @property
-    def position(self) -> np.ndarray:
+    def position(self) -> Point3D:
         """Get/set the camera's position (3D vector)."""
         return self.trans[:3, 3]
 
     @position.setter
-    def position(self, value: np.ndarray) -> None:
+    def position(self, value: Point3D) -> None:
         self.trans[:3, 3] = value
 
-    def project(self, pos: np.ndarray) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+    def project(self, pos: Point4D) -> Tuple[Point3D, Point3D, Point3D]:
         """Projects points in space onto the camera's image plane.
 
         [x, dist] = project(self, pos) transforms a list of points 'pos'
@@ -173,7 +174,7 @@ class Camera:
 
         return x, dist, condition
 
-    def unproject(self, X: np.ndarray, d: Union[float, np.ndarray]) -> np.ndarray:
+    def unproject(self, X: Point3D, d: Union[float, Point3D]) -> Point4D:
         """Unprojects points on the image plane back into 3D space.
 
         pos = unproject(self, X, d) unprojects the two-dimensional points
@@ -213,7 +214,7 @@ class Camera:
 
         return pos
 
-    def pan_tilt(self, look_at: Union[np.ndarray, List[float]]) -> None:
+    def pan_tilt(self, look_at: Union[Point4D, List[float]]) -> None:
         """Pans and tilts a camera towards a certain location.
 
         c = pan_tilt(c, look_at) pans and tilts the camera 'c' so that it
@@ -268,7 +269,7 @@ class Camera:
         # Line 55: c.trans=c.rest_trans*pan_matrix*tilt_matrix;
         self.trans = self.rest_trans @ pan_matrix @ tilt_matrix
 
-    def point_at(self, point_at: Union[np.ndarray, List[float]]) -> None:
+    def point_at(self, point_at: Union[Point4D, List[float]]) -> None:
         """Points camera towards a certain location.
 
         c = point_at(c, point_at) changes the rest position of the
