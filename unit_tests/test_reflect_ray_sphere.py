@@ -2,127 +2,128 @@
 
 import numpy as np
 from et_simul.optics.reflections import reflect_ray_sphere
+from et_simul.types import Ray, Point3D, Vector3D, Position3D, Direction3D, IntersectionResult
 
 
 def test_basic_center_reflection():
     """Test basic center front reflection with MATLAB reference values."""
     # Ray hitting sphere dead center from front
-    R0 = np.array([0.0, 0.0, -5.0, 1.0])  # Ray origin
-    Rd = np.array([0.0, 0.0, 1.0, 0.0])  # Ray direction (unit vector)
-    S0 = np.array([0.0, 0.0, 0.0, 1.0])  # Sphere center
-    Sr = 2.0  # Sphere radius
+    ray_origin = Point3D(0.0, 0.0, -5.0)  # Ray origin
+    ray_direction = Vector3D(0.0, 0.0, 1.0)  # Ray direction (unit vector)
+    ray = Ray(ray_origin, ray_direction)
+    sphere_center = Position3D(0.0, 0.0, 0.0)  # Sphere center
+    sphere_radius = 2.0  # Sphere radius
 
-    U0, Ud = reflect_ray_sphere(R0, Rd, S0, Sr)
+    intersection_result, reflected_ray = reflect_ray_sphere(ray, sphere_center, sphere_radius)
 
     # MATLAB reference values
-    expected_U0 = np.array([0.0, 0.0, -2.0, 1.0])
-    expected_Ud = np.array([0.0, 0.0, -1.0, 0.0])
+    expected_intersection = Point3D(0.0, 0.0, -2.0)
+    expected_direction = Vector3D(0.0, 0.0, -1.0)
 
-    assert U0 is not None
-    assert Ud is not None
-    np.testing.assert_allclose(U0, expected_U0, rtol=1e-14, atol=1e-15)
-    np.testing.assert_allclose(Ud, expected_Ud, rtol=1e-14, atol=1e-15)
+    assert intersection_result is not None
+    assert reflected_ray is not None
+    assert intersection_result.intersects
+    intersection_result.point.assert_close(expected_intersection, rtol=1e-14, atol=1e-15)
+    reflected_ray.direction.assert_close(expected_direction, rtol=1e-14, atol=1e-15)
 
 
 def test_angled_reflection():
     """Test angled reflection with MATLAB reference values."""
     # Angled ray with non-normalized input direction
-    R0 = np.array([0.0, 0.0, 0.0, 1.0])  # Ray origin
-    Rd = np.array([1.0, 1.0, 1.0, 0.0])  # Ray direction (not unit)
-    S0 = np.array([0.0, 0.0, 0.0, 1.0])  # Sphere center
-    Sr = 1.5  # Sphere radius
+    ray_origin = Point3D(0.0, 0.0, 0.0)  # Ray origin
+    ray_direction = Vector3D(1.0, 1.0, 1.0)  # Ray direction (not unit)
+    ray = Ray(ray_origin, ray_direction)
+    sphere_center = Position3D(0.0, 0.0, 0.0)  # Sphere center
+    sphere_radius = 1.5  # Sphere radius
 
-    U0, Ud = reflect_ray_sphere(R0, Rd, S0, Sr)
+    intersection_result, reflected_ray = reflect_ray_sphere(ray, sphere_center, sphere_radius)
 
     # MATLAB reference values
-    expected_U0 = np.array([-0.8660254037844397, -0.8660254037844397, -0.8660254037844397, 1.0])
-    expected_Ud = np.array([-0.5773502691896256, -0.5773502691896256, -0.5773502691896256, 0.0])
+    expected_intersection = Point3D(-0.8660254037844397, -0.8660254037844397, -0.8660254037844397)
+    expected_direction = Vector3D(-0.5773502691896256, -0.5773502691896256, -0.5773502691896256)
 
-    assert U0 is not None
-    assert Ud is not None
-    np.testing.assert_allclose(U0, expected_U0, rtol=1e-14, atol=1e-15)
-    np.testing.assert_allclose(Ud, expected_Ud, rtol=1e-14, atol=1e-15)
+    assert intersection_result is not None
+    assert reflected_ray is not None
+    assert intersection_result.intersects
+    intersection_result.point.assert_close(expected_intersection, rtol=1e-14, atol=1e-15)
+    reflected_ray.direction.assert_close(expected_direction, rtol=1e-14, atol=1e-15)
 
     # Test that reflected direction magnitude is normalized
-    assert abs(np.linalg.norm(Ud) - 1.0) < 1e-14
+    assert abs(reflected_ray.direction.magnitude() - 1.0) < 1e-14
 
 
 def test_ray_missing_sphere():
     """Test ray that misses sphere - should return None."""
     # Ray that doesn't intersect sphere
-    R0 = np.array([0.0, 0.0, 0.0, 1.0])  # Ray origin
-    Rd = np.array([1.0, 0.0, 0.0, 0.0])  # Ray direction
-    S0 = np.array([0.0, 5.0, 0.0, 1.0])  # Sphere center (away from ray)
-    Sr = 1.0  # Sphere radius
+    ray_origin = Point3D(0.0, 0.0, 0.0)  # Ray origin
+    ray_direction = Vector3D(1.0, 0.0, 0.0)  # Ray direction
+    ray = Ray(ray_origin, ray_direction)
+    sphere_center = Position3D(0.0, 5.0, 0.0)  # Sphere center (away from ray)
+    sphere_radius = 1.0  # Sphere radius
 
-    U0, Ud = reflect_ray_sphere(R0, Rd, S0, Sr)
+    intersection_result, reflected_ray = reflect_ray_sphere(ray, sphere_center, sphere_radius)
 
     # Should return None for both when ray misses sphere
-    assert U0 is None
-    assert Ud is None
+    assert intersection_result is None
+    assert reflected_ray is None
 
 
 def test_homogeneous_coordinates():
     """Test with homogeneous coordinates and MATLAB reference values."""
-    # 4D homogeneous coordinates from original working test
-    R0 = np.array([1.0, 0.0, -4.0, 1.0])  # Ray origin (homogeneous)
-    Rd = np.array([0.0, 0.0, 1.0, 0.0])  # Ray direction (homogeneous)
-    S0 = np.array([1.0, 0.0, 0.0, 1.0])  # Sphere center (homogeneous)
-    Sr = 2.0  # Sphere radius
+    # Test data that was originally in homogeneous coordinates
+    ray_origin = Point3D(1.0, 0.0, -4.0)  # Ray origin
+    ray_direction = Vector3D(0.0, 0.0, 1.0)  # Ray direction
+    ray = Ray(ray_origin, ray_direction)
+    sphere_center = Position3D(1.0, 0.0, 0.0)  # Sphere center
+    sphere_radius = 2.0  # Sphere radius
 
-    U0, Ud = reflect_ray_sphere(R0, Rd, S0, Sr)
+    intersection_result, reflected_ray = reflect_ray_sphere(ray, sphere_center, sphere_radius)
 
-    # MATLAB reference values (4D)
-    expected_U0 = np.array(
-        [
-            1.0,
-            0.0,
-            -2.0,
-            1.0,
-        ]
-    )
-    expected_Ud = np.array(
-        [
-            0.0,
-            0.0,
-            -1.0,
-            0.0,
-        ]
-    )
+    # MATLAB reference values
+    expected_intersection = Point3D(1.0, 0.0, -2.0)
+    expected_direction = Vector3D(0.0, 0.0, -1.0)
 
-    assert U0 is not None
-    assert Ud is not None
-    np.testing.assert_allclose(U0, expected_U0, rtol=1e-14, atol=1e-15)
-    np.testing.assert_allclose(Ud, expected_Ud, rtol=1e-14, atol=1e-15)
+    assert intersection_result is not None
+    assert reflected_ray is not None
+    assert intersection_result.intersects
+    intersection_result.point.assert_close(expected_intersection, rtol=1e-14, atol=1e-15)
+    reflected_ray.direction.assert_close(expected_direction, rtol=1e-14, atol=1e-15)
 
-    # Test that output has correct 4D format
-    assert U0.shape == (4,)
-    assert Ud.shape == (4,)
+    # Test that output can be converted to correct 4D homogeneous format
+    intersection_homogeneous = np.array(intersection_result.point.to_position3d())
+    direction_homogeneous = np.array(Direction3D.from_vector3d(reflected_ray.direction))
+    assert intersection_homogeneous.shape == (4,)
+    assert direction_homogeneous.shape == (4,)
 
     # Verify homogeneous components
-    assert abs(U0[3] - 1.0) < 1e-15  # Point should have homogeneous component = 1
-    assert abs(Ud[3] - 0.0) < 1e-15  # Direction should have homogeneous component = 0
+    assert abs(intersection_homogeneous[3] - 1.0) < 1e-15  # Point should have homogeneous component = 1
+    assert abs(direction_homogeneous[3] - 0.0) < 1e-15  # Direction should have homogeneous component = 0
 
 
 def test_output_properties():
     """Test that output has correct properties."""
-    R0 = np.array([0.0, 0.0, -5.0, 1.0])
-    Rd = np.array([0.0, 0.0, 1.0, 0.0])
-    S0 = np.array([0.0, 0.0, 0.0, 1.0])
-    Sr = 2.0
+    ray_origin = Point3D(0.0, 0.0, -5.0)
+    ray_direction = Vector3D(0.0, 0.0, 1.0)
+    ray = Ray(ray_origin, ray_direction)
+    sphere_center = Position3D(0.0, 0.0, 0.0)
+    sphere_radius = 2.0
 
-    U0, Ud = reflect_ray_sphere(R0, Rd, S0, Sr)
-    assert U0 is not None, "U0 should not be None for these inputs"
-    assert Ud is not None, "Ud should not be None for these inputs"
+    intersection_result, reflected_ray = reflect_ray_sphere(ray, sphere_center, sphere_radius)
+    assert intersection_result is not None, "intersection_result should not be None for these inputs"
+    assert reflected_ray is not None, "reflected_ray should not be None for these inputs"
 
-    # Check types and shapes
-    assert isinstance(U0, np.ndarray)
-    assert isinstance(Ud, np.ndarray)
-    assert U0.dtype == np.float64
-    assert Ud.dtype == np.float64
-    assert U0.shape == (4,)
-    assert Ud.shape == (4,)
+    # Check types and properties
+    assert isinstance(intersection_result, IntersectionResult)
+    assert isinstance(reflected_ray, Ray)
+    assert isinstance(intersection_result.point, Point3D)
+    assert isinstance(reflected_ray.direction, Vector3D)
+    assert intersection_result.intersects
+
+    # Check that arrays can be converted with correct shapes
+    intersection_array = np.array(intersection_result.point)
+    direction_array = np.array(reflected_ray.direction)
+    assert intersection_array.shape == (3,)
+    assert direction_array.shape == (3,)
 
     # Reflected direction should be normalized
-
-    assert np.isclose(np.linalg.norm(Ud[:3]), 1.0, rtol=1e-12)
+    assert np.isclose(reflected_ray.direction.magnitude(), 1.0, rtol=1e-12)

@@ -1,10 +1,14 @@
+"""Pinhole camera model for eye tracking simulation.
+
+Implements camera projection, pan-tilt, and image capture for synthetic eye tracking experiments.
+"""
+
 import numpy as np
 from dataclasses import dataclass, field
-from typing import Tuple, Union, List, Dict, Any, TYPE_CHECKING
+from typing import Union, List, TYPE_CHECKING
 
 from .light import Light
-from .coordinate_system import validate_orientation_matrix
-from ..types import TransformationMatrix, RotationMatrix, Point2D, Point3D, Point4D
+from ..types import TransformationMatrix, RotationMatrix, Point2D, Point3D, Position3D, CameraImage, ProjectionResult
 
 if TYPE_CHECKING:
     from .eye import Eye
@@ -14,58 +18,21 @@ if TYPE_CHECKING:
 class Camera:
     """Pinhole camera model for eye tracking.
 
-    The camera model is a pinhole model, the center of projection is at the
-    origin of the camera coordinate system, and the camera's optical axis
-    points out along the negative z axis. The x and y axes of the image plane
-    are aligned with the x and y axes of the camera coordinate system.
+    Implements pinhole camera with optical axis along negative z-axis.
+    Provides projection/unprojection, pan-tilt control, and image capture.
+    Supports random error simulation for realistic measurements.
 
-    Camera object contains the following elements:
-
-    - 'trans' is the transformation matrix from camera to world coordinates.
-      The default value for this is the identity matrix.
-
-    - 'rest_trans' is used for pan-tilt cameras to store the transformation
-      matrix from camera to world coordinates in the camera's rest position.
-      This is needed because the 'trans' matrix is changed when the camera
-      pans and tilts out of its rest position. 'rest_trans' need not be set
-      for fixed cameras.
-
-    - 'focal_length' is the focal length of the camera in pixels. A point at
-      a distance of 1 metre from the camera and offset horizontally from the
-      optical axis by 1 metre will appear at an x coordinate of
-      'focal_length' pixels in the camera image. The default value for this
-      parameter is 2880.
-
-    - 'resolution' is a two-dimensional vector specifying the image
-      resolution of the camera (resolution (1) is the horizontal resolution,
-      and resolution(2) is the vertical resolution). The point where the
-      optical axis intersects the image plane has the image coordinates
-      (0,0); hence, valid x-coordinates range from -resolution(1)/2 to
-      resolution(1)/2, and valid y-coordinates range from -resolution(2)/2 to
-      resolution(2)/2. Points that fall outside this range cannot be "seen"
-      by the camera. The default resolution is [1280, 1024].
-
-    - 'err' is the amount of random error in measurements made in the camera
-      image. When project() is used to project a point onto the
-      camera, a certain amount of random error is added to the position of
-      the point in the image. The exact meaning of this parameter depends on
-      the type of error distribution selected in 'err_type'. The default
-      value is 0.
-
-    - 'err_type' specifies the type of error. This parameter can have the
-      following values:
-
-      'gaussian' (default): A bivariate Gaussian distribution with mean 0
-      and standard deviation err
-
-      'uniform': A uniform distribution between -err and +err for both the x
-      and y coordinate
-
-
+    Key components:
+    - trans: Camera to world transformation matrix
+    - rest_trans: Rest position transformation (for pan-tilt cameras)
+    - focal_length: Focal length in pixels (default: 2880)
+    - resolution: Image resolution as Point2D (default: [1280, 1024])
+    - err: Random error amount (default: 0.0)
+    - err_type: Error distribution type ('gaussian' or 'uniform')
     """
 
     focal_length: float = 2880
-    resolution: Point2D = field(default_factory=lambda: np.array([1280, 1024]))
+    resolution: Point2D = field(default_factory=lambda: Point2D(x=1280, y=1024))
     err: float = 0.0
     err_type: str = "gaussian"
     trans: TransformationMatrix = field(default_factory=lambda: np.eye(4))
@@ -91,162 +58,170 @@ class Camera:
         Raises:
             ValueError: If the matrix is not right-handed (det ≠ +1)
         """
-        # Validate orientation matrix
-        validate_orientation_matrix(value, "Camera")
+        # RotationMatrix type already validates during construction
 
         self.trans[:3, :3] = value
 
     @property
     def position(self) -> Point3D:
         """Get/set the camera's position (3D vector)."""
-        return self.trans[:3, 3]
+        return Point3D.from_array(self.trans[:3, 3])
 
     @position.setter
     def position(self, value: Point3D) -> None:
-        self.trans[:3, 3] = value
+        self.trans[:3, 3] = np.array(value)
 
-    def project(self, pos: Point4D) -> Tuple[Point3D, Point3D, Point3D]:
+    def project(self, pos: Union[Position3D, List[Position3D], np.ndarray]) -> ProjectionResult:
         """Projects points in space onto the camera's image plane.
 
-        [x, dist] = project(self, pos) transforms a list of points 'pos'
-        (given as a 4xn matrix) into the local coordinate system of camera
-        and projects them onto the camera's image plane. A certain amount of
-        random error is added to the image coordinates. The function returns
-        a 2xn matrix 'x' of image points, a row vector 'dist' of length n
-        containing the distances of the points from the camera (measured along
-        the optical axis), and a boolean row vector 'valid' of length n
-        specifying, for each point, whether it fell within the camera image
-        (as defined by the resolution parameter). In addition, if a point fell
-        outside the camera image, the corresponding entry in 'x' is set to 'nan'.
+        Transforms 3D positions to camera coordinates and projects to image plane.
+        Adds random error based on camera settings and validates image bounds.
 
         Args:
-            pos: Points to project (4×n array of homogeneous coordinates)
+            pos: 3D positions to project. Can be:
+                - Single Position3D object
+                - List of Position3D objects
+                - 4×n numpy array of homogeneous coordinates (legacy support)
 
         Returns:
-            Tuple of (x, dist, valid) where:
-            - x: 2×n matrix of image coordinates (NaN for invalid points)
-            - dist: 1×n array of distances from camera along optical axis
-            - valid: 1×n boolean array indicating points within image bounds
-
-
+            ProjectionResult containing:
+            - image_points: 2×n matrix of image coordinates (NaN for invalid points)
+            - distances: 1×n array of distances from camera along optical axis
+            - valid_mask: 1×n boolean array indicating points within image bounds
         """
-        # Handle single point case
-        if pos.ndim == 1:
-            pos = pos.reshape(-1, 1)
-
-        # Line 38: pos=c.trans\pos;
-        pos = np.linalg.solve(self.trans, pos)
-
-        # Line 39: dist=-pos(3,:);
-        dist = -pos[2, :]
-
-        # Line 41: x=[c.focal_length*pos(1,:)./dist; c.focal_length*pos(2,:)./dist];
-        x = self.focal_length * pos[:2, :] / dist
-
-        # Lines 43-49: Add error
-        if self.err_type == "uniform":
-            # Line 44: x=x + c.err*(2*rand(2,size(pos,2))-1);
-            x = x + self.err * (2 * np.random.rand(2, pos.shape[1]) - 1)
-        elif self.err_type == "gaussian":
-            # Line 46: x=x + c.err*normal_deviates(size(pos,2))';
-            x = x + self.err * np.random.normal(0, 1, (pos.shape[1], 2)).T
+        # Convert input to homogeneous coordinates matrix
+        if isinstance(pos, Position3D):
+            # Single position
+            pos_homogeneous = np.array(pos).reshape(-1, 1)
+        elif isinstance(pos, list) and all(isinstance(p, Position3D) for p in pos):
+            # List of positions
+            pos_homogeneous = np.column_stack([np.array(p) for p in pos])
+        elif isinstance(pos, np.ndarray):
+            # Legacy numpy array support
+            pos_homogeneous = pos.copy()
+            if pos_homogeneous.ndim == 1:
+                pos_homogeneous = pos_homogeneous.reshape(-1, 1)
         else:
-            raise ValueError("Unknown error type")
+            raise ValueError(f"Unsupported position type: {type(pos)}")
 
-        # Lines 51-52: valid=find(x(1,:)>=-c.resolution(1)/2 & x(1,:)<=c.resolution(1)/2 & ...
-        #                         x(2,:)>=-c.resolution(2)/2 & x(2,:)<=c.resolution(2)/2);
-        # Added dist > 0 check to filter out points behind camera
+        # Transform to camera coordinates
+        pos_camera = np.linalg.solve(self.trans, pos_homogeneous)
+
+        # Calculate distances along optical axis
+        dist = -pos_camera[2, :]
+
+        # Project to image plane
+        x = self.focal_length * pos_camera[:2, :] / dist
+
+        # Add error based on error type
+        if self.err_type == "uniform":
+            x = x + self.err * (2 * np.random.rand(2, pos_camera.shape[1]) - 1)
+        elif self.err_type == "gaussian":
+            x = x + self.err * np.random.normal(0, 1, (pos_camera.shape[1], 2)).T
+        else:
+            raise ValueError(f"Unknown error type: {self.err_type}")
+
+        # Check which points are within image bounds and in front of camera
         condition = (
-            (x[0, :] >= -self.resolution[0] / 2)
-            & (x[0, :] <= self.resolution[0] / 2)
-            & (x[1, :] >= -self.resolution[1] / 2)
-            & (x[1, :] <= self.resolution[1] / 2)
+            (x[0, :] >= -self.resolution.x / 2)
+            & (x[0, :] <= self.resolution.x / 2)
+            & (x[1, :] >= -self.resolution.y / 2)
+            & (x[1, :] <= self.resolution.y / 2)
             & (dist > 0)  # Points must be in front of camera
         )
 
-        # Line 54: x(:,~valid)=nan;
-        # CORRECTED FROM MATLAB: The original MATLAB code has ~valid where valid=find(...) returns indices
-        # This means ~valid does NOT create a proper logical mask, so NaN assignment fails in MATLAB
-        # The MATLAB code should use ~condition, but due to this bug, MATLAB doesn't set NaN values
-        # Here we implement the corrected behavior: properly set out-of-bounds points to NaN
+        # Set out-of-bounds points to NaN
         invalid_mask = ~condition
         x[:, invalid_mask] = np.nan
 
-        return x, dist, condition
+        return ProjectionResult(image_points=x, distances=dist, valid_mask=condition)
 
-    def unproject(self, X: Point3D, d: Union[float, Point3D]) -> Point4D:
+    def unproject(
+        self, image_points: Union[Point2D, List[Point2D], np.ndarray], distance: Union[float, np.ndarray]
+    ) -> Union[Position3D, List[Position3D]]:
         """Unprojects points on the image plane back into 3D space.
 
-        pos = unproject(self, X, d) unprojects the two-dimensional points
-        contained in the columns of the 2xn matrix 'X' from the image plane
-        back to a distance 'd' from the camera (measured along the
-        optical axis). The points are returned as a 4xn matrix of homogeneous
-        column vectors.
+        Reconstructs 3D positions from 2D image points at specified distance.
+        Uses inverse projection to map image coordinates to world coordinates.
 
         Args:
-            X: 2xn matrix of 2D image points
-            d: Distance from camera along optical axis
+            image_points: 2D image points. Can be:
+                - Single Point2D object
+                - List of Point2D objects
+                - 2×n numpy array (legacy support)
+            distance: Distance from camera along optical axis
 
         Returns:
-            4xn matrix of homogeneous 3D points
-
-
+            Position3D object(s) in world coordinates
         """
-        # Handle single point case
-        if X.ndim == 1:
-            X = X.reshape(-1, 1)
+        # Convert input to numpy array format
+        if isinstance(image_points, Point2D):
+            # Single point
+            X = np.array([[image_points.x], [image_points.y]])
+            single_point = True
+        elif isinstance(image_points, list) and all(isinstance(p, Point2D) for p in image_points):
+            # List of points
+            X = np.array([[p.x for p in image_points], [p.y for p in image_points]])
+            single_point = False
+        elif isinstance(image_points, np.ndarray):
+            # Legacy numpy array support
+            X = image_points.copy()
+            if X.ndim == 1:
+                X = X.reshape(-1, 1)
+            single_point = X.shape[1] == 1
+        else:
+            raise ValueError(f"Unsupported image_points type: {type(image_points)}")
 
-        # Line 26: n=size(X,2);
         n = X.shape[1]
 
-        # Line 27-28: pos=c.trans*[X(1,:)/c.focal_length*d; X(2,:)/c.focal_length*d;
-        #                         repmat(-d,1,n); ones(1,n)];
+        # Convert distance to numpy array if needed
+        if isinstance(distance, (int, float)):
+            d = np.full(n, distance)
+        else:
+            d = np.asarray(distance)
+
+        # Create camera coordinates
         camera_coords = np.array(
             [
                 X[0, :] / self.focal_length * d,
                 X[1, :] / self.focal_length * d,
-                np.full(n, -d),
+                -d,  # Negative because camera looks down -Z axis
                 np.ones(n),
             ]
         )
 
-        pos = self.trans @ camera_coords
+        # Transform to world coordinates
+        world_coords = self.trans @ camera_coords
 
-        return pos
+        # Convert result back to Position3D objects
+        if single_point:
+            return Position3D.from_array(world_coords[:, 0])
+        else:
+            return [Position3D.from_array(world_coords[:, i]) for i in range(n)]
 
-    def pan_tilt(self, look_at: Union[Point4D, List[float]]) -> None:
+    def pan_tilt(self, look_at: Position3D) -> None:
         """Pans and tilts a camera towards a certain location.
 
-        c = pan_tilt(c, look_at) pans and tilts the camera 'c' so that it
-        is looking directly at the point 'look_at' (given in world coordinates).
-        The coordinate transformation 'trans' of the returned camera is modified
-        accordingly. The camera is panned and tilted around the origin of its
-        coordinate system.
+        Orients camera to look directly at specified point in world coordinates.
+        Modifies transformation matrix around camera's coordinate system origin.
 
         Args:
-            c: Camera structure
-            look_at: Point to look at in world coordinates (4D homogeneous)
-
-        Returns:
-            Camera structure with updated transformation matrix
+            look_at: Point to look at in world coordinates
         """
-        look_at = np.asarray(look_at)
-        if len(look_at) != 4 or look_at[3] != 1.0:
-            raise ValueError(f"look_at must be 4D homogeneous coordinates [x,y,z,1], got {look_at}")
+        # Convert to homogeneous coordinates for transformation
+        look_at_homogeneous = np.array(look_at)
 
-        # Line 32: axis=c.rest_trans\look_at;
-        axis = np.linalg.solve(self.rest_trans, look_at)
+        # Transform look_at point to camera's rest coordinate system
+        axis_homogeneous = np.linalg.solve(self.rest_trans, look_at_homogeneous)
 
-        # Line 35: axis=axis(1:3)/norm(axis(1:3));
-        axis = axis[:3] / np.linalg.norm(axis[:3])
+        # Extract and normalize the 3D direction vector
+        axis = axis_homogeneous[:3] / np.linalg.norm(axis_homogeneous[:3])
 
-        # Line 38: alpha=pi/2-atan2(-axis(3), axis(1));
+        # Calculate pan and tilt angles
         alpha = np.pi / 2 - np.arctan2(-axis[2], axis[0])
-
-        # Line 39: beta=asin(axis(2));
         beta = np.arcsin(axis[1])
 
-        # Lines 43-47: Construct pan matrix
+        # Construct pan matrix (rotation around Y axis)
         pan_matrix = np.array(
             [
                 [np.cos(alpha), 0, -np.sin(alpha), 0],
@@ -256,7 +231,7 @@ class Camera:
             ]
         )
 
-        # Lines 48-52: Construct tilt matrix
+        # Construct tilt matrix (rotation around X axis)
         tilt_matrix = np.array(
             [
                 [1, 0, 0, 0],
@@ -266,103 +241,68 @@ class Camera:
             ]
         )
 
-        # Line 55: c.trans=c.rest_trans*pan_matrix*tilt_matrix;
+        # Apply pan and tilt transformations
         self.trans = self.rest_trans @ pan_matrix @ tilt_matrix
 
-    def point_at(self, point_at: Union[Point4D, List[float]]) -> None:
+    def point_at(self, target_point: Position3D) -> None:
         """Points camera towards a certain location.
 
-        c = point_at(c, point_at) changes the rest position of the
-        camera 'c' so that it is pointing at the point 'point_at' (given in world
-        coordinates). The elements 'rest_trans' and 'trans' of the returned
-        camera are modified accordingly.
-
-        Note: This function differs from pan_tilt() in that the latter
-        does not affect the rest position of the camera, while this function
-        does.
+        Changes camera's rest position to point at specified target.
+        Updates both rest_trans and trans matrices accordingly.
+        Differs from pan_tilt() by modifying the rest position.
 
         Args:
-            c: Camera structure
-            point_at: Point to point at in world coordinates (4D homogeneous)
-
-        Returns:
-            Camera structure with updated transformation and rest transformation matrices
-
-
+            target_point: Point to point at in world coordinates
         """
-        # Line 30: c.rest_trans=c.trans;
+        # Store current transformation as rest position
         self.rest_trans = self.trans.copy()
 
-        # Line 33: c=camera_pan_tilt(c, point_at);
-        self.pan_tilt(point_at)
+        # Pan and tilt towards the target point
+        self.pan_tilt(target_point)
 
-        # Line 36: c.rest_trans=c.trans;
+        # Update rest position to the new orientation
         self.rest_trans = self.trans.copy()
 
-    def take_image(self, e: "Eye", lights: List[Light], use_refraction: bool = True) -> Dict[str, Any]:
+    def take_image(self, eye: "Eye", lights: List[Light], use_refraction: bool = True) -> CameraImage:
         """Computes the image of an eye seen by a camera.
 
-        camimg = take_image(camera, e, lights) computes the image of the
-        eye 'e' as seen by the camera 'camera'. 'lights' is a cell array of light
-        objects that generate CRs on the cornea. The function returns a structure
-        'camimg' containing the following:
-
-        'cr'     An n-element cell array containing the positions of the n
-                 corneal reflexes in the camera image. If the reflex did not fall
-                 within the cornea, or if the reflex fell outside the camera
-                 image, [] is returned for the corresponding CR.
-
-        'pc'     A two-element vector with the position of the pupil center in
-                 the camera image. If the pupil fell outside the camera image, []
-                 is returned.
-
-        'pupil'  A 2-times-n matrix with the positions of n points on the pupil
-                 border in the camera image. The number of points can depend on
-                 how much of the pupil is visible in the image; if the pupil is
-                 outside the image, a 2-times-0 matrix is returned.
+        Generates synthetic eye image with corneal reflections and pupil detection.
+        Uses light sources to create corneal reflections (CRs) on the cornea.
 
         Args:
-            camera: Camera structure
-            e: Eye structure
-            lights: List of light source structures
+            eye: Eye object
+            lights: List of light source objects
             use_refraction: Whether to use refraction model for pupil (default True)
 
         Returns:
-            dict: Camera image structure containing 'cr', 'pc', and 'pupil' fields
-
-
+            CameraImage object containing corneal reflections, pupil boundary, and pupil center
         """
+        # Find the corneal reflections for each light
+        corneal_reflections = []
+        for light in lights:
+            # Find 3D corneal reflection position
+            cr_3d = eye.find_cr(light, self)
 
-        camimg = {}
-
-        # Lines 37-49: Find the CRs
-        cr = [None] * len(lights)
-        for k in range(len(lights)):
-            # Line 39: cr_3d=eye_find_cr(e, lights{k}, camera);
-            cr_3d = e.find_cr(lights[k], self)
-
-            # Line 41: if isempty(cr_3d)
             if cr_3d is None:
-                # Line 42: cr{k}=[];
-                cr[k] = None
+                corneal_reflections.append(None)
             else:
-                # Line 44: cr{k}=camera_project(camera, cr_3d);
-                cr_proj, _, _ = self.project(cr_3d)
-                # Line 45: if any(isnan(cr{k}))
-                if np.any(np.isnan(cr_proj)):
-                    # Line 46: cr{k}=[];
-                    cr[k] = None
+                # Project to camera image coordinates using refactored interface
+                projection_result = self.project(cr_3d)
+                if np.any(np.isnan(projection_result.image_points)):
+                    corneal_reflections.append(None)
                 else:
-                    cr[k] = cr_proj.flatten()
+                    # Convert to Point2D
+                    cr_2d = Point2D(
+                        x=float(projection_result.image_points[0, 0]), y=float(projection_result.image_points[1, 0])
+                    )
+                    corneal_reflections.append(cr_2d)
 
-        # Line 50: camimg.cr=cr;
-        camimg["cr"] = cr
+        # Get pupil boundary and center
+        pupil_boundary, pupil_center = eye.get_pupil_in_camera_image(self, use_refraction=use_refraction)
 
-        # Line 53: [camimg.pupil, camimg.pc]=get_pc(e, camera);
-        pupil, pc = e.get_pupil_in_camera_image(self, use_refraction=use_refraction)
-        camimg["pupil"] = pupil
-        camimg["pc"] = pc
-
-        # Note: Warning logic is now handled in eye.get_pupil_boundary_in_camera_image()
-
-        return camimg
+        return CameraImage(
+            corneal_reflections=corneal_reflections,
+            pupil_boundary=pupil_boundary,
+            pupil_center=pupil_center,
+            resolution=self.resolution,
+        )

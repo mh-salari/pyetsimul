@@ -1,13 +1,20 @@
+"""Interactive eye tracking visualization example.
+
+Demonstrates real-time eye tracking visualization with keyboard controls for target and eye movement.
+"""
+
 import numpy as np
 import matplotlib.pyplot as plt
 import copy
 
 # Import modules from the package
 from et_simul.core import Eye, Camera, Light
+from et_simul.types import Position3D, RotationMatrix
 from et_simul.visualization import plot_setup_and_camera_view
 
 
 def manual_eye_gaze_keyboard_control():
+    """Run interactive eye tracking visualization with keyboard controls for real-time exploration."""
     print("Interactive Eye Tracking Visualization")
     print("=" * 40)
     print("CONTROLS:")
@@ -21,15 +28,15 @@ def manual_eye_gaze_keyboard_control():
     print("  ./,: Move eye closer/farther from camera")
     print("=" * 40)
 
-    rest_orientation = np.array([[1, 0, 0], [0, 0, 1], [0, -1, 0]])
+    rest_orientation = RotationMatrix(np.array([[1, 0, 0], [0, 0, 1], [0, -1, 0]]), validate_handedness=False)
     e_base = Eye()
     e_base.set_rest_orientation(rest_orientation)
-    e_base.position = np.array([0, 250e-3, 100e-3, 1.0])
+    e_base.position = Position3D(0, 250e-3, 100e-3)
 
     # Create two light sources
-    l1 = Light(position=np.array([100e-3, 0, 0, 1.0]))  # Right side light
+    l1 = Light(position=Position3D(100e-3, 0, 0))  # Right side light
 
-    l2 = Light(position=np.array([-100e-3, 0, 0, 1.0]))  # Left side light
+    l2 = Light(position=Position3D(-100e-3, 0, 0))  # Left side light
 
     lights = [l1, l2]
 
@@ -37,7 +44,7 @@ def manual_eye_gaze_keyboard_control():
     c.point_at(e_base.position)
 
     # Start target point
-    target_point = np.array([-50e-3, 0, 50e-3, 1])
+    target_point = Position3D(-50e-3, 0, 50e-3)
 
     fig = plt.figure(figsize=(18, 8), constrained_layout=True)
     ax1 = fig.add_subplot(1, 2, 1, projection="3d")
@@ -71,8 +78,8 @@ def manual_eye_gaze_keyboard_control():
         )
         eye_pos = e_base.position
         fig.suptitle(
-            f"Target X={target_point[0] * 1000:.1f} mm, Y={target_point[1] * 1000:.1f} mm, Z={target_point[2] * 1000:.1f} mm\n"
-            f"Eye X={eye_pos[0] * 1000:.1f} mm, Y={eye_pos[1] * 1000:.1f} mm, Z={eye_pos[2] * 1000:.1f} mm",
+            f"Target X={target_point.x * 1000:.1f} mm, Y={target_point.y * 1000:.1f} mm, Z={target_point.z * 1000:.1f} mm\n"
+            f"Eye X={eye_pos.x * 1000:.1f} mm, Y={eye_pos.y * 1000:.1f} mm, Z={eye_pos.z * 1000:.1f} mm",
             fontsize=14,
         )
         fig.canvas.draw_idle()
@@ -83,13 +90,19 @@ def manual_eye_gaze_keyboard_control():
 
         # TARGET MOVEMENT (Arrow keys only)
         if event.key == "up":
-            target_point[2] += step  # Target up (increase Z)
+            target_point = Position3D(target_point.x, target_point.y, target_point.z + step)  # Target up (increase Z)
         elif event.key == "down":
-            target_point[2] -= step  # Target down (decrease Z)
+            target_point = Position3D(
+                target_point.x, target_point.y, target_point.z - step
+            )  # Target down (decrease Z)
         elif event.key == "left":
-            target_point[0] -= step  # Target left (decrease X)
+            target_point = Position3D(
+                target_point.x - step, target_point.y, target_point.z
+            )  # Target left (decrease X)
         elif event.key == "right":
-            target_point[0] += step  # Target right (increase X)
+            target_point = Position3D(
+                target_point.x + step, target_point.y, target_point.z
+            )  # Target right (increase X)
 
         # EYE MOVEMENT (I/M/J/L/./,)
         elif event.key == "j":

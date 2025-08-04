@@ -4,13 +4,14 @@ import numpy as np
 from et_simul.core.eye import Eye
 from et_simul.core.camera import Camera
 from et_simul.core.light import Light
+from et_simul.types import CameraImage, Point2D, Position3D
 
 
 def test_camera_take_image_with_refraction():
     """Test camera take_image with refraction using actual MATLAB reference values."""
     # Create eye and camera setup (matching MATLAB test)
     e = Eye(fovea_displacement=False)
-    e.position = np.array([0, 500e-3, 200e-3, 1.0])  # Eye at [0, 500mm, 200mm]
+    e.position = Position3D(0, 500e-3, 200e-3)  # Eye at [0, 500mm, 200mm]
 
     # Camera at origin pointing at eye
     c = Camera()
@@ -21,17 +22,17 @@ def test_camera_take_image_with_refraction():
     c.err_type = "uniform"
 
     # Eye looks back at camera (mutual gaze)
-    e.look_at(np.array([0, 0, 0, 1]))
+    e.look_at(Position3D(0, 0, 0))
 
     # Create light sources (typical eye tracker setup)
     lights = []
 
     # Light 1: right side, low (4D homogeneous)
-    light1 = Light(position=np.array([200e-3, 0, 50e-3, 1]))
+    light1 = Light(position=Position3D(200e-3, 0, 50e-3))
     lights.append(light1)
 
     # Light 2: right side, high (4D homogeneous)
-    light2 = Light(position=np.array([200e-3, 0, 300e-3, 1]))
+    light2 = Light(position=Position3D(200e-3, 0, 300e-3))
     lights.append(light2)
 
     # Take image with refraction
@@ -39,38 +40,43 @@ def test_camera_take_image_with_refraction():
 
     # Correct MATLAB reference values from the provided script output
     expected_cr = [
-        [8.0091797595, 1.8590841799],  # Light 1 CR
-        [8.5048679096, 11.8448574197],  # Light 2 CR
+        Point2D(8.0091797595, 1.8590841799),  # Light 1 CR
+        Point2D(8.5048679096, 11.8448574197),  # Light 2 CR
     ]
-    expected_pc = [0.0, 0.0]  # MATLAB: [-0.0000, 0.0000]
-    expected_pupil_points = [
-        [18.2201323223, 0.0000],  # pupil[:,0]
-        [17.3283755729, -5.6303305273],  # pupil[:,1]
-        [14.7403966885, -10.7095250739],  # pupil[:,2]
-        [10.7095250739, -14.7403966885],  # pupil[:,3]
-        [5.6303305273, -17.3283755729],  # pupil[:,4]
-    ]
+    expected_pc = Point2D(0.0, 0.0)  # MATLAB: [-0.0000, 0.0000]
+    expected_pupil_points = np.array(
+        [
+            [18.2201323223, 0.0000],
+            [17.3283755729, -5.6303305273],
+            [14.7403966885, -10.7095250739],
+            [10.7095250739, -14.7403966885],
+            [5.6303305273, -17.3283755729],
+        ]
+    ).T  # Transpose to match 2xM format
 
     # Using a slightly larger tolerance for cross-language floating point comparisons
     tolerance = 1e-5
 
     # Test corneal reflexes
-    assert len(camimg["cr"]) == 2, "Should have 2 corneal reflexes"
-    for i, (expected, actual) in enumerate(zip(expected_cr, camimg["cr"])):
+    assert len(camimg.corneal_reflections) == 2, "Should have 2 corneal reflexes"
+    for i, (expected, actual) in enumerate(zip(expected_cr, camimg.corneal_reflections)):
         assert actual is not None, f"Light {i + 1} CR should be visible"
-        np.testing.assert_allclose(actual, expected, atol=tolerance, err_msg=f"Light {i + 1} CR mismatch")
+        actual.assert_close(expected, atol=tolerance, msg=f"Light {i + 1} CR mismatch")
 
     # Test pupil center
-    assert camimg["pc"] is not None, "Pupil center should be visible"
-    np.testing.assert_allclose(camimg["pc"], expected_pc, atol=tolerance, err_msg="Pupil center mismatch")
+    assert camimg.pupil_center is not None, "Pupil center should be visible"
+    camimg.pupil_center.assert_close(expected_pc, atol=tolerance, msg="Pupil center mismatch")
 
     # Test pupil boundary points
-    assert camimg["pupil"].shape[0] == 2, "Should have 2D pupil coordinates"
-    assert camimg["pupil"].shape[1] == 20, "Should have 20 pupil boundary points"
+    assert camimg.pupil_boundary is not None, "Pupil boundary should be visible"
+    actual_pupil_boundary_array = camimg.pupil_boundary
+    assert actual_pupil_boundary_array.shape[0] == 2, "Should have 2D pupil coordinates"
+    assert actual_pupil_boundary_array.shape[1] == 20, "Should have 20 pupil boundary points"
 
     # Test first 5 pupil points against MATLAB reference
-    for i, expected_point in enumerate(expected_pupil_points):
-        actual_point = camimg["pupil"][:, i]
+    for i in range(5):
+        actual_point = actual_pupil_boundary_array[:, i]
+        expected_point = expected_pupil_points[:, i]
         np.testing.assert_allclose(
             actual_point,
             expected_point,
@@ -83,68 +89,64 @@ def test_camera_take_image_without_refraction():
     """Test camera take_image without refraction using actual MATLAB reference values."""
     # Same setup as refraction test
     e = Eye(fovea_displacement=False)
-    e.trans[0:3, 3] = [0, 500e-3, 200e-3]
+    e.position = Position3D(0, 500e-3, 200e-3)
 
     c = Camera()
     c.trans[0:3, 0:3] = np.array([[1, 0, 0], [0, 0, -1], [0, 1, 0]])
     c.rest_trans = c.trans.copy()
-    c.point_at(e.trans[:, 3])
+    c.point_at(Position3D.from_array(e.trans[:, 3]))
     c.err = 0
     c.err_type = "uniform"
 
-    e.look_at(np.array([0, 0, 0, 1]))
+    e.look_at(Position3D(0, 0, 0))
 
     # Same light sources (4D homogeneous)
     lights = []
-    light1 = Light(position=np.array([200e-3, 0, 50e-3, 1]))
+    light1 = Light(position=Position3D(200e-3, 0, 50e-3))
     lights.append(light1)
 
-    light2 = Light(position=np.array([200e-3, 0, 300e-3, 1]))
+    light2 = Light(position=Position3D(200e-3, 0, 300e-3))
     lights.append(light2)
 
     # Take image without refraction
     camimg = c.take_image(e, lights, use_refraction=False)
 
     # Correct MATLAB reference values from the provided script output
-    expected_cr = [[8.0091797595, 1.8590841799], [8.5048679096, 11.8448574197]]
-    expected_pc_simple = [0.0, 0.0]
-    expected_pupil_points_simple = [
-        [16.3103041184, 0.0000],
-        [15.5120210145, -5.0401611560],
-        [13.1953132152, -9.5869562212],
-        [9.5869562212, -13.1953132152],
-        [5.0401611560, -15.5120210145],
-    ]
+    expected_cr = [Point2D(8.0091797595, 1.8590841799), Point2D(8.5048679096, 11.8448574197)]
+    expected_pc_simple = Point2D(0.0, 0.0)
+    expected_pupil_points_simple = np.array(
+        [
+            [16.3103041184, 0.0000],
+            [15.5120210145, -5.0401611560],
+            [13.1953132152, -9.5869562212],
+            [9.5869562212, -13.1953132152],
+            [5.0401611560, -15.5120210145],
+        ]
+    ).T  # Transpose to match 2xM format
 
     tolerance = 1e-5
 
     # Test that corneal reflexes are the same
-    assert len(camimg["cr"]) == 2
-    for i, (expected, actual) in enumerate(zip(expected_cr, camimg["cr"])):
+    assert len(camimg.corneal_reflections) == 2
+    for i, (expected, actual) in enumerate(zip(expected_cr, camimg.corneal_reflections)):
         assert actual is not None, f"Light {i + 1} CR should be visible"
-        np.testing.assert_allclose(
-            actual,
-            expected,
-            atol=tolerance,
-            err_msg=f"Light {i + 1} CR mismatch in non-refraction test",
-        )
+        actual.assert_close(expected, atol=tolerance, msg=f"Light {i + 1} CR mismatch in non-refraction test")
 
     # Test pupil center
-    assert camimg["pc"] is not None
-    np.testing.assert_allclose(
-        camimg["pc"],
-        expected_pc_simple,
-        atol=tolerance,
-        err_msg="Pupil center mismatch in non-refraction test",
+    assert camimg.pupil_center is not None
+    camimg.pupil_center.assert_close(
+        expected_pc_simple, atol=tolerance, msg="Pupil center mismatch in non-refraction test"
     )
 
     # Test that we get 20 pupil points
-    assert camimg["pupil"].shape[0] == 2
-    assert camimg["pupil"].shape[1] == 20
+    assert camimg.pupil_boundary is not None
+    assert camimg.pupil_boundary.shape[0] == 2
+    assert camimg.pupil_boundary.shape[1] == 20
 
     # Test first 5 pupil points against MATLAB reference
-    for i, expected_point in enumerate(expected_pupil_points_simple):
-        actual_point = camimg["pupil"][:, i]
+    for i in range(5):
+        actual_point = camimg.pupil_boundary[:, i]
+        expected_point = expected_pupil_points_simple[:, i]
         np.testing.assert_allclose(
             actual_point,
             expected_point,
@@ -157,39 +159,36 @@ def test_camera_take_image_output_structure():
     """Test that camera take_image returns correct output structure."""
     # Minimal setup
     e = Eye(fovea_displacement=False)
-    e.trans[0:3, 3] = [0, 500e-3, 200e-3]
+    e.position = Position3D(0, 500e-3, 200e-3)
 
     c = Camera()
     c.trans[0:3, 0:3] = np.array([[1, 0, 0], [0, 0, -1], [0, 1, 0]])
     c.rest_trans = c.trans.copy()
-    c.point_at(e.trans[:, 3])
+    c.point_at(Position3D.from_array(e.trans[:, 3]))
     c.err = 0
     c.err_type = "uniform"
 
-    e.look_at(np.array([0, 0, 0, 1]))
+    e.look_at(Position3D(0, 0, 0))
 
     # Single light source (4D homogeneous)
-    light = Light(position=np.array([200e-3, 0, 50e-3, 1]))
+    light = Light(position=Position3D(200e-3, 0, 50e-3))
     lights = [light]
 
     camimg = c.take_image(e, lights, use_refraction=True)
 
     # Check output structure
-    assert isinstance(camimg, dict)
-    assert "cr" in camimg
-    assert "pc" in camimg
-    assert "pupil" in camimg
+    assert isinstance(camimg, CameraImage)
+    assert hasattr(camimg, "corneal_reflections")
+    assert hasattr(camimg, "pupil_center")
+    assert hasattr(camimg, "pupil_boundary")
 
     # Check types
-    assert isinstance(camimg["cr"], list)
-    assert len(camimg["cr"]) == 1
+    assert isinstance(camimg.corneal_reflections, list)
+    assert len(camimg.corneal_reflections) == 1
 
-    assert camimg["pc"] is not None, "camimg['pc'] should not be None"
-    assert isinstance(camimg["pc"], (np.ndarray, tuple, list))
-    if isinstance(camimg["pc"], np.ndarray):
-        assert camimg["pc"].shape == (2,)
-    else:
-        assert len(camimg["pc"]) == 2
+    assert camimg.pupil_center is not None, "camimg.pupil_center should not be None"
+    assert isinstance(camimg.pupil_center, Point2D)
 
-    assert isinstance(camimg["pupil"], np.ndarray)
-    assert camimg["pupil"].shape[0] == 2
+    assert camimg.pupil_boundary is not None
+    assert isinstance(camimg.pupil_boundary, np.ndarray)
+    assert camimg.pupil_boundary.shape[0] == 2

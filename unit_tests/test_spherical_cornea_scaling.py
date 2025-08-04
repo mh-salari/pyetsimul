@@ -1,8 +1,8 @@
 """Unit tests for SphericalCornea scaling behavior."""
 
-import numpy as np
 import pytest
 from et_simul.core.cornea import SphericalCornea
+from et_simul.types import Position3D
 
 
 class TestSphericalCorneaScaling:
@@ -11,7 +11,7 @@ class TestSphericalCorneaScaling:
     def test_default_scaling(self):
         """Test that default cornea has scale factor 1.0."""
         cornea = SphericalCornea()
-        cornea.center = np.array([0, 0, -0.00435, 1])  # Set center for testing
+        cornea.center = Position3D(x=0.0, y=0.0, z=-0.00435)  # Set center for testing
 
         assert cornea.get_scale_factor() == 1.0
         assert cornea.anterior_radius == 7.98e-3
@@ -22,7 +22,7 @@ class TestSphericalCorneaScaling:
         """Test scaling with custom anterior radius."""
         custom_radius = 10e-3  # 10mm
         cornea = SphericalCornea(anterior_radius=custom_radius)
-        cornea.center = np.array([0, 0, -0.005, 1])  # Set center for testing
+        cornea.center = Position3D(x=0.0, y=0.0, z=-0.005)  # Set center for testing
 
         expected_scale = custom_radius / 7.98e-3  # ~1.2531
 
@@ -44,7 +44,7 @@ class TestSphericalCorneaScaling:
         """Test scaling with smaller anterior radius."""
         custom_radius = 6.98e-3  # 6.98mm (from eye_anatomy example)
         cornea = SphericalCornea(anterior_radius=custom_radius)
-        cornea.center = np.array([0, 0, -0.004, 1])  # Set center for testing
+        cornea.center = Position3D(x=0.0, y=0.0, z=-0.004)  # Set center for testing
 
         expected_scale = custom_radius / 7.98e-3  # ~0.8747
 
@@ -80,18 +80,23 @@ class TestSphericalCorneaScaling:
         """Test that posterior center calculation uses scaled parameters."""
         custom_radius = 8.5e-3
         cornea = SphericalCornea(anterior_radius=custom_radius)
-        center = np.array([0, 0, -0.005, 1])
-        cornea.center = center
+        cornea.center = Position3D(x=0.0, y=0.0, z=-0.005)
 
         # Calculate expected posterior center
         scale = custom_radius / 7.98e-3
         expected_posterior_radius = scale * 6.22e-3
         expected_thickness_offset = scale * 1.15e-3
         thickness_term = custom_radius - expected_posterior_radius - expected_thickness_offset
-        expected_posterior_center = center - np.array([0, 0, thickness_term, 0])
 
-        actual_posterior_center = cornea.get_posterior_center()
-        np.testing.assert_allclose(actual_posterior_center, expected_posterior_center, rtol=1e-12)
+        # Expected posterior center position
+        expected_posterior = Position3D(
+            x=0.0,  # x stays same
+            y=0.0,  # y stays same
+            z=-0.005 - thickness_term,  # z shifts by thickness
+        )
+
+        actual_posterior = cornea.get_posterior_center()
+        actual_posterior.assert_close(expected_posterior, rtol=1e-12)
 
     def test_corneal_depth_scaling(self):
         """Test that corneal depth scales with anterior radius."""
@@ -110,12 +115,17 @@ class TestSphericalCorneaScaling:
         """Test that apex position calculation works with any radius."""
         custom_radius = 11e-3
         cornea = SphericalCornea(anterior_radius=custom_radius)
-        center = np.array([0, 0, -0.006, 1])
-        cornea.center = center
+        cornea.center = Position3D(x=0.0, y=0.0, z=-0.006)
 
-        expected_apex = center + np.array([0, 0, -custom_radius, 0])
+        # Expected apex position (same x,y, but z shifted by radius)
+        expected_apex = Position3D(
+            x=0.0,  # x stays same
+            y=0.0,  # y stays same
+            z=-0.006 - custom_radius,  # z shifts by radius
+        )
+
         actual_apex = cornea.get_apex_position()
-        np.testing.assert_allclose(actual_apex, expected_apex, rtol=1e-12)
+        actual_apex.assert_close(expected_apex, rtol=1e-12)
 
     def test_scaling_consistency(self):
         """Test that all scaled parameters maintain proper relationships."""
@@ -148,7 +158,7 @@ class TestSphericalCorneaScaling:
     def test_multiple_radii(self, radius):
         """Test scaling with various corneal radii."""
         cornea = SphericalCornea(anterior_radius=radius)
-        cornea.center = np.array([0, 0, -0.005, 1])
+        cornea.center = Position3D(x=0.0, y=0.0, z=-0.005)
 
         expected_scale = radius / 7.98e-3
 

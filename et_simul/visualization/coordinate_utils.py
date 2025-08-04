@@ -1,0 +1,102 @@
+"""Data preparation utilities for visualization.
+
+Provides coordinate transformations and data preparation for eye tracking visualization.
+Handles eye anatomy, camera imaging, and corneal reflection calculations.
+"""
+
+import numpy as np
+from typing import Optional, List, Dict, Any
+
+from et_simul.core import Eye, Camera, Light
+from ..types import Position3D
+
+
+def prepare_eye_data_for_plots(
+    eye: Eye, look_at_target: Position3D, lights: Optional[List[Light]], camera: Camera
+) -> Dict[str, Any]:
+    """Prepare eye visualization data for plotting.
+
+    Transforms eye anatomy to world coordinates and generates camera image.
+    Calculates corneal reflections and optical axis for 3D visualization.
+
+    Args:
+        eye: Eye object with transformation matrix and anatomy
+        look_at_target: Target point [x, y, z, 1] or [x, y, z]
+        lights: List of Light objects with positions
+        camera: Camera object with transformation and parameters
+
+    Returns:
+        dict: Contains eye_data, camera_image, and cr_3d_list for plotting
+    """
+
+    # Calculate all values once
+    def transform_point(point):
+        return eye.trans @ point
+
+    # Rotate the eye toward the target
+    eye.look_at(look_at_target)
+    # Get eye anatomy points
+    cornea_center = eye.cornea.center
+    pupil_center = eye.pupil.pos_pupil
+    r_cornea = eye.cornea.anterior_radius
+    depth_cornea = eye.cornea.get_corneal_depth()
+
+    # Transform anatomical points to world coordinates
+    cornea_center_world = transform_point(cornea_center)
+    pupil_world = transform_point(pupil_center)
+
+    # Draw corneal surface
+    u = np.linspace(0, 2 * np.pi, 20)
+    v = np.linspace(0, np.pi, 20)
+    X_cornea = r_cornea * np.outer(np.cos(u), np.sin(v))
+    Y_cornea = r_cornea * np.outer(np.sin(u), np.sin(v))
+    Z_cornea = r_cornea * np.outer(np.ones(np.size(u)), np.cos(v))
+
+    # Only show anterior surface (cap)
+    mask = Z_cornea > -r_cornea + depth_cornea
+    X_cornea[mask] = np.nan
+    Y_cornea[mask] = np.nan
+    Z_cornea[mask] = np.nan
+
+    # Transform cornea surface points to world coordinates
+    for i in range(X_cornea.shape[0]):
+        for j in range(X_cornea.shape[1]):
+            if not np.isnan(X_cornea[i, j]):
+                point = np.array([cornea_center.x, cornea_center.y, cornea_center.z]) + np.array(
+                    [X_cornea[i, j], Y_cornea[i, j], Z_cornea[i, j]]
+                )
+                point_homogeneous = np.array([point[0], point[1], point[2], 1.0])
+                point_world = transform_point(point_homogeneous)
+                X_cornea[i, j] = point_world[0]
+                Y_cornea[i, j] = point_world[1]
+                Z_cornea[i, j] = point_world[2]
+
+    # Calculate optical axis
+    optical_axis_direction_local = np.array([0, 0, -1, 0])  # negative z in homogeneous coordinates
+    optical_axis_direction_world = transform_point(optical_axis_direction_local)
+    optical_axis_end = Position3D(
+        cornea_center_world.x + optical_axis_direction_world[0] * 0.02,
+        cornea_center_world.y + optical_axis_direction_world[1] * 0.02,
+        cornea_center_world.z + optical_axis_direction_world[2] * 0.02,
+    )
+
+    # Generate eye image
+    camera_image = camera.take_image(eye, lights)
+
+    # Find corneal reflections if lights are provided
+    cr_3d_list = []
+    if lights is not None:
+        for light in lights:
+            cr_result = eye.find_cr(light, camera)
+            cr_3d_list.append(cr_result)
+
+    eye_data = {
+        "X_cornea": X_cornea,
+        "Y_cornea": Y_cornea,
+        "Z_cornea": Z_cornea,
+        "cornea_center_world": cornea_center_world,
+        "pupil_world": pupil_world,
+        "optical_axis_end": optical_axis_end,
+    }
+
+    return {"eye_data": eye_data, "camera_image": camera_image, "cr_3d_list": cr_3d_list}

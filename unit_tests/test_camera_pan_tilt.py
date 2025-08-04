@@ -2,14 +2,15 @@
 
 import numpy as np
 from et_simul.core.camera import Camera
+from et_simul.types import Position3D, TransformationMatrix
 
 
 def test_basic_pan_tilt():
     """Test basic pan/tilt operation with MATLAB reference values."""
     c = Camera()
 
-    # Target point (4D homogeneous coordinates)
-    look_at = np.array([10.0, 5.0, -20.0, 1.0])
+    # Target point as Position3D
+    look_at = Position3D(x=10.0, y=5.0, z=-20.0)
 
     # Apply pan/tilt
     c.pan_tilt(look_at)
@@ -53,13 +54,13 @@ def test_modified_rest_trans():
     c = Camera()
 
     # Translate camera position
-    translation_matrix = np.eye(4)
-    translation_matrix[:3, 3] = [2.0, 1.0, 3.0]  # Move camera
+    position = Position3D(x=2.0, y=1.0, z=3.0)
+    translation_matrix = TransformationMatrix.from_position(position)
     c.trans = c.trans @ translation_matrix
     c.rest_trans = c.trans.copy()  # Update rest position
 
-    # Target point (4D homogeneous coordinates)
-    look_at = np.array([8.0, 4.0, -15.0, 1.0])
+    # Target point as Position3D
+    look_at = Position3D(x=8.0, y=4.0, z=-15.0)
 
     # Apply pan/tilt
     c.pan_tilt(look_at)
@@ -102,7 +103,7 @@ def test_output_properties():
     """Test that pan_tilt maintains proper camera properties."""
     c = Camera()
     original_focal_length = c.focal_length
-    target = np.array([10.0, 5.0, -20.0, 1.0])
+    target = Position3D(x=10.0, y=5.0, z=-20.0)
 
     c.pan_tilt(target)
 

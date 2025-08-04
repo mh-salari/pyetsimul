@@ -1,7 +1,7 @@
-"""Polynomial interpolation-based eye tracking implementation.
+"""Polynomial interpolation eye tracking algorithm.
 
-This module implements eye tracking using polynomial interpolation methods
-for mapping pupil-corneal reflection vectors to gaze coordinates.
+Provides InterpolationTracker for polynomial-based gaze tracking.
+Implements pupil-corneal reflection vector mapping to screen coordinates.
 """
 
 from .interpolation_tracker import InterpolationTracker

@@ -1,10 +1,8 @@
 """Gaze tracking algorithm implementations.
 
-This module contains different gaze tracking algorithm implementations:
+Provides different gaze tracking algorithms:
+- hennessey: Geometric gaze tracking method
+- interpolate: Polynomial interpolation-based gaze tracking
 
-- hennessey: Hennessey et al. geometric gaze tracking method
-- interpolate: Polynomial interpolation-based gaze tracking method
-
-Each algorithm provides calibration and gaze estimation functionality
-compatible with the core Eye, Camera, and Light classes.
+Each algorithm implements the EyeTracker interface for calibration and gaze estimation.
 """

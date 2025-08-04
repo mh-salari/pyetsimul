@@ -1,9 +1,6 @@
 """Optical calculations for eye tracking simulations.
 
-This module provides optical physics functions for:
-- Light reflection calculations on curved surfaces
-- Light refraction through optical media
-- Ray tracing for corneal reflections and pupil imaging
+Exports modules for light reflection and refraction physics, supporting ray tracing and pupil/corneal imaging.
 """
 
 from . import reflections

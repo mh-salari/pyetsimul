@@ -3,6 +3,7 @@
 import numpy as np
 from et_simul.core.eye import Eye
 from et_simul.core.cornea import SphericalCornea
+from et_simul.types.geometry import Position3D, Vector3D
 
 
 def test_basic_cases():
@@ -11,23 +12,27 @@ def test_basic_cases():
 
     # Case 1: Point at apex (should be within)
     p1 = e.cornea.get_apex_position()
-    expected_p1 = np.array([0.0, 0.0, -0.012330, 1.0])
-    np.testing.assert_allclose(p1, expected_p1, rtol=1e-6, atol=1e-6)
+    expected_p1 = Position3D(0.0, 0.0, -0.012330)
+    p1.assert_close(expected_p1, rtol=1e-6, atol=1e-6)
     assert e.point_within_cornea(p1)
 
     # Case 2: Point at cornea center (should be outside)
     p2 = e.cornea.center
-    expected_p2 = np.array([0.0, 0.0, -0.004350, 1.0])
-    np.testing.assert_allclose(p2, expected_p2, rtol=1e-6, atol=1e-6)
+    expected_p2 = Position3D(0.0, 0.0, -0.004350)
+    p2.assert_close(expected_p2, rtol=1e-6, atol=1e-6)
     assert not e.point_within_cornea(p2)
 
     # Case 3: Point beyond cornea depth (should be outside)
-    direction = (e.cornea.center - e.cornea.get_apex_position()) / np.linalg.norm(
-        e.cornea.center - e.cornea.get_apex_position()
+    apex = e.cornea.get_apex_position()
+    center = e.cornea.center
+    direction = Vector3D(center.x - apex.x, center.y - apex.y, center.z - apex.z).normalize()
+    p3 = Position3D(
+        apex.x + 2 * e.cornea.get_corneal_depth() * direction.x,
+        apex.y + 2 * e.cornea.get_corneal_depth() * direction.y,
+        apex.z + 2 * e.cornea.get_corneal_depth() * direction.z,
     )
-    p3 = e.cornea.get_apex_position() + 2 * e.cornea.get_corneal_depth() * direction
-    expected_p3 = np.array([0.0, 0.0, -0.005250, 1.0])
-    np.testing.assert_allclose(p3, expected_p3, rtol=1e-6, atol=1e-6)
+    expected_p3 = Position3D(0.0, 0.0, -0.005250)
+    p3.assert_close(expected_p3, rtol=1e-6, atol=1e-6)
     assert not e.point_within_cornea(p3)
 
 
@@ -36,28 +41,39 @@ def test_boundary_cases():
     e = Eye()
 
     # Case 4: Point just inside boundary (should be within)
-    direction = (e.cornea.center - e.cornea.get_apex_position()) / np.linalg.norm(
-        e.cornea.center - e.cornea.get_apex_position()
+    apex = e.cornea.get_apex_position()
+    center = e.cornea.center
+    direction = Vector3D(center.x - apex.x, center.y - apex.y, center.z - apex.z).normalize()
+    p4 = Position3D(
+        apex.x + (e.cornea.get_corneal_depth() - 1e-6) * direction.x,
+        apex.y + (e.cornea.get_corneal_depth() - 1e-6) * direction.y,
+        apex.z + (e.cornea.get_corneal_depth() - 1e-6) * direction.z,
     )
-    p4 = e.cornea.get_apex_position() + (e.cornea.get_corneal_depth() - 1e-6) * direction
-    expected_p4 = np.array([0.0, 0.0, -0.008791, 1.0])
-    np.testing.assert_allclose(p4, expected_p4, rtol=1e-6, atol=1e-6)
+    expected_p4 = Position3D(0.0, 0.0, -0.008791)
+    p4.assert_close(expected_p4, rtol=1e-6, atol=1e-6)
     assert e.point_within_cornea(p4)
 
     # Case 6: Point perpendicular to cornea direction (should be within)
-    perp_direction = np.array([1, 0, 0, 0])
-    p6 = e.cornea.get_apex_position() + 0.001 * perp_direction
-    expected_p6 = np.array([0.001000, 0.0, -0.012330, 1.0])
-    np.testing.assert_allclose(p6, expected_p6, rtol=1e-6, atol=1e-6)
+    perp_direction = Vector3D(1, 0, 0)
+    apex = e.cornea.get_apex_position()
+    p6 = Position3D(
+        apex.x + 0.001 * perp_direction.x, apex.y + 0.001 * perp_direction.y, apex.z + 0.001 * perp_direction.z
+    )
+    expected_p6 = Position3D(0.001000, 0.0, -0.012330)
+    p6.assert_close(expected_p6, rtol=1e-6, atol=1e-6)
     assert e.point_within_cornea(p6)
 
     # Case 7: Point behind apex (should be within)
-    direction = (e.cornea.center - e.cornea.get_apex_position()) / np.linalg.norm(
-        e.cornea.center - e.cornea.get_apex_position()
+    apex = e.cornea.get_apex_position()
+    center = e.cornea.center
+    direction = Vector3D(center.x - apex.x, center.y - apex.y, center.z - apex.z).normalize()
+    p7 = Position3D(
+        apex.x - 0.5 * e.cornea.get_corneal_depth() * direction.x,
+        apex.y - 0.5 * e.cornea.get_corneal_depth() * direction.y,
+        apex.z - 0.5 * e.cornea.get_corneal_depth() * direction.z,
     )
-    p7 = e.cornea.get_apex_position() - 0.5 * e.cornea.get_corneal_depth() * direction
-    expected_p7 = np.array([0.0, 0.0, -0.014100, 1.0])
-    np.testing.assert_allclose(p7, expected_p7, rtol=1e-6, atol=1e-6)
+    expected_p7 = Position3D(0.0, 0.0, -0.014100)
+    p7.assert_close(expected_p7, rtol=1e-6, atol=1e-6)
     assert e.point_within_cornea(p7)
 
 
@@ -69,8 +85,8 @@ def test_custom_eye():
     custom_cornea = SphericalCornea(anterior_radius=r_cornea_custom)
     e5 = Eye(cornea=custom_cornea)
     p5 = e5.cornea.get_apex_position()
-    expected_p5 = np.array([0.0, 0.0, -0.013906, 1.0])
-    np.testing.assert_allclose(p5, expected_p5, rtol=1e-6, atol=1e-6)
+    expected_p5 = Position3D(0.0, 0.0, -0.013906)
+    p5.assert_close(expected_p5, rtol=1e-6, atol=1e-6)
     assert e5.point_within_cornea(p5)
 
     # Verify custom radius was applied

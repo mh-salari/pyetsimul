@@ -8,7 +8,7 @@ from et_simul.core.cornea import SphericalCornea
 def test_default_n():
     """Test get_pupil with default N=20 and MATLAB reference values."""
     e = Eye()
-    X = e.get_pupil()
+    X = e.get_pupil().boundary_points
 
     # MATLAB reference values for first 5 points
     expected_first_5 = np.array(
@@ -54,7 +54,7 @@ def test_default_n():
     assert np.allclose(X[3, :], 1.0, rtol=1e-12)
 
     # Test circle properties
-    pupil_center = e.pupil.pos_pupil[:3]
+    pupil_center = np.array(e.get_pupil_center_in_world())[:3]
     radii = np.linalg.norm(X[:3, :] - pupil_center.reshape(-1, 1), axis=0)
     expected_radius = 0.0030
     assert np.allclose(radii, expected_radius, rtol=1e-12)
@@ -64,7 +64,7 @@ def test_custom_n_8():
     """Test get_pupil with N=8 and MATLAB reference values."""
     e = Eye()
     e.pupil.N = 8  # Set pupil resolution to 8
-    X = e.get_pupil()
+    X = e.get_pupil().boundary_points
 
     # MATLAB reference values for all 8 points
     expected_points = np.array(
@@ -132,7 +132,7 @@ def test_custom_corneal_radius():
     r_cornea_custom = 10e-3  # 10mm corneal radius
     e = Eye(cornea=SphericalCornea(anterior_radius=r_cornea_custom))
     e.pupil.N = 12  # Set pupil resolution to 12
-    X = e.get_pupil()
+    X = e.get_pupil().boundary_points
 
     # MATLAB reference values for scaled eye
     expected_points = np.array(
@@ -230,7 +230,7 @@ def test_custom_rest_position():
     e = Eye(cornea=SphericalCornea(anterior_radius=7.98e-3))
     e.set_rest_orientation(custom_rest)
     e.pupil.N = 6  # Set pupil resolution to 6
-    X = e.get_pupil()
+    X = e.get_pupil().boundary_points
 
     # MATLAB reference values for rotated eye
     expected_points = np.array(
@@ -282,7 +282,7 @@ def test_output_properties():
     """Test that output has correct properties."""
     e = Eye()
     e.pupil.N = 16  # Set pupil resolution to 16
-    X = e.get_pupil()
+    X = e.get_pupil().boundary_points
 
     # Check types and shapes
     assert isinstance(X, np.ndarray)
@@ -296,7 +296,7 @@ def test_output_properties():
     assert np.all(np.isfinite(X))
 
     # Test circle properties
-    pupil_center = e.pupil.pos_pupil[:3]
+    pupil_center = np.array(e.get_pupil_center_in_world())[:3]
     radii = np.linalg.norm(X[:3, :] - pupil_center.reshape(-1, 1), axis=0)
-    expected_radius = np.linalg.norm(e.pupil.x_pupil[:3])
+    expected_radius = np.linalg.norm(np.array(e.pupil.x_pupil)[:3])
     assert np.allclose(radii, expected_radius, rtol=1e-12)

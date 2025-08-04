@@ -9,27 +9,25 @@ from typing import Dict
 from ..geometry.conversions import calculate_angular_error_degrees
 from .analysis_utils import plot_error_vectors, calculate_error_statistics
 from ..core import Eye, EyeTracker
-from ..types import Point3D
+from ..types import Position3D, Point2D
 
 
 def accuracy_over_observer_positions(
     et: EyeTracker,
     eye: Eye,
-    gaze_target: Point3D = np.array([0, 200e-3]),
+    gaze_target: Position3D,
     movement_range: float = 50e-3,
     grid_size: int = 16,
 ) -> Dict[str, Dict[str, float]]:
     """Computes gaze error at different observer positions.
 
-
-
-    Analyzes eye tracker robustness by testing gaze estimation with the observer
-    at various positions while looking at a fixed target point.
+    Evaluates gaze tracking robustness by testing accuracy with observer movement.
+    Tests calibration quality by varying observer position while keeping target fixed.
 
     Args:
         et: Eye tracker structure
         eye: Pre-configured Eye object (required)
-        gaze_target: Fixed gaze target point [x, y] in meters (default: [0, 200mm])
+        gaze_target: Fixed gaze target point in meters (required)
         movement_range: How far to move observer from calibration position in meters (default: 50mm)
         grid_size: Number of grid points per dimension (default: 16)
 
@@ -38,11 +36,14 @@ def accuracy_over_observer_positions(
     """
     e = eye
 
-    # Calibrate eye tracker at the reference position
-    et.run_calibration(e)
+    # Ensure eye tracker is calibrated before running analysis
+    if not et.algorithm_state.is_calibrated:
+        raise ValueError(
+            "Eye tracker must be calibrated before running accuracy analysis. Call et.run_calibration(eye) first."
+        )
 
     # Define observer position grid - move observer by ±movement_range from calibration position
-    calib_x, calib_y, calib_z = e.position[:3]
+    calib_x, calib_y, calib_z = e.position.x, e.position.y, e.position.z
     X = np.linspace(calib_x - movement_range, calib_x + movement_range, grid_size)  # ±movement_range from calib X
     Y = np.linspace(calib_y - movement_range, calib_y + movement_range, grid_size)  # ±movement_range from calib Y
     Z = calib_z  # Fix Z to calibration position
@@ -60,22 +61,34 @@ def accuracy_over_observer_positions(
     print(f"Corneal radius: {apex_cornea_dist * 1e3:.3g} mm")
     print(f"Pupil radius:   {cornea_pupil_dist * 1e3:.3g} mm")
 
+    # Get the eye tracker's plane info for coordinate system
+    plane_info = et.plane_info
+
     # Calculate gaze error with observer at different positions
     for i in range(len(X)):
         for j in range(len(Y)):
-            # Move observer to test position [X[i], Y[j], Z]
-            e.position = np.array([X[i], Y[j], Z, 1])
+            # Move observer to test position using Position3D
+            e.position = Position3D(X[i], Y[j], Z)
 
             # Get predicted gaze position directly
             predicted_gaze = et.estimate_gaze_at(e, gaze_target)
 
             if predicted_gaze is not None and predicted_gaze.gaze_point is not None:
-                # Calculate error in mm
-                U[j, i] = predicted_gaze.gaze_point[0] - gaze_target[0]
-                V[j, i] = predicted_gaze.gaze_point[1] - gaze_target[1]
+                # Extract coordinates using plane info for error calculation
+                target_coord1, target_coord2 = plane_info.extract_2d_coords(gaze_target)
+                predicted_coord1, predicted_coord2 = plane_info.extract_2d_coords(
+                    Position3D(predicted_gaze.gaze_point.x, predicted_gaze.gaze_point.y, predicted_gaze.gaze_point.z)
+                )
+
+                # Calculate error in mm using the plane's coordinate system
+                U[j, i] = predicted_coord1 - target_coord1
+                V[j, i] = predicted_coord2 - target_coord2
 
                 # Compute error in degrees using utility function
-                errs_deg[j, i] = calculate_angular_error_degrees(gaze_target, predicted_gaze.gaze_point, e.position)
+                # Convert 3D points to 2D screen coordinates using plane mapping
+                target_2d = Point2D(target_coord1, target_coord2)
+                predicted_2d = Point2D(predicted_coord1, predicted_coord2)
+                errs_deg[j, i] = calculate_angular_error_degrees(target_2d, predicted_2d, e.position)
             else:
                 # Handle prediction failure
                 U[j, i] = np.nan
@@ -95,8 +108,18 @@ def accuracy_over_observer_positions(
     print(f"Mean error {errors['mtr']['mean'] * 1e3:.3g} mm")
     print(f"Standard deviation {errors['mtr']['std'] * 1e3:.3g} mm")
 
-    # Plot using shared utility with movement range in title
-    title_prefix = f"Movement ±{movement_range * 1000:.0f}mm"
-    plot_error_vectors(X, Y, U, V, errors, title_prefix=title_prefix)
+    # Plot using shared utility with movement range in title (convert coordinates to mm for display)
+    title_prefix = f"Observer Movement ±{movement_range * 1000:.0f}mm"
+    plot_error_vectors(
+        X,
+        Y,
+        U,
+        V,
+        errors,
+        title_prefix=title_prefix,
+        convert_to_mm=True,
+        xlabel="Observer X position (mm)",
+        ylabel="Observer Y position (mm)",
+    )
 
     return errors

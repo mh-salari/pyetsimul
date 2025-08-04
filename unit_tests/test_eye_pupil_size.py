@@ -3,6 +3,7 @@
 import numpy as np
 import pytest
 from et_simul.core.eye import Eye
+from et_simul.types import Position3D
 
 
 def test_get_pupil_radii_default():
@@ -56,8 +57,8 @@ def test_set_pupil_radii_updates_vectors():
     e.set_pupil_radii(x_radius=x_radius, y_radius=y_radius)
 
     # Check that vectors have correct magnitude
-    x_magnitude = np.linalg.norm(e.pupil.x_pupil[:3])
-    y_magnitude = np.linalg.norm(e.pupil.y_pupil[:3])
+    x_magnitude = np.linalg.norm(np.array(e.pupil.x_pupil)[:3])
+    y_magnitude = np.linalg.norm(np.array(e.pupil.y_pupil)[:3])
 
     assert np.isclose(x_magnitude, x_radius, rtol=1e-12)
     assert np.isclose(y_magnitude, y_radius, rtol=1e-12)
@@ -66,5 +67,5 @@ def test_set_pupil_radii_updates_vectors():
     expected_x = np.array([x_radius, 0, 0, 0])
     expected_y = np.array([0, y_radius, 0, 0])
 
-    np.testing.assert_allclose(e.pupil.x_pupil, expected_x, rtol=1e-12)
-    np.testing.assert_allclose(e.pupil.y_pupil, expected_y, rtol=1e-12)
+    e.pupil.x_pupil.assert_close(Position3D.from_array(expected_x), rtol=1e-12)
+    e.pupil.y_pupil.assert_close(Position3D.from_array(expected_y), rtol=1e-12)

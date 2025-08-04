@@ -1,8 +1,13 @@
+"""Cornea model definitions for eye tracking simulation.
+
+Defines abstract and concrete cornea models (spherical, conic) for anatomical and optical simulation.
+"""
+
 import numpy as np
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Optional, TYPE_CHECKING
-from ..types import Point4D, Vector3D, TransformationMatrix
+from ..types import Point3D, Vector3D, Position3D, Ray, IntersectionResult, TransformationMatrix
 from ..geometry import intersections
 from ..optics import reflections, refractions
 
@@ -14,64 +19,77 @@ if TYPE_CHECKING:
 class Cornea(ABC):
     """Abstract base class for different corneal models.
 
-    This class defines the common interface that all corneal models must implement,
-    ensuring that they can be used interchangeably within the eye model.
+    Defines common interface for corneal models to ensure interchangeability.
+    Provides unified interface for intersection, reflection, and refraction calculations.
     """
 
-    center: Optional[Point4D] = None
+    center: Optional[Position3D] = None
+
+    _cornea_depth_default: float = 3.54e-3  # Reference corneal depth (apex to limbus)
+    _cornea_center_to_rotation_center_default: float = 10.20e-3  # Reference distance
 
     @abstractmethod
-    def intersect(self, ray_origin: Point4D, ray_direction: Vector3D) -> Optional[Point4D]:
+    def intersect(self, ray: Ray) -> Optional[IntersectionResult]:
         """Calculates the intersection point of a light ray with the cornea."""
         pass
 
     @abstractmethod
-    def normal_at(self, point: Point4D) -> Vector3D:
+    def normal_at(self, point: Point3D) -> Vector3D:
         """Calculates the normal vector at a given point on the cornea's surface."""
         pass
 
-    def point_within_cornea(self, p: Point4D, eye: "Eye") -> bool:
+    def point_within_cornea(self, p: Position3D, eye: "Eye") -> bool:
         """Tests whether a point lies within the cornea boundaries.
 
+        Uses projection distance calculation to determine if point is within corneal depth.
+
         Args:
-            p: Point to test (4D homogeneous coordinates)
+            p: Point to test
             eye: Eye object containing transformation matrix, apex position, and cornea depth
 
         Returns:
             bool: True if point lies within cornea boundaries, False otherwise
         """
         # Transform point to local eye coordinates
-        p_local = np.linalg.solve(eye.trans, p)
+        p_homogeneous = np.array(p)
+        p_local_homogeneous = np.linalg.solve(eye.trans, p_homogeneous)
+        p_local = Position3D.from_array(p_local_homogeneous)
 
         # Calculate direction from apex to cornea center
-        direction = self.center - eye.cornea.get_apex_position()
-        diff = p_local - eye.cornea.get_apex_position()
+        apex_pos = eye.cornea.get_apex_position()
+        direction = Vector3D(self.center.x - apex_pos.x, self.center.y - apex_pos.y, self.center.z - apex_pos.z)
+        diff = Vector3D(p_local.x - apex_pos.x, p_local.y - apex_pos.y, p_local.z - apex_pos.z)
 
         # Use dot product for projection distance calculation
-        projection_distance = np.dot(diff[:3], direction[:3]) / np.linalg.norm(direction[:3])
+        projection_distance = diff.dot(direction) / direction.magnitude()
         return projection_distance < eye.cornea.get_corneal_depth()
 
     @abstractmethod
-    def find_reflection(self, light_pos: Point4D, camera_pos: Point4D, eye_transform: Point4D) -> Optional[Point4D]:
+    def find_reflection(
+        self, light_pos: Position3D, camera_pos: Position3D, eye_transform: TransformationMatrix
+    ) -> Optional[Point3D]:
         """Finds position of a glint on the corneal surface."""
         pass
 
     @abstractmethod
     def find_refraction(
         self,
-        camera_pos: Point4D,
-        object_pos: Point4D,
+        camera_pos: Position3D,
+        object_pos: Position3D,
         n_outside: float,
         n_cornea: float,
-        eye_transform: Point4D,
-    ) -> Optional[Point4D]:
+        eye_transform: TransformationMatrix,
+    ) -> Optional[Point3D]:
         """Finds position where refraction occurs on the corneal surface."""
         pass
 
 
 @dataclass
 class SphericalCornea(Cornea):
-    """Represents a cornea with dual spherical surfaces (anterior and posterior).
+    """Represents a cornea with dual spherical surfaces.
+
+    Uses anatomical scaling based on Boff and Lincoln [1988] parameters.
+    Implements proportional scaling of all eye dimensions based on corneal radius.
 
     Attributes:
         anterior_radius (float): The radius of the anterior (outer) corneal surface.
@@ -82,6 +100,7 @@ class SphericalCornea(Cornea):
 
     anterior_radius: float = 7.98e-3  # Default anterior corneal radius
     refractive_index: float = 1.376  # Refractive index of cornea
+    type: str = "sphere"  # For type checking
 
     # Reference values for scaling (from Boff and Lincoln [1988])
     _posterior_radius_default: float = 6.22e-3  # Default posterior corneal radius
@@ -89,8 +108,6 @@ class SphericalCornea(Cornea):
 
     # Sphere-specific constants from Boff and Lincoln [1988, Section 1.210]
     _r_cornea_default: float = 7.98e-3  # Reference corneal radius for scaling
-    _cornea_depth_default: float = 3.54e-3  # Reference corneal depth (apex to limbus)
-    _cornea_center_to_rotation_center_default: float = 10.20e-3  # Reference distance
 
     @property
     def posterior_radius(self) -> float:
@@ -126,14 +143,14 @@ class SphericalCornea(Cornea):
         center_distance = abs(self.anterior_radius - self.posterior_radius - self.thickness_offset)
         return center_distance
 
-    def get_posterior_center(self) -> Point4D:
+    def get_posterior_center(self) -> Position3D:
         """Calculate the center of the posterior surface based on thickness."""
         thickness_term = self.anterior_radius - self.posterior_radius - self.thickness_offset
-        return self.center - np.array([0, 0, thickness_term, 0])
+        return Position3D(self.center.x, self.center.y, self.center.z - thickness_term)
 
     def calculate_center_position(
         self, scale: float, axial_length: float, cornea_center_to_rotation_center: float
-    ) -> Point4D:
+    ) -> Position3D:
         """Calculate the center position for spherical cornea based on anatomical parameters.
 
         This implements the original MATLAB/Eye logic for positioning the spherical cornea center.
@@ -144,20 +161,20 @@ class SphericalCornea(Cornea):
             cornea_center_to_rotation_center: Distance from corneal center to rotation center (m)
 
         Returns:
-            4D homogeneous coordinates of cornea center
+            Cornea center position
         """
         cornea_z_offset = axial_length - 2 * cornea_center_to_rotation_center
-        return np.array([0, 0, -scale * cornea_z_offset, 1])
+        return Position3D(0, 0, -scale * cornea_z_offset)
 
-    def get_apex_position(self) -> Point4D:
+    def get_apex_position(self) -> Position3D:
         """Calculate the apex position for spherical cornea.
 
         For spherical cornea, apex is at center + [0, 0, -radius, 0]
 
         Returns:
-            4D homogeneous coordinates of corneal apex
+            Corneal apex position
         """
-        return self.center + np.array([0, 0, -self.anterior_radius, 0])
+        return Position3D(self.center.x, self.center.y, self.center.z - self.anterior_radius)
 
     def get_scale_factor(self) -> float:
         """Calculate the scaling factor for this spherical cornea.
@@ -206,38 +223,39 @@ class SphericalCornea(Cornea):
             "cornea_center_to_rotation_center": self._cornea_center_to_rotation_center_default,
         }
 
-    def intersect(self, ray_origin: Point4D, ray_direction: Vector3D) -> Optional[Point4D]:
+    def intersect(self, ray: Ray) -> Optional[IntersectionResult]:
         """Calculates intersection for a spherical cornea.
 
-        Returns the intersection point closer to the ray origin.
+        Returns the intersection result closer to the ray origin.
         """
-        pos, _ = intersections.intersect_ray_sphere(ray_origin, ray_direction, self.center, self.anterior_radius)
-        return pos
+        intersection_result, _ = intersections.intersect_ray_sphere(ray, self.center, self.anterior_radius)
+        return intersection_result
 
-    def normal_at(self, point: Point4D) -> Vector3D:
+    def normal_at(self, point: Point3D) -> Vector3D:
         """Calculates the normal vector for a spherical surface."""
-        # Ensure we are working with 3D coordinates for vector math
-        center_3d = self.center[:3]
-        point_3d = point[:3]
+        # Calculate normal vector from center to point
+        normal_vec = Vector3D(point.x - self.center.x, point.y - self.center.y, point.z - self.center.z)
+        return normal_vec.normalize()
 
-        normal = (point_3d - center_3d) / self.anterior_radius
-        return normal / np.linalg.norm(normal)
-
-    def find_reflection(self, light_pos: Point4D, camera_pos: Point4D, eye_transform: Point4D) -> Optional[Point4D]:
+    def find_reflection(
+        self, light_pos: Position3D, camera_pos: Position3D, eye_transform: TransformationMatrix
+    ) -> Optional[Point3D]:
         """Finds position of a glint on the spherical corneal surface."""
-        world_center = eye_transform @ self.center
+        world_center_homogeneous = eye_transform @ np.array(self.center)
+        world_center = Position3D.from_array(world_center_homogeneous)
         return reflections.find_reflection_sphere(light_pos, camera_pos, world_center, self.anterior_radius)
 
     def find_refraction(
         self,
-        camera_pos: Point4D,
-        object_pos: Point4D,
+        camera_pos: Position3D,
+        object_pos: Position3D,
         n_outside: float,
         n_cornea: float,
-        eye_transform: Point4D,
-    ) -> Optional[Point4D]:
+        eye_transform: TransformationMatrix,
+    ) -> Optional[Point3D]:
         """Finds position where refraction occurs on the spherical corneal surface."""
-        world_center = eye_transform @ self.center
+        world_center_homogeneous = eye_transform @ np.array(self.center)
+        world_center = Position3D.from_array(world_center_homogeneous)
         return refractions.find_refraction_sphere(
             camera_pos, object_pos, world_center, self.anterior_radius, n_outside, n_cornea
         )
@@ -245,18 +263,18 @@ class SphericalCornea(Cornea):
 
 @dataclass
 class ConicCornea(Cornea):
-    """Represents a cornea with dual conic surfaces (anterior and posterior).
+    """Represents a cornea with dual conic surfaces.
 
-    This model uses proper conic section geometry with the correct formula:
-    x² + y² + (1 + k)*z² = R²/(1+k)
+    Uses conic section geometry with formula: (x-cx)² + (y-cy)² + (1+k)(z-cz)² - 2*R*(z-cz) = 0
+    Implements absolute dimensions without scaling for mathematical consistency.
 
     Default parameters are 30-year-old values from Goncharov & Dainty (2007).
 
     Attributes:
         center (Point4D): The 4D homogeneous coordinate of the conic center.
-        anterior_r (float): Anterior surface radius of curvature at apex in meters.
+        anterior_radius (float): Anterior surface radius of curvature at apex in meters.
         anterior_k (float): Anterior surface conic constant.
-        posterior_r (float): Posterior surface radius of curvature at apex in meters.
+        posterior_radius (float): Posterior surface radius of curvature at apex in meters.
         posterior_k (float): Posterior surface conic constant.
         thickness (float): Central corneal thickness.
         refractive_index (float): Refractive index of cornea.
@@ -269,46 +287,63 @@ class ConicCornea(Cornea):
     """
 
     # Anterior surface (30-year defaults from Goncharov & Dainty 2007)
-    anterior_r: float = 7.76e-3  # Anterior radius of curvature
+    anterior_radius: float = 7.76e-3  # Anterior radius of curvature
     anterior_k: float = -0.10  # Anterior conic constant
+    type: str = "conic"  # For type checking
 
     # Posterior surface (30-year defaults from Goncharov & Dainty 2007)
-    posterior_r: float = 6.52e-3  # Posterior radius of curvature
+    posterior_radius: float = 6.52e-3  # Posterior radius of curvature
     posterior_k: float = -0.30  # Posterior conic constant
 
     # Corneal properties
-    thickness: float = 0.55e-3  # Central corneal thickness
+    thickness_offset: float = 0.55e-3  # Central corneal thickness
     refractive_index: float = 1.376  # Refractive index of cornea
-    thickness_offset: float = 1.15e-3  # Corneal thickness offset
 
-    def get_posterior_center(self) -> Point4D:
-        """Calculate the center of the posterior surface based on thickness."""
-        thickness_term = self.anterior_r - self.posterior_r - self.thickness_offset
-        return self.center - np.array([0, 0, thickness_term, 0])
+    def get_posterior_center(self) -> Position3D:
+        """Calculate the center of the posterior surface based on conic geometry and thickness."""
+        # Calculate anterior apex position relative to anterior center
+        anterior_apex_offset = -self.anterior_radius / (1 + self.anterior_k)
 
-    def get_apex_position(self) -> Point4D:
+        # Calculate posterior apex position relative to posterior center
+        posterior_apex_offset = -self.posterior_radius / (1 + self.posterior_k)
+
+        # For cornea facing -z direction:
+        # - Anterior apex is the foremost point (closest to +z)
+        # - Posterior apex should be thickness_offset BEHIND anterior apex (more negative z)
+        #
+        # anterior_apex_z = anterior_center_z + anterior_apex_offset
+        # posterior_apex_z = anterior_apex_z - thickness_offset  (more negative = behind)
+        # posterior_center_z = posterior_apex_z - posterior_apex_offset
+
+        anterior_apex_z = self.center.z + anterior_apex_offset
+        posterior_apex_z = anterior_apex_z + self.thickness_offset  # Behind anterior apex
+        posterior_center_z = posterior_apex_z - posterior_apex_offset  # Account for posterior apex offset
+
+        return Position3D(self.center.x, self.center.y, posterior_center_z)
+
+    def get_apex_position(self) -> Position3D:
         """Calculate the apex position for conic cornea.
 
         For conic cornea, apex is mathematically at z = -R/(1+k) from center.
         This is the foremost point along the -Z axis.
 
         Returns:
-            4D homogeneous coordinates of corneal apex
+            Corneal apex position
         """
         # Mathematical apex position: z = -R/(1+k) from center
-        apex_z = -self.anterior_r / (1 + self.anterior_k)
-        return self.center + np.array([0, 0, apex_z, 0])
+        apex_z = -self.anterior_radius / (1 + self.anterior_k)
+        return Position3D(self.center.x, self.center.y, self.center.z + apex_z)
 
     def get_corneal_depth(self) -> float:
         """Calculate the corneal depth for conic cornea.
 
-        For conic cornea, we use the anterior radius as an approximation of corneal depth,
-        similar to the spherical case but accounting for the conic geometry.
+        For consistency with spherical cornea, we use the same reference depth.
+        This ensures that point_within_cornea behaves consistently between models.
 
         Returns:
             Corneal depth in meters
         """
-        return self.anterior_r
+        return self._cornea_depth_default
 
     def get_scale_factor(self) -> float:
         """Get scale factor for conic cornea.
@@ -319,6 +354,19 @@ class ConicCornea(Cornea):
             Scale factor of 1.0 (no scaling)
         """
         return 1.0
+
+    def calculate_center_position(self, axial_length: float, cornea_center_to_rotation_center: float) -> Position3D:
+        """Calculate the center position for conic cornea based on anatomical parameters (no scaling).
+
+        Args:
+            axial_length: Total axial length of eye (m)
+            cornea_center_to_rotation_center: Distance from corneal center to rotation center (m)
+
+        Returns:
+            Cornea center position
+        """
+        cornea_z_offset = axial_length - 2 * cornea_center_to_rotation_center
+        return Position3D(0, 0, -cornea_z_offset)
 
     def setup_eye_geometry(self, axial_length: float) -> dict:
         """Setup conic cornea geometry parameters.
@@ -334,13 +382,14 @@ class ConicCornea(Cornea):
         # Set default center if not already set (no scaling applied)
         # For conic: position center at origin for mathematical consistency
         if self.center is None:
-            self.center = np.array([0, 0, 0, 1])  # Center at origin
+            # Use anatomical offset if desired, otherwise origin
+            self.center = self.calculate_center_position(axial_length, self._cornea_center_to_rotation_center_default)
 
         return {
             "scale": 1.0,  # No scaling for conic cornea
             "corneal_depth": self.get_corneal_depth(),
             "apex_position": self.get_apex_position(),
-            "cornea_center_to_rotation_center": 0.0,  # Not applicable for conic
+            "cornea_center_to_rotation_center": 0.0,  # Not applicable for conic #CHECK
         }
 
     def __post_init__(self):
@@ -362,52 +411,59 @@ class ConicCornea(Cornea):
                 f"Warning: posterior (1+k) = {posterior_1_plus_k} ≤ 0 may cause numerical issues in conic calculations"
             )
 
-    def intersect(self, ray_origin: Point4D, ray_direction: Vector3D) -> Optional[Point4D]:
+    def intersect(self, ray: Ray) -> Optional[IntersectionResult]:
         """Calculates intersection for the anterior conic surface.
 
-        Returns the intersection point closer to the ray origin.
+        Returns the intersection result closer to the ray origin.
         """
-        pos, _ = intersections.intersect_ray_conic(
-            ray_origin, ray_direction, self.center, self.anterior_r, self.anterior_k
+        intersection_result, _ = intersections.intersect_ray_conic(
+            ray, self.center, self.anterior_radius, self.anterior_k
         )
-        return pos
+        return intersection_result
 
-    def normal_at(self, point: Point4D) -> Vector3D:
+    def normal_at(self, point: Point3D) -> Vector3D:
         """Calculates the normal vector for the anterior conic surface."""
-        return intersections.conic_surface_normal(point, self.center, self.anterior_r, self.anterior_k)
+        return intersections.conic_surface_normal(point, self.center, self.anterior_radius, self.anterior_k)
 
     def find_reflection(
-        self, light_pos: Point4D, camera_pos: Point4D, eye_transform: TransformationMatrix
-    ) -> Optional[Point4D]:
+        self, light_pos: Position3D, camera_pos: Position3D, eye_transform: TransformationMatrix
+    ) -> Optional[Point3D]:
         """Finds position of a glint on the anterior conic surface."""
-        world_center = eye_transform @ self.center
-        return reflections.find_reflection_conic(light_pos, camera_pos, world_center, self.anterior_r, self.anterior_k)
+        world_center_homogeneous = eye_transform @ np.array(self.center)
+        world_center = Position3D.from_array(world_center_homogeneous)
+        return reflections.find_reflection_conic(
+            light_pos, camera_pos, world_center, self.anterior_radius, self.anterior_k
+        )
 
     def find_refraction(
         self,
-        camera_pos: Point4D,
-        object_pos: Point4D,
+        camera_pos: Position3D,
+        object_pos: Position3D,
         n_outside: float,
         n_cornea: float,
         eye_transform: TransformationMatrix,
-    ) -> Optional[Point4D]:
+    ) -> Optional[Point3D]:
         """Finds position where refraction occurs on the anterior conic surface."""
-        world_center = eye_transform @ self.center
+        world_center_homogeneous = eye_transform @ np.array(self.center)
+        world_center = Position3D.from_array(world_center_homogeneous)
         return refractions.find_refraction_conic(
-            camera_pos, object_pos, world_center, self.anterior_r, self.anterior_k, n_outside, n_cornea
+            camera_pos, object_pos, world_center, self.anterior_radius, self.anterior_k, n_outside, n_cornea
         )
 
 
-def create_cornea(cornea_model_type: str, center: Point4D, **kwargs) -> Cornea:
-    """Factory function to create a cornea object of a specified type.
+def create_cornea(cornea_model_type: str, center: Position3D, **kwargs) -> Cornea:
+    """Factory function to create a cornea object of specified type.
+
+    Provides unified interface for creating different corneal models.
+    Supports both spherical and conic corneal geometries.
 
     Args:
         cornea_model_type (str): The type of cornea model to create.
                                  Supported types: "spherical", "conic".
         center (Point4D): The center of the cornea.
         **kwargs: Additional parameters required for the specific cornea model.
-                  For "spherical": radius (float)
-                  For "conic": r_apical (float), Q (float, optional)
+                  For "spherical": anterior_radius, refractive_index
+                  For "conic": anterior_radius, anterior_k, posterior_radius, posterior_k, refractive_index, thickness_offset
 
     Returns:
         Cornea: An instance of the specified Cornea subclass.
@@ -416,24 +472,8 @@ def create_cornea(cornea_model_type: str, center: Point4D, **kwargs) -> Cornea:
         ValueError: If an unsupported cornea_model_type is provided.
     """
     if cornea_model_type == "spherical":
-        return SphericalCornea(
-            center=center,
-            anterior_radius=kwargs.get("anterior_radius", 7.98e-3),
-            posterior_radius=kwargs.get("posterior_radius", 6.22e-3),
-            thickness=kwargs.get("thickness", 0.55e-3),
-            refractive_index=kwargs.get("refractive_index", 1.376),
-            thickness_offset=kwargs.get("thickness_offset", 1.15e-3),
-        )
+        return SphericalCornea(center=center, **kwargs)
     elif cornea_model_type == "conic":
-        return ConicCornea(
-            center=center,
-            anterior_r=kwargs.get("anterior_r", 7.76e-3),
-            anterior_k=kwargs.get("anterior_k", -0.10),
-            posterior_r=kwargs.get("posterior_r", 6.52e-3),
-            posterior_k=kwargs.get("posterior_k", -0.30),
-            thickness=kwargs.get("thickness", 0.55e-3),
-            refractive_index=kwargs.get("refractive_index", 1.376),
-            thickness_offset=kwargs.get("thickness_offset", 1.15e-3),
-        )
+        return ConicCornea(center=center, **kwargs)
     else:
         raise ValueError(f"Unknown cornea model type: '{cornea_model_type}'")

@@ -7,14 +7,13 @@ to ensure consistency and reduce code duplication.
 import numpy as np
 import matplotlib.pyplot as plt
 from typing import Dict, Tuple
-from ..types import Point3D, Vector3D
 
 
 def plot_error_vectors(
-    X: Point3D,
-    Y: Point3D,
-    U: Vector3D,
-    V: Vector3D,
+    X: np.ndarray,
+    Y: np.ndarray,
+    U: np.ndarray,
+    V: np.ndarray,
     errors: Dict[str, Dict[str, float]],
     title_prefix: str = "",
     convert_to_mm: bool = True,
@@ -28,12 +27,10 @@ def plot_error_vectors(
     xlabel: str = "Observer X position (mm)",
     ylabel: str = "Observer Y position (mm)",
 ) -> None:
-    """Plot error vectors with adaptive scaling .
+    """Plot gaze tracking error vectors with adaptive scaling.
 
-    Features:
-    - Adaptive vector scaling to prevent arrows from going off-screen
-    - Color-coded arrows by magnitude with colorbar
-    - Clear scaling information displayed in plot
+    Visualizes gaze tracking accuracy by plotting error vectors at each measurement point.
+    Uses adaptive scaling to ensure arrows remain visible and color-codes by magnitude.
 
     Args:
         X, Y: Grid coordinates for vector positions
@@ -177,15 +174,18 @@ def plot_error_vectors(
     plt.show()
 
 
-def calculate_error_statistics(U: Vector3D, V: Vector3D, errs_deg: Point3D) -> Dict[str, Dict[str, float]]:
-    """Calculate error statistics for plotting and analysis.
+def calculate_error_statistics(U: np.ndarray, V: np.ndarray, errs_deg: np.ndarray) -> Dict[str, Dict[str, float]]:
+    """Calculate gaze tracking error statistics.
+
+    Computes performance metrics from error vectors and angular errors.
+    Handles missing data by filtering out NaN values.
 
     Args:
         U, V: Error arrays in X and Y directions (in meters)
         errs_deg: Angular error array (in degrees)
 
     Returns:
-        dict: Error statistics with 'mtr' and 'deg' keys
+        dict: Error statistics with 'mtr' and 'deg' keys containing mean, max, std, median
     """
     errs_mtr = np.sqrt(U**2 + V**2).flatten()
     errs_deg_flat = errs_deg.flatten()
@@ -219,7 +219,9 @@ def calculate_error_statistics(U: Vector3D, V: Vector3D, errs_deg: Point3D) -> D
 
 
 def print_error_summary(errors: Dict[str, Dict[str, float]], title: str = "Error Summary") -> None:
-    """Print formatted error statistics summary.
+    """Print formatted gaze tracking error statistics.
+
+    Displays performance metrics in both millimeters and degrees for easy analysis.
 
     Args:
         errors: Dictionary with error statistics from calculate_error_statistics

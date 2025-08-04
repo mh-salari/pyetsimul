@@ -2,6 +2,7 @@
 
 import numpy as np
 from et_simul.core.camera import Camera
+from et_simul.types import Position3D
 
 
 def test_single_point_unprojection():
@@ -25,7 +26,9 @@ def test_single_point_unprojection():
         ]
     )
 
-    np.testing.assert_allclose(pos, expected_pos, rtol=1e-15, atol=1e-15)
+    # Convert Position3D result to array for comparison
+    pos_array = np.array(pos).reshape(-1, 1)
+    np.testing.assert_allclose(pos_array, expected_pos, rtol=1e-15, atol=1e-15)
 
 
 def test_multiple_points_unprojection():
@@ -73,7 +76,9 @@ def test_multiple_points_unprojection():
         ]
     )
 
-    np.testing.assert_allclose(pos, expected_pos, rtol=1e-15, atol=1e-15)
+    # Convert List[Position3D] result to array for comparison
+    pos_array = np.column_stack([np.array(p) for p in pos])
+    np.testing.assert_allclose(pos_array, expected_pos, rtol=1e-15, atol=1e-15)
 
 
 def test_image_center_unprojection():
@@ -96,7 +101,9 @@ def test_image_center_unprojection():
         ]
     )
 
-    np.testing.assert_allclose(pos, expected_pos, rtol=1e-15, atol=1e-15)
+    # Convert Position3D result to array for comparison (single point)
+    pos_array = np.array(pos).reshape(-1, 1)
+    np.testing.assert_allclose(pos_array, expected_pos, rtol=1e-15, atol=1e-15)
 
 
 def test_different_focal_length():
@@ -120,7 +127,9 @@ def test_different_focal_length():
         ]
     )
 
-    np.testing.assert_allclose(pos, expected_pos, rtol=1e-15, atol=1e-15)
+    # Convert Position3D result to array for comparison (single point)
+    pos_array = np.array(pos).reshape(-1, 1)
+    np.testing.assert_allclose(pos_array, expected_pos, rtol=1e-15, atol=1e-15)
 
 
 def test_large_coordinates():
@@ -148,7 +157,9 @@ def test_large_coordinates():
         ]
     )
 
-    np.testing.assert_allclose(pos, expected_pos, rtol=1e-15, atol=1e-15)
+    # Convert List[Position3D] result to array for comparison
+    pos_array = np.column_stack([np.array(p) for p in pos])
+    np.testing.assert_allclose(pos_array, expected_pos, rtol=1e-15, atol=1e-15)
 
 
 def test_projection_unprojection_roundtrip():
@@ -168,12 +179,16 @@ def test_projection_unprojection_roundtrip():
     )
 
     # Project to 2D
-    projected_2d, distances, valid = c.project(original_3d)
+    result = c.project(original_3d)
+    projected_2d = result.image_points
+    distances = result.distances
+    # valid = result.valid_mask
 
     # Unproject back using original distances
     unprojected_3d = np.zeros((4, projected_2d.shape[1]))
     for i in range(projected_2d.shape[1]):
-        unprojected_3d[:, i : i + 1] = c.unproject(projected_2d[:, i : i + 1], distances[i])
+        result_pos = c.unproject(projected_2d[:, i : i + 1], distances[i])
+        unprojected_3d[:, i] = np.array(result_pos)
 
     # Check roundtrip accuracy
     diff_matrix = np.abs(original_3d - unprojected_3d)
@@ -194,16 +209,22 @@ def test_output_properties():
     pos = c.unproject(X, d)
 
     # Check types and shapes
-    assert isinstance(pos, np.ndarray)
-    assert pos.shape == (4, 1)
-    assert pos.dtype == np.float64
+    assert isinstance(pos, Position3D)
+    pos_array = np.array(pos)
+    assert pos_array.shape == (4,)
+    assert pos_array.dtype == np.float64
 
     # Test multiple points
     X_multi = np.array([[0.0, 100.0], [0.0, 50.0]])
     pos_multi = c.unproject(X_multi, d)
 
-    assert pos_multi.shape == (4, 2)
-    assert pos_multi.dtype == np.float64
+    # Check types and shapes for multiple points
+    assert isinstance(pos_multi, list)
+    assert len(pos_multi) == 2
+    assert all(isinstance(p, Position3D) for p in pos_multi)
+    pos_multi_array = np.column_stack([np.array(p) for p in pos_multi])
+    assert pos_multi_array.shape == (4, 2)
+    assert pos_multi_array.dtype == np.float64
 
     # Check homogeneous coordinate property (last row should be all 1s)
-    np.testing.assert_allclose(pos_multi[3, :], 1.0, rtol=1e-15, atol=1e-15)
+    np.testing.assert_allclose(pos_multi_array[3, :], 1.0, rtol=1e-15, atol=1e-15)

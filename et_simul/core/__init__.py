@@ -1,8 +1,12 @@
+"""Core API for eye tracking simulation components.
+
+Exports main classes for eye, camera, light, cornea, and eye tracker models.
+"""
+
 from .eye import Eye
 from .camera import Camera
 from .light import Light
 from .eye_tracker import EyeTracker
-from .coordinate_system import enforce_right_handed_coordinates, is_right_handed_enforced
 from .cornea import Cornea, SphericalCornea, ConicCornea, create_cornea
 
 __all__ = [
@@ -10,8 +14,6 @@ __all__ = [
     "Camera",
     "Light",
     "EyeTracker",
-    "enforce_right_handed_coordinates",
-    "is_right_handed_enforced",
     "Cornea",
     "SphericalCornea",
     "ConicCornea",

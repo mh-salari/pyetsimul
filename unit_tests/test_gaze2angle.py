@@ -2,6 +2,7 @@
 
 import numpy as np
 from et_simul.geometry.conversions import gaze2angle, angle2gaze
+from et_simul.types import Point2D, Direction3D
 
 
 def test_round_trip_conversion():
@@ -19,30 +20,37 @@ def test_round_trip_conversion():
         gaze[3] = 0  # Ensure it's a direction vector
 
         # Round-trip conversion
-        angles = gaze2angle(gaze)
+        angles = gaze2angle(Direction3D.from_array(gaze))
         gaze_new = angle2gaze(angles)
 
+        # Convert Direction3D back to homogeneous array for comparison
+        gaze_new_array = np.array(gaze_new)
+
         # Check accuracy
-        error = np.linalg.norm(gaze - gaze_new)
+        error = np.linalg.norm(gaze - gaze_new_array)
         assert error < 1e-8, f"Round-trip error {error:.2e} exceeds tolerance at ({x}, {y})"
 
 
 def test_forward_gaze():
     """Test conversion of a forward-looking 4D homogeneous gaze vector."""
     forward_gaze = np.array([0, 0, -1, 0])
-    angles = gaze2angle(forward_gaze)
+    angles = gaze2angle(Direction3D.from_array(forward_gaze))
     gaze_back = angle2gaze(angles)
 
-    np.testing.assert_allclose(forward_gaze, gaze_back, atol=1e-10)
+    # Convert Direction3D back to homogeneous array for comparison
+    gaze_back_array = np.array(gaze_back)
+    np.testing.assert_allclose(forward_gaze, gaze_back_array, atol=1e-10)
 
 
 def test_side_gaze():
     """Test conversion of a side-looking 4D homogeneous gaze vector."""
     right_gaze = np.array([1, 0, 0, 0])
-    angles = gaze2angle(right_gaze)
+    angles = gaze2angle(Direction3D.from_array(right_gaze))
     gaze_back = angle2gaze(angles)
 
-    np.testing.assert_allclose(right_gaze, gaze_back, atol=1e-10)
+    # Convert Direction3D back to homogeneous array for comparison
+    gaze_back_array = np.array(gaze_back)
+    np.testing.assert_allclose(right_gaze, gaze_back_array, atol=1e-10)
 
 
 def test_grid_conversion_accuracy():
@@ -62,10 +70,12 @@ def test_grid_conversion_accuracy():
             gaze /= np.linalg.norm(gaze)
             gaze[3] = 0  # Ensure it's a direction vector
 
-            angles = gaze2angle(gaze)
+            angles = gaze2angle(Direction3D.from_array(gaze))
             gaze_new = angle2gaze(angles)
 
-            error = np.linalg.norm(gaze - gaze_new)
+            # Convert Direction3D back to homogeneous array for comparison
+            gaze_new_array = np.array(gaze_new)
+            error = np.linalg.norm(gaze - gaze_new_array)
             max_error = max(max_error, error)
 
             assert error < tolerance, f"Error {error:.2e} exceeds tolerance at ({x}, {y})"
@@ -79,11 +89,15 @@ def test_output_properties():
     gaze /= np.linalg.norm(gaze)
     gaze[3] = 0
 
-    angles = gaze2angle(gaze)
+    angles = gaze2angle(Direction3D.from_array(gaze))
     gaze_back = angle2gaze(angles)
 
-    # Check types and shapes
-    assert isinstance(angles, np.ndarray)
-    assert angles.shape == (2,)
-    assert isinstance(gaze_back, np.ndarray)
-    assert gaze_back.shape == (4,)  # Should be 4D homogeneous vector
+    # Check types and properties
+    assert isinstance(angles, Point2D)
+    assert isinstance(gaze_back, Direction3D)
+
+    # Check that we can convert back to arrays with correct shapes
+    angles_array = np.array(angles)
+    gaze_back_array = np.array(gaze_back)
+    assert angles_array.shape == (2,)
+    assert gaze_back_array.shape == (4,)  # Should be 4D homogeneous vector

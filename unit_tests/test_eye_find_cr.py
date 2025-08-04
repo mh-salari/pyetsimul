@@ -4,12 +4,14 @@ import numpy as np
 from et_simul.core.eye import Eye
 from et_simul.core.light import Light
 from et_simul.core.camera import Camera
+from et_simul.types.geometry import Position3D
 
 
 def test_basic_corneal_reflex():
     """Test basic corneal reflex with MATLAB reference values."""
     e = Eye()
-    l = Light(position=np.array([0, 0, -50, 1]))
+
+    l = Light(position=Position3D(0, 0, -50))
     c = Camera()
 
     # Position camera to the side
@@ -28,7 +30,7 @@ def test_basic_corneal_reflex():
     )
 
     assert cr is not None
-    np.testing.assert_allclose(cr, expected_cr, rtol=1e-10, atol=1e-12)
+    cr.assert_close(Position3D.from_array(expected_cr), rtol=1e-10, atol=1e-12)
 
     # Test CR is within cornea
     assert e.point_within_cornea(cr)
@@ -37,7 +39,7 @@ def test_basic_corneal_reflex():
 def test_different_positions():
     """Test corneal reflex with different light and camera positions."""
     e = Eye()
-    l = Light(position=np.array([20, 15, -60, 1]))
+    l = Light(position=Position3D(20, 15, -60))
     c = Camera()
 
     # Camera at different position
@@ -56,14 +58,14 @@ def test_different_positions():
     )
 
     assert cr is not None
-    np.testing.assert_allclose(cr, expected_cr, rtol=1e-10, atol=1e-12)
+    cr.assert_close(Position3D.from_array(expected_cr), rtol=1e-10, atol=1e-12)
     assert e.point_within_cornea(cr)
 
 
 def test_light_behind_eye():
     """Test case where light is behind eye - should return None."""
     e = Eye()
-    l = Light(position=np.array([0, 0, 50, 1]))
+    l = Light(position=Position3D(0, 0, 50))
     c = Camera()
 
     # Camera in front
@@ -78,11 +80,11 @@ def test_light_behind_eye():
 def test_reflex_outside_cornea_boundary():
     """Test case where reflex falls outside cornea boundary - should return None."""
     e = Eye()
-    l = Light(position=np.array([5, 30, -40, 1]))
+    l = Light(position=Position3D(5, 30, -40))
     c = Camera()
 
     # Eye looking straight down
-    target_down = np.array([0, -100, 0, 1])
+    target_down = Position3D(0, -100, 0)
     e.look_at(target_down)
     c.trans[0:3, 3] = np.array([10, 60, -25])
 
@@ -95,7 +97,7 @@ def test_reflex_outside_cornea_boundary():
 def test_output_properties():
     """Test that output has correct properties."""
     e = Eye()
-    l = Light(position=np.array([0, 0, -50, 1]))
+    l = Light(position=Position3D(0, 0, -50))
     c = Camera()
     c.trans[0:3, 3] = np.array([30, 0, -40])
 
@@ -103,7 +105,6 @@ def test_output_properties():
     assert cr is not None, "cr should not be None for these inputs"
 
     # Check types and shapes
-    assert isinstance(cr, np.ndarray)
-    assert cr.dtype == np.float64
-    assert cr.shape == (4,)
-    assert cr[3] == 1.0  # Homogeneous coordinate
+    arr = np.array(cr)
+    assert arr.shape == (4,)
+    assert arr[3] == 1.0  # Homogeneous coordinate

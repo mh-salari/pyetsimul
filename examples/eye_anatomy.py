@@ -1,3 +1,8 @@
+"""Eye anatomy visualization example.
+
+Demonstrates eye parameter comparison and 3D anatomical visualization for different corneal radii.
+"""
+
 from et_simul.core import Eye
 from et_simul.core.cornea import SphericalCornea
 from et_simul.visualization import plot_eye_anatomy
@@ -5,7 +10,7 @@ import matplotlib.pyplot as plt
 
 
 def print_eye_parameters(eye, title="Eye Parameters"):
-    """Print all eye parameters in a formatted way."""
+    """Display comprehensive eye anatomical parameters for analysis and comparison."""
     print(f"\n=== {title} ===")
     print(f"r_cornea: {eye.cornea.anterior_radius * 1000:.3f} mm")
     print(f"r_cornea_inner: {eye.cornea.posterior_radius * 1000:.3f} mm")
@@ -20,15 +25,12 @@ def print_eye_parameters(eye, title="Eye Parameters"):
     print(f"angle_kappa: {eye.angle_kappa:.3f}°")
 
     # Position information
-    print(
-        f"pos_cornea: [{eye.cornea.center[0]:.6f}, {eye.cornea.center[1]:.6f}, {eye.cornea.center[2] * 1000:.3f}, {eye.cornea.center[3]:.1f}] (z in mm)"
-    )
-    print(
-        f"pos_apex: [{eye.cornea.get_apex_position()[0]:.6f}, {eye.cornea.get_apex_position()[1]:.6f}, {eye.cornea.get_apex_position()[2] * 1000:.3f}, {eye.cornea.get_apex_position()[3]:.1f}] (z in mm)"
-    )
-    print(
-        f"pos_pupil: [{eye.pupil.pos_pupil[0]:.6f}, {eye.pupil.pos_pupil[1]:.6f}, {eye.pupil.pos_pupil[2] * 1000:.3f}, {eye.pupil.pos_pupil[3]:.1f}] (z in mm)"
-    )
+    cornea_center = eye.cornea.center
+    print(f"pos_cornea: [{cornea_center.x:.6f}, {cornea_center.y:.6f}, {cornea_center.z * 1000:.3f}] (z in mm)")
+    apex_pos = eye.cornea.get_apex_position()
+    print(f"pos_apex: [{apex_pos.x:.6f}, {apex_pos.y:.6f}, {apex_pos.z * 1000:.3f}] (z in mm)")
+    pupil_pos = eye.pupil.pos_pupil
+    print(f"pos_pupil: [{pupil_pos.x:.6f}, {pupil_pos.y:.6f}, {pupil_pos.z * 1000:.3f}] (z in mm)")
 
     # Pupil radii
     x_radius, y_radius = eye.get_pupil_radii()

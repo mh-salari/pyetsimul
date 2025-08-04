@@ -1,7 +1,8 @@
 """
 et_simul - Python Eye Tracker Simulation Library
 
-A comprehensive eye tracking simulation framework ported from MATLAB.
+Main package API for the eye tracking simulation framework.
+Exports core modules and common structured types for user convenience.
 """
 
 __version__ = "1.0.0"
@@ -10,8 +11,35 @@ __version__ = "1.0.0"
 from . import core
 from . import geometry
 from . import optics
-from . import visualization
-from . import performance_analysis
+from . import types
 from . import gaze_tracking_algorithms
 
-__all__ = ["core", "geometry", "optics", "visualization", "performance_analysis", "gaze_tracking_algorithms"]
+# Also import commonly used structured types for convenience
+from .types import (
+    Position3D,
+    Direction3D,
+    Point3D,
+    Vector3D,
+    Point2D,
+    CameraImage,
+    PupilData,
+    GazePrediction,
+)
+
+__all__ = [
+    # Modules
+    "core",
+    "geometry",
+    "optics",
+    "types",
+    "gaze_tracking_algorithms",
+    # Common structured types for convenience
+    "Position3D",
+    "Direction3D",
+    "Point3D",
+    "Vector3D",
+    "Point2D",
+    "CameraImage",
+    "PupilData",
+    "GazePrediction",
+]

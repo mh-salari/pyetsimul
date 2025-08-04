@@ -1,37 +1,42 @@
+"""Pupil model definitions for eye tracking simulation.
+
+Defines abstract and concrete pupil models (elliptical, realistic) for boundary generation and anatomical accuracy.
+"""
+
 import numpy as np
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Tuple, Optional
-from ..types import Point4D, TransformationMatrix
+from ..types import Position3D, Direction3D, TransformationMatrix
 
 
 class Pupil(ABC):
     """Abstract base class for pupil representations.
 
-    This class defines the interface that all pupil implementations must follow.
-    Subclasses implement different pupil models (elliptical, realistic, etc.).
+    Defines common interface for different pupil models (elliptical, realistic, etc.).
+    Provides unified interface for boundary point generation and radius management.
 
     Args:
-        pos_pupil: 4D homogeneous center position
-        x_pupil: 4D vector defining X-axis radius/direction
-        y_pupil: 4D vector defining Y-axis radius/direction
+        pos_pupil: Center position
+        x_pupil: Vector defining X-axis radius/direction
+        y_pupil: Vector defining Y-axis radius/direction
     """
 
-    def __init__(self, pos_pupil: Point4D, x_pupil: Point4D, y_pupil: Point4D, N: int = 100):
+    def __init__(self, pos_pupil: Position3D, x_pupil: Direction3D, y_pupil: Direction3D, N: int = 100):
         self.pos_pupil = pos_pupil
         self.x_pupil = x_pupil
         self.y_pupil = y_pupil
         self.N = N  # Number of boundary points for this pupil
 
     @abstractmethod
-    def get_boundary_points(self, N: Optional[int] = None) -> Point4D:
+    def get_boundary_points(self, N: Optional[int] = None) -> np.ndarray:
         """Generate pupil boundary points.
 
         Args:
             N: Number of boundary points (defaults to self.N if not provided)
 
         Returns:
-            4×N matrix of points on pupil boundary
+            4×N matrix of points on pupil boundary (homogeneous coordinates)
         """
         pass
 
@@ -54,16 +59,19 @@ class Pupil(ABC):
         """
         pass
 
-    def get_center_world_coords(self, eye_transform: TransformationMatrix) -> Point4D:
+    def get_center_world_coords(self, eye_transform: TransformationMatrix) -> Position3D:
         """Get pupil center in world coordinates.
+
+        Transforms pupil center from eye coordinates to world coordinates.
 
         Args:
             eye_transform: 4x4 transformation matrix from eye to world coordinates
 
         Returns:
-            4D homogeneous coordinates of pupil center in world coordinates
+            Pupil center position in world coordinates
         """
-        return eye_transform @ self.pos_pupil
+        world_homogeneous = eye_transform @ np.array(self.pos_pupil)
+        return Position3D.from_array(world_homogeneous)
 
     def get_noncircularity(self) -> float:
         """Calculate noncircularity.
@@ -80,33 +88,38 @@ class Pupil(ABC):
 class EllipticalPupil(Pupil):
     """Elliptical pupil implementation using parametric representation.
 
-    This class implements the simple elliptical pupil model using the parametric
-    representation: pos_pupil + cos(α)*x_pupil + sin(α)*y_pupil
+    Implements simple elliptical pupil model using parametric formula.
+    Uses cos(α)*x_pupil + sin(α)*y_pupil for boundary generation.
 
     Args:
-        pos_pupil: 4D homogeneous center position
-        x_pupil: 4D vector defining X-axis radius/direction
-        y_pupil: 4D vector defining Y-axis radius/direction
+        pos_pupil: Center position
+        x_pupil: Vector defining X-axis radius/direction
+        y_pupil: Vector defining Y-axis radius/direction
     """
 
-    def get_boundary_points(self, N: Optional[int] = None) -> Point4D:
+    def get_boundary_points(self, N: Optional[int] = None) -> np.ndarray:
         """Generate elliptical pupil boundary points using parametric representation.
 
         Args:
             N: Number of boundary points (defaults to self.N if not provided)
 
         Returns:
-            4×N matrix of points on pupil boundary
+            4×N matrix of points on pupil boundary (homogeneous coordinates)
         """
         if N is None:
             N = self.N
         alpha = 2 * np.pi * np.arange(N) / N
 
+        # Convert to homogeneous arrays for computation
+        pos_homogeneous = np.array(self.pos_pupil).reshape(-1, 1)
+        x_homogeneous = np.array(self.x_pupil).reshape(-1, 1)
+        y_homogeneous = np.array(self.y_pupil).reshape(-1, 1)
+
         # Parametric pupil boundary: pos_pupil + cos(α)*x_pupil + sin(α)*y_pupil
         pupil_points = (
-            np.tile(self.pos_pupil.reshape(-1, 1), (1, N))
-            + self.x_pupil.reshape(-1, 1) @ np.cos(alpha).reshape(1, -1)
-            + self.y_pupil.reshape(-1, 1) @ np.sin(alpha).reshape(1, -1)
+            np.tile(pos_homogeneous, (1, N))
+            + x_homogeneous @ np.cos(alpha).reshape(1, -1)
+            + y_homogeneous @ np.sin(alpha).reshape(1, -1)
         )
 
         return pupil_points
@@ -117,8 +130,8 @@ class EllipticalPupil(Pupil):
         Returns:
             Tuple of (x_radius, y_radius) in meters
         """
-        x_radius = np.linalg.norm(self.x_pupil[:3])
-        y_radius = np.linalg.norm(self.y_pupil[:3])
+        x_radius = self.x_pupil.magnitude()
+        y_radius = self.y_pupil.magnitude()
         return x_radius, y_radius
 
     def set_radii(self, x_radius: float = None, y_radius: float = None) -> None:
@@ -135,22 +148,17 @@ class EllipticalPupil(Pupil):
             raise ValueError("At least one radius must be specified")
 
         if x_radius is not None:
-            self.x_pupil = x_radius * np.array([1, 0, 0, 0])
+            self.x_pupil = Direction3D(x_radius, 0, 0)
         if y_radius is not None:
-            self.y_pupil = y_radius * np.array([0, 1, 0, 0])
+            self.y_pupil = Direction3D(0, y_radius, 0)
 
 
 @dataclass
 class RealisticPupilParams:
     """Parameters for realistic human pupil shape generation.
 
-    This class contains all the parameters needed to generate realistic
-    non-circular human pupil shapes based on the comprehensive study by
-    Wyatt (1995).
-
-    The parameters are derived from measurements of 23 human subjects
-    (ages 22-71, mean 35.8 years) and implement the Fourier series
-    representation of pupil boundary shapes.
+    Contains parameters for generating non-circular human pupil shapes based on Wyatt (1995).
+    Implements Fourier series representation of pupil boundary shapes.
 
     Key findings from Wyatt (1995):
     - No truly circular pupils exist in humans
@@ -184,31 +192,25 @@ class RealisticPupilParams:
 class RealisticPupil(Pupil):
     """Realistic human pupil implementation using Fourier series representation.
 
-    This class generates non-circular human pupil boundaries based on the
-    comprehensive quantitative analysis by Wyatt (1995) of 23 normal human subjects.
-
-    Key features implemented:
-    - Fourier series representation: R(θ) = r_ave + Σ r_n cos(n(θ - φ_n))
-    - Paper's exact noncircularity formula: NC² = (1/2) Σ(r_n/r_ave)² for n=2 to N
-    - Size-dependent ellipse orientation (vertical for large, horizontal for small pupils)
-    - Age effects: +0.0015 noncircularity per decade, -0.02mm diameter per year
-    - Individual variation through higher-order harmonics
+    Generates non-circular human pupil boundaries based on Wyatt (1995) analysis.
+    Implements Fourier series: R(θ) = r_ave + Σ r_n cos(n(θ - φ_n)).
+    Uses paper's noncircularity formula: NC² = (1/2) Σ(r_n/r_ave)² for n=2 to N.
 
     Based on: Wyatt, H.J. (1995). "The Form of the Human Pupil."
     Vision Research, 35(14), 2021-2036.
 
     Args:
-        pos_pupil: 4D homogeneous center position
-        x_pupil: 4D vector defining X-axis radius/direction
-        y_pupil: 4D vector defining Y-axis radius/direction
+        pos_pupil: Center position
+        x_pupil: Vector defining X-axis radius/direction
+        y_pupil: Vector defining Y-axis radius/direction
         params: Parameters for realistic pupil shape generation
     """
 
     def __init__(
         self,
-        pos_pupil: Point4D,
-        x_pupil: Point4D,
-        y_pupil: Point4D,
+        pos_pupil: Position3D,
+        x_pupil: Direction3D,
+        y_pupil: Direction3D,
         params: Optional[RealisticPupilParams] = None,
         N: int = 360,
     ):
@@ -216,13 +218,21 @@ class RealisticPupil(Pupil):
         self.params = params or RealisticPupilParams()
 
         # Extract current pupil size from elliptical parameters
-        current_radius_x = np.linalg.norm(x_pupil[:3])
-        current_radius_y = np.linalg.norm(y_pupil[:3])
+        current_radius_x = x_pupil.magnitude()
+        current_radius_y = y_pupil.magnitude()
         avg_radius_m = (current_radius_x + current_radius_y) / 2
         diameter_mm = avg_radius_m * 2 * 1000  # Convert to mm
 
         # Initialize realistic pupil
         self.params.base_radius = diameter_mm / 2
+
+        # Initialize attributes that will be set dynamically
+        self.r2 = None
+        self.harmonics = {}
+
+        # Set dilated/constricted condition and orientation based on pupil size
+        self._update_condition_and_orientation(diameter_mm)
+
         self._generate_harmonics()
 
     def _generate_harmonics(self):
@@ -232,10 +242,7 @@ class RealisticPupil(Pupil):
         noncircularity_age_adjusted = self.params.noncircularity + (age_offset / 10) * 0.0015
 
         # Get lighting-dependent ellipse contribution
-        if hasattr(self, "_is_dark_condition"):
-            ellipse_contrib = 0.596 if self._is_dark_condition else 0.477  # From paper
-        else:
-            ellipse_contrib = self.params.ellipse_contribution  # Default
+        ellipse_contrib = 0.596 if self._is_dilated else 0.477  # From paper
 
         # Use paper's formula: NC² = (1/2) Σ(rₙ/r_ave)² for n=2 to N
         # We need to work backwards from target NC to get harmonic amplitudes
@@ -264,6 +271,27 @@ class RealisticPupil(Pupil):
                     "phase": np.random.uniform(0, 2 * np.pi),  # Individual variation
                 }
 
+    def _update_condition_and_orientation(self, diameter_mm: float):
+        """Update dilated/constricted condition and major axis orientation based on pupil size.
+
+        Args:
+            diameter_mm: Pupil diameter in millimeters
+        """
+        # Determine orientation based on size (using paper's reference values)
+        # Large pupils (dilated) tend to have vertical ellipse orientation
+        # Small pupils (constricted) tend to have horizontal ellipse orientation
+        if diameter_mm >= 4.0:  # Closer to dilated condition size (4.93mm)
+            self._is_dilated = True
+            # Major axis orientation: clusters around vertical (0°)
+            concentration = 3.0  # Controls spread (~±30° for this value)
+            self.params.major_axis_angle = np.random.vonmises(0, concentration)
+        else:  # Closer to constricted condition size (3.09mm)
+            self._is_dilated = False
+            # Major axis orientation: clusters around horizontal (±90°)
+            base_angle = np.random.choice([np.pi / 2, -np.pi / 2])
+            concentration = 3.0
+            self.params.major_axis_angle = np.random.vonmises(base_angle, concentration)
+
     def set_diameter(self, diameter_mm: float):
         """Set pupil diameter and automatically determine shape characteristics.
 
@@ -272,37 +300,25 @@ class RealisticPupil(Pupil):
         """
         self.params.base_radius = diameter_mm / 2
 
-        # Determine orientation based on size (using paper's reference values)
-        # Large pupils (like dark condition) tend to have vertical ellipse orientation
-        # Small pupils (like light condition) tend to have horizontal ellipse orientation
-        if diameter_mm >= 4.0:  # Closer to dark condition size (4.93mm)
-            self._is_dark_condition = True
-            # Major axis orientation: clusters around vertical (0°)
-            concentration = 3.0  # Controls spread (~±30° for this value)
-            self.params.major_axis_angle = np.random.vonmises(0, concentration)
-        else:  # Closer to light condition size (3.09mm)
-            self._is_dark_condition = False
-            # Major axis orientation: clusters around horizontal (±90°)
-            base_angle = np.random.choice([np.pi / 2, -np.pi / 2])
-            concentration = 3.0
-            self.params.major_axis_angle = np.random.vonmises(base_angle, concentration)
+        # Update condition and orientation based on new size
+        self._update_condition_and_orientation(diameter_mm)
 
         # Regenerate harmonics with new conditions
         self._generate_harmonics()
 
         # Update elliptical parameters to match average radius for compatibility
         avg_radius_m = (diameter_mm / 2) * 1e-3  # Convert mm to meters
-        self.x_pupil = avg_radius_m * np.array([1, 0, 0, 0])
-        self.y_pupil = avg_radius_m * np.array([0, 1, 0, 0])
+        self.x_pupil = Direction3D(avg_radius_m, 0, 0)
+        self.y_pupil = Direction3D(0, avg_radius_m, 0)
 
-    def get_boundary_points(self, N: Optional[int] = None) -> Point4D:
+    def get_boundary_points(self, N: Optional[int] = None) -> np.ndarray:
         """Generate realistic pupil boundary points using Fourier series.
 
         Args:
             N: Number of boundary points (defaults to self.N if not provided)
 
         Returns:
-            4×N matrix of points on pupil boundary
+            4×N matrix of points on pupil boundary (homogeneous coordinates)
         """
         if N is None:
             N = self.N
@@ -312,11 +328,11 @@ class RealisticPupil(Pupil):
         radius_mm = np.full_like(theta, self.params.base_radius)
 
         # Add 2nd harmonic (elliptical component)
-        if hasattr(self, "r2"):
+        if self.r2 is not None:
             radius_mm += self.r2 * np.cos(2 * (theta - self.params.major_axis_angle))
 
         # Add higher harmonics for individual variation
-        if hasattr(self, "harmonics"):
+        if self.harmonics:
             for n, harmonic in self.harmonics.items():
                 radius_mm += harmonic["amplitude"] * np.cos(n * (theta - harmonic["phase"]))
 
@@ -327,9 +343,9 @@ class RealisticPupil(Pupil):
 
         # Create 4×N homogeneous coordinate matrix centered at pupil position
         pupil_points = np.zeros((4, N))
-        pupil_points[0, :] = self.pos_pupil[0] + x
-        pupil_points[1, :] = self.pos_pupil[1] + y
-        pupil_points[2, :] = self.pos_pupil[2]
+        pupil_points[0, :] = self.pos_pupil.x + x
+        pupil_points[1, :] = self.pos_pupil.y + y
+        pupil_points[2, :] = self.pos_pupil.z
         pupil_points[3, :] = 1.0
 
         return pupil_points
@@ -381,25 +397,30 @@ class RealisticPupil(Pupil):
         nc_squared = 0.0
 
         # Add 2nd harmonic contribution (elliptical)
-        if hasattr(self, "r2"):
+        if self.r2 is not None:
             nc_squared += 0.5 * (self.r2 / r_ave) ** 2
 
         # Add higher harmonic contributions
-        if hasattr(self, "harmonics"):
+        if self.harmonics:
             for harmonic in self.harmonics.values():
                 nc_squared += 0.5 * (harmonic["amplitude"] / r_ave) ** 2
 
         return np.sqrt(nc_squared)
 
 
-def create_pupil(pupil_type: str, pos_pupil: Point4D, x_pupil: Point4D, y_pupil: Point4D, **kwargs) -> Pupil:
+def create_pupil(
+    pupil_type: str, pos_pupil: Position3D, x_pupil: Direction3D, y_pupil: Direction3D, **kwargs
+) -> Pupil:
     """Factory function to create pupil instances.
+
+    Provides unified interface for creating different pupil models.
+    Supports elliptical and realistic pupil geometries.
 
     Args:
         pupil_type: Type of pupil ("elliptical" or "realistic")
-        pos_pupil: 4D homogeneous center position
-        x_pupil: 4D vector defining X-axis radius/direction
-        y_pupil: 4D vector defining Y-axis radius/direction
+        pos_pupil: Center position
+        x_pupil: Vector defining X-axis radius/direction
+        y_pupil: Vector defining Y-axis radius/direction
         **kwargs: Additional parameters for specific pupil types
                  - N: Number of boundary points (default: 100 for elliptical, 360 for realistic)
                  - params: RealisticPupilParams for realistic pupil

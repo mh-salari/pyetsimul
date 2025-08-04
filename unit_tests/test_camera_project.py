@@ -2,12 +2,13 @@
 
 import numpy as np
 from et_simul.core.camera import Camera
+from et_simul.types import Point2D
 
 
 def test_mixed_points_in_out_bounds():
     """Test mixed points with some in bounds and some out of bounds."""
     # Create test camera matching parameters
-    c = Camera(focal_length=500, resolution=[640, 480], err_type="uniform", err=0)
+    c = Camera(focal_length=500, resolution=Point2D(640, 480), err_type="uniform", err=0)
 
     # Define test points (homogeneous coordinates format)
     pos = np.array(
@@ -19,7 +20,10 @@ def test_mixed_points_in_out_bounds():
         ]
     )
 
-    x, dist, valid_condition = c.project(pos)
+    result = c.project(pos)
+    x = result.image_points
+    dist = result.distances
+    valid_condition = result.valid_mask
 
     # Expected distances
     expected_dist = np.array([200.0, 200.0, 300.0])
@@ -43,7 +47,7 @@ def test_mixed_points_in_out_bounds():
 
 def test_all_points_outside_bounds():
     """Test points that are all outside image bounds."""
-    c = Camera(focal_length=500, resolution=[640, 480], err_type="uniform", err=0)
+    c = Camera(focal_length=500, resolution=Point2D(640, 480), err_type="uniform", err=0)
 
     # Define test points that are clearly out of bounds
     pos = np.array(
@@ -55,7 +59,10 @@ def test_all_points_outside_bounds():
         ]
     )
 
-    x, dist, valid_condition = c.project(pos)
+    result = c.project(pos)
+    x = result.image_points
+    dist = result.distances
+    valid_condition = result.valid_mask
 
     expected_dist = np.array([200.0, 200.0, 200.0])
 
@@ -72,11 +79,11 @@ def test_all_points_outside_bounds():
 
 def test_boundary_points():
     """Test points exactly on image boundary."""
-    c = Camera(focal_length=500, resolution=[640, 480], err_type="uniform", err=0)
+    c = Camera(focal_length=500, resolution=Point2D(640, 480), err_type="uniform", err=0)
 
     # Calculate boundary points
-    boundary_x = c.resolution[0] / 2  # 320
-    boundary_y = c.resolution[1] / 2  # 240
+    boundary_x = c.resolution.x / 2  # 320
+    boundary_y = c.resolution.y / 2  # 240
     z_depth = -200
 
     x_right = boundary_x * z_depth / c.focal_length
@@ -93,7 +100,10 @@ def test_boundary_points():
         ]
     )
 
-    x, dist, valid_condition = c.project(pos)
+    result = c.project(pos)
+    x = result.image_points
+    # dist = result.distances
+    valid_condition = result.valid_mask
 
     # Expected projection values
     expected_x = np.array([[-320.0, 0.0, 320.0, 0.0], [0.0, -240.0, 0.0, 240.0]])
@@ -109,7 +119,7 @@ def test_boundary_points():
 
 def test_center_point():
     """Test point at image center."""
-    c = Camera(focal_length=500, resolution=[640, 480], err_type="uniform", err=0)
+    c = Camera(focal_length=500, resolution=Point2D(640, 480), err_type="uniform", err=0)
 
     # Point at center
     pos = np.array(
@@ -121,7 +131,10 @@ def test_center_point():
         ]
     )
 
-    x, dist, valid_condition = c.project(pos)
+    result = c.project(pos)
+    x = result.image_points
+    dist = result.distances
+    valid_condition = result.valid_mask
 
     # Should project to (0, 0)
     np.testing.assert_allclose(x[0, 0], 0.0, rtol=1e-12, atol=1e-15)
@@ -136,7 +149,7 @@ def test_center_point():
 
 def test_output_properties():
     """Test that output has correct properties."""
-    c = Camera(focal_length=500, resolution=[640, 480], err_type="uniform", err=0)
+    c = Camera(focal_length=500, resolution=Point2D(640, 480), err_type="uniform", err=0)
 
     # Simple test points
     pos = np.array(
@@ -148,7 +161,10 @@ def test_output_properties():
         ]
     )
 
-    x, dist, valid_condition = c.project(pos)
+    result = c.project(pos)
+    x = result.image_points
+    dist = result.distances
+    valid_condition = result.valid_mask
 
     # Check types and shapes
     assert isinstance(x, np.ndarray)

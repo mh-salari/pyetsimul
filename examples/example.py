@@ -1,122 +1,128 @@
 #!/usr/bin/env python3
 """Example script for ET Simul Python.
 
-This script demonstrates the basic functionality of the ET Simul framework
+Demonstrates basic usage of the ET Simul framework for eye, camera, and light simulation.
+Shows pupil and glint detection with and without corneal refraction.
 """
 
 import numpy as np
 from et_simul.core import Eye, Camera, Light
+from et_simul.types import Position3D
 import matplotlib.pyplot as plt
 
 
-# Create an eye with default corneal radius (7.98 mm) and its optical axis points along
-# the negative y-axis. (In the eye's local coordinate system, the optical axis
-# points along the negative z-axis. By specifying an eye-to-world transformation
-# matrix that rotates the coordinate system, we make the optical axis of the eye
-# point along the negative y-axis of the world coordinate system.)
-# For custom corneal radius, use: Eye(cornea=SphericalCornea(radius=desired_radius))
-rotation_matrix = np.array([[1, 0, 0], [0, 0, 1], [0, -1, 0]])
-e = Eye(fovea_displacement=False)
-e.set_rest_orientation(rotation_matrix)
+def main():
+    """Run a basic ET Simul example: simulate eye, camera, and light, and plot results."""
+    # Create an eye with default corneal radius (7.98 mm) and its optical axis points along
+    # the negative y-axis. (In the eye's local coordinate system, the optical axis
+    # points along the negative z-axis. By specifying an eye-to-world transformation
+    # matrix that rotates the coordinate system, we make the optical axis of the eye
+    # point along the negative y-axis of the world coordinate system.)
+    # For custom corneal radius, use: Eye(cornea=SphericalCornea(radius=desired_radius))
+    rotation_matrix = np.array([[1, 0, 0], [0, 0, 1], [0, -1, 0]])
+    e = Eye(fovea_displacement=False)
+    e.set_rest_orientation(rotation_matrix)
 
-e.position = np.array([0, 500e-3, 200e-3, 1.0])
+    e.position = Position3D(0, 500e-3, 200e-3)
 
-# Create a light. Because lights are modelled as perfect point light sources, they do not have
-# an orientation, and hence they do not need a full transformation matrix; only
-# the position has to be specified.
-l = Light(position=np.array([200e-3, 0, 0, 1.0]))
+    # Create a light. Because lights are modelled as perfect point light sources, they do not have
+    # an orientation, and hence they do not need a full transformation matrix; only
+    # the position has to be specified.
+    l = Light(position=Position3D(200e-3, 0, 0))
 
-# Create a camera. In its local coordinate system, the camera points out along the negative
-# z-axis. We use point_at() to orient the camera towards the eye.
-c = Camera()
-# Point camera at the eye position
-c.point_at(e.position)
+    # Create a camera. In its local coordinate system, the camera points out along the negative
+    # z-axis. We use point_at() to orient the camera towards the eye.
+    c = Camera()
+    # Point camera at the eye position
+    c.point_at(e.position)
 
-# Get pupil boundary and fitted ellipse center in camera image (with refraction)
-pupil_img, pupil_center_img = e.get_pupil_ellipse_in_camera_image(c)
-print(f"Pupil boundary: {pupil_img.shape[1]} points in image")
-print(f"Fitted pupil center (refracted): ({pupil_center_img[0]:.2f}, {pupil_center_img[1]:.2f}) pixels")
+    # Get pupil boundary and center in camera image (with refraction)
+    pupil_img, pupil_center_img = e.get_pupil_in_camera_image(c)
+    print(f"Pupil boundary: {pupil_img.shape[1]} points in image")
+    print(f"Pupil center (refracted): ({pupil_center_img.x:.2f}, {pupil_center_img.y:.2f}) pixels")
 
-# Get pupil boundary and fitted ellipse center without refraction
-pupil_img_no_refract, pupil_center_img_no_refract = e.get_pupil_ellipse_in_camera_image(c, use_refraction=False)
+    # Get pupil boundary and center without refraction
+    pupil_img_no_refract, pupil_center_img_no_refract = e.get_pupil_in_camera_image(c, use_refraction=False)
 
-print(
-    f"Fitted pupil center (non-refracted): ({pupil_center_img_no_refract[0]:.2f}, {pupil_center_img_no_refract[1]:.2f}) pixels"
-)
+    print(
+        f"Pupil center (non-refracted): ({pupil_center_img_no_refract.x:.2f}, {pupil_center_img_no_refract.y:.2f}) pixels"
+    )
 
-# Calculate offset between refracted and non-refracted fitted centers
-offset_refracted_vs_non_refracted = np.array(pupil_center_img) - np.array(pupil_center_img_no_refract)
-offset_magnitude = np.linalg.norm(offset_refracted_vs_non_refracted)
-print(f"Offset between refracted and non-refracted centers: {offset_magnitude:.2f} pixels")
+    # Calculate offset between refracted and non-refracted fitted centers
+    offset_refracted_vs_non_refracted = pupil_center_img - pupil_center_img_no_refract
+    offset_magnitude = np.sqrt(offset_refracted_vs_non_refracted.x**2 + offset_refracted_vs_non_refracted.y**2)
+    print(f"Offset between refracted and non-refracted centers: {offset_magnitude:.2f} pixels")
 
-# Find the 3D position of the CR generated by the light
-cr = e.find_cr(l, c)
+    # Find the 3D position of the CR generated by the light
+    cr = e.find_cr(l, c)
 
-print(f"CR is at ({cr[0]:.6g} {cr[1]:.6g} {cr[2]:.6g}) in space")
+    print(f"CR is at ({cr.x:.6g} {cr.y:.6g} {cr.z:.6g}) in space")
 
-# Project the CR to the camera's image plane
-cr_img, _, _ = c.project(cr)
-print(f"CR is at ({cr_img[0, 0]:.6g} {cr_img[1, 0]:.6g}) in camera image")
+    # Project the CR to the camera's image plane
+    cr_projection = c.project(cr)
+    print(f"CR is at ({cr_projection.image_points[0, 0]:.6g} {cr_projection.image_points[1, 0]:.6g}) in camera image")
+
+    plt.figure(figsize=(12, 6))
+
+    # Plot pupil boundary (refracted)
+    plt.plot(pupil_img[0, :], pupil_img[1, :], "b.", markersize=5, alpha=0.7)  # Small dots
+    # Close the loop by adding first point at the end
+    pupil_closed = np.column_stack([pupil_img, pupil_img[:, 0:1]])
+    plt.plot(
+        pupil_closed[0, :],
+        pupil_closed[1, :],
+        "b-",
+        linewidth=1,
+        label="Pupil (refracted)",
+    )  # Connected line
+
+    # Plot pupil boundary (non-refracted)
+    plt.plot(
+        pupil_img_no_refract[0, :],
+        pupil_img_no_refract[1, :],
+        "g.",
+        markersize=5,
+        alpha=0.7,
+    )  # Small dots
+    # Close the loop by adding first point at the end
+    pupil_closed_no_refract = np.column_stack([pupil_img_no_refract, pupil_img_no_refract[:, 0:1]])
+    plt.plot(
+        pupil_closed_no_refract[0, :],
+        pupil_closed_no_refract[1, :],
+        "g-",
+        linewidth=1,
+        label="Pupil (non-refracted)",
+    )  # Connected line
+
+    # Plot fitted pupil center (refracted)
+    plt.plot(
+        pupil_center_img.x,
+        pupil_center_img.y,
+        "b+",
+        markersize=8,
+        label="Fitted center (refracted)",
+    )
+
+    # Plot fitted pupil center (non-refracted)
+    plt.plot(
+        pupil_center_img_no_refract.x,
+        pupil_center_img_no_refract.y,
+        "g+",
+        markersize=8,
+        label="Fitted center (non-refracted)",
+    )
+
+    # Plot glint
+    plt.plot(cr_projection.image_points[0, 0], cr_projection.image_points[1, 0], "ro", markersize=10, label="Glint")
+
+    plt.xlabel("X (pixels)")
+    plt.ylabel("Y (pixels)")
+    plt.title("Eye Image: Pupil and Glint Locations")
+    plt.legend()
+    plt.grid(True, alpha=0.3)
+    plt.axis("equal")
+    plt.show()
 
 
-plt.figure(figsize=(12, 6))
-
-# Plot pupil boundary (refracted)
-plt.plot(pupil_img[0, :], pupil_img[1, :], "b.", markersize=5, alpha=0.7)  # Small dots
-# Close the loop by adding first point at the end
-pupil_closed = np.column_stack([pupil_img, pupil_img[:, 0:1]])
-plt.plot(
-    pupil_closed[0, :],
-    pupil_closed[1, :],
-    "b-",
-    linewidth=1,
-    label="Pupil (refracted)",
-)  # Connected line
-
-# Plot pupil boundary (non-refracted)
-plt.plot(
-    pupil_img_no_refract[0, :],
-    pupil_img_no_refract[1, :],
-    "g.",
-    markersize=5,
-    alpha=0.7,
-)  # Small dots
-# Close the loop by adding first point at the end
-pupil_closed_no_refract = np.column_stack([pupil_img_no_refract, pupil_img_no_refract[:, 0:1]])
-plt.plot(
-    pupil_closed_no_refract[0, :],
-    pupil_closed_no_refract[1, :],
-    "g-",
-    linewidth=1,
-    label="Pupil (non-refracted)",
-)  # Connected line
-
-# Plot fitted pupil center (refracted)
-plt.plot(
-    pupil_center_img[0],
-    pupil_center_img[1],
-    "b+",
-    markersize=8,
-    label="Fitted center (refracted)",
-)
-
-# Plot fitted pupil center (non-refracted)
-plt.plot(
-    pupil_center_img_no_refract[0],
-    pupil_center_img_no_refract[1],
-    "g+",
-    markersize=8,
-    label="Fitted center (non-refracted)",
-)
-
-
-# Plot glint
-plt.plot(cr_img[0, 0], cr_img[1, 0], "ro", markersize=10, label="Glint")
-
-plt.xlabel("X (pixels)")
-plt.ylabel("Y (pixels)")
-plt.title("Eye Image: Pupil and Glint Locations")
-plt.legend()
-plt.grid(True, alpha=0.3)
-plt.axis("equal")
-plt.show()
+if __name__ == "__main__":
+    main()

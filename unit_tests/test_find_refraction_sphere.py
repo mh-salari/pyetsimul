@@ -2,100 +2,115 @@
 
 import numpy as np
 from et_simul.optics.refractions import find_refraction_sphere
+from et_simul.types import Position3D, Point3D
 
 
 def test_basic_refraction():
     """Test basic refraction scenario with MATLAB reference values."""
     # Define sphere
-    S0 = np.array([0.0, 0.0, 0.0, 1.0])  # Sphere center
-    Sr = 10.0  # Sphere radius
+    sphere_center = Position3D(0.0, 0.0, 0.0)  # Sphere center
+    sphere_radius = 10.0  # Sphere radius
     n_outside = 1.0  # Air
     n_sphere = 1.5  # Glass
 
     # Object inside sphere, camera outside
-    O = np.array([2.0, 1.0, 3.0, 1.0])
-    C = np.array([15.0, 8.0, 12.0, 1.0])
+    object_pos = Position3D(2.0, 1.0, 3.0)
+    camera_pos = Position3D(15.0, 8.0, 12.0)
 
-    I = find_refraction_sphere(C, O, S0, Sr, n_outside, n_sphere)
+    intersection_point = find_refraction_sphere(
+        camera_pos, object_pos, sphere_center, sphere_radius, n_outside, n_sphere
+    )
 
     # MATLAB reference values
-    expected_I = np.array([6.6936966464330183, 3.5132501989855691, 6.5461055784992670, 1.0])
+    expected_point = Point3D(6.6936966464330183, 3.5132501989855691, 6.5461055784992670)
 
-    assert I is not None
-    np.testing.assert_allclose(I, expected_I, rtol=1e-10, atol=1e-10)
+    assert intersection_point is not None
+    intersection_point.assert_close(expected_point, rtol=1e-10, atol=1e-10)
 
     # Verify point is on sphere surface
-    dist_from_center = np.linalg.norm(I[:3] - S0[:3])
-    np.testing.assert_allclose(dist_from_center, Sr, rtol=1e-15, atol=1e-15)
+    dist_from_center = np.linalg.norm(np.array(intersection_point) - np.array(sphere_center)[:3])
+    np.testing.assert_allclose(dist_from_center, sphere_radius, rtol=1e-15, atol=1e-15)
 
 
 def test_different_refractive_indices():
     """Test refraction with different refractive indices and MATLAB reference values."""
     # Define sphere
-    S0 = np.array([0.0, 0.0, 0.0, 1.0])
-    Sr = 10.0
+    sphere_center = Position3D(0.0, 0.0, 0.0)
+    sphere_radius = 10.0
     n_outside = 1.33  # Water
     n_sphere = 1.4  # Different glass
 
     # Different positions
-    O = np.array([-1.0, 2.0, -2.0, 1.0])
-    C = np.array([-8.0, 10.0, -15.0, 1.0])
+    object_pos = Position3D(-1.0, 2.0, -2.0)
+    camera_pos = Position3D(-8.0, 10.0, -15.0)
 
-    I = find_refraction_sphere(C, O, S0, Sr, n_outside, n_sphere)
+    intersection_point = find_refraction_sphere(
+        camera_pos, object_pos, sphere_center, sphere_radius, n_outside, n_sphere
+    )
 
     # MATLAB reference values
-    expected_I = np.array([-3.9369221058636397, 5.3748224021012501, -7.4573405767896075, 1.0])
+    expected_point = Point3D(-3.9369221058636397, 5.3748224021012501, -7.4573405767896075)
 
-    assert I is not None
-    np.testing.assert_allclose(I, expected_I, rtol=1e-10, atol=1e-10)
+    assert intersection_point is not None
+    intersection_point.assert_close(expected_point, rtol=1e-10, atol=1e-10)
 
     # Verify point is on sphere surface
-    dist_from_center = np.linalg.norm(I[:3] - S0[:3])
-    np.testing.assert_allclose(dist_from_center, Sr, rtol=1e-15, atol=1e-15)
+    dist_from_center = np.linalg.norm(np.array(intersection_point) - np.array(sphere_center)[:3])
+    np.testing.assert_allclose(dist_from_center, sphere_radius, rtol=1e-15, atol=1e-15)
 
 
 def test_large_sphere():
     """Test refraction with large sphere and MATLAB reference values."""
     # Define large sphere
-    S0 = np.array([0.0, 0.0, 0.0, 1.0])
-    Sr = 50.0  # Large radius
+    sphere_center = Position3D(0.0, 0.0, 0.0)
+    sphere_radius = 50.0  # Large radius
     n_outside = 1.0
     n_sphere = 1.5
 
     # Scaled positions
-    O = np.array([5.0, -3.0, 8.0, 1.0])
-    C = np.array([80.0, -20.0, 60.0, 1.0])
+    object_pos = Position3D(5.0, -3.0, 8.0)
+    camera_pos = Position3D(80.0, -20.0, 60.0)
 
-    I = find_refraction_sphere(C, O, S0, Sr, n_outside, n_sphere)
+    intersection_point = find_refraction_sphere(
+        camera_pos, object_pos, sphere_center, sphere_radius, n_outside, n_sphere
+    )
 
     # MATLAB reference values
-    expected_I = np.array([37.3698407698170811, -10.7448391945206190, 31.4331581538096536, 1.0])
+    expected_point = Point3D(37.3698407698170811, -10.7448391945206190, 31.4331581538096536)
 
-    assert I is not None
-    np.testing.assert_allclose(I, expected_I, rtol=1e-10, atol=1e-10)
+    assert intersection_point is not None
+    intersection_point.assert_close(expected_point, rtol=1e-10, atol=1e-10)
 
     # Verify point is on sphere surface
-    dist_from_center = np.linalg.norm(I[:3] - S0[:3])
-    np.testing.assert_allclose(dist_from_center, Sr, rtol=1e-15, atol=1e-15)
+    dist_from_center = np.linalg.norm(np.array(intersection_point) - np.array(sphere_center)[:3])
+    np.testing.assert_allclose(dist_from_center, sphere_radius, rtol=1e-15, atol=1e-15)
 
 
 def test_snells_law_verification():
     """Test that solution satisfies Snell's law with MATLAB reference values."""
     # Use same setup as basic test
-    S0 = np.array([0.0, 0.0, 0.0, 1.0])
-    Sr = 10.0
+    sphere_center = Position3D(0.0, 0.0, 0.0)
+    sphere_radius = 10.0
     n_outside = 1.0
     n_sphere = 1.5
-    O = np.array([2.0, 1.0, 3.0, 1.0])
-    C = np.array([15.0, 8.0, 12.0, 1.0])
+    object_pos = Position3D(2.0, 1.0, 3.0)
+    camera_pos = Position3D(15.0, 8.0, 12.0)
 
-    I = find_refraction_sphere(C, O, S0, Sr, n_outside, n_sphere)
-    assert I is not None
+    intersection_point = find_refraction_sphere(
+        camera_pos, object_pos, sphere_center, sphere_radius, n_outside, n_sphere
+    )
+    assert intersection_point is not None
 
     # Compute vectors
-    n_surface = (I[:3] - S0[:3]) / np.linalg.norm(I[:3] - S0[:3])
-    ray_incident = (I[:3] - O[:3]) / np.linalg.norm(I[:3] - O[:3])
-    ray_refracted = (C[:3] - I[:3]) / np.linalg.norm(C[:3] - I[:3])
+    n_surface = (np.array(intersection_point) - np.array(sphere_center)[:3]) / np.linalg.norm(
+        np.array(intersection_point) - np.array(sphere_center)[:3]
+    )
+    ray_incident = (np.array(intersection_point) - np.array(object_pos)[:3]) / np.linalg.norm(
+        np.array(intersection_point) - np.array(object_pos)[:3]
+    )
+    ray_refracted = (np.array(camera_pos)[:3] - np.array(intersection_point)) / np.linalg.norm(
+        np.array(camera_pos)[:3] - np.array(intersection_point)
+    )
 
     # MATLAB reference values
     expected_n_surface = np.array([0.669370, 0.351325, 0.654611])
@@ -122,18 +137,21 @@ def test_snells_law_verification():
 
 def test_output_properties():
     """Test that output has correct properties."""
-    S0 = np.array([0.0, 0.0, 0.0, 1.0])
-    Sr = 10.0
+    sphere_center = Position3D(0.0, 0.0, 0.0)
+    sphere_radius = 10.0
     n_outside = 1.0
     n_sphere = 1.5
-    O = np.array([2.0, 1.0, 3.0, 1.0])
-    C = np.array([15.0, 8.0, 12.0, 1.0])
+    object_pos = Position3D(2.0, 1.0, 3.0)
+    camera_pos = Position3D(15.0, 8.0, 12.0)
 
-    I = find_refraction_sphere(C, O, S0, Sr, n_outside, n_sphere)
-    assert I is not None, "I should not be None for these inputs"
-    assert not np.any(np.isnan(I)), "I should not contain NaN values"
+    intersection_point = find_refraction_sphere(
+        camera_pos, object_pos, sphere_center, sphere_radius, n_outside, n_sphere
+    )
+    assert intersection_point is not None, "intersection_point should not be None for these inputs"
+    assert not np.any(np.isnan(np.array(intersection_point))), "intersection_point should not contain NaN values"
 
     # Check types and shapes
-    assert isinstance(I, np.ndarray)
-    assert I.shape == (4,)
-    assert I.dtype == np.float64
+    assert isinstance(intersection_point, Point3D)
+    intersection_array = np.array(intersection_point)
+    assert intersection_array.shape == (3,)
+    assert intersection_array.dtype == np.float64

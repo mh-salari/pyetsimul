@@ -2,94 +2,93 @@
 
 import numpy as np
 from et_simul.geometry.utils import lines_closest_point
+from et_simul.types import Point3D, Vector3D
 
 
 def test_parallel_lines():
     """Test parallel lines - should return NaN values."""
-    p1 = np.array([0, 0, 0, 1], dtype=float)
-    d1 = np.array([1, 0, 0, 0], dtype=float)
-    p2 = np.array([0, 2, 0, 1], dtype=float)
-    d2 = np.array([1, 0, 0, 0], dtype=float)
+    p1 = Point3D(0, 0, 0)
+    d1 = Vector3D(1, 0, 0)
+    p2 = Point3D(0, 2, 0)
+    d2 = Vector3D(1, 0, 0)
 
     x1, x2 = lines_closest_point(p1, d1, p2, d2)
 
     # For parallel lines, should return NaN like MATLAB
-    assert np.all(np.isnan(x1))
-    assert np.all(np.isnan(x2))
+    assert np.isnan(x1.x) and np.isnan(x1.y) and np.isnan(x1.z)
+    assert np.isnan(x2.x) and np.isnan(x2.y) and np.isnan(x2.z)
 
 
 def test_intersecting_lines():
     """Test intersecting lines - closest points should be identical."""
-    p1 = np.array([0, 0, 0, 1], dtype=float)
-    d1 = np.array([1, 1, 0, 0], dtype=float)
-    p2 = np.array([2, 0, 0, 1], dtype=float)
-    d2 = np.array([-1, 1, 0, 0], dtype=float)
+    p1 = Point3D(0, 0, 0)
+    d1 = Vector3D(1, 1, 0)
+    p2 = Point3D(2, 0, 0)
+    d2 = Vector3D(-1, 1, 0)
 
     x1, x2 = lines_closest_point(p1, d1, p2, d2)
 
-    # MATLAB reference values
-    expected = np.array([1.0, 1.0, 0.0, 1.0])
+    # Expected intersection point
+    expected_point = Point3D(1.0, 1.0, 0.0)
 
-    np.testing.assert_allclose(x1, expected, rtol=1e-12)
-    np.testing.assert_allclose(x2, expected, rtol=1e-12)
+    np.testing.assert_allclose([x1.x, x1.y, x1.z], [expected_point.x, expected_point.y, expected_point.z], rtol=1e-12)
+    np.testing.assert_allclose([x2.x, x2.y, x2.z], [expected_point.x, expected_point.y, expected_point.z], rtol=1e-12)
 
     # Both points should be identical for intersecting lines
-    np.testing.assert_allclose(x1, x2, rtol=1e-12)
+    assert abs(x1.x - x2.x) < 1e-12
+    assert abs(x1.y - x2.y) < 1e-12
+    assert abs(x1.z - x2.z) < 1e-12
 
 
 def test_skew_lines():
     """Test skew lines - should return different closest points."""
-    p1 = np.array([0, 0, 0, 1], dtype=float)
-    d1 = np.array([1, 0, 0, 0], dtype=float)
-    p2 = np.array([0, 1, 1, 1], dtype=float)
-    d2 = np.array([0, 1, 0, 0], dtype=float)
+    p1 = Point3D(0, 0, 0)
+    d1 = Vector3D(1, 0, 0)
+    p2 = Point3D(0, 1, 1)
+    d2 = Vector3D(0, 1, 0)
 
     x1, x2 = lines_closest_point(p1, d1, p2, d2)
 
-    # MATLAB reference values
-    expected_x1 = np.array([0.0, 0.0, 0.0, 1.0])
-    expected_x2 = np.array([0.0, 0.0, 1.0, 1.0])
+    # Expected closest points
+    expected_x1 = Point3D(0.0, 0.0, 0.0)
+    expected_x2 = Point3D(0.0, 0.0, 1.0)
 
-    np.testing.assert_allclose(x1, expected_x1, rtol=1e-12)
-    np.testing.assert_allclose(x2, expected_x2, rtol=1e-12)
+    np.testing.assert_allclose([x1.x, x1.y, x1.z], [expected_x1.x, expected_x1.y, expected_x1.z], rtol=1e-12)
+    np.testing.assert_allclose([x2.x, x2.y, x2.z], [expected_x2.x, expected_x2.y, expected_x2.z], rtol=1e-12)
 
     # Points should be different for skew lines
-    assert not np.allclose(x1, x2, rtol=1e-12)
+    assert not (abs(x1.x - x2.x) < 1e-12 and abs(x1.y - x2.y) < 1e-12 and abs(x1.z - x2.z) < 1e-12)
 
 
 def test_non_unit_direction_vectors():
     """Test with non-unit direction vectors."""
-    p1 = np.array([0, 0, 0, 1], dtype=float)
-    d1 = np.array([3, 0, 0, 0], dtype=float)
-    p2 = np.array([1, 1, 0, 1], dtype=float)
-    d2 = np.array([0, 2, 0, 0], dtype=float)
+    p1 = Point3D(0, 0, 0)
+    d1 = Vector3D(3, 0, 0)
+    p2 = Point3D(1, 1, 0)
+    d2 = Vector3D(0, 2, 0)
 
     x1, x2 = lines_closest_point(p1, d1, p2, d2)
 
-    # MATLAB reference values - these lines actually intersect
-    expected = np.array([1.0, 0.0, 0.0, 1.0])
+    # Expected intersection point - these lines actually intersect
+    expected = Point3D(1.0, 0.0, 0.0)
 
-    np.testing.assert_allclose(x1, expected, rtol=1e-12)
-    np.testing.assert_allclose(x2, expected, rtol=1e-12)
+    np.testing.assert_allclose([x1.x, x1.y, x1.z], [expected.x, expected.y, expected.z], rtol=1e-12)
+    np.testing.assert_allclose([x2.x, x2.y, x2.z], [expected.x, expected.y, expected.z], rtol=1e-12)
 
 
 def test_output_properties():
     """Test that output has correct properties."""
-    p1 = np.array([0, 0, 0, 1], dtype=float)
-    d1 = np.array([1, 0, 0, 0], dtype=float)
-    p2 = np.array([0, 1, 1, 1], dtype=float)
-    d2 = np.array([0, 1, 0, 0], dtype=float)
+    p1 = Point3D(0, 0, 0)
+    d1 = Vector3D(1, 0, 0)
+    p2 = Point3D(0, 1, 1)
+    d2 = Vector3D(0, 1, 0)
 
     x1, x2 = lines_closest_point(p1, d1, p2, d2)
 
-    # Check types and shapes
-    assert isinstance(x1, np.ndarray)
-    assert isinstance(x2, np.ndarray)
-    assert x1.dtype == np.float64
-    assert x2.dtype == np.float64
-    assert x1.shape == (4,)
-    assert x2.shape == (4,)
+    # Check types
+    assert isinstance(x1, Point3D)
+    assert isinstance(x2, Point3D)
 
     # For non-parallel cases, values should be finite
-    assert np.all(np.isfinite(x1))
-    assert np.all(np.isfinite(x2))
+    assert np.isfinite(x1.x) and np.isfinite(x1.y) and np.isfinite(x1.z)
+    assert np.isfinite(x2.x) and np.isfinite(x2.y) and np.isfinite(x2.z)

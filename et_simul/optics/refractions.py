@@ -1,46 +1,58 @@
+"""Light refraction calculation utilities for eye tracking simulation.
+
+Implements Snell's law, ray-surface intersection, and optimization for refraction on spherical and conic surfaces.
+"""
+
 import numpy as np
 from typing import Optional, Tuple
 from scipy.optimize import brentq
-from ..types import Point4D
+from ..types import Point3D, Ray, IntersectionResult, Position3D
 from ..geometry.intersections import intersect_ray_sphere, intersect_ray_conic, conic_surface_normal
+from ..geometry.intersections import point_on_conic_surface
 
 
 def _refraction_objective_sphere(
-    a: float, C: Point4D, O: Point4D, S0: Point4D, Sr: float, n_outside: float, n_sphere: float
-) -> Tuple[float, Point4D]:
-    """Objective function for finding refraction point on sphere surface.
+    a: float,
+    camera_pos: Position3D,
+    object_pos: Position3D,
+    sphere_center: Position3D,
+    sphere_radius: float,
+    n_outside: float,
+    n_sphere: float,
+) -> Tuple[float, Point3D]:
+    """Objective function for refraction finding on sphere.
+
+    Uses interpolation between camera and object directions to find refraction point.
+    Returns Snell's law difference for optimization.
 
     Args:
         a: Interpolation parameter between camera and object directions
-        C: Camera position (4D homogeneous)
-        O: Object position (4D homogeneous)
-        S0: Sphere center (4D homogeneous)
-        Sr: Sphere radius
+        camera_pos: Camera position
+        object_pos: Object position
+        sphere_center: Sphere center position
+        sphere_radius: Sphere radius
         n_outside: Refractive index outside sphere
         n_sphere: Refractive index of sphere
 
     Returns:
-        Tuple of (diff, U0) where diff is Snell's law difference and U0 is surface point (4D homogeneous)
+        Tuple of (diff, surface_point) where diff is Snell's law difference and surface_point is on sphere surface
     """
-    # Compute vectors from sphere center to camera and object (work in 4D homogeneous space)
-    C_vec = C - S0
-    O_vec = O - S0
-    to_c = C_vec / np.linalg.norm(C_vec[:3])
-    to_o = O_vec / np.linalg.norm(O_vec[:3])
+    # Compute vectors from sphere center to camera and object
+    to_camera = (camera_pos - sphere_center).normalize()
+    to_object = (object_pos - sphere_center).normalize()
 
-    # Interpolate and normalize to get surface normal (3D spatial component)
-    n_spatial = a * to_c[:3] + (1 - a) * to_o[:3]
-    n_spatial = n_spatial / np.linalg.norm(n_spatial)
+    # Interpolate and normalize to get surface normal
+    normal_vec = (to_camera * a + to_object * (1 - a)).normalize()
 
-    # Compute point on surface of sphere (4D homogeneous)
-    U0 = S0.copy()
-    U0[:3] = S0[:3] + Sr * n_spatial
+    # Compute point on surface of sphere
+    surface_point = sphere_center.to_point3d() + (normal_vec * sphere_radius)
 
     # Compute angles with surface normal
-    C_to_U0 = C - U0
-    U0_to_O = U0 - O
-    cos_angle_c = np.dot(n_spatial, C_to_U0[:3] / np.linalg.norm(C_to_U0[:3]))
-    cos_angle_o = np.dot(n_spatial, U0_to_O[:3] / np.linalg.norm(U0_to_O[:3]))
+    camera_to_surface = (camera_pos - surface_point).normalize()
+    surface_to_object = (surface_point - object_pos.to_point3d()).normalize()
+
+    cos_angle_c = normal_vec.dot(camera_to_surface)
+    cos_angle_o = normal_vec.dot(surface_to_object)
 
     # Safe sqrt to handle numerical errors
     sin_angle_c = np.sqrt(max(0, 1 - cos_angle_c**2))
@@ -49,91 +61,100 @@ def _refraction_objective_sphere(
     # Snell's law difference
     diff = n_outside * sin_angle_c - n_sphere * sin_angle_o
 
-    return diff, U0
+    return diff, surface_point
 
 
 def find_refraction_sphere(
-    C: Point4D, O: Point4D, S0: Point4D, Sr: float, n_outside: float, n_sphere: float
-) -> Optional[Point4D]:
-    """Computes image produced by refracting sphere.
+    camera_pos: Position3D,
+    object_pos: Position3D,
+    sphere_center: Position3D,
+    sphere_radius: float,
+    n_outside: float,
+    n_sphere: float,
+) -> Optional[Point3D]:
+    """Find refraction point on sphere surface.
 
-
-
-    I = find_refraction_sphere(C, O, S0, Sr, n_outside, n_sphere) finds the position
-    on a sphere with center S0 and radius Sr where a ray emanating from an
-    object at a position 'O' inside the sphere is refracted to pass directly
-    through point 'C' (this could be a camera, for example). The refractive
-    index of the sphere is 'n_sphere', that of the outside medium is
-    'n_outside'.
+    Uses optimization to find point where object ray refracts to camera position.
+    Implements Snell's law using numerical root finding.
 
     Args:
-        C: Camera/observer position (3D or 4D homogeneous)
-        O: Object position inside sphere (3D or 4D homogeneous)
-        S0: Sphere center (3D or 4D homogeneous)
-        Sr: Sphere radius
+        camera_pos: Camera/observer position
+        object_pos: Object position inside sphere
+        sphere_center: Sphere center position
+        sphere_radius: Sphere radius
         n_outside: Refractive index outside sphere
         n_sphere: Refractive index of sphere
 
     Returns:
-        Position on sphere surface where refraction occurs (same coordinate type as input), or None if not found.
+        Position on sphere surface where refraction occurs, or None if not found.
     """
-    # Work directly with 4D homogeneous coordinates
     try:
-        a = brentq(lambda x: _refraction_objective_sphere(x, C, O, S0, Sr, n_outside, n_sphere)[0], 0, 1)
-        _, result = _refraction_objective_sphere(a, C, O, S0, Sr, n_outside, n_sphere)
+        a = brentq(
+            lambda x: _refraction_objective_sphere(
+                x, camera_pos, object_pos, sphere_center, sphere_radius, n_outside, n_sphere
+            )[0],
+            0,
+            1,
+        )
+        _, result = _refraction_objective_sphere(
+            a, camera_pos, object_pos, sphere_center, sphere_radius, n_outside, n_sphere
+        )
         return result
     except (ValueError, RuntimeError):
         return None
 
 
 def _refraction_objective_conic(
-    alpha: float, C: Point4D, O: Point4D, S0: Point4D, r: float, k: float, n_outside: float, n_conic: float
-) -> Tuple[float, Optional[Point4D]]:
-    """Objective function for finding refraction point on conic surface.
+    alpha: float,
+    camera_pos: Position3D,
+    object_pos: Position3D,
+    conic_center: Position3D,
+    radius: float,
+    conic_constant: float,
+    n_outside: float,
+    n_conic: float,
+) -> Tuple[float, Optional[Point3D]]:
+    """Objective function for refraction finding on conic surface.
+
+    Uses interpolation between camera and object directions to find refraction point.
+    Projects to conic surface using proper conic section geometry.
+    Returns Snell's law difference for optimization.
 
     Args:
         alpha: Interpolation parameter between camera and object directions
-        C: Camera position (4D homogeneous)
-        O: Object position (4D homogeneous)
-        S0: Conic center (4D homogeneous, typically corneal apex)
-        r: Radius of curvature at apex (meters)
-        k: Conic constant (k < 0 for prolate, k = 0 for sphere, k > 0 for oblate)
+        camera_pos: Camera position
+        object_pos: Object position
+        conic_center: Conic center position (typically corneal apex)
+        radius: Radius of curvature at apex (meters)
+        conic_constant: Conic constant (k < 0 for prolate, k = 0 for sphere, k > 0 for oblate)
         n_outside: Refractive index outside conic
         n_conic: Refractive index of conic
 
     Returns:
-        Tuple of (diff, intersection) where diff is Snell's law difference and intersection is surface point (4D homogeneous)
+        Tuple of (diff, intersection) where diff is Snell's law difference and intersection is surface point
     """
-    # Import here to avoid circular import
-    from ..geometry.intersections import point_on_conic_surface, conic_surface_normal
 
-    # Work with 4D homogeneous coordinates, use spatial components for vector math
-    C_vec = C - S0
-    O_vec = O - S0
-    to_c = C_vec[:3] / np.linalg.norm(C_vec[:3])
-    to_o = O_vec[:3] / np.linalg.norm(O_vec[:3])
+    # Calculate directions from conic center to camera and object
+    to_camera = (camera_pos - conic_center).normalize()
+    to_object = (object_pos - conic_center).normalize()
 
-    direction = alpha * to_c + (1 - alpha) * to_o
-    direction = direction / np.linalg.norm(direction)
+    # Interpolate direction
+    direction = (to_camera * alpha + to_object * (1 - alpha)).normalize()
 
     # Find intersection with conic surface along this direction
-    intersection = point_on_conic_surface(S0, direction, r, k)
+    intersection = point_on_conic_surface(conic_center, direction, radius, conic_constant)
     if intersection is None:
         return float("inf"), None
 
     # Get surface normal at intersection point
-    normal = conic_surface_normal(intersection, S0, r, k)
-    if normal is None:
-        return float("inf"), None
+    normal = conic_surface_normal(intersection, conic_center, radius, conic_constant)
 
-    # Compute angles with surface normal using 4D homogeneous coordinates
-    C_to_intersection = C - intersection
-    intersection_to_O = intersection - O
-    to_camera = C_to_intersection[:3] / np.linalg.norm(C_to_intersection[:3])
-    to_object = intersection_to_O[:3] / np.linalg.norm(intersection_to_O[:3])
+    # Compute angles with surface normal
+    camera_to_intersection = (camera_pos.to_point3d() - intersection).normalize()
+    intersection_to_object = (intersection - object_pos.to_point3d()).normalize()
 
-    cos_angle_c = np.dot(normal, to_camera)
-    cos_angle_o = np.dot(normal, to_object)
+    cos_angle_c = normal.dot(camera_to_intersection)
+    cos_angle_o = normal.dot(intersection_to_object)
 
     sin_angle_c = np.sqrt(max(0, 1 - cos_angle_c**2))
     sin_angle_o = np.sqrt(max(0, 1 - cos_angle_o**2))
@@ -145,173 +166,172 @@ def _refraction_objective_conic(
 
 
 def find_refraction_conic(
-    C: Point4D, O: Point4D, S0: Point4D, r: float, k: float, n_outside: float, n_conic: float
-) -> Optional[Point4D]:
-    """Computes image produced by refracting conic section.
+    camera_pos: Position3D,
+    object_pos: Position3D,
+    conic_center: Position3D,
+    radius: float,
+    conic_constant: float,
+    n_outside: float,
+    n_conic: float,
+) -> Optional[Point3D]:
+    """Find refraction point on conic surface.
 
-    I = find_refraction_conic(C, O, S0, r, k, n_outside, n_conic) finds the position
-    on a conic surface with center S0 and conic constant k where a ray emanating from an
-    object at a position 'O' inside the conic is refracted to pass directly
-    through point 'C' (this could be a camera, for example). The refractive
-    index of the conic is 'n_conic', that of the outside medium is 'n_outside'.
+    Uses optimization to find point where object ray refracts to camera position.
+    Implements Snell's law using numerical root finding on conic geometry.
 
     Args:
-        C: Camera/observer position (4D homogeneous)
-        O: Object position inside conic (4D homogeneous)
-        S0: Conic center (4D homogeneous, typically corneal apex)
-        r: Radius of curvature at apex (meters)
-        k: Conic constant (k < 0 for prolate, k = 0 for sphere, k > 0 for oblate)
+        camera_pos: Camera/observer position
+        object_pos: Object position inside conic
+        conic_center: Conic center position (typically corneal apex)
+        radius: Radius of curvature at apex (meters)
+        conic_constant: Conic constant (k < 0 for prolate, k = 0 for sphere, k > 0 for oblate)
         n_outside: Refractive index outside conic
         n_conic: Refractive index of conic
 
     Returns:
-        Position on conic surface where refraction occurs (4D homogeneous), or None if not found.
+        Position on conic surface where refraction occurs, or None if not found.
     """
-    # Work with 4D homogeneous coordinates
-    C_vec = C - S0
-    O_vec = O - S0
-    to_c = C_vec[:3] / np.linalg.norm(C_vec[:3])
-    to_o = O_vec[:3] / np.linalg.norm(O_vec[:3])
+    # Calculate directions from conic center
+    to_camera = (camera_pos - conic_center).normalize()
+    to_object = (object_pos - conic_center).normalize()
 
-    if abs(to_c[2] - to_o[2]) < 1e-9:
-        if to_c[2] >= 0:
+    if abs(to_camera.z - to_object.z) < 1e-9:
+        if to_camera.z >= 0:
             return None
         upper_bound = 1.0
     else:
-        alpha_zero = -to_o[2] / (to_c[2] - to_o[2])
+        alpha_zero = -to_object.z / (to_camera.z - to_object.z)
         upper_bound = min(1.0, max(0, alpha_zero - 1e-9))
 
-    f0, _ = _refraction_objective_conic(0, C, O, S0, r, k, n_outside, n_conic)
-    f1, _ = _refraction_objective_conic(upper_bound, C, O, S0, r, k, n_outside, n_conic)
+    f0, _ = _refraction_objective_conic(
+        0, camera_pos, object_pos, conic_center, radius, conic_constant, n_outside, n_conic
+    )
+    f1, _ = _refraction_objective_conic(
+        upper_bound, camera_pos, object_pos, conic_center, radius, conic_constant, n_outside, n_conic
+    )
 
     if np.isinf(f0) or np.isinf(f1) or f0 * f1 > 0:
         return None
 
     try:
         alpha = brentq(
-            lambda x: _refraction_objective_conic(x, C, O, S0, r, k, n_outside, n_conic)[0],
+            lambda x: _refraction_objective_conic(
+                x, camera_pos, object_pos, conic_center, radius, conic_constant, n_outside, n_conic
+            )[0],
             0,
             upper_bound,
         )
-        _, I = _refraction_objective_conic(alpha, C, O, S0, r, k, n_outside, n_conic)
-        return I
+        _, intersection = _refraction_objective_conic(
+            alpha, camera_pos, object_pos, conic_center, radius, conic_constant, n_outside, n_conic
+        )
+        return intersection
     except (ValueError, RuntimeError):
         return None
 
 
 def refract_ray_sphere(
-    R0: Point4D, Rd: Point4D, S0: Point4D, Sr: float, n_outside: float, n_sphere: float
-) -> Tuple[Optional[Point4D], Optional[Point4D]]:
-    """Refracts ray at surface of sphere.
+    ray: Ray, sphere_center: Position3D, sphere_radius: float, n_outside: float, n_sphere: float
+) -> Tuple[Optional[IntersectionResult], Optional[Ray]]:
+    """Refract ray through sphere surface.
 
-    [U0, Ud] = refract_ray_sphere(R0, Rd, S0, Sr, n_outside, n_sphere) finds
-    the point 'U0' at which a ray (specified by its origin 'R0' and direction
-    'Rd') strikes a sphere (with center 'S0' and radius 'Sr') and computes
-    the direction 'Ud' of the refracted ray. The refractive index outside
-    the sphere is 'n_outside', the refractive index of the sphere is
-    'n_sphere'.
+    Finds intersection point and computes refracted ray direction using Snell's law.
+    Handles total internal reflection when critical angle is exceeded.
 
     Args:
-        R0: Ray origin (4D homogeneous)
-        Rd: Ray direction (4D homogeneous)
-        S0: Sphere center (4D homogeneous)
-        Sr: Sphere radius
+        ray: Input ray with origin and direction
+        sphere_center: Sphere center position
+        sphere_radius: Sphere radius
         n_outside: Refractive index outside sphere
         n_sphere: Refractive index of sphere
 
     Returns:
-        Tuple of (U0, Ud) where U0 is intersection point, Ud is refracted direction (4D homogeneous).
+        Tuple of (intersection_result, refracted_ray) where intersection_result contains
+        the intersection point and refracted_ray is the refracted ray.
         Returns (None, None) if no intersection or total internal reflection.
     """
-    # Normalize ray direction using spatial component
-    Rd_normalized = Rd[:3] / np.linalg.norm(Rd[:3])
-
     # Find point of intersection
-    U0, _ = intersect_ray_sphere(R0, Rd, S0, Sr)
+    intersection_result, _ = intersect_ray_sphere(ray, sphere_center, sphere_radius)
 
-    if U0 is None:
+    if intersection_result is None or not intersection_result.intersects:
         return None, None
 
-    # Find surface normal at point of intersection (pointing inwards) using 4D coordinates
-    S0_to_U0 = S0 - U0
-    N = S0_to_U0[:3] / np.linalg.norm(S0_to_U0[:3])
+    intersection_point = intersection_result.point
 
-    # Find cosines
-    costh1 = np.dot(Rd_normalized, N)
+    # Find surface normal at point of intersection (pointing inwards)
+    normal_vec = (sphere_center.to_point3d() - intersection_point).normalize()
+
+    # Calculate angles
+    incident_normalized = ray.direction.normalize()
+    costh1 = incident_normalized.dot(normal_vec)
     costh2_squared = 1 - (n_outside / n_sphere) ** 2 * (1 - costh1**2)
 
     # Check for total internal reflection
     if costh2_squared < 0:
-        return U0, None
+        return intersection_result, None
 
     costh2 = np.sqrt(costh2_squared)
 
     # Snell's law refraction formula
-    Ud_3d = (n_outside / n_sphere) * Rd_normalized + (costh2 - (n_outside / n_sphere) * costh1) * N
+    n_ratio = n_outside / n_sphere
+    refracted_direction = incident_normalized * n_ratio + normal_vec * (costh2 - n_ratio * costh1)
 
-    # Format Ud as homogeneous direction (w=0)
-    Ud = np.zeros(4)
-    Ud[:3] = Ud_3d
-    Ud[3] = 0.0
-    return U0, Ud
+    refracted_ray = Ray(origin=intersection_point, direction=refracted_direction)
+    return intersection_result, refracted_ray
 
 
 def refract_ray_conic(
-    R0: Point4D, Rd: Point4D, S0: Point4D, r_apical: float, k: float, n_outside: float, n_conic: float
-) -> Tuple[Optional[Point4D], Optional[Point4D]]:
-    """
-    Refract ray at surface of conic section.
+    ray: Ray, conic_center: Position3D, radius: float, conic_constant: float, n_outside: float, n_conic: float
+) -> Tuple[Optional[IntersectionResult], Optional[Ray]]:
+    """Refract ray through conic surface.
 
-    This is the conic equivalent of refract_ray_sphere() used in the eye simulator,
-    implementing proper corneal asphericity with k-value.
+    Finds intersection point and computes refracted ray direction using Snell's law.
+    Uses proper conic surface normal calculation for accurate refraction.
+    Handles total internal reflection when critical angle is exceeded.
 
     Args:
-        R0: Ray origin (4D homogeneous)
-        Rd: Ray direction (4D homogeneous)
-        S0: Conic center (4D homogeneous, typically corneal apex)
-        r_apical: Radius parameter (R in the formula, meters)
-        k: Conic constant (k < 0 for prolate, k = 0 for sphere, k > 0 for oblate)
+        ray: Input ray with origin and direction
+        conic_center: Conic center position (typically corneal apex)
+        radius: Radius parameter (R in the formula, meters)
+        conic_constant: Conic constant (k < 0 for prolate, k = 0 for sphere, k > 0 for oblate)
         n_outside: Refractive index outside conic (e.g., air = 1.0)
         n_conic: Refractive index of conic (e.g., cornea = 1.376)
 
     Returns:
-        Tuple of (U0, Ud) where:
-        - U0: Intersection point on conic surface (4D homogeneous)
-        - Ud: Refracted ray direction (4D homogeneous)
+        Tuple of (intersection_result, refracted_ray) where:
+        - intersection_result: Contains intersection point on conic surface
+        - refracted_ray: Refracted ray
         Returns (None, None) if no intersection or total internal reflection.
     """
-    # Normalize ray direction using spatial component
-    Rd_normalized = Rd[:3] / np.linalg.norm(Rd[:3])
-
     # Find intersection point
-    U0, _ = intersect_ray_conic(R0, Rd, S0, r_apical, k)
+    intersection_result, _ = intersect_ray_conic(ray, conic_center, radius, conic_constant)
 
-    if U0 is None:
+    if intersection_result is None or not intersection_result.intersects:
         return None, None
 
+    intersection_point = intersection_result.point
+
     # Calculate surface normal at intersection point
-    N = conic_surface_normal(U0, S0, r_apical, k)
+    surface_normal = conic_surface_normal(intersection_point, conic_center, radius, conic_constant)
 
     # For refraction, we need inward-pointing normal (toward conic interior)
-    center_to_point_vec = U0 - S0
-    if np.dot(N, center_to_point_vec[:3]) > 0:  # Normal points outward
-        N = -N  # Flip to point inward
+    center_to_point = intersection_point - conic_center.to_point3d()
+    if surface_normal.dot(center_to_point) > 0:  # Normal points outward
+        surface_normal = surface_normal * -1  # Flip to point inward
 
     # Apply Snell's law
-    costh1 = np.dot(Rd_normalized, N)
+    incident_normalized = ray.direction.normalize()
+    costh1 = incident_normalized.dot(surface_normal)
     costh2_squared = 1 - (n_outside / n_conic) ** 2 * (1 - costh1**2)
 
     # Check for total internal reflection
     if costh2_squared < 0:
-        return U0, None
+        return intersection_result, None
 
     costh2 = np.sqrt(costh2_squared)
 
     # Snell's law refraction formula
-    Ud_3d = (n_outside / n_conic) * Rd_normalized + (costh2 - (n_outside / n_conic) * costh1) * N
+    n_ratio = n_outside / n_conic
+    refracted_direction = incident_normalized * n_ratio + surface_normal * (costh2 - n_ratio * costh1)
 
-    # Format Ud as homogeneous direction (w=0)
-    Ud = np.zeros(4)
-    Ud[:3] = Ud_3d
-    Ud[3] = 0.0
-    return U0, Ud
+    refracted_ray = Ray(origin=intersection_point, direction=refracted_direction)
+    return intersection_result, refracted_ray

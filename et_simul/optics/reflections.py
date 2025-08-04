@@ -1,8 +1,13 @@
+"""Light reflection calculation utilities for eye tracking simulation.
+
+Implements geometric and optimization-based methods for finding glint positions on spherical and conic surfaces.
+"""
+
 import numpy as np
 import warnings
 from typing import Optional, Tuple
 from scipy.optimize import brentq
-from ..types import Point3D, Point4D, Vector3D
+from ..types import Point3D, Vector3D, Ray, IntersectionResult, Position3D
 from ..geometry.intersections import (
     intersect_ray_circle,
     intersect_ray_sphere,
@@ -10,273 +15,294 @@ from ..geometry.intersections import (
     conic_surface_normal,
 )
 
+from ..geometry.intersections import point_on_conic_surface
 
-def _reflect_objective_sphere(a: float, L: Point4D, C: Point4D, S0: Point4D, Sr: float) -> Tuple[float, Point4D]:
-    """Objective function for reflection finding.
 
-    Helper function used by find_reflection to locate glint positions on spherical
-    surfaces. Returns angle difference between incident and reflected rays for
-    a given interpolation parameter 'a'.
+def _reflect_objective_sphere(
+    a: float, light_pos: Position3D, camera_pos: Position3D, sphere_center: Position3D, sphere_radius: float
+) -> Tuple[float, Point3D]:
+    """Objective function for reflection finding on sphere.
+
+    Uses interpolation between light and camera directions to find reflection point.
+    Returns angle difference between incident and reflected rays for optimization.
 
     Args:
         a: Interpolation parameter between light and camera directions
-        L: Light source position (4D homogeneous)
-        C: Camera position (4D homogeneous)
-        S0: Sphere center (4D homogeneous)
-        Sr: Sphere radius
+        light_pos: Light source position
+        camera_pos: Camera position
+        sphere_center: Sphere center position
+        sphere_radius: Sphere radius
 
     Returns:
-        Tuple of (angle_diff, U0) where angle_diff is the reflection angle error
-        and U0 is the potential glint position (4D homogeneous)
+        Tuple of (angle_diff, glint_pos) where angle_diff is the reflection angle error
+        and glint_pos is the potential glint position
     """
     # Suppress numpy warnings to provide cleaner reflection error messages
     with np.errstate(invalid="ignore", divide="ignore"):
-        # Work with 4D homogeneous coordinates
-        C_vec = C - S0
-        L_vec = L - S0
-        to_c = C_vec[:3] / np.linalg.norm(C_vec[:3])
-        to_l = L_vec[:3] / np.linalg.norm(L_vec[:3])
-        n = a * to_c + (1 - a) * to_l
-        n = n / np.linalg.norm(n)
+        # Calculate directions from sphere center to light and camera
+        to_camera = (camera_pos - sphere_center).normalize()
+        to_light = (light_pos - sphere_center).normalize()
 
-        # Create 4D homogeneous point
-        U0 = S0.copy()
-        U0[:3] = S0[:3] + Sr * n
+        # Interpolate between directions and normalize
+        n_vec = (to_camera * a + to_light * (1 - a)).normalize()
 
-        # Calculate angles using 4D coordinates
-        C_to_U0 = C - U0
-        L_to_U0 = L - U0
-        angle_c = np.arccos(np.clip(np.dot(n, C_to_U0[:3] / np.linalg.norm(C_to_U0[:3])), -1, 1))
-        angle_l = np.arccos(np.clip(np.dot(n, L_to_U0[:3] / np.linalg.norm(L_to_U0[:3])), -1, 1))
+        # Calculate glint position on sphere surface
+        glint_pos = sphere_center.to_point3d() + (n_vec * sphere_radius)
+
+        # Calculate angle differences for reflection law validation
+        camera_to_glint = (camera_pos.to_point3d() - glint_pos).normalize()
+        light_to_glint = (light_pos.to_point3d() - glint_pos).normalize()
+
+        angle_c = np.arccos(np.clip(n_vec.dot(camera_to_glint), -1, 1))
+        angle_l = np.arccos(np.clip(n_vec.dot(light_to_glint), -1, 1))
         angle_diff = angle_c - angle_l
-        return angle_diff, U0
+        return angle_diff, glint_pos
 
 
-def find_reflection_sphere(L: Point4D, C: Point4D, S0: Point4D, Sr: float) -> Optional[Point4D]:
-    """Finds position of a glint on the surface of a sphere.
+def find_reflection_sphere(
+    light_pos: Position3D, camera_pos: Position3D, sphere_center: Position3D, sphere_radius: float
+) -> Optional[Point3D]:
+    """Find reflection point on sphere surface.
 
-    U0 = find_reflection(L, C, S0, Sr) finds the position on a sphere with
-    center S0 and radius Sr where a ray emanating from a light source at 'L'
-    is reflected to pass directly through point 'C' (this could be a camera,
-    for example).
+    Uses optimization to find point where light ray reflects to camera position.
+    Implements reflection law using numerical root finding.
 
     Args:
-        L: Light source position (4D homogeneous)
-        C: Camera position (4D homogeneous)
-        S0: Sphere center (4D homogeneous)
-        Sr: Sphere radius
+        light_pos: Light source position
+        camera_pos: Camera position
+        sphere_center: Sphere center position
+        sphere_radius: Sphere radius
 
     Returns:
-        U0: Position of glint on sphere surface (4D homogeneous), or None if no reflection found
+        Position of glint on sphere surface, or None if no reflection found
     """
-    # Work directly with 4D homogeneous coordinates
     try:
-        a = brentq(lambda a: _reflect_objective_sphere(a, L, C, S0, Sr)[0], 0, 1)
-        _, U0 = _reflect_objective_sphere(a, L, C, S0, Sr)
-        return U0
+        a = brentq(
+            lambda a: _reflect_objective_sphere(a, light_pos, camera_pos, sphere_center, sphere_radius)[0], 0, 1
+        )
+        _, glint_pos = _reflect_objective_sphere(a, light_pos, camera_pos, sphere_center, sphere_radius)
+        return glint_pos
     except ValueError:
         warnings.warn(
-            f"No glint found due to degenerate geometry: Light={L}, Camera={C}, Sphere center={S0}",
+            f"No glint found due to degenerate geometry: Light={light_pos}, Camera={camera_pos}, Sphere center={sphere_center}",
             RuntimeWarning,
         )
         return None
 
 
 def _reflect_objective_conic(
-    alpha: float, L: Point4D, C: Point4D, S0: Point4D, r: float, k: float
-) -> Tuple[float, Optional[Point4D]]:
-    """Objective function for conic section reflection finding.
+    alpha: float,
+    light_pos: Position3D,
+    camera_pos: Position3D,
+    conic_center: Position3D,
+    radius: float,
+    conic_constant: float,
+) -> Tuple[float, Optional[Point3D]]:
+    """Objective function for reflection finding on conic surface.
 
-    Uses the same interpolation approach as the sphere version but projects
-    to the conic surface using proper conic section geometry.
-    """
-    # Import here to avoid circular import
-    from ..geometry.intersections import point_on_conic_surface, conic_surface_normal
-
-    # Suppress numpy warnings to provide cleaner reflection error messages
-    with np.errstate(invalid="ignore", divide="ignore"):
-        # Work with 4D homogeneous coordinates for vector calculations
-        C_vec = C - S0
-        L_vec = L - S0
-        to_c = C_vec[:3] / np.linalg.norm(C_vec[:3])
-        to_l = L_vec[:3] / np.linalg.norm(L_vec[:3])
-        n = alpha * to_c + (1 - alpha) * to_l
-        n = n / np.linalg.norm(n)
-
-        U0 = point_on_conic_surface(S0, n, r, k)
-        if U0 is None:
-            return float("inf"), None
-
-        surface_normal = conic_surface_normal(U0, S0, r, k)
-
-        # Calculate angles using 4D homogeneous coordinates
-        C_to_U0 = C - U0
-        L_to_U0 = L - U0
-        angle_c = np.arccos(np.clip(np.dot(surface_normal, C_to_U0[:3] / np.linalg.norm(C_to_U0[:3])), -1, 1))
-        angle_l = np.arccos(np.clip(np.dot(surface_normal, L_to_U0[:3] / np.linalg.norm(L_to_U0[:3])), -1, 1))
-        angle_diff = angle_c - angle_l
-
-        return angle_diff, U0
-
-
-def find_reflection_conic(L: Point4D, C: Point4D, S0: Point4D, r: float, k: float) -> Optional[Point4D]:
-    """Finds position of a glint on the surface of a conic section.
+    Uses interpolation between light and camera directions to find reflection point.
+    Projects to conic surface using proper conic section geometry.
+    Returns angle difference between incident and reflected rays for optimization.
 
     Args:
-        L: Light source position (4D homogeneous)
-        C: Camera position (4D homogeneous)
-        S0: Conic center (4D homogeneous, typically corneal apex)
-        r: Radius of curvature at apex (meters)
-        k: Conic constant (k < 0 for prolate, k = 0 for sphere, k > 0 for oblate)
+        alpha: Interpolation parameter between light and camera directions
+        light_pos: Light source position
+        camera_pos: Camera position
+        conic_center: Conic center position
+        radius: Radius parameter of the conic (R)
+        conic_constant: Conic constant (k < 0 for prolate, k = 0 for sphere, k > 0 for oblate)
 
     Returns:
-        U0: Position of glint on conic surface (4D homogeneous), or None if no reflection found
+        Tuple of (angle_diff, glint_pos) where angle_diff is the reflection angle error
+        and glint_pos is the potential glint position. Returns (inf, None) if no valid point.
+    """
+    # Suppress numpy warnings to provide cleaner reflection error messages
+    with np.errstate(invalid="ignore", divide="ignore"):
+        # Calculate directions from conic center to light and camera
+        to_camera = (camera_pos - conic_center).normalize()
+        to_light = (light_pos - conic_center).normalize()
+
+        # Interpolate between directions and normalize
+        n_vec = (to_camera * alpha + to_light * (1 - alpha)).normalize()
+
+        # Find point on conic surface using proper conic geometry
+        glint_pos = point_on_conic_surface(conic_center, n_vec, radius, conic_constant)
+        if glint_pos is None:
+            return float("inf"), None
+
+        # Calculate surface normal at reflection point
+        surface_normal = conic_surface_normal(glint_pos, conic_center, radius, conic_constant)
+
+        # Calculate angle differences for reflection law validation
+        camera_to_glint = (camera_pos.to_point3d() - glint_pos).normalize()
+        light_to_glint = (light_pos.to_point3d() - glint_pos).normalize()
+
+        angle_c = np.arccos(np.clip(surface_normal.dot(camera_to_glint), -1, 1))
+        angle_l = np.arccos(np.clip(surface_normal.dot(light_to_glint), -1, 1))
+        angle_diff = angle_c - angle_l
+
+        return angle_diff, glint_pos
+
+
+def find_reflection_conic(
+    light_pos: Position3D, camera_pos: Position3D, conic_center: Position3D, radius: float, conic_constant: float
+) -> Optional[Point3D]:
+    """Find reflection point on conic surface.
+
+    Uses optimization to find point where light ray reflects to camera position.
+    Implements reflection law using numerical root finding on conic geometry.
+
+    Args:
+        light_pos: Light source position
+        camera_pos: Camera position
+        conic_center: Conic center position (typically corneal apex)
+        radius: Radius of curvature at apex (meters)
+        conic_constant: Conic constant (k < 0 for prolate, k = 0 for sphere, k > 0 for oblate)
+
+    Returns:
+        Position of glint on conic surface, or None if no reflection found
     """
     try:
-        alpha = brentq(lambda alpha: _reflect_objective_conic(alpha, L, C, S0, r, k)[0], 0, 1)
-        _, U0 = _reflect_objective_conic(alpha, L, C, S0, r, k)
-        return U0
+        alpha = brentq(
+            lambda alpha: _reflect_objective_conic(alpha, light_pos, camera_pos, conic_center, radius, conic_constant)[
+                0
+            ],
+            0,
+            1,
+        )
+        _, glint_pos = _reflect_objective_conic(alpha, light_pos, camera_pos, conic_center, radius, conic_constant)
+        return glint_pos
     except (ValueError, TypeError):
         warnings.warn(
-            f"No glint found on conic surface: Light={L}, Camera={C}, Conic center={S0}",
+            f"No glint found on conic surface: Light={light_pos}, Camera={camera_pos}, Conic center={conic_center}",
             RuntimeWarning,
         )
         return None
 
 
 def reflect_ray_circle(
-    R0: Point3D, Rd: Vector3D, C0: Point3D, Cr: float
-) -> Tuple[Optional[Point3D], Optional[Vector3D]]:
-    """Reflects ray on circle.
+    ray: Ray, circle_center: Point3D, circle_radius: float
+) -> Tuple[Optional[IntersectionResult], Optional[Ray]]:
+    """Reflect ray off circle surface.
 
-
-
-    [S0, Sd] = reflect_ray_circle(R0, Rd, C0, Cr) finds the point 'S0' at
-    which a ray (specified by its origin 'R0' and direction 'Rd') strikes a
-    circle (with center 'C0' and radius 'Cr') and computes the direction 'Sd'
-    of the reflected ray. The result is undefined if the original ray does
-    not intersect the circle.
+    Finds intersection point and computes reflected ray direction using reflection law.
+    Uses 2D circle geometry in x,y plane for surface normal calculation.
 
     Args:
-        R0: Ray origin (2D)
-        Rd: Ray direction (2D)
-        C0: Circle center (2D)
-        Cr: Circle radius
+        ray: Input ray with origin and direction
+        circle_center: Circle center (2D using x,y components)
+        circle_radius: Circle radius
 
     Returns:
-        Tuple of (S0, Sd) where S0 is intersection point, Sd is reflected direction.
+        Tuple of (intersection_result, reflected_ray) where intersection_result contains
+        the intersection point and reflected_ray is the reflected ray.
         Returns (None, None) if no intersection.
     """
-    # Copy inputs to avoid modifying original arrays
-    R0_work = R0.copy()
-    Rd_work = Rd.copy()
-    C0_work = C0.copy()
-
-    # Normalize ray direction
-    Rd_work = Rd_work / np.linalg.norm(Rd_work)
-
     # Find intersection point
-    S0 = intersect_ray_circle(R0_work, Rd_work, C0_work, Cr)
+    intersection_result = intersect_ray_circle(ray, circle_center, circle_radius)
 
-    if S0 is None:
+    if intersection_result is None or not intersection_result.intersects:
         return None, None
 
-    # Calculate surface normal at intersection
-    N = (S0 - C0_work) / np.linalg.norm(S0 - C0_work)
+    intersection_point = intersection_result.point
 
-    # Apply reflection formula: Sd = Rd - 2*N*(Rd'*N)
-    Sd = Rd_work - 2 * N * np.dot(Rd_work, N)
+    # Calculate surface normal at intersection (2D normal in x,y plane)
+    normal_vec = Vector3D(
+        intersection_point.x - circle_center.x,
+        intersection_point.y - circle_center.y,
+        0,  # Circle is in x,y plane
+    ).normalize()
 
-    return S0, Sd
+    # Apply reflection formula: reflected = incident - 2*normal*(incident·normal)
+    incident_normalized = ray.direction.normalize()
+    dot_product = incident_normalized.dot(normal_vec)
+    reflected_direction = incident_normalized - normal_vec * (2 * dot_product)
+
+    reflected_ray = Ray(origin=intersection_point, direction=reflected_direction)
+
+    return intersection_result, reflected_ray
 
 
 def reflect_ray_sphere(
-    R0: Point4D, Rd: Point4D, S0: Point4D, Sr: float
-) -> Tuple[Optional[Point4D], Optional[Point4D]]:
-    """Reflects ray on sphere.
+    ray: Ray, sphere_center: Position3D, sphere_radius: float
+) -> Tuple[Optional[IntersectionResult], Optional[Ray]]:
+    """Reflect ray off sphere surface.
 
-    [U0, Ud] = reflect_ray_sphere(R0, Rd, S0, Sr) find the point 'U0' at
-    which a ray (specified by its origin 'R0' and direction 'Rd') strikes a
-    sphere (with center 'S0' and radius 'Sr') and computes the direction 'Ud'
-    of the reflected ray. The result is undefined if the original ray does
-    not intersect the sphere.
+    Finds intersection point and computes reflected ray direction using reflection law.
+    Uses outward-pointing surface normal for proper reflection calculation.
 
     Args:
-        R0: Ray origin (4D homogeneous)
-        Rd: Ray direction (4D homogeneous)
-        S0: Sphere center (4D homogeneous)
-        Sr: Sphere radius
+        ray: Input ray with origin and direction
+        sphere_center: Sphere center position
+        sphere_radius: Sphere radius
 
     Returns:
-        Tuple of (U0, Ud) where U0 is intersection point, Ud is reflected direction (4D homogeneous).
+        Tuple of (intersection_result, reflected_ray) where intersection_result contains
+        the intersection point and reflected_ray is the reflected ray.
         Returns (None, None) if no intersection.
     """
-    # Normalize ray direction using spatial component
-    Rd_normalized = Rd[:3] / np.linalg.norm(Rd[:3])
-
     # Find intersection with sphere
-    U0, _ = intersect_ray_sphere(R0, Rd, S0, Sr)
+    intersection_result, _ = intersect_ray_sphere(ray, sphere_center, sphere_radius)
 
-    if U0 is None:
+    if intersection_result is None or not intersection_result.intersects:
         return None, None
 
-    # Calculate surface normal at intersection using 4D coordinates
-    U0_to_S0 = U0 - S0
-    N = U0_to_S0[:3] / np.linalg.norm(U0_to_S0[:3])
+    intersection_point = intersection_result.point
 
-    # Apply reflection formula: Ud = Rd - 2*N*(Rd'*N)
-    Ud_3d = Rd_normalized - 2 * N * np.dot(Rd_normalized, N)
+    # Calculate surface normal at intersection (outward pointing)
+    normal_vec = (intersection_point - sphere_center.to_point3d()).normalize()
 
-    # Format Ud as homogeneous direction (w=0)
-    Ud = np.zeros(4)
-    Ud[:3] = Ud_3d
-    Ud[3] = 0.0
-    return U0, Ud
+    # Apply reflection formula: reflected = incident - 2*normal*(incident·normal)
+    incident_normalized = ray.direction.normalize()
+    dot_product = incident_normalized.dot(normal_vec)
+    reflected_direction = incident_normalized - normal_vec * (2 * dot_product)
+
+    reflected_ray = Ray(origin=intersection_point, direction=reflected_direction)
+
+    return intersection_result, reflected_ray
 
 
 def reflect_ray_conic(
-    R0: Point4D, Rd: Point4D, S0: Point4D, r_apical: float, k: float
-) -> Tuple[Optional[Point4D], Optional[Point4D]]:
-    """
-    Reflect ray at surface of conic section.
+    ray: Ray, conic_center: Position3D, radius: float, conic_constant: float
+) -> Tuple[Optional[IntersectionResult], Optional[Ray]]:
+    """Reflect ray off conic surface.
 
-    This is the conic equivalent of reflect_ray_sphere() used in the eye simulator.
+    Finds intersection point and computes reflected ray direction using reflection law.
+    Uses proper conic surface normal calculation for accurate reflection.
 
     Args:
-        R0: Ray origin (4D homogeneous)
-        Rd: Ray direction (4D homogeneous)
-        S0: Conic center (4D homogeneous, typically corneal apex)
-        r_apical: Radius parameter (R in the formula, meters)
-        k: Conic constant (k < 0 for prolate, k = 0 for sphere, k > 0 for oblate)
+        ray: Input ray with origin and direction
+        conic_center: Conic center position (typically corneal apex)
+        radius: Radius parameter (R in the formula, meters)
+        conic_constant: Conic constant (k < 0 for prolate, k = 0 for sphere, k > 0 for oblate)
 
     Returns:
-        Tuple of (U0, Ud) where:
-        - U0: Intersection point on conic surface (4D homogeneous)
-        - Ud: Reflected ray direction (4D homogeneous)
+        Tuple of (intersection_result, reflected_ray) where:
+        - intersection_result: Contains intersection point on conic surface
+        - reflected_ray: Reflected ray
         Returns (None, None) if no intersection.
     """
-    # Normalize ray direction using spatial component
-    Rd_normalized = Rd[:3] / np.linalg.norm(Rd[:3])
-
     # Find intersection point
-    U0, _ = intersect_ray_conic(R0, Rd, S0, r_apical, k)
+    intersection_result, _ = intersect_ray_conic(ray, conic_center, radius, conic_constant)
 
-    if U0 is None:
+    if intersection_result is None or not intersection_result.intersects:
         return None, None
 
+    intersection_point = intersection_result.point
+
     # Calculate surface normal at intersection point
-    N = conic_surface_normal(U0, S0, r_apical, k)
+    surface_normal = conic_surface_normal(intersection_point, conic_center, radius, conic_constant)
 
     # For reflection, we typically want outward-pointing normal
-    center_to_point_vec = U0 - S0
-    if np.dot(N, center_to_point_vec[:3]) < 0:  # Normal points inward
-        N = -N  # Flip to point outward
+    center_to_point = intersection_point - conic_center.to_point3d()
+    if surface_normal.dot(center_to_point) < 0:  # Normal points inward
+        surface_normal = surface_normal * -1  # Flip to point outward
 
-    # Apply reflection formula
-    Ud_3d = Rd_normalized - 2 * N * np.dot(Rd_normalized, N)
+    # Apply reflection formula: reflected = incident - 2*normal*(incident·normal)
+    incident_normalized = ray.direction.normalize()
+    dot_product = incident_normalized.dot(surface_normal)
+    reflected_direction = incident_normalized - surface_normal * (2 * dot_product)
 
-    # Format Ud as homogeneous direction (w=0)
-    Ud = np.zeros(4)
-    Ud[:3] = Ud_3d
-    Ud[3] = 0.0
-    return U0, Ud
+    reflected_ray = Ray(origin=intersection_point, direction=reflected_direction)
+
+    return intersection_result, reflected_ray

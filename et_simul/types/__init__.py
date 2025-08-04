@@ -1,24 +1,49 @@
 """
-Type definitions for et_simul framework.
-
-This module provides type aliases and protocols for geometric operations,
-optical calculations, and algorithm interfaces.
+This module re-exports the structured data types from its submodules
+and defines common type aliases for the project.
 """
 
-from typing import Union
+from .algorithms import (
+    AlgorithmState,
+    GazePrediction,
+    HennesseyConfig,
+    HennesseyState,
+    InterpolationConfig,
+    InterpolationState,
+    PolynomialFeatures,
+)
+from .geometry import (
+    IntersectionResult,
+    Point2D,
+    Point3D,
+    Ray,
+    Vector3D,
+    Position3D,
+    Direction3D,
+    TransformationMatrix,
+    RotationMatrix,
+)
+from .imaging import CameraImage, EyeMeasurement, PupilData, ProjectionResult
 
-import numpy as np
-
-# Core geometric types
-Point2D = np.ndarray  # shape (2,) - 2D points
-Point3D = np.ndarray  # shape (3,) - 3D points
-Point4D = np.ndarray  # shape (4,) - homogeneous coordinates
-Vector3D = np.ndarray  # shape (3,) - direction vectors
-Matrix3x3 = np.ndarray  # shape (3, 3) - rotation matrices
-Matrix4x4 = np.ndarray  # shape (4, 4) - transformation matrices
-
-
-# Type aliases for common patterns
-CoordinateType = Union[Point3D, Point4D]  # For functions that accept both 3D and 4D
-RotationMatrix = Matrix3x3  # Alias for clarity
-TransformationMatrix = Matrix4x4  # Alias for clarity
+__all__ = [
+    "AlgorithmState",
+    "GazePrediction",
+    "HennesseyConfig",
+    "HennesseyState",
+    "InterpolationConfig",
+    "InterpolationState",
+    "PolynomialFeatures",
+    "IntersectionResult",
+    "Point2D",
+    "Point3D",
+    "Ray",
+    "Vector3D",
+    "Position3D",
+    "Direction3D",
+    "CameraImage",
+    "EyeMeasurement",
+    "PupilData",
+    "ProjectionResult",
+    "RotationMatrix",
+    "TransformationMatrix",
+]
