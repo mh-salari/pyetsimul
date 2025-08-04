@@ -4,7 +4,7 @@ imaging results to replace the Dict[str, Any] pattern.
 """
 
 from dataclasses import dataclass
-from typing import Optional, List
+from typing import Optional, List, Union
 import numpy as np
 from .geometry import Point2D, Point3D
 
@@ -80,3 +80,44 @@ class ProjectionResult:
         if self.image_points.ndim == 1:
             return self.image_points if self.valid_mask else np.array([np.nan, np.nan])
         return self.image_points[:, self.valid_mask]
+
+
+class CameraMatrix:
+    """3x3 camera matrix with convenient properties for focal_length and resolution."""
+
+    def __init__(self, matrix: Optional[np.ndarray] = None):
+        if matrix is not None:
+            self._matrix = np.asarray(matrix, dtype=np.float64)
+        else:
+            # Default pinhole camera: focal_length=2880, resolution=1280x1024
+            self._matrix = np.array([[2880.0, 0.0, 640.0], [0.0, 2880.0, 512.0], [0.0, 0.0, 1.0]], dtype=np.float64)
+
+    @property
+    def focal_length(self) -> float:
+        return float(self._matrix[0, 0])
+
+    @focal_length.setter
+    def focal_length(self, value: Union[float, List[float]]) -> None:
+        if isinstance(value, (int, float)):
+            self._matrix[0, 0] = float(value)
+            self._matrix[1, 1] = float(value)
+        else:
+            self._matrix[0, 0] = float(value[0])
+            self._matrix[1, 1] = float(value[1])
+
+    @property
+    def resolution(self) -> Point2D:
+        cx, cy = self._matrix[0, 2], self._matrix[1, 2]
+        return Point2D(x=int(2 * cx), y=int(2 * cy))
+
+    @resolution.setter
+    def resolution(self, value: Point2D) -> None:
+        self._matrix[0, 2] = value.x / 2.0
+        self._matrix[1, 2] = value.y / 2.0
+
+    @property
+    def matrix(self) -> np.ndarray:
+        return self._matrix
+
+    def __array__(self) -> np.ndarray:
+        return self._matrix

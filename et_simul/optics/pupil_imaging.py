@@ -83,7 +83,7 @@ def get_pupil_center_mass_image(eye, camera: Camera, use_refraction: bool = True
         return PupilData.empty()
 
     # Calculate center of mass
-    pupil_center = _calculate_center_of_mass(pupil_data.boundary_points, camera.resolution)
+    pupil_center = _calculate_center_of_mass(pupil_data.boundary_points, camera.camera_matrix.resolution)
 
     return PupilData(boundary_points=pupil_data.boundary_points, center=pupil_center)
 

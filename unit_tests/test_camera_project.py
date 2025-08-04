@@ -8,7 +8,9 @@ from et_simul.types import Point2D
 def test_mixed_points_in_out_bounds():
     """Test mixed points with some in bounds and some out of bounds."""
     # Create test camera matching parameters
-    c = Camera(focal_length=500, resolution=Point2D(640, 480), err_type="uniform", err=0)
+    c = Camera(err_type="uniform", err=0)
+    c.camera_matrix.focal_length = 500
+    c.camera_matrix.resolution = Point2D(640, 480)
 
     # Define test points (homogeneous coordinates format)
     pos = np.array(
@@ -47,7 +49,9 @@ def test_mixed_points_in_out_bounds():
 
 def test_all_points_outside_bounds():
     """Test points that are all outside image bounds."""
-    c = Camera(focal_length=500, resolution=Point2D(640, 480), err_type="uniform", err=0)
+    c = Camera(err_type="uniform", err=0)
+    c.camera_matrix.focal_length = 500
+    c.camera_matrix.resolution = Point2D(640, 480)
 
     # Define test points that are clearly out of bounds
     pos = np.array(
@@ -79,17 +83,19 @@ def test_all_points_outside_bounds():
 
 def test_boundary_points():
     """Test points exactly on image boundary."""
-    c = Camera(focal_length=500, resolution=Point2D(640, 480), err_type="uniform", err=0)
+    c = Camera(err_type="uniform", err=0)
+    c.camera_matrix.focal_length = 500
+    c.camera_matrix.resolution = Point2D(640, 480)
 
     # Calculate boundary points
-    boundary_x = c.resolution.x / 2  # 320
-    boundary_y = c.resolution.y / 2  # 240
+    boundary_x = c.camera_matrix.resolution.x / 2  # 320
+    boundary_y = c.camera_matrix.resolution.y / 2  # 240
     z_depth = -200
 
-    x_right = boundary_x * z_depth / c.focal_length
-    y_top = boundary_y * z_depth / c.focal_length
-    x_left = -boundary_x * z_depth / c.focal_length
-    y_bottom = -boundary_y * z_depth / c.focal_length
+    x_right = boundary_x * z_depth / c.camera_matrix.focal_length
+    y_top = boundary_y * z_depth / c.camera_matrix.focal_length
+    x_left = -boundary_x * z_depth / c.camera_matrix.focal_length
+    y_bottom = -boundary_y * z_depth / c.camera_matrix.focal_length
 
     pos = np.array(
         [
@@ -119,7 +125,9 @@ def test_boundary_points():
 
 def test_center_point():
     """Test point at image center."""
-    c = Camera(focal_length=500, resolution=Point2D(640, 480), err_type="uniform", err=0)
+    c = Camera(err_type="uniform", err=0)
+    c.camera_matrix.focal_length = 500
+    c.camera_matrix.resolution = Point2D(640, 480)
 
     # Point at center
     pos = np.array(
@@ -149,7 +157,9 @@ def test_center_point():
 
 def test_output_properties():
     """Test that output has correct properties."""
-    c = Camera(focal_length=500, resolution=Point2D(640, 480), err_type="uniform", err=0)
+    c = Camera(err_type="uniform", err=0)
+    c.camera_matrix.focal_length = 500
+    c.camera_matrix.resolution = Point2D(640, 480)
 
     # Simple test points
     pos = np.array(

@@ -215,7 +215,7 @@ class HennesseyTracker(EyeTracker):
 
             # Get pupil radius from ellipse semi-axes
             r_pupil = max(ellipse.params[2:4])
-            r_pupil = r_pupil / self.cameras[0].focal_length * d_cc
+            r_pupil = r_pupil / self.cameras[0].camera_matrix.focal_length * d_cc
             r_pupil = r_pupil / self.config.empirical_correction  # Apply empirical correction
 
             # Unproject pupil contour using structured types

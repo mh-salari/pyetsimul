@@ -94,7 +94,7 @@ def plot_camera_view_of_eye(
                 )
 
     # Set camera image limits
-    resolution = camera.resolution
+    resolution = camera.camera_matrix.resolution
 
     ax2.set_xlim(-resolution.x / 2, resolution.x / 2)
     ax2.set_ylim(-resolution.y / 2, resolution.y / 2)

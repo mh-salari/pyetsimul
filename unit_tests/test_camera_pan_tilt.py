@@ -102,13 +102,13 @@ def test_modified_rest_trans():
 def test_output_properties():
     """Test that pan_tilt maintains proper camera properties."""
     c = Camera()
-    original_focal_length = c.focal_length
+    original_focal_length = c.camera_matrix.focal_length
     target = Position3D(x=10.0, y=5.0, z=-20.0)
 
     c.pan_tilt(target)
 
     # Should maintain camera properties
-    assert c.focal_length == original_focal_length
+    assert c.camera_matrix.focal_length == original_focal_length
     assert c.trans.shape == (4, 4)
     assert c.trans.dtype == np.float64
 

@@ -109,7 +109,7 @@ def test_image_center_unprojection():
 def test_different_focal_length():
     """Test unprojection with modified focal length and MATLAB reference values."""
     c = Camera()
-    c.focal_length = 1000.0  # Modified focal length
+    c.camera_matrix.focal_length = 1000.0  # Modified focal length
 
     # 2D point
     X = np.array([[50.0], [-25.0]])

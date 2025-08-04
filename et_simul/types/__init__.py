@@ -23,7 +23,7 @@ from .geometry import (
     TransformationMatrix,
     RotationMatrix,
 )
-from .imaging import CameraImage, EyeMeasurement, PupilData, ProjectionResult
+from .imaging import CameraImage, CameraMatrix, EyeMeasurement, PupilData, ProjectionResult
 
 __all__ = [
     "AlgorithmState",
@@ -41,6 +41,7 @@ __all__ = [
     "Position3D",
     "Direction3D",
     "CameraImage",
+    "CameraMatrix",
     "EyeMeasurement",
     "PupilData",
     "ProjectionResult",

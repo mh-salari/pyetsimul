@@ -1,14 +1,25 @@
 """Pinhole camera model for eye tracking simulation.
 
 Implements camera projection, pan-tilt, and image capture for synthetic eye tracking experiments.
+Supports both simple pinhole cameras and realistic cameras with distortion from OpenCV calibration.
 """
 
 import numpy as np
+import cv2
 from dataclasses import dataclass, field
-from typing import Union, List, TYPE_CHECKING
+from typing import Union, List, TYPE_CHECKING, Optional
 
 from .light import Light
-from ..types import TransformationMatrix, RotationMatrix, Point2D, Point3D, Position3D, CameraImage, ProjectionResult
+from ..types import (
+    TransformationMatrix,
+    RotationMatrix,
+    Point2D,
+    Point3D,
+    Position3D,
+    CameraImage,
+    CameraMatrix,
+    ProjectionResult,
+)
 
 if TYPE_CHECKING:
     from .eye import Eye
@@ -18,30 +29,40 @@ if TYPE_CHECKING:
 class Camera:
     """Pinhole camera model for eye tracking.
 
-    Implements pinhole camera with optical axis along negative z-axis.
-    Provides projection/unprojection, pan-tilt control, and image capture.
-    Supports random error simulation for realistic measurements.
-
     Key components:
     - trans: Camera to world transformation matrix
     - rest_trans: Rest position transformation (for pan-tilt cameras)
-    - focal_length: Focal length in pixels (default: 2880)
-    - resolution: Image resolution as Point2D (default: [1280, 1024])
+    - camera_matrix: CameraMatrix with focal_length and resolution properties
+    - dist_coeffs: OpenCV distortion coefficients (default: no distortion)
     - err: Random error amount (default: 0.0)
     - err_type: Error distribution type ('gaussian' or 'uniform')
+
+    Usage:
+    - Default pinhole: Camera()
+    - Custom pinhole: c = Camera(); c.camera_matrix.focal_length = 1000
+    - Realistic camera: Camera(camera_matrix=CameraMatrix(matrix), dist_coeffs=coeffs)
     """
 
-    focal_length: float = 2880
-    resolution: Point2D = field(default_factory=lambda: Point2D(x=1280, y=1024))
+    camera_matrix: CameraMatrix = field(default_factory=CameraMatrix)
+    dist_coeffs: Optional[np.ndarray] = None
     err: float = 0.0
     err_type: str = "gaussian"
+    name: Optional[str] = None
     trans: TransformationMatrix = field(default_factory=lambda: np.eye(4))
     rest_trans: TransformationMatrix = field(init=False)
 
+    # Internal field to track where camera is pointing (set by point_at method)
+    _pointing_at: Optional[Position3D] = field(default=None, init=False)
+
     def __post_init__(self) -> None:
         """Initialize camera with default values."""
-        # Line 70: c.rest_trans=c.trans;
+        # Store rest position for pan-tilt operations
         self.rest_trans = self.trans.copy()
+
+        if self.dist_coeffs is None:
+            self.dist_coeffs = np.zeros(5)
+        else:
+            self.dist_coeffs = np.asarray(self.dist_coeffs, dtype=np.float64)
 
     @property
     def orientation(self) -> RotationMatrix:
@@ -71,11 +92,20 @@ class Camera:
     def position(self, value: Point3D) -> None:
         self.trans[:3, 3] = np.array(value)
 
+    @property
+    def pointing_at(self) -> Optional[Position3D]:
+        """Get the position that the camera is currently pointing at.
+
+        Returns None if point_at() has never been called.
+        """
+        return self._pointing_at
+
     def project(self, pos: Union[Position3D, List[Position3D], np.ndarray]) -> ProjectionResult:
         """Projects points in space onto the camera's image plane.
 
         Transforms 3D positions to camera coordinates and projects to image plane.
         Adds random error based on camera settings and validates image bounds.
+        Uses OpenCV for realistic camera projection when pinhole_mode=False.
 
         Args:
             pos: 3D positions to project. Can be:
@@ -110,8 +140,21 @@ class Camera:
         # Calculate distances along optical axis
         dist = -pos_camera[2, :]
 
-        # Project to image plane
-        x = self.focal_length * pos_camera[:2, :] / dist
+        points_3d = pos_camera[:3, :].T
+        points_3d_opencv = points_3d.copy()
+        points_3d_opencv[:, 2] = -points_3d_opencv[:, 2]  # Flip Z coordinate system
+        points_3d_opencv = points_3d_opencv.reshape(-1, 1, 3).astype(np.float64)
+
+        points_2d, _ = cv2.projectPoints(
+            points_3d_opencv, np.zeros(3), np.zeros(3), self.camera_matrix.matrix, self.dist_coeffs
+        )
+
+        # Convert to center-origin coordinate system
+        cx = self.camera_matrix.matrix[0, 2]
+        cy = self.camera_matrix.matrix[1, 2]
+        x = points_2d.reshape(-1, 2).T
+        x[0, :] -= cx
+        x[1, :] -= cy
 
         # Add error based on error type
         if self.err_type == "uniform":
@@ -122,11 +165,12 @@ class Camera:
             raise ValueError(f"Unknown error type: {self.err_type}")
 
         # Check which points are within image bounds and in front of camera
+        resolution = self.camera_matrix.resolution
         condition = (
-            (x[0, :] >= -self.resolution.x / 2)
-            & (x[0, :] <= self.resolution.x / 2)
-            & (x[1, :] >= -self.resolution.y / 2)
-            & (x[1, :] <= self.resolution.y / 2)
+            (x[0, :] >= -resolution.x / 2)
+            & (x[0, :] <= resolution.x / 2)
+            & (x[1, :] >= -resolution.y / 2)
+            & (x[1, :] <= resolution.y / 2)
             & (dist > 0)  # Points must be in front of camera
         )
 
@@ -143,6 +187,7 @@ class Camera:
 
         Reconstructs 3D positions from 2D image points at specified distance.
         Uses inverse projection to map image coordinates to world coordinates.
+        Uses OpenCV for realistic camera unprojection when pinhole_mode=False.
 
         Args:
             image_points: 2D image points. Can be:
@@ -180,15 +225,27 @@ class Camera:
         else:
             d = np.asarray(distance)
 
-        # Create camera coordinates
-        camera_coords = np.array(
-            [
-                X[0, :] / self.focal_length * d,
-                X[1, :] / self.focal_length * d,
-                -d,  # Negative because camera looks down -Z axis
-                np.ones(n),
-            ]
+        # Convert from center-origin to top-left-origin coordinate system
+        cx = self.camera_matrix.matrix[0, 2]
+        cy = self.camera_matrix.matrix[1, 2]
+        X_opencv = X.copy().astype(np.float64)
+        X_opencv[0, :] += cx
+        X_opencv[1, :] += cy
+
+        points_2d_normalized = cv2.undistortPoints(
+            X_opencv.T.reshape(-1, 1, 2).astype(np.float64), self.camera_matrix.matrix, self.dist_coeffs
         )
+
+        points_3d = points_2d_normalized.reshape(-1, 2) * d.reshape(-1, 1)
+
+        camera_coords = np.column_stack(
+            [
+                points_3d[:, 0],
+                points_3d[:, 1],
+                -d,  # Camera faces -Z axis
+                np.ones(len(points_3d)),
+            ]
+        ).T
 
         # Transform to world coordinates
         world_coords = self.trans @ camera_coords
@@ -218,7 +275,12 @@ class Camera:
         axis = axis_homogeneous[:3] / np.linalg.norm(axis_homogeneous[:3])
 
         # Calculate pan and tilt angles
-        alpha = np.pi / 2 - np.arctan2(-axis[2], axis[0])
+        # Handle special case where both axis[2] and axis[0] are zero
+        if abs(axis[2]) < 1e-10 and abs(axis[0]) < 1e-10:
+            # Target is directly in front/behind camera, no pan needed
+            alpha = 0.0
+        else:
+            alpha = np.pi / 2 - np.arctan2(-axis[2], axis[0])
         beta = np.arcsin(axis[1])
 
         # Construct pan matrix (rotation around Y axis)
@@ -254,6 +316,9 @@ class Camera:
         Args:
             target_point: Point to point at in world coordinates
         """
+        # Store the target point for later reference
+        self._pointing_at = target_point
+
         # Store current transformation as rest position
         self.rest_trans = self.trans.copy()
 
@@ -263,7 +328,7 @@ class Camera:
         # Update rest position to the new orientation
         self.rest_trans = self.trans.copy()
 
-    def take_image(self, eye: "Eye", lights: List[Light], use_refraction: bool = True) -> CameraImage:
+    def take_image(self, eye: "Eye", lights: Optional[List[Light]] = None, use_refraction: bool = True) -> CameraImage:
         """Computes the image of an eye seen by a camera.
 
         Generates synthetic eye image with corneal reflections and pupil detection.
@@ -271,31 +336,33 @@ class Camera:
 
         Args:
             eye: Eye object
-            lights: List of light source objects
+            lights: List of light source objects (optional, if None no CRs are computed)
             use_refraction: Whether to use refraction model for pupil (default True)
 
         Returns:
             CameraImage object containing corneal reflections, pupil boundary, and pupil center
         """
-        # Find the corneal reflections for each light
+        # Find the corneal reflections for each light (if lights provided)
         corneal_reflections = []
-        for light in lights:
-            # Find 3D corneal reflection position
-            cr_3d = eye.find_cr(light, self)
+        if lights is not None:
+            for light in lights:
+                # Find 3D corneal reflection position
+                cr_3d = eye.find_cr(light, self)
 
-            if cr_3d is None:
-                corneal_reflections.append(None)
-            else:
-                # Project to camera image coordinates using refactored interface
-                projection_result = self.project(cr_3d)
-                if np.any(np.isnan(projection_result.image_points)):
+                if cr_3d is None:
                     corneal_reflections.append(None)
                 else:
-                    # Convert to Point2D
-                    cr_2d = Point2D(
-                        x=float(projection_result.image_points[0, 0]), y=float(projection_result.image_points[1, 0])
-                    )
-                    corneal_reflections.append(cr_2d)
+                    # Project to camera image coordinates using refactored interface
+                    projection_result = self.project(cr_3d)
+                    if np.any(np.isnan(projection_result.image_points)):
+                        corneal_reflections.append(None)
+                    else:
+                        # Convert to Point2D
+                        cr_2d = Point2D(
+                            x=float(projection_result.image_points[0, 0]),
+                            y=float(projection_result.image_points[1, 0]),
+                        )
+                        corneal_reflections.append(cr_2d)
 
         # Get pupil boundary and center
         pupil_boundary, pupil_center = eye.get_pupil_in_camera_image(self, use_refraction=use_refraction)
@@ -304,5 +371,5 @@ class Camera:
             corneal_reflections=corneal_reflections,
             pupil_boundary=pupil_boundary,
             pupil_center=pupil_center,
-            resolution=self.resolution,
+            resolution=self.camera_matrix.resolution,
         )

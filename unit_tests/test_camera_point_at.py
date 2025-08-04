@@ -47,13 +47,13 @@ def test_point_at_vs_pan_tilt():
 def test_output_properties():
     """Test that point_at maintains proper camera properties."""
     c = Camera()
-    original_focal_length = c.focal_length
+    original_focal_length = c.camera_matrix.focal_length
     target = Position3D(x=1.0, y=-2.0, z=-5.0)
 
     c.point_at(target)
 
     # Should maintain camera properties
-    assert c.focal_length == original_focal_length
+    assert c.camera_matrix.focal_length == original_focal_length
     assert c.trans.shape == (4, 4)
     assert c.trans.dtype == np.float64
     assert c.rest_trans.shape == (4, 4)
