@@ -1,79 +1,110 @@
 """Interactive plotting functions for dynamic visualizations.
 
-Provides setup and update functions for real-time interactive eye tracking plots.
-Enables exploration of system parameters and target positions.
+Provides interactive eye tracking visualization with keyboard controls for real-time exploration.
+Enables dynamic visualization of eye tracking with target and eye movement controls.
 """
 
+import numpy as np
 import matplotlib.pyplot as plt
+import copy
 
 from .integrated_plots import plot_setup_and_camera_view
+from .coordinate_utils import prepare_eye_data_for_plots
+from .setup_plots import plot_setup
+from et_simul.types import Position3D
 
 
-def setup_interactive_plot(eye_base, light, camera, look_at_target):
-    """Setup interactive plot with reference bounds for consistent view.
-
-    Initializes 3D and camera view plots for interactive eye tracking visualization.
-    Computes reference bounds for consistent axis scaling during updates.
+def plot_interactive_setup(eye_base, lights, camera, target_point):
+    """Create and run interactive setup and camera view with keyboard controls.
 
     Args:
         eye_base: Base eye object
-        light: Light object
+        lights: List of light objects
         camera: Camera object
-        look_at_target: Initial target point
-
-    Returns:
-        dict: Contains fig, ax1, ax2, ref_bounds for reuse
+        target_point: Initial target point
     """
+    print("CONTROLS:")
+    print("Target Movement (Arrow keys):")
+    print("  ↑/↓: Move target up/down")
+    print("  ←/→: Move target left/right")
+    print()
+    print("Eye Movement (I/K/J/L/./):")
+    print("  I/K: Move eye up/down")
+    print("  J/L: Move eye left/right")
+    print("  ./,: Move eye closer/farther from camera")
 
+    # Create figure with 3D and camera views
     fig = plt.figure(figsize=(18, 8), constrained_layout=True)
     ax1 = fig.add_subplot(1, 2, 1, projection="3d")
     ax2 = fig.add_subplot(1, 2, 2)
 
-    # Create reference bounds from initial view
-    e_ref = eye_base.copy()
-    e_ref.look_at(look_at_target)
-    cr_ref = e_ref.find_cr(light, camera)
-
-    plot_setup_and_camera_view(e_ref, look_at_target, light, camera, cr_ref, ax1=ax1, ax2=ax2, fig=fig)
+    # Reference bounds from initial view
+    e_ref = copy.deepcopy(eye_base)
+    e_ref.look_at(target_point)
+    plot_setup_and_camera_view(e_ref, target_point, camera, lights=lights, ax1=ax1, ax2=ax2, fig=fig)
     xlim = ax1.get_xlim()
     ylim = ax1.get_ylim()
     zlim = ax1.get_zlim()
     ref_bounds = {"x": xlim, "y": ylim, "z": zlim}
 
-    return {"fig": fig, "ax1": ax1, "ax2": ax2, "ref_bounds": ref_bounds}
+    def update_plot():
+        """Update the visualization with current eye and target positions."""
+        e = copy.deepcopy(eye_base)
+        e.look_at(target_point)
 
+        # Update both 3D and camera views
+        plot_setup_and_camera_view(
+            e,
+            target_point,
+            camera,
+            lights=lights,
+            ax1=ax1,
+            ax2=ax2,
+            fig=fig,
+            ref_bounds=ref_bounds,
+        )
 
-def update_interactive_plot(plot_setup, eye_base, light, camera, look_at_target):
-    """Update interactive plot with new target position.
+        # Update title with current positions
+        eye_pos = eye_base.position
+        fig.suptitle(
+            f"Target X={target_point.x * 1000:.1f} mm, Y={target_point.y * 1000:.1f} mm, Z={target_point.z * 1000:.1f} mm\n"
+            f"Eye X={eye_pos.x * 1000:.1f} mm, Y={eye_pos.y * 1000:.1f} mm, Z={eye_pos.z * 1000:.1f} mm",
+            fontsize=14,
+        )
+        fig.canvas.draw_idle()
 
-    Updates 3D and camera view plots for a new gaze target.
-    Maintains consistent axis scaling using reference bounds.
+    def on_key_press(event):
+        """Handle keyboard input for target and eye movement."""
+        nonlocal target_point
+        step_size = 2.5e-3  # 2.5 mm step size
 
-    Args:
-        plot_setup: Dict returned from setup_interactive_plot
-        eye_base: Base eye object
-        light: Light object
-        camera: Camera object
-        look_at_target: New target point
-    """
-    e = eye_base.copy()
-    e.look_at(look_at_target)
-    cr_3d = e.find_cr(light, camera)
+        # TARGET MOVEMENT (Arrow keys)
+        if event.key in ["up", "Up", "↑"]:
+            target_point = Position3D(target_point.x, target_point.y, target_point.z + step_size)
+        elif event.key in ["down", "Down", "↓"]:
+            target_point = Position3D(target_point.x, target_point.y, target_point.z - step_size)
+        elif event.key in ["left", "Left", "←"]:
+            target_point = Position3D(target_point.x - step_size, target_point.y, target_point.z)
+        elif event.key in ["right", "Right", "→"]:
+            target_point = Position3D(target_point.x + step_size, target_point.y, target_point.z)
 
-    plot_setup_and_camera_view(
-        e,
-        look_at_target,
-        light,
-        camera,
-        cr_3d,
-        ax1=plot_setup["ax1"],
-        ax2=plot_setup["ax2"],
-        fig=plot_setup["fig"],
-        ref_bounds=plot_setup["ref_bounds"],
-    )
+        # EYE MOVEMENT (I/K/J/L/./,)
+        elif event.key == "j":
+            eye_base.trans[0, 3] -= step_size  # Eye left
+        elif event.key == "l":
+            eye_base.trans[0, 3] += step_size  # Eye right
+        elif event.key == "i":
+            eye_base.trans[2, 3] += step_size  # Eye up
+        elif event.key == "k":
+            eye_base.trans[2, 3] -= step_size  # Eye down
+        elif event.key == ".":
+            eye_base.trans[1, 3] -= step_size  # Eye closer to camera
+        elif event.key == ",":
+            eye_base.trans[1, 3] += step_size  # Eye farther from camera
 
-    plot_setup["fig"].suptitle(
-        f"Target X={look_at_target.x * 1000:.1f} mm, Y={look_at_target.y * 1000:.1f} mm, Z={look_at_target.z * 1000:.1f} mm",
-        fontsize=16,
-    )
-    plot_setup["fig"].canvas.draw_idle()
+        update_plot()
+
+    # Connect keyboard events and show plot
+    fig.canvas.mpl_connect("key_press_event", on_key_press)
+    update_plot()
+    plt.show()
