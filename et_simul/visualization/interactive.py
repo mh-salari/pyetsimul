@@ -108,3 +108,223 @@ def plot_interactive_setup(eye_base, lights, camera, target_point):
     fig.canvas.mpl_connect("key_press_event", on_key_press)
     update_plot()
     plt.show()
+
+
+def plot_interactive_cameras(cameras, eye, target_point):
+    """Create and run interactive camera comparison with keyboard controls.
+
+    Args:
+        cameras: List of Camera objects
+        eye: Eye object
+        target_point: Initial target point
+    """
+    # Store initial positions for reset functionality
+    initial_eye_position = Position3D(eye.position.x, eye.position.y, eye.position.z)
+    initial_target_position = Position3D(target_point.x, target_point.y, target_point.z)
+
+    # Extract camera names for display
+    camera_names = [cam.name or f"Camera {i + 1}" for i, cam in enumerate(cameras)]
+    print(f"Camera Comparison: {' vs '.join(camera_names)}")
+    print("=" * 50)
+    print("CONTROLS:")
+    print("Target Movement (Arrow keys):")
+    print("  ↑/↓: Move target up/down")
+    print("  ←/→: Move target left/right")
+    print("Eye Movement (I/K/J/L/./):")
+    print("  I/K: Move eye up/down")
+    print("  J/L: Move eye left/right")
+    print("  ./,: Move eye closer/farther from camera")
+    print("Reset (Space): Reset eye and target to initial positions")
+    print("=" * 50)
+
+    # Create figure with 3D view and camera comparison subplot
+    fig = plt.figure(figsize=(16, 8))
+    ax1 = fig.add_subplot(1, 2, 1, projection="3d")
+    ax2 = fig.add_subplot(1, 2, 2)
+
+    # Reference bounds for consistent 3D view (use first camera)
+    eye_ref = copy.deepcopy(eye)
+    eye_ref.look_at(target_point)
+    first_camera = cameras[0]
+
+    prepared_data_ref = prepare_eye_data_for_plots(eye_ref, target_point, None, first_camera)
+    plot_setup(
+        ax1,
+        prepared_data_ref["eye_data"],
+        target_point,
+        None,
+        first_camera,
+        prepared_data_ref["cr_3d_list"],
+        None,
+        None,
+    )
+    xlim = ax1.get_xlim()
+    ylim = ax1.get_ylim()
+    zlim = ax1.get_zlim()
+    ref_bounds = {"x": xlim, "y": ylim, "z": zlim}
+
+    # Define colors for different cameras
+    colors = ["cornflowerblue", "red", "green", "orange", "purple", "brown", "pink", "gray"]
+    markers = ["+", "x", "o", "s", "^", "v", "d", "p"]
+
+    def update():
+        """Update the visualization with current eye position."""
+        nonlocal eye, target_point
+
+        # Make eye look at target point
+        eye.look_at(target_point)
+
+        # Prepare data for all cameras
+        prepared_data_list = []
+        for camera in cameras:
+            prepared_data = prepare_eye_data_for_plots(eye, target_point, None, camera)
+            prepared_data_list.append(prepared_data)
+
+        # Clear axes
+        ax1.cla()
+        ax2.cla()
+
+        # Plot 3D setup (use first camera)
+        plot_setup(
+            ax1,
+            prepared_data_list[0]["eye_data"],
+            target_point,
+            None,
+            first_camera,
+            prepared_data_list[0]["cr_3d_list"],
+            ref_bounds,
+            None,
+        )
+
+        # Plot camera comparison for all cameras
+        for i, (camera, prepared_data) in enumerate(zip(cameras, prepared_data_list)):
+            camera_image = prepared_data["camera_image"]
+            color = colors[i % len(colors)]
+            marker = markers[i % len(markers)]
+            camera_name = camera.name or f"Camera {i + 1}"
+
+            # Plot pupil boundary
+            if camera_image.pupil_boundary is not None:
+                pupil_points = camera_image.pupil_boundary
+                closed_points = np.hstack((pupil_points, pupil_points[:, 0:1]))
+                linestyle = "-" if i == 0 else "--"  # Solid line for first camera, dashed for others
+                ax2.plot(
+                    closed_points[0, :],
+                    closed_points[1, :],
+                    color=color,
+                    linewidth=1.5,
+                    linestyle=linestyle,
+                    label=f"Pupil ({camera_name})",
+                )
+
+            # Plot pupil center
+            if camera_image.pupil_center is not None:
+                center = camera_image.pupil_center.to_array()
+                ax2.scatter(
+                    center[0],
+                    center[1],
+                    color=color,
+                    s=50,
+                    marker=marker,
+                    linewidth=2,
+                    label=f"Center ({camera_name})",
+                )
+
+        # Set up axes
+        resolution = first_camera.camera_matrix.resolution
+        ax2.set_xlim(-resolution.x / 2, resolution.x / 2)
+        ax2.set_ylim(-resolution.y / 2, resolution.y / 2)
+        ax2.set_xlabel("X (pixels)")
+        ax2.set_ylabel("Y (pixels)")
+        ax2.set_title(f"Camera View Comparison: {' vs '.join(camera_names)}")
+        ax2.grid(True, alpha=0.3)
+        ax2.set_aspect("equal")
+        ax2.legend()
+
+        # Calculate and display distortion info
+        if len(prepared_data_list) >= 2:
+            # Compare first camera with others
+            first_center = prepared_data_list[0]["camera_image"].pupil_center
+            if first_center is not None:
+                first_center_array = first_center.to_array()
+
+                # Calculate differences from first camera
+                differences = []
+                for i, prepared_data in enumerate(prepared_data_list[1:], 1):
+                    camera_center = prepared_data["camera_image"].pupil_center
+                    if camera_center is not None:
+                        camera_center_array = camera_center.to_array()
+                        center_diff = np.linalg.norm(camera_center_array - first_center_array)
+                        camera_name = cameras[i].name or f"Camera {i + 1}"
+                        differences.append(f"{camera_name}={center_diff:.3f}px")
+
+                # Eye position info
+                eye_pos = eye.position
+                cam_pos = first_camera.position
+                distance = np.linalg.norm(
+                    np.array([eye_pos.x, eye_pos.y, eye_pos.z]) - np.array([cam_pos.x, cam_pos.y, cam_pos.z])
+                )
+
+                fig.suptitle(
+                    f"Target: ({target_point.x * 1000:.0f}, {target_point.y * 1000:.0f}, {target_point.z * 1000:.0f})mm, "
+                    f"Eye: ({eye_pos.x * 1000:.0f}, {eye_pos.y * 1000:.0f}, {eye_pos.z * 1000:.0f})mm, "
+                    f"Distance: {distance * 1000:.0f}mm\n"
+                    f"Pupil center differences: {', '.join(differences)}",
+                    fontsize=12,
+                )
+
+        fig.canvas.draw_idle()
+
+    def on_key(event):
+        """Handle keyboard input for target and eye movement."""
+        nonlocal eye, target_point, initial_eye_position, initial_target_position
+        step = 1e-3  # 1mm step size
+
+        # RESET POSITIONS (Space)
+        if event.key == " ":
+            # Reset eye to initial position
+            eye.trans[0, 3] = initial_eye_position.x
+            eye.trans[1, 3] = initial_eye_position.y
+            eye.trans[2, 3] = initial_eye_position.z
+            eye.position = Position3D(eye.trans[0, 3], eye.trans[1, 3], eye.trans[2, 3])
+
+            # Reset target to initial position
+            target_point = Position3D(initial_target_position.x, initial_target_position.y, initial_target_position.z)
+
+        # TARGET MOVEMENT (Arrow keys)
+        elif event.key in ["up", "Up", "↑"]:
+            target_point = Position3D(target_point.x, target_point.y, target_point.z + step)
+        elif event.key in ["down", "Down", "↓"]:
+            target_point = Position3D(target_point.x, target_point.y, target_point.z - step)
+        elif event.key in ["left", "Left", "←"]:
+            target_point = Position3D(target_point.x - step, target_point.y, target_point.z)
+        elif event.key in ["right", "Right", "→"]:
+            target_point = Position3D(target_point.x + step, target_point.y, target_point.z)
+
+        # EYE MOVEMENT (I/K/J/L/./,)
+        elif event.key == "j":
+            eye.trans[0, 3] -= step  # Eye left
+        elif event.key == "l":
+            eye.trans[0, 3] += step  # Eye right
+        elif event.key == "i":
+            eye.trans[2, 3] += step  # Eye up
+        elif event.key == "k":
+            eye.trans[2, 3] -= step  # Eye down
+        elif event.key == ".":
+            eye.trans[1, 3] -= step  # Eye closer to camera
+        elif event.key == ",":
+            eye.trans[1, 3] += step  # Eye farther from camera
+        else:
+            return  # Ignore other keys
+
+        # Update eye position property to match transformation matrix
+        eye.position = Position3D(eye.trans[0, 3], eye.trans[1, 3], eye.trans[2, 3])
+        update()
+
+    # Connect keyboard events
+    fig.canvas.mpl_connect("key_press_event", on_key)
+
+    # Initial update
+    update()
+
+    plt.show()
