@@ -42,6 +42,7 @@ class Eye:
     fovea_alpha_deg: float = 6.0  # Horizontal fovea displacement (degrees)
     fovea_beta_deg: float = 2.0  # Vertical fovea displacement (degrees)
     pupil_type: str = "elliptical"  # Pupil type: "elliptical" (default), "realistic"
+    pupil_boundary_points: Optional[int] = None  # Number of points for pupil boundary (uses pupil default if None)
 
     # These fields are calculated in __post_init__
     trans: TransformationMatrix = field(init=False)
@@ -87,8 +88,13 @@ class Eye:
         x_pupil = Direction3D(scaled_pupil_radius, 0, 0)
         y_pupil = Direction3D(0, scaled_pupil_radius, 0)
 
+        # Create pupil with optional N parameter
+        pupil_kwargs = {}
+        if self.pupil_boundary_points is not None:
+            pupil_kwargs["N"] = self.pupil_boundary_points
+
         self.pupil = create_pupil(
-            pupil_type=self.pupil_type, pos_pupil=pupil_position, x_pupil=x_pupil, y_pupil=y_pupil
+            pupil_type=self.pupil_type, pos_pupil=pupil_position, x_pupil=x_pupil, y_pupil=y_pupil, **pupil_kwargs
         )
 
     @property
