@@ -154,6 +154,19 @@ def plot_setup(
     camera_pos = camera.position
     ax1.scatter(camera_pos.x, camera_pos.y, camera_pos.z, color="black", s=200, marker="s", label="Camera")
 
+    # Add line from camera to where it's pointing
+    if camera.pointing_at is not None:
+        pointing_pos = camera.pointing_at
+        ax1.plot(
+            [camera_pos.x, pointing_pos.x],
+            [camera_pos.y, pointing_pos.y],
+            [camera_pos.z, pointing_pos.z],
+            color="black",
+            linestyle="--",
+            alpha=0.5,
+            linewidth=1,
+        )
+
     ax1.scatter(
         target_world.x, target_world.y, target_world.z, color="magenta", s=150, marker="D", label="Gaze Target"
     )
