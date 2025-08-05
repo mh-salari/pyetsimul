@@ -178,6 +178,7 @@ class RealisticPupilParams:
         pupil_offset_from_limbus: (nasal, superior) displacement from limbus center in meters
         n_harmonics: Number of Fourier harmonics to include in shape generation
         age: Subject age in years (affects noncircularity and pupil size)
+        random_seed: Random seed for reproducible shape generation (None for random)
     """
 
     base_radius: float = 2.5  # mm, average radius
@@ -187,6 +188,7 @@ class RealisticPupilParams:
     pupil_offset_from_limbus: Tuple[float, float] = (0.27e-3, 0.20e-3)  # (nasal, superior) in meters
     n_harmonics: int = 6  # number of harmonics to include
     age: float = 35.8  # age in years (study mean from Wyatt 1995)
+    random_seed: Optional[int] = None  # seed for reproducible random generation (None = random)
 
 
 class RealisticPupil(Pupil):
@@ -235,8 +237,14 @@ class RealisticPupil(Pupil):
 
         self._generate_harmonics()
 
+    def _set_random_seed(self):
+        """Set random seed if specified, for reproducible shape generation."""
+        if self.params.random_seed is not None:
+            np.random.seed(self.params.random_seed)
+
     def _generate_harmonics(self):
         """Generate harmonic amplitudes for realistic pupil shape using Wyatt (1995) formula."""
+        self._set_random_seed()
         # Apply age effects to base parameters
         age_offset = self.params.age - 35.8  # offset from study mean
         noncircularity_age_adjusted = self.params.noncircularity + (age_offset / 10) * 0.0015
@@ -277,6 +285,7 @@ class RealisticPupil(Pupil):
         Args:
             diameter_mm: Pupil diameter in millimeters
         """
+        self._set_random_seed()
         # Determine orientation based on size (using paper's reference values)
         # Large pupils (dilated) tend to have vertical ellipse orientation
         # Small pupils (constricted) tend to have horizontal ellipse orientation
@@ -423,7 +432,7 @@ def create_pupil(
         y_pupil: Vector defining Y-axis radius/direction
         **kwargs: Additional parameters for specific pupil types
                  - N: Number of boundary points (default: 100 for elliptical, 360 for realistic)
-                 - params: RealisticPupilParams for realistic pupil
+                 - params: RealisticPupilParams for realistic pupil (including random_seed for deterministic shapes)
 
     Returns:
         Pupil instance of the requested type

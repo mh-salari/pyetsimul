@@ -7,6 +7,11 @@ part of the Eye class, extracted for better modularity and testability.
 
 import numpy as np
 from typing import Optional
+
+from skimage.measure import EllipseModel
+from skimage.draw import polygon
+from scipy import ndimage
+
 from ..types.geometry import Point2D
 from ..types.imaging import PupilData
 from ..core.camera import Camera
@@ -151,32 +156,26 @@ def _fit_ellipse_center(pupil_boundary) -> Optional[Point2D]:
     Falls back to centroid if scikit-image not available.
 
     Args:
-        pupil_boundary: List of Point2D objects representing pupil boundary points
+        pupil_boundary: 2xN numpy array representing pupil boundary points
 
     Returns:
         Point2D with center coordinates, or None if fitting fails
     """
-    # Filter out None values and convert to valid points
-    valid_points = [p for p in pupil_boundary if p is not None]
-
-    if len(valid_points) < 5:
+    if pupil_boundary.shape[1] < 5:
         return None
 
-    try:
-        from skimage.measure import EllipseModel
+    # Convert 2xN array to Nx2 array for ellipse fitting
+    points = pupil_boundary.T
+    ellipse = EllipseModel()
 
-        # Convert Point2D objects to numpy array for ellipse fitting
-        points = np.array([[p.x, p.y] for p in valid_points])
-        ellipse = EllipseModel()
-
-        if ellipse.estimate(points):
-            # Extract center coordinates
-            center_x, center_y = ellipse.params[:2]
-            return Point2D(x=float(center_x), y=float(center_y))
-    except ImportError:
-        # Fallback to simple centroid if scikit-image not available
-        center_x = np.mean([p.x for p in valid_points])
-        center_y = np.mean([p.y for p in valid_points])
+    if ellipse.estimate(points):
+        # Extract center coordinates
+        center_x, center_y = ellipse.params[:2]
+        return Point2D(x=float(center_x), y=float(center_y))
+    else:
+        # Fallback to simple centroid if ellipse fitting fails
+        center_x = np.mean(pupil_boundary[0, :])
+        center_y = np.mean(pupil_boundary[1, :])
         return Point2D(x=float(center_x), y=float(center_y))
 
     return None
@@ -189,33 +188,23 @@ def _calculate_center_of_mass(pupil_boundary, camera_resolution: Point2D) -> Opt
     Falls back to simple centroid if required packages not available.
 
     Args:
-        pupil_boundary: List of Point2D objects representing pupil boundary points
+        pupil_boundary: 2xN numpy array representing pupil boundary points
         camera_resolution: Point2D with camera width (x) and height (y)
 
     Returns:
         Point2D with center of mass coordinates, or None if calculation fails
     """
-    # Filter out None values and convert to valid points
-    valid_points = [p for p in pupil_boundary if p is not None]
-
-    if len(valid_points) < 3:
+    if pupil_boundary.shape[1] < 3:
         return None
 
-    try:
-        from skimage.draw import polygon
-        from scipy import ndimage
-    except ImportError:
-        # Fallback to simple centroid if packages not available
-        center_x = np.mean([p.x for p in valid_points])
-        center_y = np.mean([p.y for p in valid_points])
-        return Point2D(x=float(center_x), y=float(center_y))
+    # Use polygon and ndimage for center of mass calculation
 
     # Convert camera coordinates to image array coordinates
     width, height = int(camera_resolution.x), int(camera_resolution.y)
 
     # Convert pupil points to array coordinates
-    pupil_array_x = np.array([p.x + width // 2 for p in valid_points])
-    pupil_array_y = np.array([p.y + height // 2 for p in valid_points])
+    pupil_array_x = pupil_boundary[0, :] + width // 2
+    pupil_array_y = pupil_boundary[1, :] + height // 2
 
     # Clip to valid image bounds
     pupil_array_x = np.clip(pupil_array_x, 0, width - 1)
