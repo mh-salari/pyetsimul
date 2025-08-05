@@ -328,3 +328,200 @@ def plot_interactive_cameras(cameras, eye, target_point):
     update()
 
     plt.show()
+
+
+def plot_interactive_pupil_comparison(eye_elliptical, eye_realistic, camera, target_point):
+    """Create and run interactive pupil comparison with keyboard controls.
+
+    Args:
+        eye_elliptical: Elliptical pupil eye object
+        eye_realistic: Realistic pupil eye object
+        camera: Camera object
+        target_point: Initial target point
+    """
+    # Store initial positions and pupil size for reset functionality
+    initial_eye_position = Position3D(eye_elliptical.position.x, eye_elliptical.position.y, eye_elliptical.position.z)
+    initial_target_position = Position3D(target_point.x, target_point.y, target_point.z)
+    initial_pupil_radii = eye_elliptical.get_pupil_radii()
+
+    print("Pupil Shape Comparison")
+    print("=" * 50)
+    print("CONTROLS:")
+    print("Target Movement (Arrow keys):")
+    print("  ↑/↓: Move target up/down")
+    print("  ←/→: Move target left/right")
+    print("Eye Movement (I/K/J/L/./):")
+    print("  I/K: Move eye up/down")
+    print("  J/L: Move eye left/right")
+    print("  ./,: Move eye closer/farther from camera")
+    print("Pupil Size ([/]):")
+    print("  [: Make pupil smaller")
+    print("  ]: Make pupil bigger")
+    print("Reset (Space): Reset eye and target to initial positions")
+
+    # Create figure with 3D view and camera comparison subplot
+    fig = plt.figure(figsize=(16, 8))
+    ax1 = fig.add_subplot(1, 2, 1, projection="3d")
+    ax2 = fig.add_subplot(1, 2, 2)
+
+    # Reference bounds for consistent 3D view (same as camera comparison)
+    eye_ref = copy.deepcopy(eye_elliptical)
+    eye_ref.look_at(target_point)
+    prepared_data_ref = prepare_eye_data_for_plots(eye_ref, target_point, None, camera)
+    plot_setup(
+        ax1,
+        prepared_data_ref["eye_data"],
+        target_point,
+        None,
+        camera,
+        prepared_data_ref["cr_3d_list"],
+        None,
+        None,
+    )
+    xlim = ax1.get_xlim()
+    ylim = ax1.get_ylim()
+    zlim = ax1.get_zlim()
+    ref_bounds = {"x": xlim, "y": ylim, "z": zlim}
+
+    def update():
+        """Update the visualization with current eye positions."""
+        nonlocal target_point
+
+        # Make both eyes look at target point
+        eye_elliptical.look_at(target_point)
+        eye_realistic.look_at(target_point)
+
+        # Get pupil images in camera view
+        elliptical_pupil_img, elliptical_center = eye_elliptical.get_pupil_in_camera_image(camera)
+        realistic_pupil_img, realistic_center = eye_realistic.get_pupil_in_camera_image(camera)
+
+        # Clear axes
+        ax1.cla()
+        ax2.cla()
+
+        # Prepare data for 3D setup (use elliptical eye for 3D view)
+        prepared_data = prepare_eye_data_for_plots(eye_elliptical, target_point, None, camera)
+
+        # Plot 3D setup (same as camera comparison)
+        plot_setup(
+            ax1,
+            prepared_data["eye_data"],
+            target_point,
+            None,
+            camera,
+            prepared_data["cr_3d_list"],
+            ref_bounds,
+            None,
+        )
+
+        # Plot camera comparison
+        ax2.set_title("Pupil Shape Comparison")
+        ax2.set_xlabel("X (pixels)")
+        ax2.set_ylabel("Y (pixels)")
+        ax2.grid(True, alpha=0.3)
+
+        # Plot elliptical pupil with dashed line
+        if elliptical_pupil_img is not None:
+            elliptical_closed = np.column_stack([elliptical_pupil_img, elliptical_pupil_img[:, 0:1]])
+            ax2.plot(elliptical_closed[0, :], elliptical_closed[1, :], "b--", linewidth=1, label="Elliptical Pupil")
+
+        if elliptical_center is not None:
+            ax2.plot(elliptical_center.x, elliptical_center.y, "bx", markersize=6, label="Elliptical Center")
+
+        # Plot realistic pupil with solid line
+        if realistic_pupil_img is not None:
+            realistic_closed = np.column_stack([realistic_pupil_img, realistic_pupil_img[:, 0:1]])
+            ax2.plot(realistic_closed[0, :], realistic_closed[1, :], "r-", linewidth=1, label="Realistic Pupil")
+
+        if realistic_center is not None:
+            ax2.plot(realistic_center.x, realistic_center.y, "r+", markersize=8, label="Realistic Center")
+
+        # Set up axes with camera resolution (same as camera comparison)
+        resolution = camera.camera_matrix.resolution
+        ax2.set_xlim(-resolution.x / 2, resolution.x / 2)
+        ax2.set_ylim(-resolution.y / 2, resolution.y / 2)
+        ax2.set_xlabel("X (pixels)")
+        ax2.set_ylabel("Y (pixels)")
+        ax2.set_title("Pupil Shape Comparison")
+        ax2.grid(True, alpha=0.3)
+        ax2.set_aspect("equal")
+        ax2.legend()
+
+        # Update title with current positions and pupil size
+        eye_pos = eye_elliptical.position
+        pupil_radii = eye_elliptical.get_pupil_radii()
+        pupil_diameter = pupil_radii[0] * 2000  # Convert to mm
+        fig.suptitle(
+            f"Target X={target_point.x * 1000:.1f} mm, Y={target_point.y * 1000:.1f} mm, Z={target_point.z * 1000:.1f} mm\n"
+            f"Eye X={eye_pos.x * 1000:.1f} mm, Y={eye_pos.y * 1000:.1f} mm, Z={eye_pos.z * 1000:.1f} mm, Pupil diameter: {pupil_diameter:.1f}mm",
+            fontsize=14,
+        )
+        fig.canvas.draw_idle()
+
+    def on_key(event):
+        """Handle keyboard input for target and eye movement."""
+        nonlocal target_point
+        step_size = 2.5e-3  # 2.5 mm step size
+
+        # TARGET MOVEMENT (Arrow keys)
+        if event.key in ["up", "Up", "↑"]:
+            target_point = Position3D(target_point.x, target_point.y, target_point.z + step_size)
+        elif event.key in ["down", "Down", "↓"]:
+            target_point = Position3D(target_point.x, target_point.y, target_point.z - step_size)
+        elif event.key in ["left", "Left", "←"]:
+            target_point = Position3D(target_point.x - step_size, target_point.y, target_point.z)
+        elif event.key in ["right", "Right", "→"]:
+            target_point = Position3D(target_point.x + step_size, target_point.y, target_point.z)
+
+        # EYE MOVEMENT (I/K/J/L/./,)
+        elif event.key == "j":
+            eye_elliptical.trans[0, 3] -= step_size  # Eye left
+            eye_realistic.trans[0, 3] -= step_size
+        elif event.key == "l":
+            eye_elliptical.trans[0, 3] += step_size  # Eye right
+            eye_realistic.trans[0, 3] += step_size
+        elif event.key == "i":
+            eye_elliptical.trans[2, 3] += step_size  # Eye up
+            eye_realistic.trans[2, 3] += step_size
+        elif event.key == "k":
+            eye_elliptical.trans[2, 3] -= step_size  # Eye down
+            eye_realistic.trans[2, 3] -= step_size
+        elif event.key == ".":
+            eye_elliptical.trans[1, 3] += step_size  # Eye closer
+            eye_realistic.trans[1, 3] += step_size
+        elif event.key == ",":
+            eye_elliptical.trans[1, 3] -= step_size  # Eye farther
+            eye_realistic.trans[1, 3] -= step_size
+
+        # RESET (Space)
+        elif event.key == " ":
+            eye_elliptical.position = initial_eye_position
+            eye_realistic.position = initial_eye_position
+            target_point = initial_target_position
+            # Reset pupil size to initial size
+            eye_elliptical.set_pupil_radii(initial_pupil_radii[0], initial_pupil_radii[1])
+            eye_realistic.set_pupil_radii(initial_pupil_radii[0], initial_pupil_radii[1])
+
+        # PUPIL SIZE ([/])
+        elif event.key == "[":
+            # Make pupil smaller
+            current_radii = eye_elliptical.get_pupil_radii()
+            new_radius = max(0.5e-3, current_radii[0] - 0.5e-3)  # Minimum 0.5mm radius
+            eye_elliptical.set_pupil_radii(new_radius, new_radius)
+            eye_realistic.set_pupil_radii(new_radius, new_radius)
+        elif event.key == "]":
+            # Make pupil bigger
+            current_radii = eye_elliptical.get_pupil_radii()
+            new_radius = min(5e-3, current_radii[0] + 0.5e-3)  # Maximum 5mm radius
+            eye_elliptical.set_pupil_radii(new_radius, new_radius)
+            eye_realistic.set_pupil_radii(new_radius, new_radius)
+
+        update()
+
+    # Connect the key press event
+    fig.canvas.mpl_connect("key_press_event", on_key)
+
+    # Initial plot
+    update()
+
+    plt.show()

@@ -8,7 +8,7 @@ from .setup_plots import transform_surface, plot_axis, plot_setup
 from .camera_view import plot_camera_view_of_eye
 from .coordinate_utils import prepare_eye_data_for_plots
 from .integrated_plots import plot_setup_and_camera_view
-from .interactive import plot_interactive_setup, plot_interactive_cameras
+from .interactive import plot_interactive_setup, plot_interactive_cameras, plot_interactive_pupil_comparison
 from .eye_anatomy import plot_eye_anatomy
 
 # Import individual modules for direct access
@@ -33,4 +33,5 @@ __all__ = [
     "plot_setup_and_camera_view",
     "plot_interactive_setup",
     "plot_interactive_cameras",
+    "plot_interactive_pupil_comparison",
 ]
