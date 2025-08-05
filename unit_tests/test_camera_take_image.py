@@ -15,7 +15,7 @@ def test_camera_take_image_with_refraction():
 
     # Camera at origin pointing at eye
     c = Camera()
-    c.trans[0:3, 0:3] = np.array([[1, 0, 0], [0, 0, -1], [0, 1, 0]])  # Hennessey-style rotation
+    c.trans[0:3, 0:3] = np.array([[1, 0, 0], [0, 0, -1], [0, 1, 0]])
     c.rest_trans = c.trans.copy()
     c.point_at(e.position)  # Point at eye
     c.err = 0

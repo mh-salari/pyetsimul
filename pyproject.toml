@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "et-simul"
-version = "1.0.0"
+version = "0.9.0"
 description = ""
 authors = [{name = "Mohammadhossein Salari", email = "Mohammadhossein.Salari@gmail.com"}]
 license = {text = "GPL-3.0-or-later"}

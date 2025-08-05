@@ -25,9 +25,11 @@ pip install -e .
 3. Run examples:
 ```bash
 python examples/example.py
-python examples/visualization_animation.py
-python examples/hennessey.py
 python examples/interpolate.py
+python examples/eye_anatomy.py
+python examples/setup_visualization.py
+python examples/camera_distortion.py
+python examples/realistic_pupil.py
 ```
 
 ## Citation
