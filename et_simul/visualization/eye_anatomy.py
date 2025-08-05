@@ -9,6 +9,9 @@ import matplotlib.pyplot as plt
 
 from ..core import Eye
 from ..types import Position3D, Direction3D
+from ..utils.eye_surface_points import generate_corneal_surface_points, get_transformed_corneal_landmarks
+from ..geometry.intersections import intersect_ray_sphere, intersect_ray_conic
+from .transforms import transform_surface
 
 
 def plot_eye_anatomy(eye: Eye = Eye(), target_point: Position3D = Position3D(15e-3, 15e-3, 0), ax=None):
@@ -43,44 +46,28 @@ def plot_eye_anatomy(eye: Eye = Eye(), target_point: Position3D = Position3D(15e
     apex_pos = eye.cornea.get_apex_position()
     limbus_z_local = apex_pos.z + eye.cornea.get_corneal_depth()
 
-    # Create corneal surface coordinates using structured types
-    cornea_radius = eye.cornea.anterior_radius
-    depth = eye.cornea.get_corneal_depth()
-    cap_angle = np.arccos((cornea_radius - depth) / cornea_radius)
-    phi_cap = np.linspace(0, cap_angle, 20)
-    theta_full = np.linspace(0, 2 * np.pi, 50)
-    phi_grid, theta_grid = np.meshgrid(phi_cap, theta_full)
+    # Generate corneal surface points using proper transformation handling
+    # Choose intersection function based on cornea type
+    if eye.cornea.cornea_type == "conic":
+        intersection_func = intersect_ray_conic
+    elif eye.cornea.cornea_type == "spherical":
+        intersection_func = intersect_ray_sphere
+    else:
+        raise ValueError(f"Unknown cornea type: {eye.cornea.cornea_type}")
+        
+    anterior_points = generate_corneal_surface_points(eye, intersection_func, "anterior", n_points=30)
+    posterior_points = generate_corneal_surface_points(eye, intersection_func, "posterior", n_points=30)
 
-    # Outer corneal surface using vector arithmetic
-    x_outer_local = cornea_center.x + cornea_radius * np.sin(phi_grid) * np.cos(theta_grid)
-    y_outer_local = cornea_center.y + cornea_radius * np.sin(phi_grid) * np.sin(theta_grid)
-    z_outer_local = cornea_center.z - cornea_radius * np.cos(phi_grid)
+    # Get transformed corneal landmarks
+    corneal_landmarks = get_transformed_corneal_landmarks(eye)
+    cornea_center_world = corneal_landmarks["anterior_center"]
+    cornea_inner_center_world = corneal_landmarks["posterior_center"]
 
-    # Inner corneal surface using vector arithmetic
-    cornea_inner_radius = eye.cornea.posterior_radius
-    x_inner_local = cornea_inner_center.x + cornea_inner_radius * np.sin(phi_grid) * np.cos(theta_grid)
-    y_inner_local = cornea_inner_center.y + cornea_inner_radius * np.sin(phi_grid) * np.sin(theta_grid)
-    z_inner_local = cornea_inner_center.z - cornea_inner_radius * np.cos(phi_grid)
-
-    # Transform surfaces to world coordinates
-    def transform_surface(x_local, y_local, z_local, trans_matrix):
-        """Transform surface coordinates using homogeneous coordinates."""
-        local_coords = np.array(
-            [x_local.flatten(), y_local.flatten(), z_local.flatten(), np.ones_like(x_local.flatten())]
-        )
-        world_coords = np.einsum("ij,j...->i...", trans_matrix, local_coords)
-        return (
-            world_coords[0].reshape(x_local.shape),
-            world_coords[1].reshape(y_local.shape),
-            world_coords[2].reshape(z_local.shape),
-        )
-
-    x_outer_world, y_outer_world, z_outer_world = transform_surface(
-        x_outer_local, y_outer_local, z_outer_local, eye.trans
-    )
-    x_inner_world, y_inner_world, z_inner_world = transform_surface(
-        x_inner_local, y_inner_local, z_inner_local, eye.trans
-    )
+    # Filter surfaces based on corneal depth limits (same as spherical cornea visualization)
+    anterior_mask = np.array([eye.point_within_cornea(Position3D(p[0], p[1], p[2])) for p in anterior_points])
+    posterior_mask = np.array([eye.point_within_cornea(Position3D(p[0], p[1], p[2])) for p in posterior_points])
+    anterior_limited = anterior_points[anterior_mask]
+    posterior_limited = posterior_points[posterior_mask]
 
     # Create eye sphere coordinates using structured types
     phi_eye = np.linspace(0, np.pi, 30)
@@ -128,15 +115,36 @@ def plot_eye_anatomy(eye: Eye = Eye(), target_point: Position3D = Position3D(15e
 
     # Plot eye components using structured type coordinates
     ax.plot_surface(x_eye_world, y_eye_world, z_eye_world, alpha=0.3, color="lightgray", label="Eye Globe")
-    ax.plot_surface(x_outer_world, y_outer_world, z_outer_world, alpha=0.8, color="lightblue", label="Cornea (Outer)")
-    ax.plot_surface(x_inner_world, y_inner_world, z_inner_world, alpha=0.8, color="lightcyan", label="Cornea (Inner)")
+
+    # Plot corneal surfaces using filtered surface points
+    if len(anterior_limited) > 0:
+        ax.scatter(
+            anterior_limited[:, 0],
+            anterior_limited[:, 1],
+            anterior_limited[:, 2],
+            alpha=0.9,
+            color="steelblue",
+            s=2,
+            label="Cornea (Outer)",
+        )
+
+    if len(posterior_limited) > 0:
+        ax.scatter(
+            posterior_limited[:, 0],
+            posterior_limited[:, 1],
+            posterior_limited[:, 2],
+            alpha=0.9,
+            color="darkturquoise",
+            s=1.5,
+            label="Cornea (Inner)",
+        )
 
     # Plot key points using structured types
     ax.scatter(
         eye_rotation_center.x,
         eye_rotation_center.y,
         eye_rotation_center.z,
-        color="black",
+        color="navy",
         s=50,
         marker="o",
         label="Rotation Center",
@@ -145,16 +153,16 @@ def plot_eye_anatomy(eye: Eye = Eye(), target_point: Position3D = Position3D(15e
         cornea_center_world.x,
         cornea_center_world.y,
         cornea_center_world.z,
-        color="blue",
+        color="steelblue",
         s=30,
-        marker="s",
+        marker="^",
         label="Cornea Center",
     )
     ax.scatter(
         cornea_inner_center_world.x,
         cornea_inner_center_world.y,
         cornea_inner_center_world.z,
-        color="cyan",
+        color="darkturquoise",
         s=20,
         marker="^",
         label="Inner Cornea Center",
@@ -170,27 +178,40 @@ def plot_eye_anatomy(eye: Eye = Eye(), target_point: Position3D = Position3D(15e
     )
     ax.scatter(fovea_world.x, fovea_world.y, fovea_world.z, color="orange", s=80, marker="*", label="Fovea")
 
-    # Plot pupil boundary using structured types
+    # Plot pupil as filled dark circle using structured types
     n_pupil_points = 50
     t = np.linspace(0, 2 * np.pi, n_pupil_points)
-    cos_t = np.cos(t)
-    sin_t = np.sin(t)
-
-    # Use vector arithmetic for pupil boundary
-    pupil_boundary_local = (
-        np.array(pupil_position).reshape(-1, 1)
-        + np.array(eye.pupil.x_pupil).reshape(-1, 1) @ cos_t.reshape(1, -1)
-        + np.array(eye.pupil.y_pupil).reshape(-1, 1) @ sin_t.reshape(1, -1)
-    )
-    pupil_boundary_world = eye.trans @ pupil_boundary_local
-
-    ax.plot(
-        pupil_boundary_world[0],
-        pupil_boundary_world[1],
-        pupil_boundary_world[2],
-        "k-",
-        linewidth=3,
-        label="Pupil Opening",
+    
+    # Create filled pupil with radial points from center to boundary
+    n_radial = 10
+    radial_factors = np.linspace(0, 1, n_radial)
+    
+    pupil_points_local = []
+    for r_factor in radial_factors:
+        for theta in t:
+            cos_theta = np.cos(theta)
+            sin_theta = np.sin(theta)
+            # Point on pupil surface at radius factor r_factor
+            point_local = (
+                np.array(pupil_position).reshape(-1, 1) +
+                r_factor * (np.array(eye.pupil.x_pupil).reshape(-1, 1) * cos_theta +
+                           np.array(eye.pupil.y_pupil).reshape(-1, 1) * sin_theta)
+            )
+            pupil_points_local.append(point_local.flatten())
+    
+    # Transform all pupil points to world coordinates
+    pupil_points_local = np.array(pupil_points_local).T
+    pupil_points_world = eye.trans @ pupil_points_local
+    
+    # Plot filled pupil as scatter points
+    ax.scatter(
+        pupil_points_world[0],
+        pupil_points_world[1], 
+        pupil_points_world[2],
+        c="black",
+        s=3,
+        alpha=0.9,
+        label="Pupil Opening"
     )
 
     # Plot axes using structured types
@@ -198,7 +219,7 @@ def plot_eye_anatomy(eye: Eye = Eye(), target_point: Position3D = Position3D(15e
         [eye_rotation_center.x, optical_axis_end.x],
         [eye_rotation_center.y, optical_axis_end.y],
         [eye_rotation_center.z, optical_axis_end.z],
-        "b--",
+        "g--",
         linewidth=1,
         label="Optical Axis",
     )
@@ -213,7 +234,7 @@ def plot_eye_anatomy(eye: Eye = Eye(), target_point: Position3D = Position3D(15e
     )
 
     # Plot target point
-    ax.scatter(target_point.x, target_point.y, target_point.z, color="green", s=100, marker="x", label="Target")
+    ax.scatter(target_point.x, target_point.y, target_point.z, color="hotpink", s=100, marker="x", label="Target")
 
     # Set labels and title
     ax.set_xlabel("X (m)")
