@@ -93,6 +93,10 @@ class Point3D:
     def to_array(self) -> np.ndarray:
         """Convert to numpy array."""
         return np.array([self.x, self.y, self.z])
+    
+    def to_homogeneous(self) -> np.ndarray:
+        """Convert to homogeneous coordinates [x, y, z, 1]."""
+        return np.array([self.x, self.y, self.z, 1.0])
 
     @classmethod
     def from_array(cls, arr: np.ndarray) -> "Point3D":
@@ -173,6 +177,10 @@ class Vector3D:
     def to_array(self) -> np.ndarray:
         """Convert to numpy array for compatibility."""
         return np.array([self.x, self.y, self.z])
+    
+    def to_homogeneous(self) -> np.ndarray:
+        """Convert to homogeneous coordinates [x, y, z, 0]."""
+        return np.array([self.x, self.y, self.z, 0.0])
 
     @classmethod
     def from_array(cls, arr: np.ndarray) -> "Vector3D":

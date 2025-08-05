@@ -28,6 +28,12 @@ class Cornea(ABC):
     _cornea_depth_default: float = 3.54e-3  # Reference corneal depth (apex to limbus)
     _cornea_center_to_rotation_center_default: float = 10.20e-3  # Reference distance
 
+    @property
+    @abstractmethod
+    def cornea_type(self) -> str:
+        """Return the type name of this cornea model."""
+        pass
+
     @abstractmethod
     def intersect(self, ray: Ray) -> Optional[IntersectionResult]:
         """Calculates the intersection point of a light ray with the cornea."""
@@ -44,21 +50,17 @@ class Cornea(ABC):
         Uses projection distance calculation to determine if point is within corneal depth.
 
         Args:
-            p: Point to test
-            eye: Eye object containing transformation matrix, apex position, and cornea depth
+            p: Point to test in local eye coordinates
+            eye: Eye object containing apex position and cornea depth
 
         Returns:
             bool: True if point lies within cornea boundaries, False otherwise
         """
-        # Transform point to local eye coordinates
-        p_homogeneous = np.array(p)
-        p_local_homogeneous = np.linalg.solve(eye.trans, p_homogeneous)
-        p_local = Position3D.from_array(p_local_homogeneous)
-
+        
         # Calculate direction from apex to cornea center
         apex_pos = eye.cornea.get_apex_position()
         direction = Vector3D(self.center.x - apex_pos.x, self.center.y - apex_pos.y, self.center.z - apex_pos.z)
-        diff = Vector3D(p_local.x - apex_pos.x, p_local.y - apex_pos.y, p_local.z - apex_pos.z)
+        diff = Vector3D(p.x - apex_pos.x, p.y - apex_pos.y, p.z - apex_pos.z)
 
         # Use dot product for projection distance calculation
         projection_distance = diff.dot(direction) / direction.magnitude()
@@ -100,11 +102,15 @@ class SphericalCornea(Cornea):
 
     anterior_radius: float = 7.98e-3  # Default anterior corneal radius
     refractive_index: float = 1.376  # Refractive index of cornea
-    type: str = "sphere"  # For type checking
 
     # Reference values for scaling (from Boff and Lincoln [1988])
     _posterior_radius_default: float = 6.22e-3  # Default posterior corneal radius
     _thickness_offset_default: float = 1.15e-3  # Default corneal thickness offset
+
+    @property
+    def cornea_type(self) -> str:
+        """Return the type name of this cornea model."""
+        return "spherical"
 
     # Sphere-specific constants from Boff and Lincoln [1988, Section 1.210]
     _r_cornea_default: float = 7.98e-3  # Reference corneal radius for scaling
@@ -289,11 +295,15 @@ class ConicCornea(Cornea):
     # Anterior surface (30-year defaults from Goncharov & Dainty 2007)
     anterior_radius: float = 7.76e-3  # Anterior radius of curvature
     anterior_k: float = -0.10  # Anterior conic constant
-    type: str = "conic"  # For type checking
 
     # Posterior surface (30-year defaults from Goncharov & Dainty 2007)
     posterior_radius: float = 6.52e-3  # Posterior radius of curvature
     posterior_k: float = -0.30  # Posterior conic constant
+
+    @property
+    def cornea_type(self) -> str:
+        """Return the type name of this cornea model."""
+        return "conic"
 
     # Corneal properties
     thickness_offset: float = 0.55e-3  # Central corneal thickness

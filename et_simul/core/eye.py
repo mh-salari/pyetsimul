@@ -165,7 +165,7 @@ class Eye:
         # Transform point to local eye coordinates
         p_homogeneous = np.array(p)
         p_local_homogeneous = np.linalg.solve(self.trans, p_homogeneous)
-        p_local = Position3D.from_array(p_local_homogeneous)
+        p_local = Position3D.from_array(p_local_homogeneous[:3])
 
         # Use cornea object's point_within_cornea method
         return self.cornea.point_within_cornea(p_local, self)
