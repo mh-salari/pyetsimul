@@ -12,41 +12,15 @@ from et_simul.evaluation import (
 from et_simul.evaluation.analysis_utils import print_error_summary
 from et_simul.core import Light, Camera, Eye
 from et_simul.types import Position3D, RotationMatrix
-import argparse
 from tabulate import tabulate
 
 
 def main():
     """Run polynomial interpolation eye tracking demonstration with comprehensive evaluation."""
-    parser = argparse.ArgumentParser(description="Interpolation Eye Tracker Test")
-    parser.add_argument(
-        "--eye-position",
-        type=float,
-        nargs=3,
-        default=[0, 550e-3, 350e-3],
-        metavar=("X", "Y", "Z"),
-        help="Eye position in meters (default: 0 250e-3 350e-3)",
-    )
-    parser.add_argument(
-        "--method",
-        type=str,
-        default="cerrolaza_2008",
-        choices=[
-            "cerrolaza_2008",
-            "hennessey_2008",
-            "second_order",
-            "zhu_ji_2005",
-            "blignaut_wium_2013",
-        ],
-        help="Interpolation method (default: cerrolaza_2008)",
-    )
-
-    args = parser.parse_args()
-
     print("Python Interpolate Test (System Integration)\n")
 
-    # Create eye position using structured type
-    eye_position = Position3D(args.eye_position[0], args.eye_position[1], args.eye_position[2])
+    # Eye position
+    eye_position = Position3D(0, 550e-3, 350e-3)
 
     # Use validate_handedness=False for legacy MATLAB coordinate system compatibility
 
@@ -80,8 +54,9 @@ def main():
         Position3D(200e-3, 0.0, 350e-3),
     ]
 
-    # Setup tracker with selected method
-    et = InterpolationTracker.create([cam], [light], calib_points, args.method)
+    # Setup tracker with default method
+    method = "cerrolaza_2008"
+    et = InterpolationTracker.create([cam], [light], calib_points, method)
 
     # Display configuration summary
     print("Configuration Summary:")
@@ -105,7 +80,7 @@ def main():
             f"({light.position.x * 1000:.1f}, {light.position.y * 1000:.1f}, {light.position.z * 1000:.1f})",
             "mm",
         ],
-        ["Algorithm", "Method", args.method, "-"],
+        ["Algorithm", "Method", method, "-"],
         ["Calibration", "Points", f"{len(calib_points)}", "points"],
     ]
     print(tabulate(data, headers=headers, tablefmt="grid"))

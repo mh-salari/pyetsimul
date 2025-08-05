@@ -7,27 +7,14 @@ from et_simul.evaluation import (
 )
 from et_simul.evaluation.analysis_utils import print_error_summary
 from et_simul.core import Light, Camera, Eye
-import argparse
 from tabulate import tabulate
 
 
 def main():
-    parser = argparse.ArgumentParser(description="Hennessey Eye Tracker Test")
-    parser.add_argument(
-        "--eye-position",
-        type=float,
-        nargs=3,
-        default=[0, 550e-3, 350e-3],
-        metavar=("X", "Y", "Z"),
-        help="Eye position in meters (default: 0 550e-3 350e-3)",
-    )
-
-    args = parser.parse_args()
-
     print("Python Hennessey Test (System Integration)\n")
 
-    # Convert to Position3D
-    eye_position = Position3D(args.eye_position[0], args.eye_position[1], args.eye_position[2])
+    # Eye position
+    eye_position = Position3D(0, 550e-3, 350e-3)
 
     # Create eye configuration
     eye = Eye()
