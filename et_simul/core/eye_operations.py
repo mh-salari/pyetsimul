@@ -23,6 +23,9 @@ def look_at_target(eye: "Eye", target_position: Position3D) -> None:
     Args:
         eye: Eye object to rotate
         target_position: Position in world coordinates to look at
+        
+    Raises:
+        ValueError: If target_position is the same as eye position (zero-length direction vector)
     """
     # Get eye position as Position3D
     eye_position = eye.position
@@ -30,7 +33,16 @@ def look_at_target(eye: "Eye", target_position: Position3D) -> None:
     # Calculate direction vector to target
     direction_vec = Vector3D(
         target_position.x - eye_position.x, target_position.y - eye_position.y, target_position.z - eye_position.z
-    ).normalize()
+    )
+    
+    # Check for zero-length direction vector
+    if direction_vec.magnitude() == 0:
+        raise ValueError(
+            f"Cannot look at target: direction vector has zero length. "
+            f"Target position {target_position} cannot be the same as eye position {eye_position}."
+        )
+    
+    direction_vec = direction_vec.normalize()
 
     # Use Listing's law to compute eye rotation
     rest_optical_axis = Vector3D.from_array(eye._rest_orientation @ np.array([0, 0, -1]))
