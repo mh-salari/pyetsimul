@@ -57,13 +57,13 @@ def main():
     # Create eye configuration with structured types
     eye = Eye()
     # Use validate_handedness=False for legacy MATLAB coordinate system compatibility
-    eye.set_rest_orientation(RotationMatrix(np.array([[1, 0, 0], [0, 0, 1], [0, 1, 0]]), validate_handedness=False))
+    eye.set_rest_orientation(RotationMatrix([[1, 0, 0], [0, 0, 1], [0, 1, 0]], validate_handedness=False))
     eye.position = eye_position
 
     # Create camera configuration with structured types
     cam = Camera(err=0.0, err_type="gaussian")
     # Use validate_handedness=False for legacy MATLAB coordinate system compatibility
-    cam.orientation = RotationMatrix(np.array([[1, 0, 0], [0, 0, -1], [0, 1, 0]]), validate_handedness=False)
+    cam.orientation = RotationMatrix([[1, 0, 0], [0, 0, -1], [0, 1, 0]], validate_handedness=False)
     # Point camera at the eye position
     cam.point_at(eye.position)
 

@@ -34,12 +34,12 @@ def main():
 
     # Create eye configuration
     eye = Eye()
-    eye.set_rest_orientation(RotationMatrix(np.array([[1, 0, 0], [0, 0, 1], [0, 1, 0]]), validate_handedness=False))
+    eye.set_rest_orientation(RotationMatrix([[1, 0, 0], [0, 0, 1], [0, 1, 0]], validate_handedness=False))
     eye.position = eye_position
 
     # Create camera configuration
     cam = Camera(err=0.0, err_type="uniform")
-    cam.orientation = RotationMatrix(np.array([[1, 0, 0], [0, 0, -1], [0, 1, 0]]), validate_handedness=False)
+    cam.orientation = RotationMatrix([[1, 0, 0], [0, 0, -1], [0, 1, 0]], validate_handedness=False)
     # Point camera at the eye position
     cam.point_at(eye.position)
 

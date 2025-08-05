@@ -594,14 +594,15 @@ class RotationMatrix(np.ndarray):
     """A 3x3 rotation matrix that validates its mathematical properties."""
 
     def __new__(cls, input_array, validate_handedness: bool = True):
-        """Create a new rotation matrix from input array with validation.
+        """Create a new rotation matrix from input array or list with validation.
 
         Args:
-            input_array: 3x3 array representing the rotation matrix
+            input_array: 3x3 array or nested list representing the rotation matrix
             validate_handedness: If True, enforce right-handed coordinate system (det=+1)
                                 If False, allow left-handed systems (det=-1) for legacy compatibility
         """
-        obj = np.asarray(input_array).view(cls)
+        # Convert input to numpy array (handles both arrays and lists)
+        obj = np.asarray(input_array, dtype=np.float64).view(cls)
         if obj.shape != (3, 3):
             raise ValueError(f"RotationMatrix must be 3x3, got shape {obj.shape}")
 

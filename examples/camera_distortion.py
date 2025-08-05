@@ -166,7 +166,7 @@ def main():
 
     # Create eye with proper orientation for realistic movement
     eye = Eye(pupil_boundary_points=100)
-    rest_orientation = RotationMatrix(np.array([[1, 0, 0], [0, 0, 1], [0, -1, 0]]), validate_handedness=False)
+    rest_orientation = RotationMatrix([[1, 0, 0], [0, 0, 1], [0, -1, 0]], validate_handedness=False)
     eye.set_rest_orientation(rest_orientation)
 
     target_point = Position3D(0, 0, 0)

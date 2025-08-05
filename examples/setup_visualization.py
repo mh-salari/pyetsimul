@@ -14,7 +14,7 @@ from et_simul.visualization import plot_interactive_setup
 def run_setup_demo():
     """Run setup visualization"""
     # Setup eye
-    rest_orientation = RotationMatrix(np.array([[1, 0, 0], [0, 0, 1], [0, -1, 0]]), validate_handedness=False)
+    rest_orientation = RotationMatrix([[1, 0, 0], [0, 0, 1], [0, -1, 0]], validate_handedness=False)
     e_base = Eye()
     e_base.set_rest_orientation(rest_orientation)
     e_base.position = Position3D(0, 250e-3, 100e-3)
