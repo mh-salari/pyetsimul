@@ -88,6 +88,33 @@ def get_pupil_center_mass_image(eye, camera: Camera, use_refraction: bool = True
     return PupilData(boundary_points=pupil_data.boundary_points, center=pupil_center)
 
 
+def calculate_pupil_center_from_boundary(
+    boundary_points: np.ndarray, camera_resolution: Point2D, center_method: str = "ellipse"
+) -> Optional[Point2D]:
+    """Calculate pupil center from boundary points using specified method.
+
+    Args:
+        boundary_points: 2xN numpy array of boundary points in image coordinates
+        camera_resolution: Camera resolution as Point2D
+        center_method: Method to use for center detection ("ellipse" or "center_of_mass")
+
+    Returns:
+        Point2D with pupil center coordinates, or None if calculation fails
+
+    Raises:
+        ValueError: If center_method is not recognized
+    """
+    if boundary_points is None or boundary_points.shape[1] < 3:
+        return None
+        
+    if center_method == "ellipse":
+        return _fit_ellipse_center(boundary_points)
+    elif center_method == "center_of_mass":
+        return _calculate_center_of_mass(boundary_points, camera_resolution)
+    else:
+        raise ValueError(f"Unknown center_method '{center_method}'. Use 'ellipse' or 'center_of_mass'")
+
+
 def calculate_pupil_center_methods(
     eye, camera: Camera, use_refraction: bool = True, center_method: str = "ellipse"
 ) -> PupilData:

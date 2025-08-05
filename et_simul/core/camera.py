@@ -328,7 +328,7 @@ class Camera:
         # Update rest position to the new orientation
         self.rest_trans = self.trans.copy()
 
-    def take_image(self, eye: "Eye", lights: Optional[List[Light]] = None, use_refraction: bool = True) -> CameraImage:
+    def take_image(self, eye: "Eye", lights: Optional[List[Light]] = None, use_refraction: bool = True, center_method: str = "ellipse") -> CameraImage:
         """Computes the image of an eye seen by a camera.
 
         Generates synthetic eye image with corneal reflections and pupil detection.
@@ -338,6 +338,8 @@ class Camera:
             eye: Eye object
             lights: List of light source objects (optional, if None no CRs are computed)
             use_refraction: Whether to use refraction model for pupil (default True)
+            center_method: Method to use for pupil center detection (default "ellipse")
+                          Options: "ellipse", "center_of_mass"
 
         Returns:
             CameraImage object containing corneal reflections, pupil boundary, and pupil center
@@ -365,7 +367,7 @@ class Camera:
                         corneal_reflections.append(cr_2d)
 
         # Get pupil boundary and center
-        pupil_boundary, pupil_center = eye.get_pupil_in_camera_image(self, use_refraction=use_refraction)
+        pupil_boundary, pupil_center = eye.get_pupil_in_camera_image(self, use_refraction=use_refraction, center_method=center_method)
 
         return CameraImage(
             corneal_reflections=corneal_reflections,

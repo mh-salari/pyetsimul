@@ -4,10 +4,10 @@ Defines the Eye class, integrating cornea, pupil, fovea displacement, and gaze m
 """
 
 import numpy as np
+import warnings
 from dataclasses import dataclass, field
 from typing import Optional, TYPE_CHECKING
 
-from skimage.measure import EllipseModel
 
 from ..types import Position3D, Direction3D, TransformationMatrix, RotationMatrix, PupilData, Point2D
 from .pupil import Pupil, create_pupil
@@ -15,6 +15,7 @@ from .cornea import SphericalCornea
 from .eye_operations import look_at_target
 from ..optics.eye_optics import find_corneal_reflection
 from ..optics.eye_optics import find_refraction_point
+from ..optics.pupil_imaging import calculate_pupil_center_from_boundary
 
 if TYPE_CHECKING:
     from .camera import Camera
@@ -295,7 +296,7 @@ class Eye:
         # Convert to degrees
         return angle_kappa_rad * 180.0 / np.pi
 
-    def get_pupil_in_camera_image(self, camera: "Camera", use_refraction: bool = True):
+    def get_pupil_in_camera_image(self, camera: "Camera", use_refraction: bool = True, center_method: str = "ellipse"):
         """Projects pupil boundary points to camera image coordinates.
 
         Handles corneal refraction effects and camera projection.
@@ -304,6 +305,8 @@ class Eye:
         Args:
             camera: Camera object to project into
             use_refraction: Whether to apply refraction effects (default True)
+            center_method: Method to use for pupil center detection (default "ellipse")
+                          Options: "ellipse", "center_of_mass"
 
         Returns:
             Tuple of (pupil_boundary, pupil_center) where:
@@ -341,7 +344,10 @@ class Eye:
                 pupil_boundary_array = None
                 if valid_pupil_points:
                     pupil_boundary_array = np.array(valid_pupil_points).T
+                else:
+                    warnings.warn("No valid pupil points found in camera image (with refraction). Check camera-eye setup.", UserWarning)
             else:
+                warnings.warn("No refracted pupil points could be computed. Check camera-eye setup.", UserWarning)
                 pupil_boundary_array = None
         else:
             # Direct projection without refraction
@@ -361,38 +367,15 @@ class Eye:
             pupil_boundary_array = None
             if valid_pupil_points:
                 pupil_boundary_array = np.array(valid_pupil_points).T
+            else:
+                warnings.warn("No valid pupil points found in camera image (without refraction). Check camera-eye setup.", UserWarning)
 
-        # Calculate pupil center using ellipse fitting (like old code)
+        # Calculate pupil center using specified method
         pupil_center = None
-        if pupil_boundary_array is not None and pupil_boundary_array.shape[1] >= 5:
-            # Use ellipse fitting to find center from 2D boundary points
-            pupil_center = self._fit_ellipse_center(pupil_boundary_array)
-            if pupil_center is not None:
-                pupil_center = Point2D(x=float(pupil_center[0]), y=float(pupil_center[1]))
+        if pupil_boundary_array is not None:
+            pupil_center = calculate_pupil_center_from_boundary(
+                pupil_boundary_array, camera.camera_matrix.resolution, center_method
+            )
 
         return pupil_boundary_array, pupil_center
 
-    def _fit_ellipse_center(self, pupil: np.ndarray) -> Optional[np.ndarray]:
-        """Fit ellipse to pupil boundary points and return center.
-
-        Uses scikit-image EllipseModel for center estimation.
-
-        Args:
-            pupil: 2xN matrix of pupil boundary points
-
-        Returns:
-            2-element array with center coordinates [xc, yc], or None if fitting fails
-        """
-        if pupil.shape[1] >= 5:
-            try:
-                # Fit ellipse to pupil boundary points
-                points = np.column_stack((pupil[0, :], pupil[1, :]))
-                ellipse = EllipseModel()
-                if ellipse.estimate(points):
-                    # Extract center coordinates directly
-                    return ellipse.params[:2]  # [xc, yc]
-            except ImportError:
-                pass
-
-        # Not enough points for ellipse fitting or fitting failed
-        return None
