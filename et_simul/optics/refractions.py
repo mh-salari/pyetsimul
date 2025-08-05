@@ -6,7 +6,7 @@ Implements Snell's law, ray-surface intersection, and optimization for refractio
 import numpy as np
 from typing import Optional, Tuple
 from scipy.optimize import brentq
-from ..types import Point3D, Ray, IntersectionResult, Position3D
+from ..types import Point3D, Ray, IntersectionResult, Position3D, Vector3D
 from ..geometry.intersections import intersect_ray_sphere, intersect_ray_conic, conic_surface_normal
 from ..geometry.intersections import point_on_conic_surface
 
@@ -139,7 +139,13 @@ def _refraction_objective_conic(
     to_object = (object_pos - conic_center).normalize()
 
     # Interpolate direction
-    direction = (to_camera * alpha + to_object * (1 - alpha)).normalize()
+    interpolated = to_camera * alpha + to_object * (1 - alpha)
+    if interpolated.magnitude() == 0:
+        # Handle collinear case: camera and object are on opposite sides of conic center
+        # Use perpendicular direction to break symmetry
+        direction = Vector3D(1.0, 0.0, 0.0) if abs(to_camera.x) < 0.9 else Vector3D(0.0, 1.0, 0.0)
+    else:
+        direction = interpolated.normalize()
 
     # Find intersection with conic surface along this direction
     intersection = point_on_conic_surface(conic_center, direction, radius, conic_constant)
@@ -150,8 +156,8 @@ def _refraction_objective_conic(
     normal = conic_surface_normal(intersection, conic_center, radius, conic_constant)
 
     # Compute angles with surface normal
-    camera_to_intersection = (camera_pos.to_point3d() - intersection).normalize()
-    intersection_to_object = (intersection - object_pos.to_point3d()).normalize()
+    camera_to_intersection = (camera_pos - intersection).normalize()
+    intersection_to_object = (intersection - object_pos).normalize()
 
     cos_angle_c = normal.dot(camera_to_intersection)
     cos_angle_o = normal.dot(intersection_to_object)
@@ -201,7 +207,7 @@ def find_refraction_conic(
         upper_bound = 1.0
     else:
         alpha_zero = -to_object.z / (to_camera.z - to_object.z)
-        upper_bound = min(1.0, max(0, alpha_zero - 1e-9))
+        upper_bound = min(1.0, max(0.5, alpha_zero - 1e-9))  # Ensure minimum search interval
 
     f0, _ = _refraction_objective_conic(
         0, camera_pos, object_pos, conic_center, radius, conic_constant, n_outside, n_conic
