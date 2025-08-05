@@ -111,7 +111,7 @@ def calculate_pupil_center_from_boundary(
     """
     if boundary_points is None or boundary_points.shape[1] < 3:
         return None
-        
+
     if center_method == "ellipse":
         return _fit_ellipse_center(boundary_points)
     elif center_method == "center_of_mass":

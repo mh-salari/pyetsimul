@@ -4,8 +4,6 @@ Demonstrates real-time eye tracking setup visualization.
 Shows 3D view of eye, camera, lights, and target with camera view of corneal reflections.
 """
 
-import numpy as np
-
 from et_simul.core import Eye, Camera, Light
 from et_simul.types import Position3D, RotationMatrix
 from et_simul.visualization import plot_interactive_setup

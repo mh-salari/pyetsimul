@@ -12,7 +12,6 @@ from et_simul.evaluation import (
 from et_simul.evaluation.analysis_utils import print_error_summary
 from et_simul.core import Light, Camera, Eye
 from et_simul.types import Position3D, RotationMatrix
-import numpy as np
 import argparse
 
 

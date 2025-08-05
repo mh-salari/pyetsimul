@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from typing import Optional, TYPE_CHECKING
 
 
-from ..types import Position3D, Direction3D, TransformationMatrix, RotationMatrix, PupilData, Point2D
+from ..types import Position3D, Direction3D, TransformationMatrix, RotationMatrix, PupilData
 from .pupil import Pupil, create_pupil
 from .cornea import SphericalCornea
 from .eye_operations import look_at_target
@@ -98,6 +98,7 @@ class Eye:
         # For realistic pupils, create params with random seed if specified
         if self.pupil_type == "realistic" and self.pupil_random_seed is not None:
             from .pupil import RealisticPupilParams
+
             pupil_params = RealisticPupilParams(random_seed=self.pupil_random_seed)
             pupil_kwargs["params"] = pupil_params
 
@@ -352,7 +353,10 @@ class Eye:
                 if valid_pupil_points:
                     pupil_boundary_array = np.array(valid_pupil_points).T
                 else:
-                    warnings.warn("No valid pupil points found in camera image (with refraction). Check camera-eye setup.", UserWarning)
+                    warnings.warn(
+                        "No valid pupil points found in camera image (with refraction). Check camera-eye setup.",
+                        UserWarning,
+                    )
             else:
                 warnings.warn("No refracted pupil points could be computed. Check camera-eye setup.", UserWarning)
                 pupil_boundary_array = None
@@ -375,7 +379,10 @@ class Eye:
             if valid_pupil_points:
                 pupil_boundary_array = np.array(valid_pupil_points).T
             else:
-                warnings.warn("No valid pupil points found in camera image (without refraction). Check camera-eye setup.", UserWarning)
+                warnings.warn(
+                    "No valid pupil points found in camera image (without refraction). Check camera-eye setup.",
+                    UserWarning,
+                )
 
         # Calculate pupil center using specified method
         pupil_center = None
@@ -385,4 +392,3 @@ class Eye:
             )
 
         return pupil_boundary_array, pupil_center
-
