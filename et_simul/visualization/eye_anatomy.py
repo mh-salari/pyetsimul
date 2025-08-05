@@ -54,7 +54,7 @@ def plot_eye_anatomy(eye: Eye = Eye(), target_point: Position3D = Position3D(15e
         intersection_func = intersect_ray_sphere
     else:
         raise ValueError(f"Unknown cornea type: {eye.cornea.cornea_type}")
-        
+
     anterior_points = generate_corneal_surface_points(eye, intersection_func, "anterior", n_points=30)
     posterior_points = generate_corneal_surface_points(eye, intersection_func, "posterior", n_points=30)
 
@@ -181,37 +181,36 @@ def plot_eye_anatomy(eye: Eye = Eye(), target_point: Position3D = Position3D(15e
     # Plot pupil as filled dark circle using structured types
     n_pupil_points = 50
     t = np.linspace(0, 2 * np.pi, n_pupil_points)
-    
+
     # Create filled pupil with radial points from center to boundary
     n_radial = 10
     radial_factors = np.linspace(0, 1, n_radial)
-    
+
     pupil_points_local = []
     for r_factor in radial_factors:
         for theta in t:
             cos_theta = np.cos(theta)
             sin_theta = np.sin(theta)
             # Point on pupil surface at radius factor r_factor
-            point_local = (
-                np.array(pupil_position).reshape(-1, 1) +
-                r_factor * (np.array(eye.pupil.x_pupil).reshape(-1, 1) * cos_theta +
-                           np.array(eye.pupil.y_pupil).reshape(-1, 1) * sin_theta)
+            point_local = np.array(pupil_position).reshape(-1, 1) + r_factor * (
+                np.array(eye.pupil.x_pupil).reshape(-1, 1) * cos_theta
+                + np.array(eye.pupil.y_pupil).reshape(-1, 1) * sin_theta
             )
             pupil_points_local.append(point_local.flatten())
-    
+
     # Transform all pupil points to world coordinates
     pupil_points_local = np.array(pupil_points_local).T
     pupil_points_world = eye.trans @ pupil_points_local
-    
+
     # Plot filled pupil as scatter points
     ax.scatter(
         pupil_points_world[0],
-        pupil_points_world[1], 
+        pupil_points_world[1],
         pupil_points_world[2],
         c="black",
         s=3,
         alpha=0.9,
-        label="Pupil Opening"
+        label="Pupil Opening",
     )
 
     # Plot axes using structured types

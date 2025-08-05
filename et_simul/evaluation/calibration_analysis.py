@@ -6,6 +6,7 @@ at the original calibration points to assess calibration quality.
 
 import numpy as np
 from typing import Dict
+from tabulate import tabulate
 from ..geometry.conversions import calculate_angular_error_degrees
 from .analysis_utils import calculate_error_statistics
 from ..core import Eye, EyeTracker
@@ -66,11 +67,11 @@ def accuracy_at_calibration_points(et: EyeTracker, eye: Eye) -> Dict[str, Dict[s
     print_polynomial_parameters(et)
 
     # Test calibrated polynomial by predicting each calibration point with fresh measurements
-    print(f"\n{'Point':<6} {'Target (mm)':<18} {'Predicted (mm)':<18} {'Error (mm)':<12} {'Error (°)':<10}")
-    print("-" * 75)
-
     # Use calibrated polynomial to test each calibration point with fresh measurements
     calibration_fit_results = et.test_calibration_fit(e)
+
+    # Collect data for tabulate
+    table_data = []
 
     for i, (target_position, predicted_gaze) in enumerate(calibration_fit_results):
         # Extract 2D coordinates using plane info for coordinate system consistency
@@ -97,27 +98,30 @@ def accuracy_at_calibration_points(et: EyeTracker, eye: Eye) -> Dict[str, Dict[s
             predicted_2d = Point2D(predicted_coord1, predicted_coord2)
             errs_deg[i] = calculate_angular_error_degrees(actual_2d, predicted_2d, e.position)
 
-            # Progress output - side-by-side format
+            # Collect data for table
             error_mm = np.sqrt(U[i] ** 2 + V[i] ** 2)
-            print(
-                f"{i + 1:<6} "
-                f"({actual_coord1 * 1000:>6.1f}, {actual_coord2 * 1000:>6.1f}) "
-                f"({predicted_coord1 * 1000:>6.1f}, {predicted_coord2 * 1000:>6.1f}) "
-                f"{error_mm * 1000:>8.2f}    "
-                f"{errs_deg[i]:>8.4f}"
+            table_data.append(
+                [
+                    i + 1,
+                    f"({actual_coord1 * 1000:6.1f}, {actual_coord2 * 1000:6.1f})",
+                    f"({predicted_coord1 * 1000:6.1f}, {predicted_coord2 * 1000:6.1f})",
+                    f"{error_mm * 1000:8.2f}",
+                    f"{errs_deg[i]:8.4f}",
+                ]
             )
         else:
             predicted_points.append(Point3D(np.nan, np.nan, np.nan))
             U[i] = np.nan
             V[i] = np.nan
             errs_deg[i] = np.nan
-            print(
-                f"{i + 1:<6} "
-                f"({actual_coord1 * 1000:>6.1f}, {actual_coord2 * 1000:>6.1f})       "
-                f"{'FAILED':<18} "
-                f"{'--':<12} "
-                f"{'--':<10}"
+            table_data.append(
+                [i + 1, f"({actual_coord1 * 1000:6.1f}, {actual_coord2 * 1000:6.1f})", "FAILED", "--", "--"]
             )
+
+    # Print the results table
+    headers = ["Point", "Target (mm)", "Predicted (mm)", "Error (mm)", "Error (°)"]
+    print("\nCalibration Point Analysis:")
+    print(tabulate(table_data, headers=headers, tablefmt="grid"))
 
     # Extract coordinates from structured Point3D objects
     X = np.array([pt.x for pt in actual_points])

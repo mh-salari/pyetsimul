@@ -8,6 +8,7 @@ Compares elliptical vs realistic pupil shapes using pinhole camera.
 from et_simul.core import Eye, Camera
 from et_simul.types import Position3D, RotationMatrix
 from et_simul.visualization import plot_interactive_pupil_comparison
+from tabulate import tabulate
 
 
 def main():
@@ -33,10 +34,14 @@ def main():
     camera = Camera()
     camera.point_at(eye_position)
 
-    print("Setup:")
-    print(f"- Eye position: {eye_position}")
-    print(f"- Camera position: {camera.position}")
-    print(f"- Target point: {target_point}")
+    print("\nPupil Comparison Setup")
+    headers = ["Component", "Position (x, y, z)", "Unit"]
+    data = [
+        ["Eye", f"({eye_position.x:.3f}, {eye_position.y:.3f}, {eye_position.z:.3f})", "meters"],
+        ["Camera", f"({camera.position.x:.3f}, {camera.position.y:.3f}, {camera.position.z:.3f})", "meters"],
+        ["Target", f"({target_point.x:.3f}, {target_point.y:.3f}, {target_point.z:.3f})", "meters"],
+    ]
+    print(tabulate(data, headers=headers, tablefmt="grid"))
 
     # Run the pupil comparison
     plot_interactive_pupil_comparison(eye_elliptical, eye_realistic, camera, target_point)

@@ -56,7 +56,7 @@ class Cornea(ABC):
         Returns:
             bool: True if point lies within cornea boundaries, False otherwise
         """
-        
+
         # Calculate direction from apex to cornea center
         apex_pos = eye.cornea.get_apex_position()
         direction = Vector3D(self.center.x - apex_pos.x, self.center.y - apex_pos.y, self.center.z - apex_pos.z)

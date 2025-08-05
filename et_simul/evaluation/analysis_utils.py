@@ -7,6 +7,7 @@ to ensure consistency and reduce code duplication.
 import numpy as np
 import matplotlib.pyplot as plt
 from typing import Dict, Tuple
+from tabulate import tabulate
 
 
 def plot_error_vectors(
@@ -228,13 +229,14 @@ def print_error_summary(errors: Dict[str, Dict[str, float]], title: str = "Error
         title: Title for the summary section
     """
     print(f"\n{title}:")
-    print("  Error statistics (mm):")
-    print(f"    Max:    {errors['mtr']['max'] * 1e3:.4f}")
-    print(f"    Mean:   {errors['mtr']['mean'] * 1e3:.4f}")
-    print(f"    Std:    {errors['mtr']['std'] * 1e3:.4f}")
-    print(f"    Median: {errors['mtr']['median'] * 1e3:.4f}")
-    print("  Error statistics (degrees):")
-    print(f"    Max:    {errors['deg']['max']:.4f}")
-    print(f"    Mean:   {errors['deg']['mean']:.4f}")
-    print(f"    Std:    {errors['deg']['std']:.4f}")
-    print(f"    Median: {errors['deg']['median']:.4f}")
+
+    # Create unified error statistics table
+    headers = ["Statistic", "Error (mm)", "Error (degrees)"]
+    data = [
+        ["Max", f"{errors['mtr']['max'] * 1e3:.4f}", f"{errors['deg']['max']:.4f}"],
+        ["Mean", f"{errors['mtr']['mean'] * 1e3:.4f}", f"{errors['deg']['mean']:.4f}"],
+        ["Std", f"{errors['mtr']['std'] * 1e3:.4f}", f"{errors['deg']['std']:.4f}"],
+        ["Median", f"{errors['mtr']['median'] * 1e3:.4f}", f"{errors['deg']['median']:.4f}"],
+    ]
+
+    print(tabulate(data, headers=headers, tablefmt="grid"))

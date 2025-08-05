@@ -39,7 +39,7 @@ def generate_corneal_surface_points(
         local_points = surface_points.generate(intersection_func, center_local, radius, k_value, n_points=n_points)
     else:  # Spherical cornea
         local_points = surface_points.generate(intersection_func, center_local, radius, n_points=n_points)
-    
+
     # Transform all points to world coordinates
     if len(local_points) > 0:
         # Convert to homogeneous coordinates (add w=1)

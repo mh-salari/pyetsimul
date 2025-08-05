@@ -8,6 +8,7 @@ from et_simul.evaluation import (
 from et_simul.evaluation.analysis_utils import print_error_summary
 from et_simul.core import Light, Camera, Eye
 import argparse
+from tabulate import tabulate
 
 
 def main():
@@ -23,13 +24,10 @@ def main():
 
     args = parser.parse_args()
 
-    print("=== Python Hennessey Test (System Integration) ===\n")
+    print("Python Hennessey Test (System Integration)\n")
 
     # Convert to Position3D
     eye_position = Position3D(args.eye_position[0], args.eye_position[1], args.eye_position[2])
-    print(
-        f"Using eye position: X={eye_position.x * 1000:.1f}mm, Y={eye_position.y * 1000:.1f}mm, Z={eye_position.z * 1000:.1f}mm\n"
-    )
 
     # Create eye configuration
     eye = Eye()
@@ -65,6 +63,40 @@ def main():
 
     # Setup tracker with external components using new factory method
     et = HennesseyTracker.create([cam], [light1, light2], calib_points, config)
+
+    # Display configuration summary
+    print("Configuration Summary:")
+    headers = ["Component", "Parameter", "Value", "Unit"]
+    data = [
+        [
+            "Eye",
+            "Position (x, y, z)",
+            f"({eye_position.x * 1000:.1f}, {eye_position.y * 1000:.1f}, {eye_position.z * 1000:.1f})",
+            "mm",
+        ],
+        [
+            "Camera",
+            "Position (x, y, z)",
+            f"({cam.position.x * 1000:.1f}, {cam.position.y * 1000:.1f}, {cam.position.z * 1000:.1f})",
+            "mm",
+        ],
+        [
+            "Light 1",
+            "Position (x, y, z)",
+            f"({light1.position.x * 1000:.1f}, {light1.position.y * 1000:.1f}, {light1.position.z * 1000:.1f})",
+            "mm",
+        ],
+        [
+            "Light 2",
+            "Position (x, y, z)",
+            f"({light2.position.x * 1000:.1f}, {light2.position.y * 1000:.1f}, {light2.position.z * 1000:.1f})",
+            "mm",
+        ],
+        ["Algorithm", "Method", "Hennessey geometric", "-"],
+        ["Calibration", "Points", f"{len(calib_points)}", "points"],
+    ]
+    print(tabulate(data, headers=headers, tablefmt="grid"))
+    print()
 
     # Calibrate the eye tracker once
     print("Calibrating eye tracker...")

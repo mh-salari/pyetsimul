@@ -139,7 +139,7 @@ def test_eye_facing_away_from_camera():
 
     # Test that method returns None and produces expected warning
     e.pupil.N = 20  # Set pupil resolution
-    
+
     # Expect warning about no refracted pupil points
     with pytest.warns(UserWarning, match="No refracted pupil points could be computed"):
         X, _ = e.get_pupil_in_camera_image(c)
@@ -174,7 +174,7 @@ def test_eye_behind_camera():
 
     # Test that method returns None and produces expected warning
     e.pupil.N = 20  # Set pupil resolution
-    
+
     # Expect warning about no valid pupil points found
     with pytest.warns(UserWarning, match="No valid pupil points found in camera image"):
         X, _ = e.get_pupil_in_camera_image(c)

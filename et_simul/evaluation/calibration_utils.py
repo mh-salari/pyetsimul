@@ -5,6 +5,7 @@ including parameter printing and data formatting functions.
 """
 
 from et_simul.core import EyeTracker
+from tabulate import tabulate
 
 
 def print_polynomial_parameters(et: EyeTracker) -> None:
@@ -25,21 +26,36 @@ def print_polynomial_parameters(et: EyeTracker) -> None:
         return
 
     print("\nPolynomial Parameters:")
-    print("-" * 40)
 
-    print(f"Polynomial type: {et.polynomial_name}")
+    # General info table
+    headers = ["Parameter", "Value"]
+    general_data = [
+        ["Polynomial type", et.polynomial_name],
+        ["Calibration status", "✓ Calibrated" if et.algorithm_state.is_calibrated else "✗ Not calibrated"],
+    ]
 
     if et.algorithm_state.is_calibrated:
         state = et.algorithm_state
-        print("Calibration status: ✓ Calibrated")
-
         if state.x_coefficients is not None and state.y_coefficients is not None:
-            print(f"X coefficients shape: {state.x_coefficients.shape}")
-            print(f"Y coefficients shape: {state.y_coefficients.shape}")
-            print("X coefficients:")
-            print(f"  [{', '.join(f'{val:8.4f}' for val in state.x_coefficients)}]")
-            print("Y coefficients:")
-            print(f"  [{', '.join(f'{val:8.4f}' for val in state.y_coefficients)}]")
+            general_data.extend(
+                [
+                    ["X coefficients shape", f"{state.x_coefficients.shape}"],
+                    ["Y coefficients shape", f"{state.y_coefficients.shape}"],
+                ]
+            )
+
+    print(tabulate(general_data, headers=headers, tablefmt="simple"))
+
+    # Coefficients table if available
+    if et.algorithm_state.is_calibrated:
+        state = et.algorithm_state
+        if state.x_coefficients is not None and state.y_coefficients is not None:
+            print("\nCoefficients Values:")
+            coeff_headers = ["Index", "X Coefficient", "Y Coefficient"]
+            coeff_data = []
+            for i, (x_val, y_val) in enumerate(zip(state.x_coefficients, state.y_coefficients)):
+                coeff_data.append([i, f"{x_val:8.4f}", f"{y_val:8.4f}"])
+            print(tabulate(coeff_data, headers=coeff_headers, tablefmt="grid"))
         else:
             print("Coefficients are None")
     else:

@@ -9,6 +9,7 @@ https://github.com/pupil-labs/pupil/blob/master/pupil_src/shared_modules/camera_
 """
 
 import numpy as np
+from tabulate import tabulate
 
 from et_simul.core import Eye, Camera
 from et_simul.types import Position3D, RotationMatrix, CameraMatrix
@@ -178,26 +179,43 @@ def main():
     c_camera.point_at(eye.position)
 
     print("\nSetup:")
-    print(f"- Camera: {selected_config['name']}")
-    print(
-        f"- Resolution: {selected_config['camera_matrix'].resolution.x}x{selected_config['camera_matrix'].resolution.y}"
-    )
-    print(f"- Distortion type: {selected_config['cam_type']}")
+    headers = ["Setting", "Value"]
+    setup_data = [
+        ["Camera", selected_config["name"]],
+        [
+            "Resolution",
+            f"{selected_config['camera_matrix'].resolution.x}x{selected_config['camera_matrix'].resolution.y}",
+        ],
+        ["Distortion type", selected_config["cam_type"]],
+    ]
+    print(tabulate(setup_data, headers=headers, tablefmt="grid"))
+
     print("\nCamera Parameters Comparison:")
-    print("  Pinhole Camera:")
-    print(f"- Focal length: {c_pinhole.camera_matrix.focal_length:.1f} px")
-    print(
-        f"- Principal point: ({c_pinhole.camera_matrix.matrix[0, 2]:.1f}, {c_pinhole.camera_matrix.matrix[1, 2]:.1f})"
-    )
-    print("- Distortion: None (k1=k2=k3=p1=p2=0)")
-    print(f"  {selected_config['cam_type'].title()} Camera:")
-    print(f"- Focal length: {c_camera.camera_matrix.focal_length:.1f} px")
-    print(f"- Principal point: ({c_camera.camera_matrix.matrix[0, 2]:.1f}, {c_camera.camera_matrix.matrix[1, 2]:.1f})")
-    print(f"- Distortion coefficients: k1={c_camera.dist_coeffs[0]:.3f}, k2={c_camera.dist_coeffs[1]:.3f}")
-    if len(c_camera.dist_coeffs) > 2:
-        print(
-            f"- Additional coefficients: k3={c_camera.dist_coeffs[2]:.3f}, p1={c_camera.dist_coeffs[3]:.3f}, p2={c_camera.dist_coeffs[4]:.3f}"
-        )
+
+    # Pad distortion coefficients with zeros for consistent display
+    padded_coeffs = list(c_camera.dist_coeffs) + [0.0] * (5 - len(c_camera.dist_coeffs))
+
+    # Prepare data for tabulate
+    headers = ["Parameter", "Pinhole Camera", f"{selected_config['cam_type'].title()} Camera"]
+    data = [
+        [
+            "Focal length (px)",
+            f"{c_pinhole.camera_matrix.focal_length:.1f}",
+            f"{c_camera.camera_matrix.focal_length:.1f}",
+        ],
+        [
+            "Principal point",
+            f"({c_pinhole.camera_matrix.matrix[0, 2]:.1f}, {c_pinhole.camera_matrix.matrix[1, 2]:.1f})",
+            f"({c_camera.camera_matrix.matrix[0, 2]:.1f}, {c_camera.camera_matrix.matrix[1, 2]:.1f})",
+        ],
+        ["k1", "0.000", f"{padded_coeffs[0]:.3f}"],
+        ["k2", "0.000", f"{padded_coeffs[1]:.3f}"],
+        ["k3", "0.000", f"{padded_coeffs[2]:.3f}"],
+        ["p1", "0.000", f"{padded_coeffs[3]:.3f}"],
+        ["p2", "0.000", f"{padded_coeffs[4]:.3f}"],
+    ]
+
+    print(tabulate(data, headers=headers, tablefmt="grid"))
     print("\nControls:")
     print("- Arrow keys: Move target")
     print("- I/K/J/L/./,: Move eye")
