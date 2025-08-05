@@ -1,6 +1,7 @@
 """Unit tests for Eye.get_pupil_boundary_in_camera_image method."""
 
 import numpy as np
+import pytest
 from et_simul.core.eye import Eye
 from et_simul.core.camera import Camera
 from et_simul.types import Position3D
@@ -106,7 +107,7 @@ def test_output_properties():
 
 
 def test_eye_facing_away_from_camera():
-    """Test that method returns None when eye is facing away from camera."""
+    """Test that method returns None and warns when eye is facing away from camera."""
     e = Eye(fovea_displacement=False)
     c = Camera()
 
@@ -136,19 +137,19 @@ def test_eye_facing_away_from_camera():
     )
     e.look_at(eye_target)
 
-    # Test that method returns None or handles gracefully
+    # Test that method returns None and produces expected warning
     e.pupil.N = 20  # Set pupil resolution
-    X, _ = e.get_pupil_in_camera_image(c)
+    
+    # Expect warning about no refracted pupil points
+    with pytest.warns(UserWarning, match="No refracted pupil points could be computed"):
+        X, _ = e.get_pupil_in_camera_image(c)
 
-    # Should return None for back-of-eye scenario or handle it gracefully
-    if X is not None:
-        # If not None, should be a valid array
-        assert isinstance(X, np.ndarray)
-        assert X.shape[0] == 2
+    # Should return None for back-of-eye scenario
+    assert X is None, "Should return None when eye faces away from camera"
 
 
 def test_eye_behind_camera():
-    """Test that method returns None when eye is behind camera."""
+    """Test that method returns None and warns when eye is behind camera."""
     e = Eye(fovea_displacement=False)
     c = Camera()
 
@@ -171,15 +172,15 @@ def test_eye_behind_camera():
     # Eye orientation doesn't matter much since it's behind camera
     e.look_at(Position3D(x=0, y=0, z=0))
 
-    # Test that method returns None or handles gracefully
+    # Test that method returns None and produces expected warning
     e.pupil.N = 20  # Set pupil resolution
-    X, _ = e.get_pupil_in_camera_image(c)
+    
+    # Expect warning about no valid pupil points found
+    with pytest.warns(UserWarning, match="No valid pupil points found in camera image"):
+        X, _ = e.get_pupil_in_camera_image(c)
 
-    # Should return None for behind-camera scenario or handle it gracefully
-    if X is not None:
-        # If not None, should be a valid array
-        assert isinstance(X, np.ndarray)
-        assert X.shape[0] == 2
+    # Should return None for behind-camera scenario
+    assert X is None, "Should return None when eye is behind camera"
 
 
 def test_eye_rotated_90_degrees():
