@@ -144,3 +144,33 @@ class InterpolationState(AlgorithmState):
     x_coefficients: Optional[np.ndarray] = None  # Polynomial coefficients for x
     y_coefficients: Optional[np.ndarray] = None  # Polynomial coefficients for y
     input_normalization: Optional[Dict[str, float]] = None  # Input scaling parameters
+
+
+@dataclass
+class YooConfig:
+    """Configuration for Yoo and Chung eye tracking algorithm."""
+    
+    # Screen geometry for cross-ratio calculations
+    screen_width: float = 400e-3  # Screen width in meters
+    screen_height: float = 300e-3  # Screen height in meters
+    screen_center_x: float = 0.0  # Screen center X coordinate  
+    screen_center_y: float = 200e-3  # Screen center Y coordinate
+    
+    # Algorithm parameters
+    min_calibration_points: int = 4  # Minimum calibration points required
+    
+    def validate(self) -> bool:
+        """Validate configuration parameters."""
+        return (self.screen_width > 0 and 
+                self.screen_height > 0 and 
+                self.min_calibration_points >= 4)
+
+
+@dataclass 
+class YooState(AlgorithmState):
+    """State for Yoo and Chung algorithm."""
+    
+    alpha_values: Optional[np.ndarray] = None  # Cross-ratio alpha values for each calibration point
+    corner_light_positions: Optional[np.ndarray] = None  # 4 corner light positions
+    center_light_position: Optional[Point3D] = None  # Center light position
+    screen_corners: Optional[np.ndarray] = None  # Screen corner coordinates
