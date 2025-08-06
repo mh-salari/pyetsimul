@@ -1,9 +1,9 @@
-"""Unit tests for Eye.refract_ray_advanced method."""
+"""Unit tests for refract_ray_dual_surface function."""
 
 import numpy as np
 from et_simul.core.eye import Eye
 from et_simul.types.geometry import Position3D, Vector3D
-from et_simul.optics.eye_optics import refract_ray_advanced
+from et_simul.optics.eye_optics import refract_ray_dual_surface
 
 
 def test_optical_axis_ray():
@@ -13,7 +13,7 @@ def test_optical_axis_ray():
     # Ray along optical axis
     R0 = Position3D(0.0, 0.0, 25.0)
     Rd = Vector3D(0.0, 0.0, -1.0)
-    O0, I0, Id = refract_ray_advanced(e, R0, Rd)
+    O0, I0, Id = refract_ray_dual_surface(e, R0, Rd)
 
     # MATLAB reference values
     expected_O0 = np.array([0.0, 0.0, 0.0036299999993510, 1.0])
@@ -38,7 +38,7 @@ def test_ray_not_completing_path():
     # Ray from outside eye that doesn't complete path
     R0 = Position3D(4.0, 1.5, 45.0)
     Rd = Vector3D(-0.08, -0.03, -1.0).normalize()
-    O0, I0, Id = refract_ray_advanced(e, R0, Rd)
+    O0, I0, Id = refract_ray_dual_surface(e, R0, Rd)
 
     # MATLAB reference: Ray does not complete path (empty)
     assert O0 is None
@@ -53,7 +53,7 @@ def test_ray_missing_eye():
     # Ray that misses the eye completely
     R0 = Position3D(15.0, 15.0, 40.0)
     Rd = Vector3D(0.0, 0.0, -1.0)
-    O0, I0, Id = refract_ray_advanced(e, R0, Rd)
+    O0, I0, Id = refract_ray_dual_surface(e, R0, Rd)
 
     # MATLAB reference: Ray misses eye (empty)
     assert O0 is None
@@ -68,7 +68,7 @@ def test_homogeneous_coordinates():
     # Test with 4D homogeneous coordinates
     R0 = Position3D(2.5, 1.0, 35.0)
     Rd = Vector3D(-0.07, -0.025, -1.0).normalize()
-    O0, I0, Id = refract_ray_advanced(e, R0, Rd)
+    O0, I0, Id = refract_ray_dual_surface(e, R0, Rd)
 
     # MATLAB reference: Ray does not complete path (empty)
     assert O0 is None
@@ -83,7 +83,7 @@ def test_output_properties():
     # Use optical axis case that produces valid results
     R0 = Position3D(0.0, 0.0, 25.0)
     Rd = Vector3D(0.0, 0.0, -1.0)
-    O0, I0, Id = refract_ray_advanced(e, R0, Rd)
+    O0, I0, Id = refract_ray_dual_surface(e, R0, Rd)
     assert O0 is not None, "O0 should not be None for these inputs"
     assert I0 is not None, "I0 should not be None for these inputs"
     assert Id is not None, "Id should not be None for these inputs"

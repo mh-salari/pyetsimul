@@ -82,67 +82,30 @@ def find_corneal_reflection_simple(eye, light: Light, camera: Camera) -> Optiona
     return cr
 
 
-def refract_ray_at_cornea(
-    eye, ray_origin: Position3D, ray_direction: Vector3D
-) -> Tuple[Optional[Position3D], Optional[Vector3D]]:
-    """Computes refraction of ray at cornea surface.
 
-    Calculates where external ray strikes corneal surface and refracted direction.
-    Uses Snell's law with corneal refractive index.
-
-    Args:
-        eye: Eye object
-        ray_origin: Ray origin (Position3D)
-        ray_direction: Ray direction (3D vector)
-
-    Returns:
-        Tuple of (intersection_point, refracted_direction) where:
-        - intersection_point: Point where ray strikes corneal surface
-        - refracted_direction: Direction of refracted ray
-        Returns (None, None) if ray doesn't strike eye.
-    """
-    # Get corneal center in world coordinates
-    cornea_center_homogeneous = eye.trans @ np.array(eye.cornea.center)
-    cornea_center = Position3D.from_array(cornea_center_homogeneous)
-
-    # Compute refraction at corneal surface
-    from et_simul.types import Ray
-
-    ray = Ray(origin=ray_origin, direction=ray_direction)
-    intersection_result, refracted_ray = refract_ray_sphere(
-        ray,
-        cornea_center,
-        eye.cornea.anterior_radius,
-        1.0,  # Air refractive index
-        eye.cornea.refractive_index,
-    )
-
-    # Extract point and direction from returned objects
-    intersection_point = intersection_result.point if intersection_result is not None else None
-    refracted_direction = refracted_ray.direction if refracted_ray is not None else None
-
-    return intersection_point, refracted_direction
-
-
-def refract_ray_advanced(
+def refract_ray_dual_surface(
     eye, ray_origin: Position3D, ray_direction: Vector3D
 ) -> Tuple[Optional[Position3D], Optional[Position3D], Optional[Vector3D]]:
-    """Computes refraction at both surfaces of cornea.
+    """Computes refraction through both anterior and posterior corneal surfaces.
 
-    Calculates refraction through both anterior and posterior corneal surfaces.
-    Models complete corneal optical path with different refractive indices.
+    Models complete corneal optical path by calculating refraction at both:
+    1. Anterior surface: air (n=1.0) → cornea (n=1.376)
+    2. Posterior surface: cornea (n=1.376) → aqueous humor (n=1.336)
+
+    This provides more accurate modeling of light rays passing through the cornea
+    compared to single-surface refraction which only considers the anterior surface.
 
     Args:
-        eye: Eye object
+        eye: Eye object containing corneal geometry and refractive indices
         ray_origin: Ray origin (Position3D)
         ray_direction: Ray direction (3D vector)
 
     Returns:
-        Tuple of (outer_point, inner_point, final_direction) where:
-        - outer_point: Point where ray strikes outer corneal surface
-        - inner_point: Point where ray strikes inner corneal surface
-        - final_direction: Direction of ray exiting inner surface
-        Returns (None, None, None) if ray doesn't strike eye.
+        Tuple of (anterior_point, posterior_point, final_direction) where:
+        - anterior_point: Point where ray strikes anterior corneal surface
+        - posterior_point: Point where ray strikes posterior corneal surface  
+        - final_direction: Direction of ray after exiting posterior surface
+        Returns (None, None, None) if ray doesn't intersect with cornea.
     """
     # Get corneal center in world coordinates
     cornea_center_homogeneous = eye.trans @ np.array(eye.cornea.center)
