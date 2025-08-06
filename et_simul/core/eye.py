@@ -253,7 +253,9 @@ class Eye:
         """
         return self.pupil.get_center_world_coords(self.trans)
 
-    def find_refracted_position(self, camera_position: Position3D, object_position: Position3D) -> Optional[Position3D]:
+    def find_refracted_position(
+        self, camera_position: Position3D, object_position: Position3D
+    ) -> Optional[Position3D]:
         """Find where an intraocular object appears due to corneal refraction.
 
         Calculates where camera observes intraocular object through corneal refraction,
@@ -268,12 +270,12 @@ class Eye:
         """
         # Call pure refraction function
         refraction_point = find_refraction_point(self.cornea, self.trans, camera_position, object_position)
-        
+
         # Check if point is within corneal boundaries
         if refraction_point is not None:
             if not self.point_within_cornea(refraction_point.to_position3d()):
                 refraction_point = None
-        
+
         return refraction_point
 
     @property

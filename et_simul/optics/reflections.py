@@ -22,7 +22,7 @@ if TYPE_CHECKING:
     from ..core.camera import Camera
 
 
-def _reflect_objective_sphere(
+def _reflection_objective_sphere(
     a: float, light_pos: Position3D, camera_pos: Position3D, sphere_center: Position3D, sphere_radius: float
 ) -> Tuple[float, Point3D]:
     """Objective function for reflection finding on sphere.
@@ -82,9 +82,9 @@ def find_reflection_sphere(
     """
     try:
         a = brentq(
-            lambda a: _reflect_objective_sphere(a, light_pos, camera_pos, sphere_center, sphere_radius)[0], 0, 1
+            lambda a: _reflection_objective_sphere(a, light_pos, camera_pos, sphere_center, sphere_radius)[0], 0, 1
         )
-        _, glint_pos = _reflect_objective_sphere(a, light_pos, camera_pos, sphere_center, sphere_radius)
+        _, glint_pos = _reflection_objective_sphere(a, light_pos, camera_pos, sphere_center, sphere_radius)
         return glint_pos
     except ValueError:
         warnings.warn(
@@ -94,7 +94,7 @@ def find_reflection_sphere(
         return None
 
 
-def _reflect_objective_conic(
+def _reflection_objective_conic(
     alpha: float,
     light_pos: Position3D,
     camera_pos: Position3D,
@@ -168,13 +168,13 @@ def find_reflection_conic(
     """
     try:
         alpha = brentq(
-            lambda alpha: _reflect_objective_conic(alpha, light_pos, camera_pos, conic_center, radius, conic_constant)[
-                0
-            ],
+            lambda alpha: _reflection_objective_conic(
+                alpha, light_pos, camera_pos, conic_center, radius, conic_constant
+            )[0],
             0,
             1,
         )
-        _, glint_pos = _reflect_objective_conic(alpha, light_pos, camera_pos, conic_center, radius, conic_constant)
+        _, glint_pos = _reflection_objective_conic(alpha, light_pos, camera_pos, conic_center, radius, conic_constant)
         return glint_pos
     except (ValueError, TypeError):
         warnings.warn(

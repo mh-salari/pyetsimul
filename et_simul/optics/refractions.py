@@ -363,7 +363,7 @@ def refract_ray_dual_surface(
     Returns:
         Tuple of (anterior_point, posterior_point, final_direction) where:
         - anterior_point: Point where ray strikes anterior corneal surface
-        - posterior_point: Point where ray strikes posterior corneal surface  
+        - posterior_point: Point where ray strikes posterior corneal surface
         - final_direction: Direction of ray after exiting posterior surface
         Returns (None, None, None) if ray doesn't intersect with cornea.
     """
@@ -407,12 +407,14 @@ def refract_ray_dual_surface(
     return outer_point, inner_point, final_direction
 
 
-def find_refraction_point(cornea, eye_transform, camera_position: Position3D, object_position: Position3D) -> Optional[Position3D]:
+def find_refraction_point(
+    cornea, eye_transform, camera_position: Position3D, object_position: Position3D
+) -> Optional[Position3D]:
     """Computes observed position of intraocular objects through corneal refraction.
 
     Pure function that calculates where camera observes intraocular object through corneal refraction.
     Determines corneal surface point where object ray refracts to camera.
-    
+
     Note: This function does not check corneal boundaries - that should be done by the caller
     if needed (e.g., using Eye.point_within_cornea()).
 
