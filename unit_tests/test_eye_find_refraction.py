@@ -1,9 +1,8 @@
-"""Unit tests for Eye.find_refraction method."""
+"""Unit tests for Eye.find_refracted_position method."""
 
 import numpy as np
 from et_simul.core.eye import Eye
 from et_simul.types.geometry import Position3D
-from et_simul.optics.eye_optics import find_refraction_point
 
 
 def test_basic_refraction():
@@ -16,7 +15,7 @@ def test_basic_refraction():
     # Object position inside eye (slightly off-center)
     O = Position3D(0.5, 0.2, -4.0)
 
-    I = find_refraction_point(e, C, O)
+    I = e.find_refracted_position(C, O)
 
     # MATLAB reference values
     expected_I = np.array(
@@ -43,7 +42,7 @@ def test_close_camera():
     # Object position inside eye
     O = Position3D(0.5, 0.2, -4.0)
 
-    I = find_refraction_point(e, C, O)
+    I = e.find_refracted_position(C, O)
 
     # MATLAB reference values
     expected_I = np.array(
@@ -69,7 +68,7 @@ def test_refraction_impossible_geometry():
     C = Position3D(1.0, 0.5, 50.0)  # Normal camera position
     O = Position3D(0.0, 0.0, 5.0)  # Object in front of eye (outside)
 
-    I = find_refraction_point(e, C, O)
+    I = e.find_refracted_position(C, O)
 
     # Should return None when refraction is impossible
     assert I is None
@@ -81,7 +80,7 @@ def test_output_properties():
     C = Position3D(1.0, 0.5, 50.0)
     O = Position3D(0.5, 0.2, -4.0)
 
-    I = find_refraction_point(e, C, O)
+    I = e.find_refracted_position(C, O)
     assert I is not None, "I should not be None for these inputs"
 
     # Check types and shapes

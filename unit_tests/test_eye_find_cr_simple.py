@@ -5,7 +5,7 @@ from et_simul.types import Position3D
 from et_simul.core.eye import Eye
 from et_simul.core.light import Light
 from et_simul.core.camera import Camera
-from et_simul.optics.eye_optics import find_corneal_reflection_simple
+from et_simul.optics.reflections import find_corneal_reflection_simple
 
 
 def test_basic_simple_corneal_reflex():

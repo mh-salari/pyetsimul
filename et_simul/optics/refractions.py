@@ -341,3 +341,97 @@ def refract_ray_conic(
 
     refracted_ray = Ray(origin=intersection_point, direction=refracted_direction)
     return intersection_result, refracted_ray
+
+
+def refract_ray_dual_surface(
+    eye, ray_origin: Position3D, ray_direction: Vector3D
+) -> Tuple[Optional[Position3D], Optional[Position3D], Optional[Vector3D]]:
+    """Computes refraction through both anterior and posterior corneal surfaces.
+
+    Models complete corneal optical path by calculating refraction at both:
+    1. Anterior surface: air (n=1.0) → cornea (n=1.376)
+    2. Posterior surface: cornea (n=1.376) → aqueous humor (n=1.336)
+
+    This provides more accurate modeling of light rays passing through the cornea
+    compared to single-surface refraction which only considers the anterior surface.
+
+    Args:
+        eye: Eye object containing corneal geometry and refractive indices
+        ray_origin: Ray origin (Position3D)
+        ray_direction: Ray direction (3D vector)
+
+    Returns:
+        Tuple of (anterior_point, posterior_point, final_direction) where:
+        - anterior_point: Point where ray strikes anterior corneal surface
+        - posterior_point: Point where ray strikes posterior corneal surface  
+        - final_direction: Direction of ray after exiting posterior surface
+        Returns (None, None, None) if ray doesn't intersect with cornea.
+    """
+    # Get corneal center in world coordinates
+    cornea_center_homogeneous = eye.trans @ np.array(eye.cornea.center)
+    cornea_center = Position3D.from_array(cornea_center_homogeneous)
+
+    # Refraction at outer surface of cornea
+    ray = Ray(origin=ray_origin, direction=ray_direction)
+    intersection_result, refracted_ray = refract_ray_sphere(
+        ray,
+        cornea_center,
+        eye.cornea.anterior_radius,
+        1.0,  # Air refractive index
+        eye.cornea.refractive_index,
+    )
+    if intersection_result is None or refracted_ray is None:
+        return None, None, None
+    outer_point = intersection_result.point
+    intermediate_direction = refracted_ray.direction
+
+    if outer_point is None or intermediate_direction is None:
+        return None, None, None
+
+    # Refraction at inner surface of cornea
+    posterior_center_homogeneous = eye.trans @ np.array(eye.cornea.get_posterior_center())
+    posterior_center = Position3D.from_array(posterior_center_homogeneous)
+    ray2 = Ray(origin=outer_point, direction=intermediate_direction)
+    intersection_result2, refracted_ray2 = refract_ray_sphere(
+        ray2,
+        posterior_center,
+        eye.cornea.posterior_radius,
+        eye.cornea.refractive_index,
+        eye.n_aqueous_humor,
+    )
+    if intersection_result2 is None or refracted_ray2 is None:
+        return outer_point, None, None
+    inner_point = intersection_result2.point
+    final_direction = refracted_ray2.direction
+
+    return outer_point, inner_point, final_direction
+
+
+def find_refraction_point(cornea, eye_transform, camera_position: Position3D, object_position: Position3D) -> Optional[Position3D]:
+    """Computes observed position of intraocular objects through corneal refraction.
+
+    Pure function that calculates where camera observes intraocular object through corneal refraction.
+    Determines corneal surface point where object ray refracts to camera.
+    
+    Note: This function does not check corneal boundaries - that should be done by the caller
+    if needed (e.g., using Eye.point_within_cornea()).
+
+    Args:
+        cornea: Cornea object with find_refraction method
+        eye_transform: Eye transformation matrix
+        camera_position: Camera position (Position3D)
+        object_position: Object position inside eye (Position3D)
+
+    Returns:
+        Position3D on corneal surface where refraction occurs, or None if no solution exists
+    """
+    # Find refraction point on corneal surface using cornea's refraction method
+    refraction_point = cornea.find_refraction(
+        camera_position,
+        object_position,
+        1.0,  # Air refractive index
+        cornea.refractive_index,
+        eye_transform,
+    )
+
+    return refraction_point

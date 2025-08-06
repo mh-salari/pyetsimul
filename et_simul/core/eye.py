@@ -13,8 +13,8 @@ from ..types import Position3D, Direction3D, TransformationMatrix, RotationMatri
 from .pupil import Pupil, create_pupil
 from .cornea import SphericalCornea
 from .eye_operations import look_at_target
-from ..optics.eye_optics import find_corneal_reflection
-from ..optics.eye_optics import find_refraction_point
+from ..optics.reflections import find_corneal_reflection
+from ..optics.refractions import find_refraction_point
 from ..optics.pupil_imaging import calculate_pupil_center_from_boundary
 
 if TYPE_CHECKING:
@@ -173,7 +173,7 @@ class Eye:
     def find_cr(self, light: "Light", camera: "Camera") -> Optional[Position3D]:
         """Finds the position of a corneal reflex.
 
-        Delegates to eye_optics module for corneal reflection calculation.
+        Delegates to reflections module for corneal reflection calculation.
 
         Args:
             light: Light source object
@@ -253,6 +253,29 @@ class Eye:
         """
         return self.pupil.get_center_world_coords(self.trans)
 
+    def find_refracted_position(self, camera_position: Position3D, object_position: Position3D) -> Optional[Position3D]:
+        """Find where an intraocular object appears due to corneal refraction.
+
+        Calculates where camera observes intraocular object through corneal refraction,
+        including boundary checking to ensure the refraction point lies within the cornea.
+
+        Args:
+            camera_position: Camera position (Position3D)
+            object_position: Object position inside eye (Position3D)
+
+        Returns:
+            Position3D on corneal surface where refraction occurs, or None if no valid solution
+        """
+        # Call pure refraction function
+        refraction_point = find_refraction_point(self.cornea, self.trans, camera_position, object_position)
+        
+        # Check if point is within corneal boundaries
+        if refraction_point is not None:
+            if not self.point_within_cornea(refraction_point.to_position3d()):
+                refraction_point = None
+        
+        return refraction_point
+
     @property
     def fovea_position(self) -> Position3D:
         """Calculate the 3D position of the fovea on the retinal surface.
@@ -331,7 +354,7 @@ class Eye:
             refracted_points = []
             for i in range(pupil_world.shape[1]):
                 pupil_point = Position3D.from_array(pupil_world[:, i])
-                refracted_point = find_refraction_point(self, camera.position, pupil_point)
+                refracted_point = self.find_refracted_position(camera.position, pupil_point)
                 if refracted_point is not None:
                     # Convert Point3D result to Position3D for camera projection
                     refracted_points.append(refracted_point.to_position3d())

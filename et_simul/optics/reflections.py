@@ -5,9 +5,9 @@ Implements geometric and optimization-based methods for finding glint positions 
 
 import numpy as np
 import warnings
-from typing import Optional, Tuple
+from typing import Optional, Tuple, TYPE_CHECKING
 from scipy.optimize import brentq
-from ..types import Point3D, Vector3D, Ray, IntersectionResult, Position3D
+from ..types import Point3D, Vector3D, Ray, IntersectionResult, Position3D, Direction3D
 from ..geometry.intersections import (
     intersect_ray_circle,
     intersect_ray_sphere,
@@ -16,6 +16,10 @@ from ..geometry.intersections import (
 )
 
 from ..geometry.intersections import point_on_conic_surface
+
+if TYPE_CHECKING:
+    from ..core.light import Light
+    from ..core.camera import Camera
 
 
 def _reflect_objective_sphere(
@@ -306,3 +310,72 @@ def reflect_ray_conic(
     reflected_ray = Ray(origin=intersection_point, direction=reflected_direction)
 
     return intersection_result, reflected_ray
+
+
+def find_corneal_reflection(eye, light: "Light", camera: "Camera") -> Optional[Position3D]:
+    """Finds the position of a corneal reflex.
+
+    Determines the point on corneal surface where light ray reflects to camera.
+    Uses exact reflection calculation with corneal surface geometry.
+
+    Args:
+        eye: Eye object
+        light: Light source object
+        camera: Camera object
+
+    Returns:
+        Position3D of corneal reflex, or None if not within cornea
+    """
+    # Find reflection point on corneal surface
+    camera_position = Position3D.from_array(camera.trans[:, 3])
+    cr_point3d = eye.cornea.find_reflection(light.position, camera_position, eye.trans)
+
+    cr = None
+    if cr_point3d is not None:
+        cr = Position3D.from_point3d(cr_point3d)
+        # Check if point is within corneal boundaries
+        if not eye.point_within_cornea(cr):
+            cr = None
+
+    return cr
+
+
+def find_corneal_reflection_simple(eye, light: "Light", camera: "Camera") -> Optional[Position3D]:
+    """Finds the position of a corneal reflex (simplified).
+
+    Uses paraxial approximation for faster corneal reflex calculation.
+    Based on Morimoto, Amir and Flicker approximation method.
+
+    Args:
+        eye: Eye object
+        light: Light source object
+        camera: Camera object
+
+    Returns:
+        Position3D of corneal reflex, or None if not found
+    """
+    # Get corneal center in world coordinates
+    cc_homogeneous = eye.trans @ np.array(eye.cornea.center)
+    cc = Position3D.from_array(cc_homogeneous)
+
+    # Vector from corneal center to camera
+    camera_pos = Position3D.from_array(camera.trans[:, 3])
+    to_cam = Direction3D.from_vector3d(camera_pos - cc).normalize()
+
+    # Paraxial approximation calculation
+    light_to_cornea = Direction3D.from_vector3d(light.position - cc)
+    denominator = 2 * light_to_cornea.dot(to_cam)
+
+    if abs(denominator) < 1e-10:  # Avoid division by zero
+        return None
+
+    w = eye.cornea.anterior_radius / denominator
+
+    # Calculate corneal reflex position
+    cr = cc + (light_to_cornea.to_vector3d() * w)
+
+    # Check if point is within corneal boundaries
+    if not eye.point_within_cornea(cr):
+        return None
+
+    return cr

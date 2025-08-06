@@ -3,7 +3,7 @@
 import numpy as np
 from et_simul.core.eye import Eye
 from et_simul.types.geometry import Position3D, Vector3D
-from et_simul.optics.eye_optics import refract_ray_dual_surface
+from et_simul.optics.refractions import refract_ray_dual_surface
 
 
 def test_optical_axis_ray():
