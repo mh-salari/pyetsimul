@@ -11,9 +11,9 @@ https://github.com/pupil-labs/pupil/blob/master/pupil_src/shared_modules/camera_
 import numpy as np
 from tabulate import tabulate
 
-from et_simul.core import Eye, Camera
-from et_simul.types import Position3D, RotationMatrix, CameraMatrix
-from et_simul.visualization import plot_interactive_cameras
+from pyetsimul.core import Eye, Camera
+from pyetsimul.types import Position3D, RotationMatrix, CameraMatrix
+from pyetsimul.visualization import plot_interactive_cameras
 
 
 # Camera configurations from Pupil Labs

@@ -1,8 +1,8 @@
 """Unit tests for lines_closest_point function."""
 
 import numpy as np
-from et_simul.geometry.utils import lines_closest_point
-from et_simul.types import Point3D, Vector3D
+from pyetsimul.geometry.utils import lines_closest_point
+from pyetsimul.types import Point3D, Vector3D
 
 
 def test_parallel_lines():

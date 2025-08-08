@@ -1,5 +1,5 @@
 """
-et_simul - Python Eye Tracker Simulation Library
+PyEtSimul - Python Eye Tracker Simulation Library
 
 Main package API for the eye tracking simulation framework.
 Exports core modules and common structured types for user convenience.

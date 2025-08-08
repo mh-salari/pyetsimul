@@ -1,6 +1,6 @@
-# Python Eye Tracker Simulation Framework
+# PyEtSimul: An Open-Source Python Software Framework for Eye Tracking Simulation
 
-This framework simulates measurements made by video-oculographic eye trackers, enabling objective comparison of different eye tracking setups and gaze estimation algorithms.
+PyEtSimul is a framework that simulates measurements made by video-oculographic eye trackers, enabling objective comparison of different eye tracking setups and gaze estimation algorithms.
 
 ## About
 
@@ -13,13 +13,18 @@ Core functionalities are based on "A Software Framework for Simulating Eye Track
 
 1. Clone the repository:
 ```bash
-git clone https://github.com/mh-salari/py_et_simul.git
-cd py_et_simul
+git clone https://github.com/mh-salari/pyetsimul.git
+cd pyetsimul
 ```
 
 2. Install in development mode:
 ```bash
 pip install -e .
+```
+
+Or install from PyPI (when published):
+```bash
+pip install pyetsimul
 ```
 
 3. Run examples:

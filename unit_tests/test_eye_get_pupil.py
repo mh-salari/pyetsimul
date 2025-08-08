@@ -1,8 +1,8 @@
 """Unit tests for Eye.get_pupil method."""
 
 import numpy as np
-from et_simul.core.eye import Eye
-from et_simul.core.cornea import SphericalCornea
+from pyetsimul.core.eye import Eye
+from pyetsimul.core.cornea import SphericalCornea
 
 
 def test_default_n():

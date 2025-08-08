@@ -4,7 +4,7 @@ This module provides utility functions for calibration analysis,
 including parameter printing and data formatting functions.
 """
 
-from et_simul.core import EyeTracker
+from pyetsimul.core import EyeTracker
 from tabulate import tabulate
 
 

@@ -3,9 +3,9 @@
 Demonstrates eye parameter comparison and 3D anatomical visualization for different corneal radii.
 """
 
-from et_simul.core import Eye
-from et_simul.core.cornea import SphericalCornea, ConicCornea
-from et_simul.visualization import plot_eye_anatomy
+from pyetsimul.core import Eye
+from pyetsimul.core.cornea import SphericalCornea, ConicCornea
+from pyetsimul.visualization import plot_eye_anatomy
 import matplotlib.pyplot as plt
 from tabulate import tabulate
 

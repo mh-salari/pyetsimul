@@ -1,11 +1,11 @@
 """Unit tests for Eye.find_cr_simple method."""
 
 import numpy as np
-from et_simul.types import Position3D
-from et_simul.core.eye import Eye
-from et_simul.core.light import Light
-from et_simul.core.camera import Camera
-from et_simul.optics.reflections import find_corneal_reflection_simple
+from pyetsimul.types import Position3D
+from pyetsimul.core.eye import Eye
+from pyetsimul.core.light import Light
+from pyetsimul.core.camera import Camera
+from pyetsimul.optics.reflections import find_corneal_reflection_simple
 
 
 def test_basic_simple_corneal_reflex():

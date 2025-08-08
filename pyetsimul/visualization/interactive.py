@@ -11,7 +11,7 @@ import copy
 from .integrated_plots import plot_setup_and_camera_view
 from .coordinate_utils import prepare_eye_data_for_plots
 from .setup_plots import plot_setup
-from et_simul.types import Position3D
+from pyetsimul.types import Position3D
 
 
 def plot_interactive_setup(eye_base, lights, camera, target_point):

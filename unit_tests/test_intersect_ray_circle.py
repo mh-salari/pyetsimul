@@ -1,8 +1,8 @@
 """Unit tests for intersect_ray_circle function."""
 
 import numpy as np
-from et_simul.geometry.intersections import intersect_ray_circle
-from et_simul.types import Ray, Point3D, Vector3D, IntersectionResult
+from pyetsimul.geometry.intersections import intersect_ray_circle
+from pyetsimul.types import Ray, Point3D, Vector3D, IntersectionResult
 
 
 def test_normal_intersection():

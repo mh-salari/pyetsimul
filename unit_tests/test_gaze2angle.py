@@ -1,8 +1,8 @@
 """Unit tests for gaze2angle function."""
 
 import numpy as np
-from et_simul.geometry.conversions import gaze2angle, angle2gaze
-from et_simul.types import Point2D, Direction3D
+from pyetsimul.geometry.conversions import gaze2angle, angle2gaze
+from pyetsimul.types import Point2D, Direction3D
 
 
 def test_round_trip_conversion():

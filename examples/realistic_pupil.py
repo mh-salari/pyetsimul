@@ -5,9 +5,9 @@ Realistic pupil example.
 Compares elliptical vs realistic pupil shapes using pinhole camera.
 """
 
-from et_simul.core import Eye, Camera
-from et_simul.types import Position3D, RotationMatrix
-from et_simul.visualization import plot_interactive_pupil_comparison
+from pyetsimul.core import Eye, Camera
+from pyetsimul.types import Position3D, RotationMatrix
+from pyetsimul.visualization import plot_interactive_pupil_comparison
 from tabulate import tabulate
 
 

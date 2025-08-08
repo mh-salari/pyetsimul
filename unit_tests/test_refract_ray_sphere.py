@@ -1,8 +1,8 @@
 """Unit tests for refract_ray_sphere function."""
 
 import numpy as np
-from et_simul.optics.refractions import refract_ray_sphere
-from et_simul.types import Ray, Point3D, Vector3D, Position3D, IntersectionResult
+from pyetsimul.optics.refractions import refract_ray_sphere
+from pyetsimul.types import Ray, Point3D, Vector3D, Position3D, IntersectionResult
 
 
 def test_basic_refraction():

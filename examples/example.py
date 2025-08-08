@@ -1,19 +1,19 @@
 #!/usr/bin/env python3
-"""Example script for ET Simul Python.
+"""Example script for PyEtSimul Python.
 
-Demonstrates basic usage of the ET Simul framework for eye, camera, and light simulation.
+Demonstrates basic usage of the PyEtSimul framework for eye, camera, and light simulation.
 Shows pupil and glint detection with and without corneal refraction.
 """
 
 import numpy as np
-from et_simul.core import Eye, Camera, Light
-from et_simul.types import Position3D
+from pyetsimul.core import Eye, Camera, Light
+from pyetsimul.types import Position3D
 import matplotlib.pyplot as plt
 from tabulate import tabulate
 
 
 def main():
-    """Run a basic ET Simul example: simulate eye, camera, and light, and plot results."""
+    """Run a basic PyEtSimul example: simulate eye, camera, and light, and plot results."""
     # Create an eye with default corneal radius (7.98 mm) and its optical axis points along
     # the negative y-axis. (In the eye's local coordinate system, the optical axis
     # points along the negative z-axis. By specifying an eye-to-world transformation
@@ -54,7 +54,7 @@ def main():
     cr_projection = c.project(cr)
 
     # Create summary table
-    print("\nET Simul Results Summary")
+    print("\nPyEtSimul Results Summary")
     headers = ["Metric", "Value", "Unit"]
     data = [
         ["Pupil boundary points", f"{pupil_img.shape[1]}", "points"],

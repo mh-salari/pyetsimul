@@ -1,8 +1,8 @@
 """Unit tests for line_intersect_2d function."""
 
 import numpy as np
-from et_simul.geometry.utils import line_intersect_2d
-from et_simul.types import Point2D
+from pyetsimul.geometry.utils import line_intersect_2d
+from pyetsimul.types import Point2D
 
 
 def test_horizontal_vertical_lines():

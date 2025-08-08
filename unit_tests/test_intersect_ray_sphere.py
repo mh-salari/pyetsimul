@@ -1,8 +1,8 @@
 """Unit tests for intersect_ray_sphere function."""
 
 import numpy as np
-from et_simul.geometry.intersections import intersect_ray_sphere
-from et_simul.types import Ray, Position3D, IntersectionResult, Point3D, Vector3D
+from pyetsimul.geometry.intersections import intersect_ray_sphere
+from pyetsimul.types import Ray, Position3D, IntersectionResult, Point3D, Vector3D
 
 
 def test_two_intersections():

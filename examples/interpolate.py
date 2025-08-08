@@ -3,15 +3,15 @@
 Demonstrates polynomial interpolation-based gaze tracking with comprehensive accuracy evaluation.
 """
 
-from et_simul.gaze_tracking_algorithms.interpolate import InterpolationTracker
-from et_simul.evaluation import (
+from pyetsimul.gaze_tracking_algorithms.interpolate import InterpolationTracker
+from pyetsimul.evaluation import (
     accuracy_over_gaze_points,
     accuracy_over_observer_positions,
     accuracy_at_calibration_points,
 )
-from et_simul.evaluation.analysis_utils import print_error_summary
-from et_simul.core import Light, Camera, Eye
-from et_simul.types import Position3D, RotationMatrix
+from pyetsimul.evaluation.analysis_utils import print_error_summary
+from pyetsimul.core import Light, Camera, Eye
+from pyetsimul.types import Position3D, RotationMatrix
 from tabulate import tabulate
 
 

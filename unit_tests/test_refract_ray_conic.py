@@ -1,7 +1,7 @@
 """Unit tests for refract_ray_conic function."""
 
-from et_simul.optics.refractions import refract_ray_sphere, refract_ray_conic
-from et_simul.types import Ray, Point3D, Vector3D, Position3D
+from pyetsimul.optics.refractions import refract_ray_sphere, refract_ray_conic
+from pyetsimul.types import Ray, Point3D, Vector3D, Position3D
 
 
 def test_conic_equals_sphere_refraction():

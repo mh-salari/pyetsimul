@@ -2,8 +2,8 @@
 
 import numpy as np
 import numpy.testing as npt
-from et_simul.core.eye import Eye
-from et_simul.types import Position3D, RotationMatrix
+from pyetsimul.core.eye import Eye
+from pyetsimul.types import Position3D, RotationMatrix
 
 
 def test_look_at_with_foveal_displacement():

@@ -2,9 +2,9 @@
 
 import numpy as np
 import pytest
-from et_simul.core.eye import Eye
-from et_simul.core.camera import Camera
-from et_simul.types import Position3D
+from pyetsimul.core.eye import Eye
+from pyetsimul.core.camera import Camera
+from pyetsimul.types import Position3D
 
 
 def test_camera_pointed_at_eye():

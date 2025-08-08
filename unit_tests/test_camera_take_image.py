@@ -1,10 +1,10 @@
 """Unit tests for Camera.take_image method."""
 
 import numpy as np
-from et_simul.core.eye import Eye
-from et_simul.core.camera import Camera
-from et_simul.core.light import Light
-from et_simul.types import CameraImage, Point2D, Position3D
+from pyetsimul.core.eye import Eye
+from pyetsimul.core.camera import Camera
+from pyetsimul.core.light import Light
+from pyetsimul.types import CameraImage, Point2D, Position3D
 
 
 def test_camera_take_image_with_refraction():

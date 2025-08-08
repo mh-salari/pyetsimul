@@ -2,8 +2,8 @@
 
 import numpy as np
 import pytest
-from et_simul.core.eye import Eye
-from et_simul.types import Position3D
+from pyetsimul.core.eye import Eye
+from pyetsimul.types import Position3D
 
 
 def test_get_pupil_radii_default():

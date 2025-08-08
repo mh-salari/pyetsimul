@@ -1,8 +1,8 @@
 """Unit tests for Camera.project method."""
 
 import numpy as np
-from et_simul.core.camera import Camera
-from et_simul.types import Point2D
+from pyetsimul.core.camera import Camera
+from pyetsimul.types import Point2D
 
 
 def test_mixed_points_in_out_bounds():

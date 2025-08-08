@@ -1,8 +1,8 @@
 """Unit tests for SphericalCornea scaling behavior."""
 
 import pytest
-from et_simul.core.cornea import SphericalCornea
-from et_simul.types import Position3D
+from pyetsimul.core.cornea import SphericalCornea
+from pyetsimul.types import Position3D
 
 
 class TestSphericalCorneaScaling:

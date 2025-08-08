@@ -1,8 +1,8 @@
 """Unit tests for find_reflection_sphere function."""
 
 import numpy as np
-from et_simul.optics.reflections import find_reflection_sphere
-from et_simul.types import Position3D, Point3D
+from pyetsimul.optics.reflections import find_reflection_sphere
+from pyetsimul.types import Position3D, Point3D
 
 
 def test_specific_reflection_case():

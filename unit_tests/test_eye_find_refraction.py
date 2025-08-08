@@ -1,8 +1,8 @@
 """Unit tests for Eye.find_refracted_position method."""
 
 import numpy as np
-from et_simul.core.eye import Eye
-from et_simul.types.geometry import Position3D
+from pyetsimul.core.eye import Eye
+from pyetsimul.types.geometry import Position3D
 
 
 def test_basic_refraction():

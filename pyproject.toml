@@ -3,12 +3,12 @@ requires = ["setuptools>=64", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "et-simul"
-version = "0.9.0"
-description = ""
+name = "pyetsimul"
+version = "0.9.1"
+description = "PyEtSimul: An Open-Source Python Software Framework for Eye Tracking Simulation"
 authors = [{name = "Mohammadhossein Salari", email = "Mohammadhossein.Salari@gmail.com"}]
 license = {text = "GPL-3.0-or-later"}
-readme = {text = "Based on et_simul — © 2008 Martin Böhme, University of Lübeck\nPython port © 2025 Mohammadhossein Salari", content-type = "text/plain"}
+readme = {text = "PyEtSimul: Based on pyetsimul — © 2008 Martin Böhme, University of Lübeck\nPython port © 2025 Mohammadhossein Salari", content-type = "text/plain"}
 dependencies = [
     "matplotlib~=3.10.3",
     "numpy<2.3,>=1.24",
@@ -21,7 +21,7 @@ requires-python = ">=3.11"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["et_simul*"]
+include = ["pyetsimul*"]
 
 [tool.ruff]
 line-length = 119

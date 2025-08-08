@@ -1,10 +1,10 @@
 """Unit tests for Eye.find_cr method."""
 
 import numpy as np
-from et_simul.core.eye import Eye
-from et_simul.core.light import Light
-from et_simul.core.camera import Camera
-from et_simul.types.geometry import Position3D
+from pyetsimul.core.eye import Eye
+from pyetsimul.core.light import Light
+from pyetsimul.core.camera import Camera
+from pyetsimul.types.geometry import Position3D
 
 
 def test_basic_corneal_reflex():

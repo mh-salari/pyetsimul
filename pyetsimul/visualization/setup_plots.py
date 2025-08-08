@@ -8,7 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from typing import Optional, List, Dict, Any, Tuple
 
-from et_simul.core import Camera, Light
+from pyetsimul.core import Camera, Light
 from ..types import Position3D, Point3D, Vector3D, TransformationMatrix
 
 

@@ -3,10 +3,10 @@
 Pupil-CR tracker with polynomial interpolation.
 """
 
-from et_simul.core import EyeTracker
-from et_simul.types.algorithms import InterpolationConfig, InterpolationState, GazePrediction
-from et_simul.types.imaging import EyeMeasurement
-from et_simul.types.geometry import Point3D, Position3D
+from pyetsimul.core import EyeTracker
+from pyetsimul.types.algorithms import InterpolationConfig, InterpolationState, GazePrediction
+from pyetsimul.types.imaging import EyeMeasurement
+from pyetsimul.types.geometry import Point3D, Position3D
 from .polynomials import get_polynomial
 from ...geometry.plane_detection import detect_calibration_plane, summarize_plane_detection
 import time

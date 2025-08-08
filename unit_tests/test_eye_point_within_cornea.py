@@ -1,9 +1,9 @@
 """Unit tests for Eye.point_within_cornea method."""
 
 import numpy as np
-from et_simul.core.eye import Eye
-from et_simul.core.cornea import SphericalCornea
-from et_simul.types.geometry import Position3D, Vector3D
+from pyetsimul.core.eye import Eye
+from pyetsimul.core.cornea import SphericalCornea
+from pyetsimul.types.geometry import Position3D, Vector3D
 
 
 def test_basic_cases():

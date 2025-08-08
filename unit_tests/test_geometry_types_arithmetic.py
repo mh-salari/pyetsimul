@@ -2,7 +2,7 @@
 
 import numpy as np
 import pytest
-from et_simul.types import Point2D, Point3D, Vector3D, Position3D, Direction3D
+from pyetsimul.types import Point2D, Point3D, Vector3D, Position3D, Direction3D
 
 
 class TestPoint2D:

@@ -7,7 +7,7 @@ Handles eye anatomy, camera imaging, and corneal reflection calculations.
 import numpy as np
 from typing import Optional, List, Dict, Any
 
-from et_simul.core import Eye, Camera, Light
+from pyetsimul.core import Eye, Camera, Light
 from ..types import Position3D
 
 

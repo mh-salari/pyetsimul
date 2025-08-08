@@ -1,8 +1,8 @@
 """Unit tests for listings_law function."""
 
 import numpy as np
-from et_simul.geometry.listings_law import calculate_eye_rotation
-from et_simul.types import Vector3D
+from pyetsimul.geometry.listings_law import calculate_eye_rotation
+from pyetsimul.types import Vector3D
 
 
 def test_3d_rotation():

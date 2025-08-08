@@ -1,8 +1,8 @@
 """Unit tests for reflect_ray_circle function."""
 
 import numpy as np
-from et_simul.optics.reflections import reflect_ray_circle
-from et_simul.types import Ray, Point3D, Vector3D
+from pyetsimul.optics.reflections import reflect_ray_circle
+from pyetsimul.types import Ray, Point3D, Vector3D
 
 
 def test_basic_center_reflection():

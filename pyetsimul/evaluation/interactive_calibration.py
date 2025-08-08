@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 import copy
 from typing import List
 
-from et_simul.core import Eye, EyeTracker
+from pyetsimul.core import Eye, EyeTracker
 from ..types import Position3D, Point3D, Point2D
 from ..geometry.conversions import calculate_angular_error_degrees
 from ..visualization import prepare_eye_data_for_plots, plot_setup

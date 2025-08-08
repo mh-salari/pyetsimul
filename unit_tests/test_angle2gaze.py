@@ -1,8 +1,8 @@
 """Unit tests for angle2gaze function."""
 
 import numpy as np
-from et_simul.geometry.conversions import angle2gaze
-from et_simul.types import Direction3D, Point2D
+from pyetsimul.geometry.conversions import angle2gaze
+from pyetsimul.types import Direction3D, Point2D
 
 
 def test_zero_angles():

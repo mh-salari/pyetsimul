@@ -1,8 +1,8 @@
 """Unit tests for camera point_at function."""
 
 import numpy as np
-from et_simul.core.camera import Camera
-from et_simul.types import Position3D
+from pyetsimul.core.camera import Camera
+from pyetsimul.types import Position3D
 
 
 def test_point_at_basic():

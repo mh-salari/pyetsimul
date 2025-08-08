@@ -1,8 +1,8 @@
 """Unit tests for reflect_ray_sphere function."""
 
 import numpy as np
-from et_simul.optics.reflections import reflect_ray_sphere
-from et_simul.types import Ray, Point3D, Vector3D, Position3D, Direction3D, IntersectionResult
+from pyetsimul.optics.reflections import reflect_ray_sphere
+from pyetsimul.types import Ray, Point3D, Vector3D, Position3D, Direction3D, IntersectionResult
 
 
 def test_basic_center_reflection():

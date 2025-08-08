@@ -1,8 +1,8 @@
 """Unit tests for camera pan_tilt function."""
 
 import numpy as np
-from et_simul.core.camera import Camera
-from et_simul.types import Position3D, TransformationMatrix
+from pyetsimul.core.camera import Camera
+from pyetsimul.types import Position3D, TransformationMatrix
 
 
 def test_basic_pan_tilt():

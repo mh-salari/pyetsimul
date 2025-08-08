@@ -7,7 +7,7 @@ Shows pupil detection, corneal reflections, and camera image coordinates.
 import numpy as np
 from typing import Optional, List
 
-from et_simul.core import Camera
+from pyetsimul.core import Camera
 from ..types import Position3D, CameraImage
 
 
