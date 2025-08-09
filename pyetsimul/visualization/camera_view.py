@@ -98,6 +98,8 @@ def plot_camera_view_of_eye(
 
     ax2.set_xlim(-resolution.x / 2, resolution.x / 2)
     ax2.set_ylim(-resolution.y / 2, resolution.y / 2)
+    ax2.invert_yaxis()
+    ax2.invert_xaxis()
 
     ax2.set_xlabel("X (pixels)")
     ax2.set_ylabel("Y (pixels)")
