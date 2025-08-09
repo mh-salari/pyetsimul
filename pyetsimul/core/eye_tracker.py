@@ -37,6 +37,9 @@ class EyeTracker(ABC):
     # Refraction setting
     use_refraction: bool = True
 
+    # Legacy eye rotation mode
+    use_legacy_look_at: bool = False
+
     @property
     @abstractmethod
     def algorithm_name(self) -> str:
@@ -103,7 +106,7 @@ class EyeTracker(ABC):
 
         for i, calib_point in enumerate(self.calib_points):
             # Make eye look at calibration point
-            eye.look_at(calib_point)
+            eye.look_at(calib_point, legacy=self.use_legacy_look_at)
 
             # Take images from all cameras (for now use first camera)
             # TODO: Support multi-camera setups properly
@@ -153,7 +156,7 @@ class EyeTracker(ABC):
         """
         # Make eye look at target position
         target = Position3D(look_at_pos.x, look_at_pos.y, look_at_pos.z)
-        eye.look_at(target)
+        eye.look_at(target, legacy=self.use_legacy_look_at)
 
         # For now, use first camera (TODO: support multi-camera)
         camera_image = self.cameras[0].take_image(eye, self.lights, use_refraction=self.use_refraction)
@@ -219,7 +222,7 @@ class EyeTracker(ABC):
 
         for target_position in self.calib_points:
             # Make eye look at calibration point
-            eye.look_at(target_position)
+            eye.look_at(target_position, legacy=self.use_legacy_look_at)
 
             # Take fresh camera measurement
             camera_image = self.cameras[0].take_image(eye, self.lights, use_refraction=self.use_refraction)

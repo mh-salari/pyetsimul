@@ -57,6 +57,8 @@ def main():
     # Setup tracker with default method
     method = "cerrolaza_2008"
     et = InterpolationTracker.create([cam], [light], calib_points, method)
+    # Set legacy optical-then-kappa behavior for evaluation with the original MATLAB behavior
+    et.use_legacy_look_at = True
 
     # Display configuration summary
     print("Configuration Summary:")

@@ -12,7 +12,7 @@ from typing import Optional, TYPE_CHECKING
 from ..types import Position3D, Direction3D, TransformationMatrix, RotationMatrix, PupilData
 from .pupil import Pupil, create_pupil
 from .cornea import SphericalCornea
-from .eye_operations import look_at_target
+from .eye_operations import look_at_target, look_at_target_optical_then_kappa
 from ..optics.reflections import find_corneal_reflection
 from ..optics.refractions import find_refraction_point
 from ..optics.pupil_imaging import calculate_pupil_center_from_boundary
@@ -268,15 +268,19 @@ class Eye:
         """
         return find_corneal_reflection(self, light, camera)
 
-    def look_at(self, target_position: Position3D) -> None:
+    def look_at(self, target_position: Position3D, legacy: bool = False) -> None:
         """Rotates an eye to look at a given position in space.
 
         Delegates to eye_operations module for gaze control.
 
         Args:
             target_position: Position in world coordinates to look at
+            legacy: If True, uses optical-then-kappa method for backward compatibility
         """
-        look_at_target(self, target_position)
+        if legacy:
+            look_at_target_optical_then_kappa(self, target_position)
+        else:
+            look_at_target(self, target_position)
 
     def get_pupil(self) -> PupilData:
         """Get pupil boundary points in world coordinates.
