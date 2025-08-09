@@ -282,23 +282,29 @@ class Eye:
     def fovea_position(self) -> Position3D:
         """Calculate the 3D position of the fovea on the retinal surface.
 
-        Uses spherical eye model with fovea displacement angles.
+        Uses spherical eye model with optional fovea displacement angles.
         Positions fovea at axial_length/2 distance from rotation center.
 
         Returns:
             Fovea position in eye coordinate system
         """
-        # Convert displacement angles to radians
-        alpha = self.fovea_alpha_deg * np.pi / 180.0  # Horizontal (temporal) displacement
-        beta = self.fovea_beta_deg * np.pi / 180.0  # Vertical (upward) displacement
-
         # Retina distance from rotation center (from our eye model)
         retina_distance = self.axial_length / 2
 
-        # Calculate fovea position in eye coordinate system using spherical coordinates
-        fovea_x = retina_distance * np.sin(alpha) * np.cos(beta)  # Temporal displacement
-        fovea_y = retina_distance * np.sin(beta)  # Vertical displacement
-        fovea_z = retina_distance * np.cos(alpha) * np.cos(beta)  # Along optical axis
+        if self.fovea_displacement:
+            # Convert displacement angles to radians
+            alpha = self.fovea_alpha_deg * np.pi / 180.0  # Horizontal (temporal) displacement
+            beta = self.fovea_beta_deg * np.pi / 180.0  # Vertical (upward) displacement
+
+            # Calculate fovea position with displacement using spherical coordinates
+            fovea_x = retina_distance * np.sin(alpha) * np.cos(beta)  # Temporal displacement
+            fovea_y = retina_distance * np.sin(beta)  # Vertical displacement
+            fovea_z = retina_distance * np.cos(alpha) * np.cos(beta)  # Along optical axis
+        else:
+            # Fovea at optical axis center (no displacement)
+            fovea_x = 0.0
+            fovea_y = 0.0
+            fovea_z = retina_distance
 
         return Position3D(fovea_x, fovea_y, fovea_z)
 
