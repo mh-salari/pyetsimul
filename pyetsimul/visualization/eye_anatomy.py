@@ -14,19 +14,27 @@ from ..geometry.intersections import intersect_ray_sphere, intersect_ray_conic
 from .transforms import transform_surface
 
 
-def plot_eye_anatomy(eye: Eye = Eye(), target_point: Position3D = Position3D(15e-3, 15e-3, 0), ax=None):
+def plot_eye_anatomy(eye: Eye, ax=None):
     """Plot 3D eye anatomy using structured types and vector arithmetic.
 
     Visualizes anatomical structures of the eye in 3D using vector-based transformations.
     Useful for understanding eye geometry and verifying anatomical accuracy.
+    Assumes the eye is already oriented as desired.
 
     Args:
-        eye: Eye object to plot
-        target_point: Target position for eye to look at
-        ax: Matplotlib 3D axis (optional)
+        eye: Eye object to plot (required) - should already be oriented as desired
+        ax: Matplotlib 3D axis (optional, creates new if None)
+
+    Raises:
+        ValueError: If eye has no current target point (call eye.look_at() first)
     """
-    # Make eye look at target
-    eye.look_at(target_point)
+    # Get target point from eye
+    target_point = eye.current_target_point
+    if target_point is None:
+        raise ValueError(
+            "Eye has no current target point. Call eye.look_at(target_position) first "
+            "to orient the eye and set a target for visualization."
+        )
 
     # Calculate all key points in WORLD coordinates using structured types
     eye_rotation_center = eye.position
@@ -55,8 +63,8 @@ def plot_eye_anatomy(eye: Eye = Eye(), target_point: Position3D = Position3D(15e
     else:
         raise ValueError(f"Unknown cornea type: {eye.cornea.cornea_type}")
 
-    anterior_points = generate_corneal_surface_points(eye, intersection_func, "anterior", n_points=30)
-    posterior_points = generate_corneal_surface_points(eye, intersection_func, "posterior", n_points=30)
+    anterior_points = generate_corneal_surface_points(eye, intersection_func, "anterior", n_points=50)
+    posterior_points = generate_corneal_surface_points(eye, intersection_func, "posterior", n_points=50)
 
     # Get transformed corneal landmarks
     corneal_landmarks = get_transformed_corneal_landmarks(eye)
@@ -124,7 +132,7 @@ def plot_eye_anatomy(eye: Eye = Eye(), target_point: Position3D = Position3D(15e
             anterior_limited[:, 2],
             alpha=0.9,
             color="steelblue",
-            s=2,
+            s=0.8,
             label="Cornea (Outer)",
         )
 
@@ -135,7 +143,7 @@ def plot_eye_anatomy(eye: Eye = Eye(), target_point: Position3D = Position3D(15e
             posterior_limited[:, 2],
             alpha=0.9,
             color="darkturquoise",
-            s=1.5,
+            s=0.6,
             label="Cornea (Inner)",
         )
 
@@ -179,7 +187,7 @@ def plot_eye_anatomy(eye: Eye = Eye(), target_point: Position3D = Position3D(15e
     ax.scatter(fovea_world.x, fovea_world.y, fovea_world.z, color="orange", s=80, marker="*", label="Fovea")
 
     # Plot pupil as filled dark circle using structured types
-    n_pupil_points = 50
+    n_pupil_points = 120
     t = np.linspace(0, 2 * np.pi, n_pupil_points)
 
     # Create filled pupil with radial points from center to boundary
@@ -192,21 +200,24 @@ def plot_eye_anatomy(eye: Eye = Eye(), target_point: Position3D = Position3D(15e
             cos_theta = np.cos(theta)
             sin_theta = np.sin(theta)
             # Point on pupil surface at radius factor r_factor
-            point_local = np.array(pupil_position).reshape(-1, 1) + r_factor * (
-                np.array(eye.pupil.x_pupil).reshape(-1, 1) * cos_theta
-                + np.array(eye.pupil.y_pupil).reshape(-1, 1) * sin_theta
+            point_local = np.array(pupil_position)[:3].reshape(-1, 1) + r_factor * (
+                np.array(eye.pupil.x_pupil)[:3].reshape(-1, 1) * cos_theta
+                + np.array(eye.pupil.y_pupil)[:3].reshape(-1, 1) * sin_theta
             )
             pupil_points_local.append(point_local.flatten())
 
     # Transform all pupil points to world coordinates
-    pupil_points_local = np.array(pupil_points_local).T
-    pupil_points_world = eye.trans @ pupil_points_local
+    pupil_points_local = np.array(pupil_points_local)  # Nx3 format
+    # Convert to homogeneous coordinates for transformation
+    pupil_points_local_h = np.column_stack([pupil_points_local, np.ones(len(pupil_points_local))])
+    pupil_points_world_h = (eye.trans @ pupil_points_local_h.T).T  # Transform and back to Nx4
+    pupil_points_world = pupil_points_world_h[:, :3]  # Extract Nx3 world coordinates
 
-    # Plot filled pupil as scatter points
+    # Plot pupil as scatter points
     ax.scatter(
-        pupil_points_world[0],
-        pupil_points_world[1],
-        pupil_points_world[2],
+        pupil_points_world[:, 0],
+        pupil_points_world[:, 1],
+        pupil_points_world[:, 2],
         c="black",
         s=3,
         alpha=0.9,
@@ -232,7 +243,7 @@ def plot_eye_anatomy(eye: Eye = Eye(), target_point: Position3D = Position3D(15e
         label="Visual Axis",
     )
 
-    # Plot target point
+    # Plot target point (guaranteed to exist due to check above)
     ax.scatter(target_point.x, target_point.y, target_point.z, color="hotpink", s=100, marker="x", label="Target")
 
     # Set labels and title

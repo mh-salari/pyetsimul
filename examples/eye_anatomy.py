@@ -6,6 +6,7 @@ Demonstrates eye parameter comparison and 3D anatomical visualization for differ
 from pyetsimul.core import Eye
 from pyetsimul.core.cornea import SphericalCornea, ConicCornea
 from pyetsimul.visualization import plot_eye_anatomy
+from pyetsimul.types import Position3D
 import matplotlib.pyplot as plt
 from tabulate import tabulate
 
@@ -52,9 +53,22 @@ def print_eye_comparison(eye1, eye2, title1="Eye 1", title2="Eye 2"):
     print(tabulate(data, headers=headers, tablefmt="grid"))
 
 
+# Define target point for consistent gaze direction
+# Use Z-forward target to keep eyelid properly oriented in the plot view
+target_point = Position3D(10e-3, 10e-3, -10e-3)
+
 # Create two eyes: spherical vs conic cornea (both with default parameters)
 e_spherical = Eye(cornea=SphericalCornea())  # Default spherical cornea
 e_conic = Eye(cornea=ConicCornea())  # Default conic cornea
+
+
+# Set rest orientation to face the target (so eyelid aligns with gaze)
+e_spherical.set_rest_orientation_at_target(target_point)
+e_conic.set_rest_orientation_at_target(target_point)
+
+e_spherical.look_at(target_point)
+e_conic.look_at(target_point)
+
 
 # Print parameter comparison
 print_eye_comparison(e_spherical, e_conic, "Spherical Cornea", "Conic Cornea")

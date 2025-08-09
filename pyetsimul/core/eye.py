@@ -49,6 +49,7 @@ class Eye:
     # These fields are calculated in __post_init__
     trans: TransformationMatrix = field(init=False)
     _rest_orientation: RotationMatrix = field(init=False)
+    _current_target_point: Optional[Position3D] = field(init=False, default=None)  # Updated by look_at()
     axial_length: float = field(init=False)  # Total axial length of eye (m)
     n_aqueous_humor: float = field(init=False)
     pupil: Pupil = field(init=False)  # Pupil object that handles all pupil calculations
@@ -140,6 +141,15 @@ class Eye:
         Returns reference orientation for eye rotation calculations.
         """
         return self._rest_orientation.copy()
+
+    @property
+    def current_target_point(self) -> Optional[Position3D]:
+        """Get the current target point (read-only).
+
+        Returns the target position that was last used with look_at(), or None if
+        the eye has not been oriented toward any target yet.
+        """
+        return self._current_target_point
 
     def set_rest_orientation_at_target(self, target_position: Position3D) -> None:
         """Set rest orientation to align visual axis (not optical axis) toward target.
@@ -272,11 +282,15 @@ class Eye:
         """Rotates an eye to look at a given position in space.
 
         Delegates to eye_operations module for gaze control.
+        Updates current_target_point to track the target position.
 
         Args:
             target_position: Position in world coordinates to look at
             legacy: If True, uses optical-then-kappa method for backward compatibility
         """
+        # Update current target point
+        self._current_target_point = target_position
+
         if legacy:
             look_at_target_optical_then_kappa(self, target_position)
         else:
