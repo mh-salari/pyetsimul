@@ -136,8 +136,14 @@ class Point3D:
             raise AssertionError(error_msg)
 
     def __sub__(self, other):
-        """Subtract point, vector, or scalar from point."""
-        if isinstance(other, Point3D):
+        """Subtract point, position, vector, or scalar from point.
+
+        - Point3D - Point3D => Vector3D
+        - Point3D - Position3D => Vector3D
+        - Point3D - Vector3D => Point3D
+        - Point3D - scalar => Point3D
+        """
+        if isinstance(other, (Point3D, Position3D)):
             return Vector3D(self.x - other.x, self.y - other.y, self.z - other.z)
         elif isinstance(other, (Vector3D, int, float)):
             return Point3D(
