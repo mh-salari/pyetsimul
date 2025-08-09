@@ -141,6 +141,90 @@ class Eye:
         """
         return self._rest_orientation.copy()
 
+    def set_rest_orientation_at_target(self, target_position: Position3D) -> None:
+        """Set rest orientation to align visual axis (not optical axis) toward target.
+
+        When fovea displacement is enabled, aligns the visual axis (eye-to-fovea direction)
+        toward the target. When disabled, aligns optical axis toward target.
+        This is crucial for proper gaze behavior with anatomically realistic eyes.
+
+        Args:
+            target_position: Target position in world coordinates
+
+        Raises:
+            ValueError: If target position equals eye position (undefined direction)
+        """
+        eye_position = self.position
+
+        # Calculate direction from eye to target
+        direction_to_target = target_position - eye_position
+        if direction_to_target.magnitude() == 0:
+            raise ValueError(
+                f"Cannot set rest orientation: target position {target_position} equals eye position {eye_position}"
+            )
+
+        target_direction = direction_to_target.normalize()
+
+        if self.fovea_displacement:
+            # Visual axis alignment: account for fovea displacement
+            # Calculate the required optical axis direction to point visual axis at target
+
+            # Convert fovea displacement angles to radians
+            alpha = self.fovea_alpha_deg * np.pi / 180.0  # Horizontal displacement
+            beta = self.fovea_beta_deg * np.pi / 180.0  # Vertical displacement
+
+            # Visual axis direction in eye coordinates (normalized fovea position)
+            visual_axis_eye = Direction3D(np.sin(alpha) * np.cos(beta), np.sin(beta), np.cos(alpha) * np.cos(beta))
+
+            # We need: R @ visual_axis_eye = target_direction
+            # So we need to find rotation R that maps visual_axis_eye to target_direction
+
+            # Use Rodrigues' rotation formula to find rotation
+            v = visual_axis_eye.cross(target_direction)
+            s = v.magnitude()
+            c = visual_axis_eye.dot(target_direction)
+
+            if s < 1e-10:  # Vectors are parallel or anti-parallel
+                if c > 0:  # Same direction
+                    rotation_matrix = np.eye(3)
+                else:  # Opposite direction - find any perpendicular vector
+                    if abs(visual_axis_eye.x) < 0.9:
+                        perp = Direction3D(1, 0, 0).cross(visual_axis_eye).normalize()
+                    else:
+                        perp = Direction3D(0, 1, 0).cross(visual_axis_eye).normalize()
+                    # 180-degree rotation around perpendicular axis
+                    rotation_matrix = 2 * np.outer(perp.to_array(), perp.to_array()) - np.eye(3)
+            else:
+                # General case: use Rodrigues' formula
+                vx = np.array([[0, -v.z, v.y], [v.z, 0, -v.x], [-v.y, v.x, 0]])
+                rotation_matrix = np.eye(3) + vx + vx @ vx * ((1 - c) / (s * s))
+
+            self.set_rest_orientation(RotationMatrix(rotation_matrix))
+        else:
+            # Optical axis alignment: standard behavior
+            # Optical axis points along -Z, so we need rotation that maps -Z to target direction
+            optical_axis = Direction3D(0, 0, -1)
+
+            v = optical_axis.cross(target_direction)
+            s = v.magnitude()
+            c = optical_axis.dot(target_direction)
+
+            if s < 1e-10:  # Vectors are parallel or anti-parallel
+                if c > 0:  # Same direction
+                    rotation_matrix = np.eye(3)
+                else:  # Opposite direction
+                    if abs(optical_axis.x) < 0.9:
+                        perp = Direction3D(1, 0, 0).cross(optical_axis).normalize()
+                    else:
+                        perp = Direction3D(0, 1, 0).cross(optical_axis).normalize()
+                    rotation_matrix = 2 * np.outer(perp.to_array(), perp.to_array()) - np.eye(3)
+            else:
+                # General case: use Rodrigues' formula
+                vx = np.array([[0, -v.z, v.y], [v.z, 0, -v.x], [-v.y, v.x, 0]])
+                rotation_matrix = np.eye(3) + vx + vx @ vx * ((1 - c) / (s * s))
+
+            self.set_rest_orientation(RotationMatrix(rotation_matrix))
+
     @property
     def position(self) -> Position3D:
         """Get/set the eye's position in world coordinates."""
