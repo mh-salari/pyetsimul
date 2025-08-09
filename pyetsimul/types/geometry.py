@@ -45,13 +45,23 @@ class Point2D:
                 error_msg = f"{msg}: {error_msg}"
             raise AssertionError(error_msg)
 
-    def __sub__(self, other: "Point2D") -> "Point2D":
-        """Subtract two points to get a vector between them."""
-        return Point2D(self.x - other.x, self.y - other.y)
+    def __sub__(self, other):
+        """Subtract point or scalar from point."""
+        if isinstance(other, Point2D):
+            return Point2D(self.x - other.x, self.y - other.y)
+        elif isinstance(other, (int, float)):
+            return Point2D(self.x - other, self.y - other)
+        else:
+            return NotImplemented
 
-    def __add__(self, other: "Point2D") -> "Point2D":
-        """Add two points/vectors."""
-        return Point2D(self.x + other.x, self.y + other.y)
+    def __add__(self, other) -> "Point2D":
+        """Add two points/vectors or add scalar to point."""
+        if isinstance(other, Point2D):
+            return Point2D(self.x + other.x, self.y + other.y)
+        elif isinstance(other, (int, float)):
+            return Point2D(self.x + other, self.y + other)
+        else:
+            return NotImplemented
 
     def __mul__(self, scalar: float) -> "Point2D":
         """Multiply point by a scalar."""
@@ -125,13 +135,27 @@ class Point3D:
                 error_msg = f"{msg}: {error_msg}"
             raise AssertionError(error_msg)
 
-    def __sub__(self, other: "Point3D") -> "Vector3D":
-        """Subtract two points to get a vector from other to self."""
-        return Vector3D(self.x - other.x, self.y - other.y, self.z - other.z)
+    def __sub__(self, other):
+        """Subtract point, vector, or scalar from point."""
+        if isinstance(other, Point3D):
+            return Vector3D(self.x - other.x, self.y - other.y, self.z - other.z)
+        elif isinstance(other, (Vector3D, int, float)):
+            return Point3D(
+                self.x - other.x if hasattr(other, "x") else self.x - other,
+                self.y - other.y if hasattr(other, "y") else self.y - other,
+                self.z - other.z if hasattr(other, "z") else self.z - other,
+            )
+        else:
+            return NotImplemented
 
-    def __add__(self, vector: "Vector3D") -> "Point3D":
-        """Add a vector to a point to get a new point."""
-        return Point3D(self.x + vector.x, self.y + vector.y, self.z + vector.z)
+    def __add__(self, other) -> "Point3D":
+        """Add a vector or scalar to a point to get a new point."""
+        if isinstance(other, Vector3D):
+            return Point3D(self.x + other.x, self.y + other.y, self.z + other.z)
+        elif isinstance(other, (int, float)):
+            return Point3D(self.x + other, self.y + other, self.z + other)
+        else:
+            return NotImplemented
 
     def __mul__(self, scalar: float) -> "Point3D":
         """Multiply point by a scalar."""
@@ -235,13 +259,23 @@ class Vector3D:
             return Vector3D.from_array(result)
         return NotImplemented
 
-    def __add__(self, other: "Vector3D") -> "Vector3D":
-        """Add two vectors."""
-        return Vector3D(self.x + other.x, self.y + other.y, self.z + other.z)
+    def __add__(self, other) -> "Vector3D":
+        """Add two vectors or add scalar to vector."""
+        if isinstance(other, Vector3D):
+            return Vector3D(self.x + other.x, self.y + other.y, self.z + other.z)
+        elif isinstance(other, (int, float)):
+            return Vector3D(self.x + other, self.y + other, self.z + other)
+        else:
+            return NotImplemented
 
-    def __sub__(self, other: "Vector3D") -> "Vector3D":
-        """Subtract two vectors."""
-        return Vector3D(self.x - other.x, self.y - other.y, self.z - other.z)
+    def __sub__(self, other):
+        """Subtract vector or scalar from vector."""
+        if isinstance(other, Vector3D):
+            return Vector3D(self.x - other.x, self.y - other.y, self.z - other.z)
+        elif isinstance(other, (int, float)):
+            return Vector3D(self.x - other, self.y - other, self.z - other)
+        else:
+            return NotImplemented
 
     def __mul__(self, scalar: float) -> "Vector3D":
         """Multiply vector by a scalar."""
@@ -343,13 +377,25 @@ class Position3D:
             return Position3D.from_array(result)
         return NotImplemented
 
-    def __sub__(self, other: "Position3D") -> Vector3D:
-        """Subtract two positions to get a vector from other to self."""
-        return Vector3D(self.x - other.x, self.y - other.y, self.z - other.z)
+    def __sub__(self, other):
+        """Subtract position, point, vector, direction, or scalar from position."""
+        if isinstance(other, (Position3D, Point3D)):
+            return Vector3D(self.x - other.x, self.y - other.y, self.z - other.z)
+        elif isinstance(other, (Vector3D, Direction3D)):
+            return Position3D(self.x - other.x, self.y - other.y, self.z - other.z)
+        elif isinstance(other, (int, float)):
+            return Position3D(self.x - other, self.y - other, self.z - other)
+        else:
+            return NotImplemented
 
-    def __add__(self, vector: Vector3D) -> "Position3D":
-        """Add a vector to a position to get a new position."""
-        return Position3D(self.x + vector.x, self.y + vector.y, self.z + vector.z)
+    def __add__(self, other) -> "Position3D":
+        """Add a vector, direction, point, or scalar to a position to get a new position."""
+        if isinstance(other, (Vector3D, Direction3D, Point3D)):
+            return Position3D(self.x + other.x, self.y + other.y, self.z + other.z)
+        elif isinstance(other, (int, float)):
+            return Position3D(self.x + other, self.y + other, self.z + other)
+        else:
+            return NotImplemented
 
     def __mul__(self, scalar: float) -> "Position3D":
         """Multiply position by a scalar."""
@@ -358,6 +404,10 @@ class Position3D:
     def __rmul__(self, scalar: float) -> "Position3D":
         """Multiply position by a scalar (reverse order)."""
         return self.__mul__(scalar)
+
+    def __radd__(self, other) -> "Position3D":
+        """Add position to a scalar (reverse order)."""
+        return self.__add__(other)
 
     def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
         """Handle numpy universal functions to maintain Position3D type."""
@@ -500,13 +550,23 @@ class Direction3D:
         # For other operations, defer to numpy
         return NotImplemented
 
-    def __add__(self, other: "Direction3D") -> "Direction3D":
-        """Add two directions."""
-        return Direction3D(self.x + other.x, self.y + other.y, self.z + other.z)
+    def __add__(self, other) -> "Direction3D":
+        """Add two directions or add scalar to direction."""
+        if isinstance(other, Direction3D):
+            return Direction3D(self.x + other.x, self.y + other.y, self.z + other.z)
+        elif isinstance(other, (int, float)):
+            return Direction3D(self.x + other, self.y + other, self.z + other)
+        else:
+            return NotImplemented
 
-    def __sub__(self, other: "Direction3D") -> "Direction3D":
-        """Subtract two directions."""
-        return Direction3D(self.x - other.x, self.y - other.y, self.z - other.z)
+    def __sub__(self, other):
+        """Subtract direction or scalar from direction."""
+        if isinstance(other, Direction3D):
+            return Direction3D(self.x - other.x, self.y - other.y, self.z - other.z)
+        elif isinstance(other, (int, float)):
+            return Direction3D(self.x - other, self.y - other, self.z - other)
+        else:
+            return NotImplemented
 
     @classmethod
     def from_vector3d(cls, vector: Vector3D) -> "Direction3D":
