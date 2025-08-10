@@ -16,6 +16,7 @@ from .eye_operations import look_at_target, look_at_target_optical_then_kappa
 from ..optics.reflections import find_corneal_reflection
 from ..optics.refractions import find_refraction_point
 from ..optics.pupil_imaging import calculate_pupil_center_from_boundary
+from .eyelid import Eyelid, create_eyelid
 
 if TYPE_CHECKING:
     from .camera import Camera
@@ -46,13 +47,19 @@ class Eye:
     pupil_boundary_points: Optional[int] = None  # Number of points for pupil boundary (uses pupil default if None)
     pupil_random_seed: Optional[int] = None  # Random seed for realistic pupil (None = random, int = deterministic)
 
+    # Eyelid configuration (enabled off by default to avoid behavior changes)
+    eyelid_enabled: bool = False
+
     # These fields are calculated in __post_init__
     trans: TransformationMatrix = field(init=False)
+    # Eyelid transform (local→world): follows eye position but keeps a fixed orientation
+    eyelid_trans: TransformationMatrix = field(init=False, repr=False)
     _rest_orientation: RotationMatrix = field(init=False)
     _current_target_point: Optional[Position3D] = field(init=False, default=None)  # Updated by look_at()
     axial_length: float = field(init=False)  # Total axial length of eye (m)
     n_aqueous_humor: float = field(init=False)
     pupil: Pupil = field(init=False)  # Pupil object that handles all pupil calculations
+    eyelid: Optional[Eyelid] = field(init=False, default=None)
 
     def __post_init__(self) -> None:
         """Initializes the eye's anatomical properties based on constructor parameters.
@@ -76,6 +83,11 @@ class Eye:
         self.trans = np.eye(4)
         self._rest_orientation = np.eye(3)
         self.trans[:3, :3] = self._rest_orientation
+
+        # Initialize eyelid transform (same position as eye, orientation = rest)
+        self.eyelid_trans = np.eye(4)
+        self.eyelid_trans[:3, :3] = self._rest_orientation
+        self.eyelid_trans[:3, 3] = self.trans[:3, 3]
 
         # Set general anatomical parameters
         self.axial_length = axial_length_default
@@ -107,6 +119,25 @@ class Eye:
             pupil_type=self.pupil_type, pos_pupil=pupil_position, x_pupil=x_pupil, y_pupil=y_pupil, **pupil_kwargs
         )
 
+        # Create eyelid if enabled: positioned at eye center, sphere radius = axial_length/2,
+        # phi_max derived from limbus z position so that the footprint matches corneal boundary.
+        if self.eyelid_enabled:
+            S = self.axial_length / 2.0
+            apex_pos = self.cornea.get_apex_position()
+            limbus_z_local = apex_pos.z + self.cornea.get_corneal_depth()
+            # phi from apex normal (-Z): cos(phi) = n·(r̂) = -z/S  -> phi = arccos(-z/S)
+            ratio = np.clip(-limbus_z_local / S, -1.0, 1.0)
+            phi_max = float(np.arccos(ratio))
+
+            self.eyelid = create_eyelid(
+                center=Position3D(0.0, 0.0, 0.0),
+                sphere_radius=S,
+                phi_max=phi_max,
+                openness=1.0,
+            )
+            # Keep eyelid orientation locked to rest orientation (fixed to face)
+            self.eyelid_trans[:3, :3] = self._rest_orientation
+
     @property
     def orientation(self) -> RotationMatrix:
         """Get/set the eye's current orientation (3x3 rotation matrix)."""
@@ -134,6 +165,10 @@ class Eye:
         self._rest_orientation = value.copy()
         self.trans[:3, :3] = value
 
+        # Keep eyelid orientation aligned to rest orientation (stationary relative to eye rotation)
+        if self.eyelid_enabled:
+            self.eyelid_trans[:3, :3] = value
+
     @property
     def rest_orientation(self) -> RotationMatrix:
         """Get the rest orientation (read-only).
@@ -152,88 +187,62 @@ class Eye:
         return self._current_target_point
 
     def set_rest_orientation_at_target(self, target_position: Position3D) -> None:
-        """Set rest orientation to align visual axis (not optical axis) toward target.
+        """Set rest orientation so the VISUAL axis points to the target.
 
-        When fovea displacement is enabled, aligns the visual axis (eye-to-fovea direction)
-        toward the target. When disabled, aligns optical axis toward target.
-        This is crucial for proper gaze behavior with anatomically realistic eyes.
-
-        Args:
-            target_position: Target position in world coordinates
-
-        Raises:
-            ValueError: If target position equals eye position (undefined direction)
+        Aligns the eye-local visual axis (derived from fovea angles when enabled,
+        or equals the optical axis when disabled) with the world-space direction
+        from eye position to target. Keeps +Y approximately aligned with world up.
         """
-        eye_position = self.position
+        # Eye position and target direction (world)
+        eye_pos = np.array([self.trans[0, 3], self.trans[1, 3], self.trans[2, 3]], dtype=float)
+        target_vec = np.array([target_position.x, target_position.y, target_position.z], dtype=float) - eye_pos
+        norm = np.linalg.norm(target_vec)
+        if norm < 1e-12:
+            return
+        z_world = target_vec / norm
 
-        # Calculate direction from eye to target
-        direction_to_target = target_position - eye_position
-        if direction_to_target.magnitude() == 0:
-            raise ValueError(
-                f"Cannot set rest orientation: target position {target_position} equals eye position {eye_position}"
-            )
-
-        target_direction = direction_to_target.normalize()
-
+        # Eye-local visual axis direction (unit, pointing outward toward cornea)
         if self.fovea_displacement:
-            # Visual axis alignment: account for fovea displacement
-            # Calculate the required optical axis direction to point visual axis at target
-
-            # Convert fovea displacement angles to radians
-            alpha = self.fovea_alpha_deg * np.pi / 180.0  # Horizontal displacement
-            beta = self.fovea_beta_deg * np.pi / 180.0  # Vertical displacement
-
-            # Visual axis direction in eye coordinates (normalized fovea position)
-            visual_axis_eye = Direction3D(np.sin(alpha) * np.cos(beta), np.sin(beta), np.cos(alpha) * np.cos(beta))
-
-            # We need: R @ visual_axis_eye = target_direction
-            # So we need to find rotation R that maps visual_axis_eye to target_direction
-
-            # Use Rodrigues' rotation formula to find rotation
-            v = visual_axis_eye.cross(target_direction)
-            s = v.magnitude()
-            c = visual_axis_eye.dot(target_direction)
-
-            if s < 1e-10:  # Vectors are parallel or anti-parallel
-                if c > 0:  # Same direction
-                    rotation_matrix = np.eye(3)
-                else:  # Opposite direction - find any perpendicular vector
-                    if abs(visual_axis_eye.x) < 0.9:
-                        perp = Direction3D(1, 0, 0).cross(visual_axis_eye).normalize()
-                    else:
-                        perp = Direction3D(0, 1, 0).cross(visual_axis_eye).normalize()
-                    # 180-degree rotation around perpendicular axis
-                    rotation_matrix = 2 * np.outer(perp.to_array(), perp.to_array()) - np.eye(3)
-            else:
-                # General case: use Rodrigues' formula
-                vx = np.array([[0, -v.z, v.y], [v.z, 0, -v.x], [-v.y, v.x, 0]])
-                rotation_matrix = np.eye(3) + vx + vx @ vx * ((1 - c) / (s * s))
-
-            self.set_rest_orientation(RotationMatrix(rotation_matrix))
+            alpha = self.fovea_alpha_deg * np.pi / 180.0
+            beta = self.fovea_beta_deg * np.pi / 180.0
+            v_local = np.array(
+                [
+                    np.sin(alpha) * np.cos(beta),
+                    np.sin(beta),
+                    np.cos(alpha) * np.cos(beta),
+                ],
+                dtype=float,
+            )
+            v_local = -v_local / (np.linalg.norm(v_local) + 1e-12)
         else:
-            # Optical axis alignment: standard behavior
-            # Optical axis points along -Z, so we need rotation that maps -Z to target direction
-            optical_axis = Direction3D(0, 0, -1)
+            v_local = np.array([0.0, 0.0, -1.0], dtype=float)
 
-            v = optical_axis.cross(target_direction)
-            s = v.magnitude()
-            c = optical_axis.dot(target_direction)
+        # Build local visual basis
+        y_local_pref = np.array([0.0, 1.0, 0.0], dtype=float)
+        y_local = y_local_pref - np.dot(y_local_pref, v_local) * v_local
+        if np.linalg.norm(y_local) < 1e-12:
+            y_local = np.array([1.0, 0.0, 0.0], dtype=float)
+            y_local = y_local - np.dot(y_local, v_local) * v_local
+        y_local = y_local / np.linalg.norm(y_local)
+        x_local = np.cross(y_local, v_local)
+        x_local = x_local / np.linalg.norm(x_local)
 
-            if s < 1e-10:  # Vectors are parallel or anti-parallel
-                if c > 0:  # Same direction
-                    rotation_matrix = np.eye(3)
-                else:  # Opposite direction
-                    if abs(optical_axis.x) < 0.9:
-                        perp = Direction3D(1, 0, 0).cross(optical_axis).normalize()
-                    else:
-                        perp = Direction3D(0, 1, 0).cross(optical_axis).normalize()
-                    rotation_matrix = 2 * np.outer(perp.to_array(), perp.to_array()) - np.eye(3)
-            else:
-                # General case: use Rodrigues' formula
-                vx = np.array([[0, -v.z, v.y], [v.z, 0, -v.x], [-v.y, v.x, 0]])
-                rotation_matrix = np.eye(3) + vx + vx @ vx * ((1 - c) / (s * s))
+        R_local = np.column_stack([x_local, y_local, v_local])  # maps basis to canonical
 
-            self.set_rest_orientation(RotationMatrix(rotation_matrix))
+        # Build world visual basis (target dir as z)
+        world_up = np.array([0.0, 1.0, 0.0], dtype=float)
+        y_world = world_up - np.dot(world_up, z_world) * z_world
+        if np.linalg.norm(y_world) < 1e-12:
+            world_up = np.array([1.0, 0.0, 0.0], dtype=float)
+            y_world = world_up - np.dot(world_up, z_world) * z_world
+        y_world = y_world / np.linalg.norm(y_world)
+        x_world = np.cross(y_world, z_world)
+        x_world = x_world / np.linalg.norm(x_world)
+        R_world = np.column_stack([x_world, y_world, z_world])
+
+        # Rotation mapping local visual basis to world visual basis
+        rest_orientation = R_world @ R_local.T
+        self.set_rest_orientation(rest_orientation)
 
     @property
     def position(self) -> Position3D:
@@ -244,6 +253,11 @@ class Eye:
     def position(self, value: Position3D) -> None:
         """Set the eye's position and update transformation matrix."""
         self.trans[:, 3] = np.array(value)
+        # Eyelid follows eye translation but not rotation
+        if self.eyelid_enabled:
+            self.eyelid_trans[0, 3] = value.x
+            self.eyelid_trans[1, 3] = value.y
+            self.eyelid_trans[2, 3] = value.z
 
     def point_within_cornea(self, p: Position3D) -> bool:
         """Check if a point lies within the corneal boundaries.
@@ -373,12 +387,40 @@ class Eye:
         # Call pure refraction function
         refraction_point = find_refraction_point(self.cornea, self.trans, camera_position, object_position)
 
-        # Check if point is within corneal boundaries
+        # Check if point is on visible cornea (within boundaries and not occluded by eyelid)
         if refraction_point is not None:
-            if not self.point_within_cornea(refraction_point.to_position3d()):
+            if not self.point_on_visible_cornea(refraction_point.to_position3d()):
                 refraction_point = None
 
         return refraction_point
+
+    def point_within_eyelid(self, p: Position3D) -> bool:
+        """Check if a point lies on eyelid skin (not the opening).
+
+        Transforms the point to canonical eye coordinates (undo rest orientation)
+        so that the eyelid remains fixed to the face regardless of eye rotation.
+        Returns False if eyelid is not enabled or not present.
+        """
+        if self.eyelid is None:
+            return False
+
+        # Transform world point to eye position
+        p_relative_to_eye = np.array(p) - np.array(self.position)
+
+        # Transform to canonical eye coordinates (undo rest orientation)
+        rest_inv = np.linalg.inv(self._rest_orientation)
+        p_canonical = Position3D.from_array(rest_inv @ p_relative_to_eye[:3])
+
+        # Do eyelid calculation in canonical space where +Y is anatomical up
+        return self.eyelid.point_within_eyelid(p_canonical)
+
+    def point_on_visible_cornea(self, p: Position3D) -> bool:
+        """True if point lies within cornea and is not occluded by eyelid."""
+        if not self.point_within_cornea(p):
+            return False
+        if self.eyelid is None:
+            return True
+        return not self.point_within_eyelid(p)
 
     @property
     def fovea_position(self) -> Position3D:

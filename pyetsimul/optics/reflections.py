@@ -333,8 +333,8 @@ def find_corneal_reflection(eye, light: "Light", camera: "Camera") -> Optional[P
     cr = None
     if cr_point3d is not None:
         cr = Position3D.from_point3d(cr_point3d)
-        # Check if point is within corneal boundaries
-        if not eye.point_within_cornea(cr):
+        # Check if point is on visible cornea (within boundaries and not occluded by eyelid)
+        if not eye.point_on_visible_cornea(cr):
             cr = None
 
     return cr
@@ -374,8 +374,8 @@ def find_corneal_reflection_simple(eye, light: "Light", camera: "Camera") -> Opt
     # Calculate corneal reflex position
     cr = cc + (light_to_cornea.to_vector3d() * w)
 
-    # Check if point is within corneal boundaries
-    if not eye.point_within_cornea(cr):
+    # Check if point is on visible cornea (within boundaries and not occluded by eyelid)
+    if not eye.point_on_visible_cornea(cr):
         return None
 
     return cr

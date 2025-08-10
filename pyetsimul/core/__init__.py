@@ -8,6 +8,7 @@ from .camera import Camera
 from .light import Light
 from .eye_tracker import EyeTracker
 from .cornea import Cornea, SphericalCornea, ConicCornea, create_cornea
+from .eyelid import Eyelid, create_eyelid
 
 __all__ = [
     "Eye",
@@ -18,4 +19,6 @@ __all__ = [
     "SphericalCornea",
     "ConicCornea",
     "create_cornea",
+    "Eyelid",
+    "create_eyelid",
 ]

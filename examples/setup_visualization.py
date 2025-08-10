@@ -12,9 +12,12 @@ from pyetsimul.visualization import plot_interactive_setup
 def run_setup_demo():
     """Run setup visualization"""
     # Setup eye
-    rest_orientation = RotationMatrix([[1, 0, 0], [0, 0, 1], [0, -1, 0]], validate_handedness=False)
-    e_base = Eye()
+    e_base = Eye(eyelid_enabled=True)
+    e_base.eyelid.openness = 0.4
+
+    rest_orientation = RotationMatrix([[-1, 0, 0], [0, 0, 1], [0, 1, 0]])
     e_base.set_rest_orientation(rest_orientation)
+
     e_base.position = Position3D(0, 250e-3, 100e-3)
 
     # Create two light sources

@@ -58,9 +58,11 @@ def print_eye_comparison(eye1, eye2, title1="Eye 1", title2="Eye 2"):
 target_point = Position3D(10e-3, 10e-3, -10e-3)
 
 # Create two eyes: spherical vs conic cornea (both with default parameters)
-e_spherical = Eye(cornea=SphericalCornea())  # Default spherical cornea
-e_conic = Eye(cornea=ConicCornea())  # Default conic cornea
+e_spherical = Eye(cornea=SphericalCornea(), eyelid_enabled=True)
+e_conic = Eye(cornea=ConicCornea(), eyelid_enabled=True)
 
+e_spherical.eyelid.openness = 0.50
+e_conic.eyelid.openness = 0.75
 
 # Set rest orientation to face the target (so eyelid aligns with gaze)
 e_spherical.set_rest_orientation_at_target(target_point)

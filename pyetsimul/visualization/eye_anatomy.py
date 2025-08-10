@@ -10,8 +10,27 @@ import matplotlib.pyplot as plt
 from ..core import Eye
 from ..types import Position3D, Direction3D
 from ..utils.eye_surface_points import generate_corneal_surface_points, get_transformed_corneal_landmarks
+from ..utils.eyelid_surface_points import generate_eyelid_opening_edge_local, transform_eyelid_points_to_world
 from ..geometry.intersections import intersect_ray_sphere, intersect_ray_conic
 from .transforms import transform_surface
+
+
+def _filter_points_by_eyelid_occlusion(points_world: np.ndarray, eye: Eye) -> np.ndarray:
+    """Return only points not occluded by eyelid opening."""
+    if eye.eyelid is None or len(points_world) == 0:
+        return points_world
+
+    eyelid_trans_inv = np.linalg.inv(eye.eyelid_trans)
+    points_world_h = np.column_stack([points_world, np.ones(len(points_world))])
+    points_eyelid_local_h = (eyelid_trans_inv @ points_world_h.T).T
+    points_eyelid_local = points_eyelid_local_h[:, :3]
+
+    visible_mask = []
+    for point in points_eyelid_local:
+        is_visible = not eye.eyelid.point_within_eyelid(Position3D(point[0], point[1], point[2]))
+        visible_mask.append(is_visible)
+    visible_mask = np.array(visible_mask)
+    return points_world[visible_mask]
 
 
 def plot_eye_anatomy(eye: Eye, ax=None):
@@ -76,6 +95,10 @@ def plot_eye_anatomy(eye: Eye, ax=None):
     posterior_mask = np.array([eye.point_within_cornea(Position3D(p[0], p[1], p[2])) for p in posterior_points])
     anterior_limited = anterior_points[anterior_mask]
     posterior_limited = posterior_points[posterior_mask]
+
+    # Apply eyelid occlusion filtering to cornea points
+    anterior_limited = _filter_points_by_eyelid_occlusion(anterior_limited, eye)
+    posterior_limited = _filter_points_by_eyelid_occlusion(posterior_limited, eye)
 
     # Create eye sphere coordinates using structured types
     phi_eye = np.linspace(0, np.pi, 30)
@@ -213,16 +236,20 @@ def plot_eye_anatomy(eye: Eye, ax=None):
     pupil_points_world_h = (eye.trans @ pupil_points_local_h.T).T  # Transform and back to Nx4
     pupil_points_world = pupil_points_world_h[:, :3]  # Extract Nx3 world coordinates
 
-    # Plot pupil as scatter points
-    ax.scatter(
-        pupil_points_world[:, 0],
-        pupil_points_world[:, 1],
-        pupil_points_world[:, 2],
-        c="black",
-        s=3,
-        alpha=0.9,
-        label="Pupil Opening",
-    )
+    # Apply eyelid occlusion filtering to pupil points
+    pupil_points_world_filtered = _filter_points_by_eyelid_occlusion(pupil_points_world, eye)
+
+    # Plot filtered pupil as scatter points
+    if len(pupil_points_world_filtered) > 0:
+        ax.scatter(
+            pupil_points_world_filtered[:, 0],
+            pupil_points_world_filtered[:, 1],
+            pupil_points_world_filtered[:, 2],
+            c="black",
+            s=3,
+            alpha=0.9,
+            label="Pupil Opening",
+        )
 
     # Plot axes using structured types
     ax.plot(
@@ -243,8 +270,31 @@ def plot_eye_anatomy(eye: Eye, ax=None):
         label="Visual Axis",
     )
 
-    # Plot target point (guaranteed to exist due to check above)
-    ax.scatter(target_point.x, target_point.y, target_point.z, color="hotpink", s=100, marker="x", label="Target")
+    # Plot eyelid opening edge if enabled
+    if eye.eyelid is not None:
+        opening_edge_local = generate_eyelid_opening_edge_local(eye.eyelid, n_edge_points=160)
+        if len(opening_edge_local) > 0:
+            edge_local_closed = np.vstack([opening_edge_local, opening_edge_local[0]])
+            edge_world = transform_eyelid_points_to_world(edge_local_closed, eye.eyelid_trans)
+            ax.plot(
+                edge_world[:, 0],
+                edge_world[:, 1],
+                edge_world[:, 2],
+                color="#836641",
+                linewidth=2,
+                label="Eyelid Opening",
+            )
+
+    # Plot target point
+    ax.scatter(
+        target_point.x,
+        target_point.y,
+        target_point.z,
+        color="hotpink",
+        s=100,
+        marker="x",
+        label="Target",
+    )
 
     # Set labels and title
     ax.set_xlabel("X (m)")
