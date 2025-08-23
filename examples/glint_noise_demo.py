@@ -27,9 +27,10 @@ def main():
     # Create cameras with different noise levels
     cameras = {
         "No noise": Camera(),
-        "Gaussian 0.5px": Camera(glint_noise_config=GlintNoiseConfig(std=0.5, noise_type="gaussian", seed=71)),
-        "Gaussian 1.0px": Camera(glint_noise_config=GlintNoiseConfig(std=1.0, noise_type="gaussian", seed=71)),
-        "Uniform 1.0px": Camera(glint_noise_config=GlintNoiseConfig(std=1.0, noise_type="uniform", seed=71)),
+        "Gaussian 0.5px": Camera(glint_noise_config=GlintNoiseConfig(noise_type="gaussian", std=0.5, seed=71)),
+        "Gaussian 1.0px": Camera(glint_noise_config=GlintNoiseConfig(noise_type="gaussian", std=1.0, seed=71)),
+        "Uniform 1.0px": Camera(glint_noise_config=GlintNoiseConfig(noise_type="uniform", std=1.0, seed=71)),
+        "Constant +1px X": Camera(glint_noise_config=GlintNoiseConfig(noise_type="constant_offset", offset_x=1.0, offset_y=0.0)),
     }
 
     # Point all cameras at the eye position
@@ -58,8 +59,8 @@ def main():
         plt.plot(pupil_center.x, pupil_center.y, "b+", markersize=8, label="Pupil center")
 
     # Plot glints from each camera with different colors and markers
-    colors = ["red", "green", "orange", "purple"]
-    markers = ["o", "s", "^", "D"]
+    colors = ["red", "green", "orange", "purple", "brown"]
+    markers = ["o", "s", "^", "D", "x"]
     results_data = []
 
     for i, (name, camera) in enumerate(cameras.items()):
