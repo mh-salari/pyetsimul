@@ -14,7 +14,7 @@ class CameraImage:
     """Result of camera.take_image() operation."""
 
     corneal_reflections: List[Optional[Point2D]]  # CR positions for each light
-    pupil_boundary: Optional[np.ndarray]  # 2×M matrix of pupil boundary points
+    pupil_boundary: Optional[List[Point2D]]  # Pupil boundary points as structured types
     pupil_center: Optional[Point2D]  # Pupil center position
     resolution: Point2D  # Camera resolution
 

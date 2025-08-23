@@ -9,7 +9,7 @@ from dataclasses import dataclass, field
 from typing import Optional, TYPE_CHECKING
 
 
-from ..types import Position3D, Direction3D, TransformationMatrix, RotationMatrix, PupilData
+from ..types import Position3D, Direction3D, TransformationMatrix, RotationMatrix, PupilData, Point2D
 from .pupil import Pupil, create_pupil
 from .cornea import SphericalCornea
 from .eye_operations import look_at_target, look_at_target_optical_then_kappa
@@ -515,45 +515,44 @@ class Eye:
             if refracted_points:
                 projection_result = camera.project(refracted_points)
 
-                # Convert valid boundary points to a 2xN numpy array
+                # Convert valid boundary points to structured Point2D list
                 valid_pupil_points = []
                 for i in range(projection_result.image_points.shape[1]):
                     if projection_result.valid_mask[i] and not np.any(np.isnan(projection_result.image_points[:, i])):
-                        point_2d = np.array(
-                            [float(projection_result.image_points[0, i]), float(projection_result.image_points[1, i])]
+                        point_2d = Point2D(
+                            x=float(projection_result.image_points[0, i]),
+                            y=float(projection_result.image_points[1, i]),
                         )
                         valid_pupil_points.append(point_2d)
 
-                pupil_boundary_array = None
-                if valid_pupil_points:
-                    pupil_boundary_array = np.array(valid_pupil_points).T
-                else:
+                pupil_boundary_points = valid_pupil_points if valid_pupil_points else None
+
+                if not valid_pupil_points:
                     warnings.warn(
                         "No valid pupil points found in camera image (with refraction). Check camera-eye setup.",
                         UserWarning,
                     )
             else:
                 warnings.warn("No refracted pupil points could be computed. Check camera-eye setup.", UserWarning)
-                pupil_boundary_array = None
+                pupil_boundary_points = None
         else:
             # Direct projection without refraction
             projection_result = camera.project(
                 [Position3D.from_array(pupil_world[:, i]) for i in range(pupil_world.shape[1])]
             )
 
-            # Convert valid boundary points to a 2xN numpy array
+            # Convert valid boundary points to structured Point2D list
             valid_pupil_points = []
             for i in range(projection_result.image_points.shape[1]):
                 if projection_result.valid_mask[i] and not np.any(np.isnan(projection_result.image_points[:, i])):
-                    point_2d = np.array(
-                        [float(projection_result.image_points[0, i]), float(projection_result.image_points[1, i])]
+                    point_2d = Point2D(
+                        x=float(projection_result.image_points[0, i]), y=float(projection_result.image_points[1, i])
                     )
                     valid_pupil_points.append(point_2d)
 
-            pupil_boundary_array = None
-            if valid_pupil_points:
-                pupil_boundary_array = np.array(valid_pupil_points).T
-            else:
+            pupil_boundary_points = valid_pupil_points if valid_pupil_points else None
+
+            if not valid_pupil_points:
                 warnings.warn(
                     "No valid pupil points found in camera image (without refraction). Check camera-eye setup.",
                     UserWarning,
@@ -561,9 +560,9 @@ class Eye:
 
         # Calculate pupil center using specified method
         pupil_center = None
-        if pupil_boundary_array is not None:
+        if pupil_boundary_points is not None:
             pupil_center = calculate_pupil_center_from_boundary(
-                pupil_boundary_array, camera.camera_matrix.resolution, center_method
+                pupil_boundary_points, camera.camera_matrix.resolution, center_method
             )
 
-        return pupil_boundary_array, pupil_center
+        return pupil_boundary_points, pupil_center

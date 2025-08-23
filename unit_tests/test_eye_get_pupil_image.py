@@ -4,7 +4,7 @@ import numpy as np
 import pytest
 from pyetsimul.core.eye import Eye
 from pyetsimul.core.camera import Camera
-from pyetsimul.types import Position3D
+from pyetsimul.types import Position3D, Point2D
 
 
 def test_camera_pointed_at_eye():
@@ -62,13 +62,13 @@ def test_camera_pointed_at_eye():
 
     # Should return valid pupil points
     assert X is not None
-    assert X.shape[0] == 2  # 2D image coordinates
-    assert X.shape[1] == N  # Should have N points
+    assert isinstance(X, list)  # Should be List[Point2D]
+    assert len(X) == N  # Should have N points
 
     # Test actual point values against MATLAB reference
     tolerance = 1.0
     for i in range(min(N, matlab_expected_points.shape[1])):
-        px, py = X[0, i], X[1, i]
+        px, py = X[i].x, X[i].y
         mx, my = matlab_expected_points[0, i], matlab_expected_points[1, i]
         assert abs(px - mx) < tolerance, f"Point {i}: X mismatch {px} vs {mx}"
         assert abs(py - my) < tolerance, f"Point {i}: Y mismatch {py} vs {my}"
@@ -97,13 +97,12 @@ def test_output_properties():
     assert X is not None, "X should not be None for these inputs"
 
     # Check types and shapes
-    assert isinstance(X, np.ndarray)
-    assert X.dtype == np.float64
-    assert X.shape[0] == 2
-    assert X.shape[1] == 20
+    assert isinstance(X, list)  # Should be List[Point2D]
+    assert len(X) == 20
+    assert all(isinstance(p, Point2D) for p in X)
 
     # All values should be finite
-    assert np.all(np.isfinite(X))
+    assert all(np.isfinite(p.x) and np.isfinite(p.y) for p in X)
 
 
 def test_eye_facing_away_from_camera():
@@ -216,6 +215,6 @@ def test_eye_rotated_90_degrees():
     # In this case we just verify the method handles it gracefully
     # Could be None or a valid result depending on exact geometry
     if X is not None:
-        assert isinstance(X, np.ndarray)
-        assert X.shape[0] == 2
-        assert np.all(np.isfinite(X))
+        assert isinstance(X, list)  # Should be List[Point2D]
+        assert all(isinstance(p, Point2D) for p in X)
+        assert all(np.isfinite(p.x) and np.isfinite(p.y) for p in X)

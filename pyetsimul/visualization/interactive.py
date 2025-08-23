@@ -203,14 +203,15 @@ def plot_interactive_cameras(cameras, eye, target_point):
             marker = markers[i % len(markers)]
             camera_name = camera.name or f"Camera {i + 1}"
 
-            # Plot pupil boundary
+            # Plot pupil boundary - closed loop
             if camera_image.pupil_boundary is not None:
-                pupil_points = camera_image.pupil_boundary
-                closed_points = np.hstack((pupil_points, pupil_points[:, 0:1]))
+                boundary = camera_image.pupil_boundary
+                pupil_x = [p.x for p in boundary] + [boundary[0].x]
+                pupil_y = [p.y for p in boundary] + [boundary[0].y]
                 linestyle = "-" if i == 0 else "--"  # Solid line for first camera, dashed for others
                 ax2.plot(
-                    closed_points[0, :],
-                    closed_points[1, :],
+                    pupil_x,
+                    pupil_y,
                     color=color,
                     linewidth=1.5,
                     linestyle=linestyle,
@@ -420,18 +421,22 @@ def plot_interactive_pupil_comparison(eye_elliptical, eye_realistic, camera, tar
         ax2.set_ylabel("Y (pixels)")
         ax2.grid(True, alpha=0.3)
 
-        # Plot elliptical pupil with dashed line
+        # Plot elliptical pupil with dashed line - closed loop
         if elliptical_pupil_img is not None:
-            elliptical_closed = np.column_stack([elliptical_pupil_img, elliptical_pupil_img[:, 0:1]])
-            ax2.plot(elliptical_closed[0, :], elliptical_closed[1, :], "b--", linewidth=1, label="Elliptical Pupil")
+            boundary = elliptical_pupil_img
+            elliptical_x = [p.x for p in boundary] + [boundary[0].x]
+            elliptical_y = [p.y for p in boundary] + [boundary[0].y]
+            ax2.plot(elliptical_x, elliptical_y, "b--", linewidth=1, label="Elliptical Pupil")
 
         if elliptical_center is not None:
             ax2.plot(elliptical_center.x, elliptical_center.y, "bx", markersize=6, label="Elliptical Center")
 
-        # Plot realistic pupil with solid line
+        # Plot realistic pupil with solid line - closed loop
         if realistic_pupil_img is not None:
-            realistic_closed = np.column_stack([realistic_pupil_img, realistic_pupil_img[:, 0:1]])
-            ax2.plot(realistic_closed[0, :], realistic_closed[1, :], "r-", linewidth=1, label="Realistic Pupil")
+            boundary = realistic_pupil_img
+            realistic_x = [p.x for p in boundary] + [boundary[0].x]
+            realistic_y = [p.y for p in boundary] + [boundary[0].y]
+            ax2.plot(realistic_x, realistic_y, "r-", linewidth=1, label="Realistic Pupil")
 
         if realistic_center is not None:
             ax2.plot(realistic_center.x, realistic_center.y, "r+", markersize=8, label="Realistic Center")

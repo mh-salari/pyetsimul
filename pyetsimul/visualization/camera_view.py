@@ -36,7 +36,7 @@ def plot_camera_view_of_eye(
         ax2.cla()
 
     # Check if we have valid data to plot
-    pupil_valid = camera_image.pupil_boundary is not None and camera_image.pupil_boundary.shape[1] > 2
+    pupil_valid = camera_image.pupil_boundary is not None and len(camera_image.pupil_boundary) > 2
     pc_valid = camera_image.pupil_center is not None
     cr_valid = camera_image.corneal_reflections and any(cr is not None for cr in camera_image.corneal_reflections)
 
@@ -44,13 +44,14 @@ def plot_camera_view_of_eye(
         print("No eye elements to plot - skipping camera view")
         return
 
-    # Draw pupil in camera image
-    if camera_image.pupil_boundary is not None and camera_image.pupil_boundary.shape[1] > 2:
-        pupil_points_img = camera_image.pupil_boundary
-        closed_pupil_points = np.hstack((pupil_points_img, pupil_points_img[:, 0:1]))
+    # Draw pupil in camera image - closed loop
+    if camera_image.pupil_boundary is not None and len(camera_image.pupil_boundary) > 2:
+        boundary = camera_image.pupil_boundary
+        pupil_x = [p.x for p in boundary] + [boundary[0].x]
+        pupil_y = [p.y for p in boundary] + [boundary[0].y]
         ax2.plot(
-            closed_pupil_points[0, :],
-            closed_pupil_points[1, :],
+            pupil_x,
+            pupil_y,
             color="cornflowerblue",
             linewidth=3,
             label="Pupil",

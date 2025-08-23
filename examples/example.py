@@ -57,7 +57,7 @@ def main():
     print("\nPyEtSimul Results Summary")
     headers = ["Metric", "Value", "Unit"]
     data = [
-        ["Pupil boundary points", f"{pupil_img.shape[1]}", "points"],
+        ["Pupil boundary points", f"{len(pupil_img)}", "points"],
         ["Pupil center (refracted)", f"({pupil_center_img.x:.2f}, {pupil_center_img.y:.2f})", "pixels"],
         [
             "Pupil center (non-refracted)",
@@ -77,34 +77,20 @@ def main():
 
     plt.figure(figsize=(12, 6))
 
-    # Plot pupil boundary (refracted)
-    plt.plot(pupil_img[0, :], pupil_img[1, :], "b.", markersize=5, alpha=0.7)  # Small dots
-    # Close the loop by adding first point at the end
-    pupil_closed = np.column_stack([pupil_img, pupil_img[:, 0:1]])
-    plt.plot(
-        pupil_closed[0, :],
-        pupil_closed[1, :],
-        "b-",
-        linewidth=1,
-        label="Pupil (refracted)",
-    )  # Connected line
+    # Plot pupil boundary (refracted) - closed loop
+    pupil_x = [p.x for p in pupil_img] + [pupil_img[0].x]
+    pupil_y = [p.y for p in pupil_img] + [pupil_img[0].y]
+    plt.plot(pupil_x[:-1], pupil_y[:-1], "b.", markersize=5, alpha=0.7)  # Small dots (without closing point)
+    plt.plot(pupil_x, pupil_y, "b-", linewidth=1, label="Pupil (refracted)")  # Connected line
 
-    # Plot pupil boundary (non-refracted)
+    # Plot pupil boundary (non-refracted) - closed loop
+    pupil_no_refract_x = [p.x for p in pupil_img_no_refract] + [pupil_img_no_refract[0].x]
+    pupil_no_refract_y = [p.y for p in pupil_img_no_refract] + [pupil_img_no_refract[0].y]
     plt.plot(
-        pupil_img_no_refract[0, :],
-        pupil_img_no_refract[1, :],
-        "g.",
-        markersize=5,
-        alpha=0.7,
-    )  # Small dots
-    # Close the loop by adding first point at the end
-    pupil_closed_no_refract = np.column_stack([pupil_img_no_refract, pupil_img_no_refract[:, 0:1]])
+        pupil_no_refract_x[:-1], pupil_no_refract_y[:-1], "g.", markersize=5, alpha=0.7
+    )  # Small dots (without closing point)
     plt.plot(
-        pupil_closed_no_refract[0, :],
-        pupil_closed_no_refract[1, :],
-        "g-",
-        linewidth=1,
-        label="Pupil (non-refracted)",
+        pupil_no_refract_x, pupil_no_refract_y, "g-", linewidth=1, label="Pupil (non-refracted)"
     )  # Connected line
 
     # Plot fitted pupil center (refracted)

@@ -6,7 +6,7 @@ part of the Eye class, extracted for better modularity and testability.
 """
 
 import numpy as np
-from typing import Optional
+from typing import Optional, List
 
 from skimage.measure import EllipseModel
 from skimage.draw import polygon
@@ -94,12 +94,12 @@ def get_pupil_center_mass_image(eye, camera: Camera, use_refraction: bool = True
 
 
 def calculate_pupil_center_from_boundary(
-    boundary_points: np.ndarray, camera_resolution: Point2D, center_method: str = "ellipse"
+    boundary_points: List[Point2D], camera_resolution: Point2D, center_method: str = "ellipse"
 ) -> Optional[Point2D]:
     """Calculate pupil center from boundary points using specified method.
 
     Args:
-        boundary_points: 2xN numpy array of boundary points in image coordinates
+        boundary_points: List of Point2D boundary points in image coordinates
         camera_resolution: Camera resolution as Point2D
         center_method: Method to use for center detection ("ellipse" or "center_of_mass")
 
@@ -109,13 +109,16 @@ def calculate_pupil_center_from_boundary(
     Raises:
         ValueError: If center_method is not recognized
     """
-    if boundary_points is None or boundary_points.shape[1] < 3:
+    if boundary_points is None or len(boundary_points) < 3:
         return None
 
+    # Convert to numpy array format for existing helper functions
+    boundary_array = np.array([[p.x for p in boundary_points], [p.y for p in boundary_points]])
+
     if center_method == "ellipse":
-        return _fit_ellipse_center(boundary_points)
+        return _fit_ellipse_center(boundary_array)
     elif center_method == "center_of_mass":
-        return _calculate_center_of_mass(boundary_points, camera_resolution)
+        return _calculate_center_of_mass(boundary_array, camera_resolution)
     else:
         raise ValueError(f"Unknown center_method '{center_method}'. Use 'ellipse' or 'center_of_mass'")
 

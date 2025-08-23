@@ -69,16 +69,16 @@ def test_camera_take_image_with_refraction():
 
     # Test pupil boundary points
     assert camimg.pupil_boundary is not None, "Pupil boundary should be visible"
-    actual_pupil_boundary_array = camimg.pupil_boundary
-    assert actual_pupil_boundary_array.shape[0] == 2, "Should have 2D pupil coordinates"
-    assert actual_pupil_boundary_array.shape[1] == 20, "Should have 20 pupil boundary points"
+    actual_pupil_boundary_list = camimg.pupil_boundary
+    assert isinstance(actual_pupil_boundary_list, list), "Should be List[Point2D]"
+    assert len(actual_pupil_boundary_list) == 20, "Should have 20 pupil boundary points"
 
     # Test first 5 pupil points against MATLAB reference
     for i in range(5):
-        actual_point = actual_pupil_boundary_array[:, i]
-        expected_point = expected_pupil_points[:, i]
+        actual_point = actual_pupil_boundary_list[i]
+        expected_point = expected_pupil_points[:, i]  # [x, y] from 2xM array
         np.testing.assert_allclose(
-            actual_point,
+            [actual_point.x, actual_point.y],
             expected_point,
             atol=tolerance,
             err_msg=f"Pupil point {i} mismatch",
@@ -140,15 +140,15 @@ def test_camera_take_image_without_refraction():
 
     # Test that we get 20 pupil points
     assert camimg.pupil_boundary is not None
-    assert camimg.pupil_boundary.shape[0] == 2
-    assert camimg.pupil_boundary.shape[1] == 20
+    assert isinstance(camimg.pupil_boundary, list), "Should be List[Point2D]"
+    assert len(camimg.pupil_boundary) == 20, "Should have 20 pupil boundary points"
 
     # Test first 5 pupil points against MATLAB reference
     for i in range(5):
-        actual_point = camimg.pupil_boundary[:, i]
-        expected_point = expected_pupil_points_simple[:, i]
+        actual_point = camimg.pupil_boundary[i]
+        expected_point = expected_pupil_points_simple[:, i]  # [x, y] from 2xM array
         np.testing.assert_allclose(
-            actual_point,
+            [actual_point.x, actual_point.y],
             expected_point,
             atol=tolerance,
             err_msg=f"Pupil point {i} mismatch in non-refraction test",
@@ -190,5 +190,5 @@ def test_camera_take_image_output_structure():
     assert isinstance(camimg.pupil_center, Point2D)
 
     assert camimg.pupil_boundary is not None
-    assert isinstance(camimg.pupil_boundary, np.ndarray)
-    assert camimg.pupil_boundary.shape[0] == 2
+    assert isinstance(camimg.pupil_boundary, list)
+    assert all(isinstance(p, Point2D) for p in camimg.pupil_boundary)

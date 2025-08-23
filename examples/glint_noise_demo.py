@@ -49,12 +49,12 @@ def main():
     # Take images from each camera to get glints with different noise levels
     plt.figure(figsize=(10, 8))
 
-    # Plot pupil boundary once
+    # Plot pupil boundary once - closed loop
     if pupil_boundary is not None:
-        plt.plot(pupil_boundary[0, :], pupil_boundary[1, :], "b.", markersize=2, alpha=0.7)
-        # Close the loop by adding first point at the end
-        pupil_closed = np.column_stack([pupil_boundary, pupil_boundary[:, 0:1]])
-        plt.plot(pupil_closed[0, :], pupil_closed[1, :], "b-", linewidth=1, label="Pupil")
+        pupil_x = [p.x for p in pupil_boundary] + [pupil_boundary[0].x]
+        pupil_y = [p.y for p in pupil_boundary] + [pupil_boundary[0].y]
+        plt.plot(pupil_x[:-1], pupil_y[:-1], "b.", markersize=2, alpha=0.7)  # Small dots (without closing point)
+        plt.plot(pupil_x, pupil_y, "b-", linewidth=1, label="Pupil")  # Connected line
 
     # Plot pupil center once
     if pupil_center is not None:
