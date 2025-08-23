@@ -58,18 +58,17 @@ def apply_glint_noise(glint_position: Point2D, config: Optional[GlintNoiseConfig
         np.random.seed(config.seed)
 
     if config.noise_type == "gaussian":
-        if config.std is not None and config.std > 0:
-            noise_x = np.random.normal(0, config.std)
-            noise_y = np.random.normal(0, config.std)
-            return Point2D(x=glint_position.x + noise_x, y=glint_position.y + noise_y)
+        noise_x = np.random.normal(0, config.std)
+        noise_y = np.random.normal(0, config.std)
+        return Point2D(x=glint_position.x + noise_x, y=glint_position.y + noise_y)
+
     elif config.noise_type == "uniform":
-        if config.std is not None and config.std > 0:
-            range_val = config.std * np.sqrt(3)
-            noise_x = np.random.uniform(-range_val, range_val)
-            noise_y = np.random.uniform(-range_val, range_val)
-            return Point2D(x=glint_position.x + noise_x, y=glint_position.y + noise_y)
+        range_val = config.std * np.sqrt(3)
+        noise_x = np.random.uniform(-range_val, range_val)
+        noise_y = np.random.uniform(-range_val, range_val)
+        return Point2D(x=glint_position.x + noise_x, y=glint_position.y + noise_y)
+
     elif config.noise_type == "constant_offset":
-        if config.offset_x is not None and config.offset_y is not None:
-            return Point2D(x=glint_position.x + config.offset_x, y=glint_position.y + config.offset_y)
+        return Point2D(x=glint_position.x + config.offset_x, y=glint_position.y + config.offset_y)
 
     return glint_position

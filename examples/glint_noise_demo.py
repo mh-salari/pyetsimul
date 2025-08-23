@@ -30,7 +30,9 @@ def main():
         "Gaussian 0.5px": Camera(glint_noise_config=GlintNoiseConfig(noise_type="gaussian", std=0.5, seed=71)),
         "Gaussian 1.0px": Camera(glint_noise_config=GlintNoiseConfig(noise_type="gaussian", std=1.0, seed=71)),
         "Uniform 1.0px": Camera(glint_noise_config=GlintNoiseConfig(noise_type="uniform", std=1.0, seed=71)),
-        "Constant +1px X": Camera(glint_noise_config=GlintNoiseConfig(noise_type="constant_offset", offset_x=1.0, offset_y=0.0)),
+        "Constant +1px X": Camera(
+            glint_noise_config=GlintNoiseConfig(noise_type="constant_offset", offset_x=1.0, offset_y=0.0)
+        ),
     }
 
     # Point all cameras at the eye position

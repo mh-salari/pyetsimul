@@ -1,9 +1,9 @@
 """Unit tests for glint noise functionality."""
 
 import unittest
-import numpy as np
 from pyetsimul.camera_noise import GlintNoiseConfig, apply_glint_noise
 from pyetsimul.types import Point2D
+
 
 class TestGlintNoise(unittest.TestCase):
     """Simplified tests for glint noise."""
@@ -11,7 +11,7 @@ class TestGlintNoise(unittest.TestCase):
     def test_no_noise(self):
         """Test that no noise is applied when config is None or noise_type is None."""
         original_pos = Point2D(10.0, 20.0)
-        
+
         # Test with config=None
         pos_after_none_config = apply_glint_noise(original_pos, None)
         self.assertEqual(original_pos, pos_after_none_config)
@@ -25,9 +25,9 @@ class TestGlintNoise(unittest.TestCase):
         """Test that Gaussian noise is applied."""
         original_pos = Point2D(10.0, 20.0)
         config = GlintNoiseConfig(noise_type="gaussian", std=1.0, seed=42)
-        
+
         noisy_pos = apply_glint_noise(original_pos, config)
-        
+
         self.assertNotEqual(original_pos.x, noisy_pos.x)
         self.assertNotEqual(original_pos.y, noisy_pos.y)
 
@@ -35,9 +35,9 @@ class TestGlintNoise(unittest.TestCase):
         """Test that uniform noise is applied."""
         original_pos = Point2D(10.0, 20.0)
         config = GlintNoiseConfig(noise_type="uniform", std=1.0, seed=42)
-        
+
         noisy_pos = apply_glint_noise(original_pos, config)
-        
+
         self.assertNotEqual(original_pos.x, noisy_pos.x)
         self.assertNotEqual(original_pos.y, noisy_pos.y)
 
@@ -45,9 +45,9 @@ class TestGlintNoise(unittest.TestCase):
         """Test that constant offset noise is applied correctly."""
         original_pos = Point2D(10.0, 20.0)
         config = GlintNoiseConfig(noise_type="constant_offset", offset_x=5.0, offset_y=-5.0)
-        
+
         noisy_pos = apply_glint_noise(original_pos, config)
-        
+
         self.assertAlmostEqual(noisy_pos.x, 15.0)
         self.assertAlmostEqual(noisy_pos.y, 15.0)
 
@@ -55,15 +55,15 @@ class TestGlintNoise(unittest.TestCase):
         """Test that GlintNoiseConfig raises errors for invalid configurations."""
         with self.assertRaises(ValueError):
             GlintNoiseConfig(noise_type="gaussian")  # Missing std
-        
+
         with self.assertRaises(ValueError):
             GlintNoiseConfig(noise_type="uniform")  # Missing std
-            
+
         with self.assertRaises(ValueError):
             GlintNoiseConfig(noise_type="constant_offset", offset_x=1.0)  # Missing offset_y
-            
+
         with self.assertRaises(ValueError):
             GlintNoiseConfig(noise_type="constant_offset", offset_y=1.0)  # Missing offset_x
-            
+
         with self.assertRaises(ValueError):
             GlintNoiseConfig(noise_type="unknown_noise")  # Unknown noise type
