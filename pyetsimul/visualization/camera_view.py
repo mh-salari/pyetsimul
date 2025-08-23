@@ -9,13 +9,14 @@ from typing import Optional, List
 
 from pyetsimul.core import Camera
 from ..types import Position3D, CameraImage
+import matplotlib.pyplot as plt
 
 
 def plot_camera_view_of_eye(
-    ax2,
     camera_image: CameraImage,
     camera: Camera,
     cr_3d_list: Optional[List[Optional[Position3D]]] = None,
+    ax=None,
 ) -> None:
     """Plot the camera view of the eye.
 
@@ -28,7 +29,11 @@ def plot_camera_view_of_eye(
         camera: Camera object with transformation and parameters
         cr_3d_list: List of corneal reflection 3D positions
     """
-    ax2.cla()
+    ax2 = ax
+    if ax2 is None:
+        fig, ax2 = plt.subplots()
+    else:
+        ax2.cla()
 
     # Check if we have valid data to plot
     pupil_valid = camera_image.pupil_boundary is not None and camera_image.pupil_boundary.shape[1] > 2

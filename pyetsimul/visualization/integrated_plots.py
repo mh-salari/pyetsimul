@@ -66,7 +66,7 @@ def plot_setup_and_camera_view(
     )
 
     if ax2 is not None:
-        plot_camera_view_of_eye(ax2, prepared_data["camera_image"], camera, prepared_data["cr_3d_list"])
+        plot_camera_view_of_eye(prepared_data["camera_image"], camera, prepared_data["cr_3d_list"], ax=ax2)
 
     # Show plot if axes were not provided (user didn't create their own figure)
     if not axes_provided:
