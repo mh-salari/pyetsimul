@@ -3,6 +3,7 @@
 import copy
 from typing import Optional, Dict
 import numpy as np
+from tqdm import tqdm
 
 from ..geometry.conversions import calculate_angular_error_degrees
 from .analysis_utils import plot_error_vectors, calculate_error_statistics
@@ -46,12 +47,11 @@ def accuracy_over_gaze_points(
     gaze_movement.validate_design()
     target_positions = gaze_movement.generate_target_positions()
 
-    print(f"Running gaze point analysis with {len(target_positions)} targets...")
     e.position = observer_pos_test
 
     # Calculate error for all targets
     results = []
-    for actual_point in target_positions:
+    for actual_point in tqdm(target_positions, desc="Gaze point analysis"):
         predicted_gaze = et.estimate_gaze_at(e, actual_point)
 
         if predicted_gaze is not None and predicted_gaze.gaze_point is not None:
@@ -91,10 +91,6 @@ def accuracy_over_gaze_points(
                     "error_angular": np.nan,
                 }
             )
-
-        print(".", end="", flush=True)
-
-    print()
 
     # Error statistics
     valid_errors = [r["error_3d"] for r in results if not np.isnan(r["error_3d"])]

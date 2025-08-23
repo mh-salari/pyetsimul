@@ -3,6 +3,7 @@
 import copy
 from typing import Optional, Dict
 import numpy as np
+from tqdm import tqdm
 
 from ..geometry.conversions import calculate_angular_error_degrees
 from .analysis_utils import plot_error_vectors, calculate_error_statistics
@@ -44,11 +45,9 @@ def accuracy_over_eye_positions(
     eye_movement.validate_design()
     eye_positions = eye_movement.generate_eye_positions()
 
-    print(f"Running eye movement analysis with {len(eye_positions)} positions...")
-
     # Calculate error for all eye positions
     results = []
-    for eye_position in eye_positions:
+    for eye_position in tqdm(eye_positions, desc="Eye movement analysis"):
         # Move eye to test position
         e.position = eye_position
 
@@ -94,10 +93,6 @@ def accuracy_over_eye_positions(
                     "error_angular": np.nan,
                 }
             )
-
-        print(".", end="", flush=True)
-
-    print()
 
     # Error statistics
     valid_errors = [r["error_3d"] for r in results if not np.isnan(r["error_3d"])]
