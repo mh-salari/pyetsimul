@@ -8,6 +8,7 @@ to simulate realistic eye tracking measurement errors. Based on the basic exampl
 import numpy as np
 from pyetsimul.core import Eye, Camera, Light
 from pyetsimul.types import Position3D
+from pyetsimul.camera_noise import GlintNoiseConfig
 import matplotlib.pyplot as plt
 from tabulate import tabulate
 
@@ -23,12 +24,12 @@ def main():
     # Create a light
     l = Light(position=Position3D(200e-3, 0, 0))
 
-    # Create cameras with different noise levels (using seeds for reproducible results)
+    # Create cameras with different noise levels
     cameras = {
         "No noise": Camera(),
-        "Gaussian 0.5px": Camera(glint_noise_std=0.5, glint_noise_type="gaussian", glint_noise_seed=71),
-        "Gaussian 1.0px": Camera(glint_noise_std=1.0, glint_noise_type="gaussian", glint_noise_seed=71),
-        "Uniform 1.0px": Camera(glint_noise_std=1.0, glint_noise_type="uniform", glint_noise_seed=71),
+        "Gaussian 0.5px": Camera(glint_noise_config=GlintNoiseConfig(std=0.5, noise_type="gaussian", seed=71)),
+        "Gaussian 1.0px": Camera(glint_noise_config=GlintNoiseConfig(std=1.0, noise_type="gaussian", seed=71)),
+        "Uniform 1.0px": Camera(glint_noise_config=GlintNoiseConfig(std=1.0, noise_type="uniform", seed=71)),
     }
 
     # Point all cameras at the eye position

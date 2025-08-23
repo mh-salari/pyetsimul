@@ -4,6 +4,7 @@ import numpy as np
 import unittest
 from pyetsimul.core import Eye, Camera, Light
 from pyetsimul.types import Position3D, Point2D
+from pyetsimul.camera_noise import GlintNoiseConfig, apply_glint_noise
 
 
 class TestGlintNoise(unittest.TestCase):
@@ -22,7 +23,7 @@ class TestGlintNoise(unittest.TestCase):
 
     def test_no_noise_deterministic(self):
         """Test that camera with no noise produces identical glint positions."""
-        camera = Camera(glint_noise_std=0.0)
+        camera = Camera()
         camera.point_at(self.eye.position)
 
         positions = []
@@ -42,11 +43,11 @@ class TestGlintNoise(unittest.TestCase):
     def test_gaussian_noise_distribution(self):
         """Test that Gaussian noise produces appropriate statistics."""
         noise_std = 1.0
-        camera = Camera(glint_noise_std=noise_std, glint_noise_type="gaussian")
+        camera = Camera(glint_noise_config=GlintNoiseConfig(std=noise_std, noise_type="gaussian"))
         camera.point_at(self.eye.position)
 
         # Get reference position (no noise)
-        ref_camera = Camera(glint_noise_std=0.0)
+        ref_camera = Camera()
         ref_camera.point_at(self.eye.position)
         ref_image = ref_camera.take_image(self.eye, [self.light])
         ref_pos = ref_image.corneal_reflections[0]
@@ -78,7 +79,7 @@ class TestGlintNoise(unittest.TestCase):
     def test_uniform_noise_distribution(self):
         """Test that uniform noise produces appropriate range."""
         noise_std = 1.0
-        camera = Camera(glint_noise_std=noise_std, glint_noise_type="uniform")
+        camera = Camera(glint_noise_config=GlintNoiseConfig(std=noise_std, noise_type="uniform"))
         camera.point_at(self.eye.position)
 
         # Collect noisy positions
@@ -107,7 +108,7 @@ class TestGlintNoise(unittest.TestCase):
 
     def test_invalid_noise_type(self):
         """Test that invalid noise type falls back to no noise."""
-        camera = Camera(glint_noise_std=1.0, glint_noise_type="invalid")
+        camera = Camera(glint_noise_config=GlintNoiseConfig(std=1.0, noise_type="invalid"))
         camera.point_at(self.eye.position)
 
         positions = []
@@ -124,20 +125,19 @@ class TestGlintNoise(unittest.TestCase):
                 self.assertAlmostEqual(pos[0], first_pos[0], places=6)
                 self.assertAlmostEqual(pos[1], first_pos[1], places=6)
 
-    def test_add_glint_noise_method(self):
-        """Test the _add_glint_noise helper method directly."""
-        camera = Camera(glint_noise_std=1.0, glint_noise_type="gaussian")
+    def test_apply_glint_noise_function(self):
+        """Test the apply_glint_noise function directly."""
         original_pos = Point2D(100.0, 200.0)
 
         # Test no noise
-        camera.glint_noise_std = 0.0
-        noisy_pos = camera._add_glint_noise(original_pos)
+        config_no_noise = GlintNoiseConfig(std=0.0)
+        noisy_pos = apply_glint_noise(original_pos, config_no_noise)
         self.assertEqual(noisy_pos.x, original_pos.x)
         self.assertEqual(noisy_pos.y, original_pos.y)
 
         # Test with noise
-        camera.glint_noise_std = 1.0
-        noisy_pos = camera._add_glint_noise(original_pos)
+        config_with_noise = GlintNoiseConfig(std=1.0, noise_type="gaussian")
+        noisy_pos = apply_glint_noise(original_pos, config_with_noise)
         # Should be different (with very high probability)
         self.assertNotEqual(noisy_pos.x, original_pos.x)
         self.assertNotEqual(noisy_pos.y, original_pos.y)

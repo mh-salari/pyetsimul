@@ -20,6 +20,7 @@ from ..types import (
     CameraMatrix,
     ProjectionResult,
 )
+from ..camera_noise import apply_glint_noise, GlintNoiseConfig
 
 if TYPE_CHECKING:
     from .eye import Eye
@@ -36,9 +37,7 @@ class Camera:
     - dist_coeffs: OpenCV distortion coefficients (default: no distortion)
     - err: Random error amount (default: 0.0)
     - err_type: Error distribution type ('gaussian' or 'uniform')
-    - glint_noise_std: Standard deviation for glint position noise in pixels (default: 0.0)
-    - glint_noise_type: Glint noise distribution type ('gaussian' or 'uniform')
-    - glint_noise_seed: Random seed for reproducible glint noise (default: None)
+    - glint_noise_config: GlintNoiseConfig for corneal reflection detection noise (default: None)
 
     Usage:
     - Default pinhole: Camera()
@@ -50,9 +49,7 @@ class Camera:
     dist_coeffs: Optional[np.ndarray] = None
     err: float = 0.0
     err_type: str = "gaussian"
-    glint_noise_std: float = 0.0
-    glint_noise_type: str = "gaussian"
-    glint_noise_seed: Optional[int] = None
+    glint_noise_config: Optional[GlintNoiseConfig] = None
     name: Optional[str] = None
     trans: TransformationMatrix = field(default_factory=lambda: np.eye(4))
     rest_trans: TransformationMatrix = field(init=False)
@@ -334,35 +331,6 @@ class Camera:
         # Update rest position to the new orientation
         self.rest_trans = self.trans.copy()
 
-    def _add_glint_noise(self, glint_position: Point2D) -> Point2D:
-        """Add random noise to glint position.
-
-        Args:
-            glint_position: Original glint position in pixels
-
-        Returns:
-            Point2D with added noise in pixel coordinates
-        """
-        if self.glint_noise_std <= 0.0:
-            return glint_position
-
-        # Set random seed if specified for reproducible noise
-        if self.glint_noise_seed is not None:
-            np.random.seed(self.glint_noise_seed)
-
-        if self.glint_noise_type == "gaussian":
-            noise_x = np.random.normal(0, self.glint_noise_std)
-            noise_y = np.random.normal(0, self.glint_noise_std)
-        elif self.glint_noise_type == "uniform":
-            # For uniform distribution, use range of ±sqrt(3)*std to match variance
-            range_val = self.glint_noise_std * np.sqrt(3)
-            noise_x = np.random.uniform(-range_val, range_val)
-            noise_y = np.random.uniform(-range_val, range_val)
-        else:
-            return glint_position
-
-        return Point2D(x=glint_position.x + noise_x, y=glint_position.y + noise_y)
-
     def take_image(
         self,
         eye: "Eye",
@@ -406,7 +374,10 @@ class Camera:
                             y=float(projection_result.image_points[1, 0]),
                         )
                         # Add noise to glint position
-                        cr_2d_noisy = self._add_glint_noise(cr_2d)
+                        if self.glint_noise_config is not None:
+                            cr_2d_noisy = apply_glint_noise(cr_2d, self.glint_noise_config)
+                        else:
+                            cr_2d_noisy = cr_2d
                         corneal_reflections.append(cr_2d_noisy)
 
         # Get pupil boundary and center
