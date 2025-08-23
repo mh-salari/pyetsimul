@@ -88,7 +88,7 @@ def create_interactive_calibration_plot(
         ax_3d.legend()
 
         # Add title to 3D subplot
-        ax_3d.set_title("3D Eye Tracking Setup", fontsize=14, fontweight="bold", pad=20)
+        ax_3d.set_title("Eye Tracking Setup", fontsize=14, fontweight="bold", pad=20)
 
         # Right subplot: 2D calibration analysis with real-time prediction
         ax = fig.add_subplot(1, 2, 2)
@@ -318,4 +318,5 @@ def create_interactive_calibration_plot(
     print("Click on the plot window to focus for keyboard input\n")
 
     update_display()
+
     plt.show()

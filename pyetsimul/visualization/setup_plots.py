@@ -213,7 +213,7 @@ def plot_setup(
     ax1.set_xlabel("X (mm)")
     ax1.set_ylabel("Y (mm)")
     ax1.set_zlabel("Z (mm)")
-    ax1.set_title("3D Eye Tracking Setup")
+    ax1.set_title("Eye Tracking Setup")
     ax1.legend(loc="upper left")
 
     # Convert axes to mm for better readability

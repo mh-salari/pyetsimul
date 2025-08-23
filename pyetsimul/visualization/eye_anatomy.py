@@ -65,7 +65,6 @@ def plot_eye_anatomy(eye: Eye, ax=None):
     # Transform positions to world coordinates using vector arithmetic
     cornea_center_world = Position3D.from_array(eye.trans @ np.array(cornea_center))
     cornea_inner_center_world = Position3D.from_array(eye.trans @ np.array(cornea_inner_center))
-    pupil_center_world = Position3D.from_array(eye.trans @ np.array(pupil_position))
     fovea_world = Position3D.from_array(eye.trans @ np.array(fovea_position))
 
     # Eye sphere parameters
@@ -156,7 +155,7 @@ def plot_eye_anatomy(eye: Eye, ax=None):
             alpha=0.9,
             color="steelblue",
             s=0.8,
-            label="Cornea (Outer)",
+            label="Cornea outer surface",
         )
 
     if len(posterior_limited) > 0:
@@ -167,7 +166,7 @@ def plot_eye_anatomy(eye: Eye, ax=None):
             alpha=0.9,
             color="darkturquoise",
             s=0.6,
-            label="Cornea (Inner)",
+            label="Cornea inner surface",
         )
 
     # Plot key points using structured types
@@ -187,7 +186,7 @@ def plot_eye_anatomy(eye: Eye, ax=None):
         color="steelblue",
         s=30,
         marker="^",
-        label="Cornea Center",
+        label="Cornea center (outer)",
     )
     ax.scatter(
         cornea_inner_center_world.x,
@@ -196,16 +195,7 @@ def plot_eye_anatomy(eye: Eye, ax=None):
         color="darkturquoise",
         s=20,
         marker="^",
-        label="Inner Cornea Center",
-    )
-    ax.scatter(
-        pupil_center_world.x,
-        pupil_center_world.y,
-        pupil_center_world.z,
-        color="red",
-        s=20,
-        marker="o",
-        label="Pupil Center",
+        label="Cornea center (inner)",
     )
     ax.scatter(fovea_world.x, fovea_world.y, fovea_world.z, color="orange", s=80, marker="*", label="Fovea")
 
@@ -301,6 +291,10 @@ def plot_eye_anatomy(eye: Eye, ax=None):
     ax.set_ylabel("Y (m)")
     ax.set_zlabel("Z (m)")
     ax.set_title("Eye Anatomy")
+    # Overlay eye openness percentage (top-left)
+    if eye.eyelid is not None:
+        openness_pct = 100.0 * float(eye.eyelid.openness)
+        ax.text2D(0.02, 0.96, f"Eye openness: {openness_pct:.0f}%", transform=ax.transAxes)
     ax.legend()
 
     # Set equal aspect ratio
