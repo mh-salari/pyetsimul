@@ -5,5 +5,6 @@ GazeMovement experimental designs.
 """
 
 from .gaze_movement import GazeMovementExperiment
+from .eye_movement import EyeMovementExperiment
 
-__all__ = ["GazeMovementExperiment"]
+__all__ = ["GazeMovementExperiment", "EyeMovementExperiment"]

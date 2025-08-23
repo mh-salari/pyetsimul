@@ -6,5 +6,6 @@ and evaluation. Designs specify the structure and parameters of experiments.
 
 from .base import ExperimentalDesignBase
 from .gaze_movement import GazeMovement
+from .eye_movement import EyeMovement
 
-__all__ = ["ExperimentalDesignBase", "GazeMovement"]
+__all__ = ["ExperimentalDesignBase", "GazeMovement", "EyeMovement"]

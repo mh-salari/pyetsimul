@@ -5,11 +5,11 @@ Demonstrates polynomial interpolation-based gaze tracking with comprehensive acc
 
 from pyetsimul.gaze_tracking_algorithms.interpolate import InterpolationTracker
 from pyetsimul.evaluation import (
-    accuracy_over_observer_positions,
+    accuracy_over_eye_positions,
     accuracy_at_calibration_points,
 )
 from pyetsimul.evaluation.gaze_movement import accuracy_over_gaze_points
-from pyetsimul.experimental_designs import GazeMovement
+from pyetsimul.experimental_designs import GazeMovement, EyeMovement
 from pyetsimul.evaluation.analysis_utils import print_error_summary
 from pyetsimul.core import Light, Camera, Eye
 from pyetsimul.types import Position3D, RotationMatrix
@@ -116,9 +116,16 @@ def main():
 
     print("\n3. Testing over observer (fixed gaze, sweep observer positions):")
     print("-" * 60)
-    # Use a fixed gaze target for observer position testing
-    gaze_target = Position3D(0, 0, 200e-3)  # Center of the screen
-    observer_results = accuracy_over_observer_positions(et, eye=eye, gaze_target=gaze_target)
+    # Create eye movement pattern: observer position varies around central position
+    eye_movement = EyeMovement(
+        eye_center=eye_position,  # Central eye position
+        gaze_target=Position3D(0, 0, 200e-3),  # Fixed gaze target at screen center
+        dx=[-50e-3, 50e-3],  # X varies: ±50mm
+        dy=[-50e-3, 50e-3],  # Y varies: ±50mm
+        dz=[0.0, 0.0],  # Z fixed: no variation
+        grid_size=[16, 16, 1],  # 16x16x1 = 2D grid in XY plane
+    )
+    observer_results = accuracy_over_eye_positions(et, eye=eye, eye_movement=eye_movement)
 
     print_error_summary(observer_results, "Observer Test Summary")
 

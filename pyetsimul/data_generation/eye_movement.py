@@ -1,4 +1,4 @@
-"""Gaze movement experiment data generation."""
+"""Eye movement experiment data generation."""
 
 import json
 import csv
@@ -6,29 +6,30 @@ import os
 from typing import List, Dict, Any
 
 from ..types import Position3D
-from ..experimental_designs import GazeMovement
+from ..experimental_designs import EyeMovement
 from ..core import Eye, Camera, Light
 
 
-class GazeMovementExperiment:
-    """Generate synthetic eye tracking data for gaze movement experiments.
+class EyeMovementExperiment:
+    """Generate synthetic eye tracking data for eye movement experiments.
 
-    Uses GazeMovement experimental design to systematically generate eye tracking
-    data with ground truth gaze targets, pupil positions, and glint locations.
+    Uses EyeMovement experimental design to systematically generate eye tracking
+    data with varying eye positions and fixed gaze target, testing robustness
+    to observer movement.
     """
 
     def __init__(
         self,
-        movement_pattern: GazeMovement,
+        movement_pattern: EyeMovement,
         eyes: List[Eye],
         cameras: List[Camera],
         lights: List[Light],
         experiment_name: str,
     ):
-        """Initialize gaze movement experiment.
+        """Initialize eye movement experiment.
 
         Args:
-            movement_pattern: GazeMovement experimental design
+            movement_pattern: EyeMovement experimental design
             eyes: List of Eye models for simulation
             cameras: List of cameras for data capture
             lights: List of light sources for glint generation
@@ -52,41 +53,50 @@ class GazeMovementExperiment:
         self.movement_pattern.validate_design()
 
     def run_experiment(self) -> List[Dict[str, Any]]:
-        """Run the gaze movement experiment and collect data.
+        """Run the eye movement experiment and collect data.
 
         Returns:
             List of tracking data dictionaries with ground truth
         """
         self.tracking_data = []
-        target_positions = self.movement_pattern.generate_target_positions()
+        eye_positions = self.movement_pattern.generate_eye_positions()
 
-        print(f"Running {self.experiment_name} with {len(target_positions)} gaze targets")
+        print(f"Running {self.experiment_name} with {len(eye_positions)} eye positions")
 
-        for i, target in enumerate(target_positions):
-            # Direct all eyes to look at the target
+        for i, eye_position in enumerate(eye_positions):
+            # Move all eyes to the new position
             for eye in self.eyes:
-                eye.look_at(target)
+                eye.position = eye_position
+
+            # Direct all eyes to look at the fixed gaze target
+            for eye in self.eyes:
+                eye.look_at(self.movement_pattern.gaze_target)
 
             # Collect measurements from all cameras and eyes
-            measurement = self._measure_eye_tracking_data(target)
+            measurement = self._measure_eye_tracking_data(eye_position, self.movement_pattern.gaze_target)
             self.tracking_data.append(measurement)
 
             if (i + 1) % 10 == 0:
-                print(f"Processed {i + 1}/{len(target_positions)} targets")
+                print(f"Processed {i + 1}/{len(eye_positions)} positions")
 
         print(f"Experiment completed: {len(self.tracking_data)} measurements collected")
         return self.tracking_data
 
-    def _measure_eye_tracking_data(self, target: Position3D) -> Dict[str, Any]:
+    def _measure_eye_tracking_data(self, eye_position: Position3D, gaze_target: Position3D) -> Dict[str, Any]:
         """Measure eye tracking data from all cameras and eyes.
 
         Args:
-            target: Ground truth gaze target position
+            eye_position: Current eye position
+            gaze_target: Fixed gaze target position
 
         Returns:
             Dictionary with tracking measurement data for all eyes and cameras
         """
-        measurement_data = {"gaze_target": [target.x, target.y, target.z], "cameras": []}
+        measurement_data = {
+            "eye_position": [eye_position.x, eye_position.y, eye_position.z],
+            "gaze_target": [gaze_target.x, gaze_target.y, gaze_target.z],
+            "cameras": [],
+        }
 
         # Collect data for each camera
         for camera_idx, camera in enumerate(self.cameras):
@@ -119,11 +129,13 @@ class GazeMovementExperiment:
 
                 # Warn about missing glints
                 if any((g is None or len(g) < 2) for g in glints):
-                    print(f"Warning: Some glints missing for camera {camera_idx}, eye {eye_idx}, target {target}")
+                    print(
+                        f"Warning: Some glints missing for camera {camera_idx}, eye {eye_idx}, position {eye_position}"
+                    )
 
                 eye_measurement = {
                     "eye_id": eye_idx,
-                    "eye_position": eye.trans[:3, 3].tolist(),
+                    "eye_position": [eye_position.x, eye_position.y, eye_position.z],
                     "pupil_center": pupil_center,
                     "pupil_boundary": pupil_points,
                     "corneal_reflections": [(g[0], g[1]) if (g is not None and len(g) >= 2) else None for g in glints],
@@ -155,7 +167,7 @@ class GazeMovementExperiment:
         os.makedirs(output_dir, exist_ok=True)
 
         saved_files = {}
-        base_filename = f"{self.experiment_name}_tracking_data"
+        base_filename = f"{self.experiment_name}_eye_movement_data"
 
         # Save JSON format
         if save_json:
@@ -176,7 +188,7 @@ class GazeMovementExperiment:
         try:
             with open(filepath, "w") as f:
                 json.dump(self.tracking_data, f, indent=4)
-            print(f"Tracking data saved to JSON: {filepath}")
+            print(f"Eye movement data saved to JSON: {filepath}")
         except Exception as e:
             print(f"Error saving JSON file {filepath}: {e}")
 
@@ -184,7 +196,7 @@ class GazeMovementExperiment:
         """Save tracking data in CSV format."""
         try:
             with open(filepath, "w", newline="") as csvfile:
-                fieldnames = ["gaze_target_x", "gaze_target_y", "gaze_target_z"]
+                fieldnames = ["eye_pos_x", "eye_pos_y", "eye_pos_z", "gaze_target_x", "gaze_target_y", "gaze_target_z"]
 
                 # Determine max dimensions
                 max_cameras = max(len(entry["cameras"]) for entry in self.tracking_data)
@@ -208,7 +220,6 @@ class GazeMovementExperiment:
                 for camera_idx in range(max_cameras):
                     for eye_idx in range(max_eyes):
                         prefix = f"camera_{camera_idx}_eye_{eye_idx}"
-                        fieldnames.extend([f"{prefix}_eye_pos_x", f"{prefix}_eye_pos_y", f"{prefix}_eye_pos_z"])
                         fieldnames.extend([f"{prefix}_pupil_center_x", f"{prefix}_pupil_center_y"])
 
                         for glint_idx in range(max_glints):
@@ -224,6 +235,9 @@ class GazeMovementExperiment:
 
                 for entry in self.tracking_data:
                     row = {
+                        "eye_pos_x": entry["eye_position"][0],
+                        "eye_pos_y": entry["eye_position"][1],
+                        "eye_pos_z": entry["eye_position"][2],
                         "gaze_target_x": entry["gaze_target"][0],
                         "gaze_target_y": entry["gaze_target"][1],
                         "gaze_target_z": entry["gaze_target"][2],
@@ -232,15 +246,6 @@ class GazeMovementExperiment:
                     for camera_idx, camera_data in enumerate(entry["cameras"]):
                         for eye_idx, eye_measurement in enumerate(camera_data["eye_measurements"]):
                             prefix = f"camera_{camera_idx}_eye_{eye_idx}"
-
-                            eye_pos = eye_measurement["eye_position"]
-                            row.update(
-                                {
-                                    f"{prefix}_eye_pos_x": eye_pos[0],
-                                    f"{prefix}_eye_pos_y": eye_pos[1],
-                                    f"{prefix}_eye_pos_z": eye_pos[2],
-                                }
-                            )
 
                             pupil_center = eye_measurement["pupil_center"]
                             if pupil_center and len(pupil_center) >= 2:
@@ -270,7 +275,7 @@ class GazeMovementExperiment:
 
                     writer.writerow(row)
 
-            print(f"Tracking data saved to CSV: {filepath}")
+            print(f"Eye movement data saved to CSV: {filepath}")
         except Exception as e:
             print(f"Error saving CSV file {filepath}: {e}")
 
