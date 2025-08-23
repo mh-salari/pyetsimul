@@ -10,7 +10,7 @@ from tabulate import tabulate
 from ..geometry.conversions import calculate_angular_error_degrees
 from .analysis_utils import calculate_error_statistics
 from ..core import Eye, EyeTracker
-from ..types import Point3D, Point2D, Position3D
+from ..types import Point3D, Position3D
 
 # Import functions from specialized modules
 from .interactive_calibration import create_interactive_calibration_plot
@@ -93,10 +93,8 @@ def accuracy_at_calibration_points(et: EyeTracker, eye: Eye) -> Dict[str, Dict[s
             U[i] = predicted_coord1 - actual_coord1
             V[i] = predicted_coord2 - actual_coord2
 
-            # Compute error in degrees using plane-mapped 2D coordinates
-            actual_2d = Point2D(actual_coord1, actual_coord2)
-            predicted_2d = Point2D(predicted_coord1, predicted_coord2)
-            errs_deg[i] = calculate_angular_error_degrees(actual_2d, predicted_2d, e.position)
+            # Compute error in degrees using full 3D coordinates
+            errs_deg[i] = calculate_angular_error_degrees(target_position, predicted_pos, e.position)
 
             # Collect data for table
             error_mm = np.sqrt(U[i] ** 2 + V[i] ** 2)

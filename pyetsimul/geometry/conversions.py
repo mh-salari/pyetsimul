@@ -82,7 +82,7 @@ def angle2gaze(angles: Point2D, rest_pos: Optional[RotationMatrix] = None) -> Di
 
 
 def calculate_angular_error_degrees(
-    actual_point: Point2D, predicted_point: Point2D, observer_pos: Position3D
+    actual_point: Position3D, predicted_point: Position3D, observer_pos: Position3D
 ) -> float:
     """Calculate angular error between actual and predicted gaze points.
 
@@ -90,29 +90,36 @@ def calculate_angular_error_degrees(
     between them using the dot product formula. Handles numerical precision issues.
 
     Args:
-        actual_point: Actual target position [x, z] in meters (2D screen coordinates)
-        predicted_point: Predicted gaze position [x, z] in meters (2D screen coordinates)
+        actual_point: Actual target position [x, y, z] in meters
+        predicted_point: Predicted gaze position [x, y, z] in meters
         observer_pos: Observer position [x, y, z] in meters
 
     Returns:
         Angular error in degrees
     """
-    if not isinstance(actual_point, Point2D):
-        raise TypeError(f"actual_point must be Point2D, got {type(actual_point)}")
-    if not isinstance(predicted_point, Point2D):
-        raise TypeError(f"predicted_point must be Point2D, got {type(predicted_point)}")
+    if not isinstance(actual_point, Position3D):
+        raise TypeError(f"actual_point must be Position3D, got {type(actual_point)}")
+    if not isinstance(predicted_point, Position3D):
+        raise TypeError(f"predicted_point must be Position3D, got {type(predicted_point)}")
     if not isinstance(observer_pos, Position3D):
         raise TypeError(f"observer_pos must be Position3D, got {type(observer_pos)}")
 
-    # Create 3D gaze vectors from observer to target points (Y=0 for screen plane)
-    observer_array = np.array(observer_pos.to_point3d())
-    gaze_actual = np.array([actual_point.x, 0, actual_point.y]) - observer_array
-    gaze_predicted = np.array([predicted_point.x, 0, predicted_point.y]) - observer_array
+    # Create 3D gaze vectors from observer to target points using structured types
+    gaze_actual = actual_point - observer_pos
+    gaze_predicted = predicted_point - observer_pos
 
-    # Normalize vectors to unit length
-    gaze_actual = gaze_actual / np.linalg.norm(gaze_actual)
-    gaze_predicted = gaze_predicted / np.linalg.norm(gaze_predicted)
+    # Calculate vector magnitudes
+    actual_magnitude = np.sqrt(gaze_actual.x**2 + gaze_actual.y**2 + gaze_actual.z**2)
+    predicted_magnitude = np.sqrt(gaze_predicted.x**2 + gaze_predicted.y**2 + gaze_predicted.z**2)
 
-    # Calculate angle between vectors using dot product
-    dot_product = np.clip(np.dot(gaze_actual, gaze_predicted), -1, 1)
-    return float(np.degrees(np.arccos(dot_product)))
+    # Calculate dot product manually using structured type components
+    dot_product = (
+        gaze_actual.x * gaze_predicted.x + gaze_actual.y * gaze_predicted.y + gaze_actual.z * gaze_predicted.z
+    )
+
+    # Normalize dot product
+    normalized_dot = dot_product / (actual_magnitude * predicted_magnitude)
+
+    # Clip for numerical stability and calculate angle
+    normalized_dot = np.clip(normalized_dot, -1, 1)
+    return float(np.degrees(np.arccos(normalized_dot)))

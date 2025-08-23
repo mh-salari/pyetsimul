@@ -5,10 +5,11 @@ Demonstrates polynomial interpolation-based gaze tracking with comprehensive acc
 
 from pyetsimul.gaze_tracking_algorithms.interpolate import InterpolationTracker
 from pyetsimul.evaluation import (
-    accuracy_over_gaze_points,
     accuracy_over_observer_positions,
     accuracy_at_calibration_points,
 )
+from pyetsimul.evaluation.gaze_movement import accuracy_over_gaze_points
+from pyetsimul.experimental_designs import GazeMovement
 from pyetsimul.evaluation.analysis_utils import print_error_summary
 from pyetsimul.core import Light, Camera, Eye
 from pyetsimul.types import Position3D, RotationMatrix
@@ -100,8 +101,16 @@ def main():
     print("2. Testing over screen (fixed observer, sweep gaze positions):")
     print("-" * 60)
 
-    grid_center = Position3D(0, 0, 200e-3)
-    screen_results = accuracy_over_gaze_points(et, eye=eye, grid_center=grid_center)
+    # Create 2D gaze movement pattern: X and Z vary (XZ plane), Y fixed
+    # This matches the calibration plane which is XZ
+    gaze_movement = GazeMovement(
+        grid_center=Position3D(0, 0, 200e-3),
+        dx=[-200e-3, 200e-3],  # X varies: ±200mm
+        dy=[0.0, 0.0],  # Y fixed: no variation
+        dz=[-150e-3, 150e-3],  # Z varies: ±150mm
+        grid_size=[16, 1, 16],  # 16x1x16 = 2D grid in XZ plane
+    )
+    screen_results = accuracy_over_gaze_points(et, eye=eye, gaze_movement=gaze_movement)
 
     print_error_summary(screen_results, "Screen Test Summary")
 

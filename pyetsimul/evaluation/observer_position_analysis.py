@@ -9,7 +9,7 @@ from typing import Dict
 from ..geometry.conversions import calculate_angular_error_degrees
 from .analysis_utils import plot_error_vectors, calculate_error_statistics
 from ..core import Eye, EyeTracker
-from ..types import Position3D, Point2D
+from ..types import Position3D
 
 
 def accuracy_over_observer_positions(
@@ -76,19 +76,17 @@ def accuracy_over_observer_positions(
             if predicted_gaze is not None and predicted_gaze.gaze_point is not None:
                 # Extract coordinates using plane info for error calculation
                 target_coord1, target_coord2 = plane_info.extract_2d_coords(gaze_target)
-                predicted_coord1, predicted_coord2 = plane_info.extract_2d_coords(
-                    Position3D(predicted_gaze.gaze_point.x, predicted_gaze.gaze_point.y, predicted_gaze.gaze_point.z)
+                predicted_pos = Position3D(
+                    predicted_gaze.gaze_point.x, predicted_gaze.gaze_point.y, predicted_gaze.gaze_point.z
                 )
+                predicted_coord1, predicted_coord2 = plane_info.extract_2d_coords(predicted_pos)
 
                 # Calculate error in mm using the plane's coordinate system
                 U[j, i] = predicted_coord1 - target_coord1
                 V[j, i] = predicted_coord2 - target_coord2
 
-                # Compute error in degrees using utility function
-                # Convert 3D points to 2D screen coordinates using plane mapping
-                target_2d = Point2D(target_coord1, target_coord2)
-                predicted_2d = Point2D(predicted_coord1, predicted_coord2)
-                errs_deg[j, i] = calculate_angular_error_degrees(target_2d, predicted_2d, e.position)
+                # Compute error in degrees using full 3D coordinates
+                errs_deg[j, i] = calculate_angular_error_degrees(gaze_target, predicted_pos, e.position)
             else:
                 # Handle prediction failure
                 U[j, i] = np.nan

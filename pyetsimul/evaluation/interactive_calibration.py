@@ -10,7 +10,7 @@ import copy
 from typing import List
 
 from pyetsimul.core import Eye, EyeTracker
-from ..types import Position3D, Point3D, Point2D
+from ..types import Position3D, Point3D
 from ..geometry.conversions import calculate_angular_error_degrees
 from ..visualization import prepare_eye_data_for_plots, plot_setup
 
@@ -203,12 +203,8 @@ def create_interactive_calibration_plot(
 
             # Calculate current error
             current_error_mm = np.sqrt(error_x**2 + error_y**2)
-            # Convert to Point2D for angular error calculation using plane coordinates
-            current_target_2d = Point2D(target_coord1, target_coord2)
-            current_prediction_2d = Point2D(pred_coord1, pred_coord2)
-            current_error_deg = calculate_angular_error_degrees(
-                current_target_2d, current_prediction_2d, interactive_eye.position
-            )
+            # Calculate angular error using full 3D coordinates
+            current_error_deg = calculate_angular_error_degrees(current_target, pred_pos, interactive_eye.position)
 
             # Create calibration error summary for title
             valid_errors = errs_deg[valid_mask]
