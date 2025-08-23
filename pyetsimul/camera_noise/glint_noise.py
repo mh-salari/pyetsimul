@@ -2,7 +2,7 @@
 
 import numpy as np
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, List
 
 from ..types import Point2D
 
@@ -11,22 +11,58 @@ from ..types import Point2D
 class GlintNoiseConfig:
     """Configuration for glint detection noise simulation.
 
-    Args:
-        noise_type: Noise distribution type ('gaussian', 'uniform', 'constant_offset')
-        std: Standard deviation for glint position noise in pixels (required for 'gaussian'/'uniform')
-        seed: Random seed for reproducible noise (optional)
-        offset_x: Fixed offset in X direction (required for 'constant_offset')
-        offset_y: Fixed offset in Y direction (required for 'constant_offset')
+    Two modes available:
+
+    Simple mode:
+        noise_type: 'gaussian', 'uniform', or 'constant_offset'
+        std: Standard deviation in pixels
+        offset_x/offset_y: For constant offset
+
+    Advanced mode:
+        mean: [mean_x, mean_y] - bias vector in pixels
+        covariance: [[var_x, cov_xy], [cov_xy, var_y]] - 2x2 covariance matrix
+
+    If mean and covariance are provided, advanced mode is used.
     """
 
+    # Simple interface
     noise_type: Optional[str] = None
     std: Optional[float] = None
-    seed: Optional[int] = None
     offset_x: Optional[float] = None
     offset_y: Optional[float] = None
 
+    # Advanced interface
+    mean: Optional[List[float]] = None
+    covariance: Optional[List[List[float]]] = None
+
+    # Common
+    seed: Optional[int] = None
+
     def __post_init__(self):
         """Validate noise configuration after initialization."""
+        # Check if advanced mode is used
+        if self.mean is not None or self.covariance is not None:
+            if self.mean is None or self.covariance is None:
+                raise ValueError("Advanced mode requires both 'mean' and 'covariance' to be specified")
+            if len(self.mean) != 2:
+                raise ValueError("'mean' must be a 2-element list [mean_x, mean_y]")
+            if len(self.covariance) != 2 or len(self.covariance[0]) != 2 or len(self.covariance[1]) != 2:
+                raise ValueError("'covariance' must be a 2x2 matrix [[var_x, cov_xy], [cov_xy, var_y]]")
+            # Validate covariance matrix is positive semidefinite
+            cov_matrix = np.array(self.covariance)
+            eigenvalues = np.linalg.eigvals(cov_matrix)
+            if np.any(eigenvalues < 0):
+                raise ValueError("Covariance matrix must be positive semidefinite")
+
+            # Store numpy arrays
+            self._mean_array = np.array(self.mean)
+            self._cov_matrix = cov_matrix
+
+            # Set advanced mode
+            self.noise_type = "advanced"
+            return
+
+        # Simple mode validation
         if self.noise_type is None:
             return
 
@@ -57,7 +93,11 @@ def apply_glint_noise(glint_position: Point2D, config: Optional[GlintNoiseConfig
     if config.seed is not None:
         np.random.seed(config.seed)
 
-    if config.noise_type == "gaussian":
+    if config.noise_type == "advanced":
+        noise = np.random.multivariate_normal(config._mean_array, config._cov_matrix)
+        return Point2D(x=glint_position.x + noise[0], y=glint_position.y + noise[1])
+
+    elif config.noise_type == "gaussian":
         noise_x = np.random.normal(0, config.std)
         noise_y = np.random.normal(0, config.std)
         return Point2D(x=glint_position.x + noise_x, y=glint_position.y + noise_y)

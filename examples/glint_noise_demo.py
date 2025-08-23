@@ -27,8 +27,10 @@ def main():
     # Create cameras with different noise levels
     cameras = {
         "No noise": Camera(),
+        "Correlated XY noise": Camera(
+            glint_noise_config=GlintNoiseConfig(mean=[0.3, -0.5], covariance=[[1.0, 0.4], [0.4, 0.8]], seed=71)
+        ),
         "Gaussian 0.5px": Camera(glint_noise_config=GlintNoiseConfig(noise_type="gaussian", std=0.5, seed=71)),
-        "Gaussian 1.0px": Camera(glint_noise_config=GlintNoiseConfig(noise_type="gaussian", std=1.0, seed=71)),
         "Uniform 1.0px": Camera(glint_noise_config=GlintNoiseConfig(noise_type="uniform", std=1.0, seed=71)),
         "Constant +1px X": Camera(
             glint_noise_config=GlintNoiseConfig(noise_type="constant_offset", offset_x=1.0, offset_y=0.0)

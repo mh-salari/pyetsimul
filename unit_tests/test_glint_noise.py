@@ -67,3 +67,38 @@ class TestGlintNoise(unittest.TestCase):
 
         with self.assertRaises(ValueError):
             GlintNoiseConfig(noise_type="unknown_noise")  # Unknown noise type
+
+    def test_advanced_noise(self):
+        """Test advanced noise mode with mean and covariance."""
+        original_pos = Point2D(10.0, 20.0)
+        config = GlintNoiseConfig(mean=[1.0, -1.0], covariance=[[2.0, 0.5], [0.5, 1.5]], seed=42)
+
+        # Should automatically set noise_type to 'advanced'
+        self.assertEqual(config.noise_type, "advanced")
+
+        noisy_pos = apply_glint_noise(original_pos, config)
+
+        self.assertNotEqual(original_pos.x, noisy_pos.x)
+        self.assertNotEqual(original_pos.y, noisy_pos.y)
+
+    def test_advanced_mode_validation(self):
+        """Test validation for advanced mode parameters."""
+        # Missing covariance
+        with self.assertRaises(ValueError):
+            GlintNoiseConfig(mean=[0.0, 0.0])
+
+        # Missing mean
+        with self.assertRaises(ValueError):
+            GlintNoiseConfig(covariance=[[1.0, 0.0], [0.0, 1.0]])
+
+        # Wrong mean size
+        with self.assertRaises(ValueError):
+            GlintNoiseConfig(mean=[0.0], covariance=[[1.0, 0.0], [0.0, 1.0]])
+
+        # Wrong covariance size
+        with self.assertRaises(ValueError):
+            GlintNoiseConfig(mean=[0.0, 0.0], covariance=[[1.0]])
+
+        # Negative definite covariance
+        with self.assertRaises(ValueError):
+            GlintNoiseConfig(mean=[0.0, 0.0], covariance=[[-1.0, 0.0], [0.0, 1.0]])
