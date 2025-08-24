@@ -4,13 +4,13 @@ Demonstrates polynomial interpolation-based gaze tracking with comprehensive acc
 """
 
 from pyetsimul.gaze_tracking_algorithms.interpolate import InterpolationTracker
-from pyetsimul.evaluation.analysis_utils import print_error_summary
 from pyetsimul.parameter_variations import (
-    Eye3DPositionVariation,
-    Target3DPositionVariation,
+    EyePositionVariation,
+    TargetPositionVariation,
     EyePositionEvaluationStrategy,
     TargetPositionEvaluationStrategy,
 )
+from pyetsimul.evaluation.calibration_analysis import accuracy_at_calibration_points
 from pyetsimul.core import Light, Camera, Eye
 from pyetsimul.types import Position3D, RotationMatrix
 from tabulate import tabulate
@@ -93,16 +93,16 @@ def main():
     print("Calibrating eye tracker...")
     et.run_calibration(eye)
 
-    # print("1. Testing calibration accuracy:")
-    # print("-" * 60)
-    # calib_results = accuracy_at_calibration_points(et, eye=eye)
-    # print_error_summary(calib_results, "Calibration Test Summary")
+    print("1. Testing calibration accuracy:")
+    print("-" * 60)
+    calib_results = accuracy_at_calibration_points(et, eye=eye)
+    calib_results.print_summary("Calibration Test Summary")
 
     print("2. Testing over screen (fixed observer, sweep gaze positions):")
     print("-" * 60)
 
-    # Create target 3D position variation using new architecture
-    target_position_variation = Target3DPositionVariation(
+    # Create target position variation using new architecture
+    target_position_variation = TargetPositionVariation(
         grid_center=Position3D(0, 0, 200e-3),
         dx=[-200e-3, 200e-3],  # X varies: ±200mm
         dy=[0.0, 0.0],  # Y fixed: no variation
@@ -114,12 +114,12 @@ def main():
     target_strategy = TargetPositionEvaluationStrategy(observer_position=eye_position)
     screen_results = target_strategy.execute(eye, et, target_position_variation)
 
-    print_error_summary(screen_results, "Screen Test Summary")
+    screen_results.print_summary("Screen Test Summary")
 
     print("\n3. Testing over observer (fixed gaze, sweep observer positions):")
     print("-" * 60)
-    # Create eye 3D position variation using new architecture
-    eye_position_variation = Eye3DPositionVariation(
+    # Create eye position variation using new architecture
+    eye_position_variation = EyePositionVariation(
         center=eye_position,  # Central eye position
         dx=[-50e-3, 50e-3],  # X varies: ±50mm
         dy=[-50e-3, 50e-3],  # Y varies: ±50mm
@@ -131,7 +131,7 @@ def main():
     evaluation_strategy = EyePositionEvaluationStrategy(gaze_target=Position3D(0, 0, 200e-3))
     observer_results = evaluation_strategy.execute(eye, et, eye_position_variation)
 
-    print_error_summary(observer_results, "Observer Test Summary")
+    observer_results.print_summary("Observer Test Summary")
 
 
 if __name__ == "__main__":

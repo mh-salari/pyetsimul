@@ -1,9 +1,12 @@
 """Parameter variation framework for systematic eye tracking studies."""
 
 from .core import ParameterVariation, VariationStrategy
-from .spatial.eye_position import Eye3DPositionVariation
-from .spatial.target_position import Target3DPositionVariation
+from .spatial.eye_position import EyePositionVariation
+from .spatial.target_position import TargetPositionVariation
 from .strategies.data_generation import DataGenerationStrategy
+from .strategies.algorithm_comparison import AlgorithmComparisonStrategy
+from .strategies.evaluation import EyePositionEvaluationStrategy
+from .strategies.target_evaluation import TargetPositionEvaluationStrategy
 from .config import (
     EyePositionConfig,
     TargetPositionConfig,
@@ -16,9 +19,12 @@ from .experiment_runner import run_experiments, run_single_config, run_all_confi
 __all__ = [
     "ParameterVariation",
     "VariationStrategy",
-    "Eye3DPositionVariation",
-    "Target3DPositionVariation",
+    "EyePositionVariation",
+    "TargetPositionVariation",
     "DataGenerationStrategy",
+    "AlgorithmComparisonStrategy",
+    "EyePositionEvaluationStrategy",
+    "TargetPositionEvaluationStrategy",
     "EyePositionConfig",
     "TargetPositionConfig",
     "create_eye_position_config",

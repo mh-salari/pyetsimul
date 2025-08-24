@@ -5,8 +5,8 @@ from pathlib import Path
 from typing import List, Union
 from ..core import Eye, Camera, Light
 from ..types import Position3D
-from .spatial.eye_position import Eye3DPositionVariation
-from .spatial.target_position import Target3DPositionVariation
+from .spatial.eye_position import EyePositionVariation
+from .spatial.target_position import TargetPositionVariation
 
 
 @dataclass
@@ -24,7 +24,7 @@ class EyePositionConfig:
     lights: List[Light] = field(default_factory=list)
 
     # Required parameter variation
-    eye_variation: Eye3DPositionVariation = None
+    eye_variation: EyePositionVariation = None
     gaze_target: Position3D = None
 
     def __post_init__(self):
@@ -56,7 +56,7 @@ class TargetPositionConfig:
     lights: List[Light] = field(default_factory=list)
 
     # Required parameter variation
-    target_variation: Target3DPositionVariation = None
+    target_variation: TargetPositionVariation = None
 
     def __post_init__(self):
         """Validate required fields after initialization."""
@@ -86,7 +86,7 @@ def create_eye_position_config(
 ) -> EyePositionConfig:
     """Create an eye position variation config with validation."""
 
-    eye_variation = Eye3DPositionVariation(center=eye_center, dx=dx, dy=dy, dz=dz, grid_size=grid_size)
+    eye_variation = EyePositionVariation(center=eye_center, dx=dx, dy=dy, dz=dz, grid_size=grid_size)
 
     return EyePositionConfig(
         experiment_name=experiment_name,
@@ -113,7 +113,7 @@ def create_target_position_config(
 ) -> TargetPositionConfig:
     """Create a target position variation config with validation."""
 
-    target_variation = Target3DPositionVariation(grid_center=grid_center, dx=dx, dy=dy, dz=dz, grid_size=grid_size)
+    target_variation = TargetPositionVariation(grid_center=grid_center, dx=dx, dy=dy, dz=dz, grid_size=grid_size)
 
     return TargetPositionConfig(
         experiment_name=experiment_name,

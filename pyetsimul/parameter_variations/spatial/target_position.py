@@ -6,8 +6,8 @@ from ...types import Position3D
 from ..core import ParameterVariation
 
 
-class Target3DPositionVariation(ParameterVariation):
-    """Varies gaze target positions in 3D space."""
+class TargetPositionVariation(ParameterVariation):
+    """Varies gaze target positions in space."""
 
     def __init__(
         self, grid_center: Position3D, dx: List[float], dy: List[float], dz: List[float], grid_size: List[int]
@@ -20,7 +20,7 @@ class Target3DPositionVariation(ParameterVariation):
         self.grid_size = grid_size
 
     def generate_values(self) -> List[Position3D]:
-        """Generate all target positions for the 3D grid."""
+        """Generate all target positions for the parameter grid."""
         positions = []
 
         dx_min, dx_max = self.dx

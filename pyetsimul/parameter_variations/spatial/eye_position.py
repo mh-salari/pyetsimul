@@ -7,8 +7,8 @@ from ...core import Eye
 from ..core import ParameterVariation
 
 
-class Eye3DPositionVariation(ParameterVariation):
-    """Varies eye position in 3D space."""
+class EyePositionVariation(ParameterVariation):
+    """Varies eye position in space."""
 
     def __init__(self, center: Position3D, dx: List[float], dy: List[float], dz: List[float], grid_size: List[int]):
         super().__init__("eye_position")
@@ -19,7 +19,7 @@ class Eye3DPositionVariation(ParameterVariation):
         self.grid_size = grid_size
 
     def generate_values(self) -> List[Position3D]:
-        """Generate all eye positions for the 3D grid."""
+        """Generate all eye positions for the parameter grid."""
         positions = []
 
         dx_min, dx_max = self.dx
@@ -51,5 +51,5 @@ class Eye3DPositionVariation(ParameterVariation):
         return positions
 
     def apply_to_eye(self, eye: Eye, value: Position3D) -> None:
-        """Set eye position to the specified 3D location."""
+        """Set eye position to the specified location."""
         eye.position = value
