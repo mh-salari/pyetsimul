@@ -14,7 +14,6 @@ from ..types import (
     TransformationMatrix,
     RotationMatrix,
     Point2D,
-    Point3D,
     Position3D,
     CameraImage,
     CameraMatrix,
@@ -87,13 +86,13 @@ class Camera:
         self.trans[:3, :3] = value
 
     @property
-    def position(self) -> Point3D:
+    def position(self) -> Position3D:
         """Get/set the camera's position (3D vector)."""
-        return Point3D.from_array(self.trans[:3, 3])
+        return Position3D.from_array(self.trans[:3, 3])
 
     @position.setter
-    def position(self, value: Point3D) -> None:
-        self.trans[:3, 3] = np.array(value)
+    def position(self, value: Position3D) -> None:
+        self.trans[:3, 3] = np.array(value)[:3]  # Extract x,y,z from homogeneous coordinates
 
     @property
     def pointing_at(self) -> Optional[Position3D]:

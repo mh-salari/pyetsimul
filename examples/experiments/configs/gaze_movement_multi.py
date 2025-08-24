@@ -26,12 +26,12 @@ eyes = [first_eye, second_eye]
 
 # Camera configuration
 first_camera = Camera(err=0.0, err_type="gaussian")
-first_camera.position = Position3D(0, 0, 0).to_point3d()
+first_camera.position = Position3D(0, 0, 0)
 first_camera.orientation = RotationMatrix([[1, 0, 0], [0, 0, -1], [0, 1, 0]], validate_handedness=False)
 first_camera.point_at(Position3D(0, 0.550, 0.350))
 
 second_camera = Camera(err=0.0, err_type="gaussian")
-second_camera.position = Position3D(0.05, 0, 0).to_point3d()
+second_camera.position = Position3D(0.05, 0, 0)
 second_camera.orientation = RotationMatrix([[1, 0, 0], [0, 0, -1], [0, 1, 0]], validate_handedness=False)
 second_camera.point_at(Position3D(0.064, 0.550, 0.350))
 

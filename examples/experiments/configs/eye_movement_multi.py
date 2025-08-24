@@ -6,7 +6,7 @@ and four light sources for binocular tracking.
 
 from pathlib import Path
 from pyetsimul.core import Eye, Camera, Light
-from pyetsimul.types import Position3D, Point3D, RotationMatrix
+from pyetsimul.types import Position3D, RotationMatrix
 from pyetsimul.experimental_designs import EyeMovement
 
 # Experiment metadata
@@ -27,12 +27,12 @@ eyes = [left_eye, right_eye]
 # Camera configuration
 left_camera = Camera(err=0.0, err_type="gaussian")
 left_camera.orientation = RotationMatrix([[1, 0, 0], [0, 0, -1], [0, 1, 0]], validate_handedness=False)
-left_camera.position = Point3D(-0.025, 0, 0)  # 25mm left of center
+left_camera.position = Position3D(-0.025, 0, 0)  # 25mm left of center
 left_camera.point_at(left_eye.position)
 
 right_camera = Camera(err=0.0, err_type="gaussian")
 right_camera.orientation = RotationMatrix([[1, 0, 0], [0, 0, -1], [0, 1, 0]], validate_handedness=False)
-right_camera.position = Point3D(0.025, 0, 0)  # 25mm right of center
+right_camera.position = Position3D(0.025, 0, 0)  # 25mm right of center
 right_camera.point_at(right_eye.position)
 
 cameras = [left_camera, right_camera]

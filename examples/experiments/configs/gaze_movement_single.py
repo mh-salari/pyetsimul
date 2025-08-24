@@ -21,7 +21,7 @@ eyes = [eye]
 
 # Camera configuration
 camera = Camera(err=0.0, err_type="gaussian")
-camera.position = Position3D(0, 0, 0).to_point3d()
+camera.position = Position3D(0, 0, 0)
 camera.orientation = RotationMatrix([[1, 0, 0], [0, 0, -1], [0, 1, 0]], validate_handedness=False)
 camera.point_at(Position3D(0, 0.550, 0.350))
 cameras = [camera]
