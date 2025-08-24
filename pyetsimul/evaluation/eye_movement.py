@@ -6,7 +6,7 @@ import numpy as np
 from tqdm import tqdm
 
 from ..geometry.conversions import calculate_angular_error_degrees
-from .analysis_utils import plot_error_vectors, calculate_error_statistics
+from .analysis_utils import plot_error_vectors, plot_error_vectors_3d, calculate_error_statistics
 from ..core import Eye, EyeTracker
 from ..types import Position3D
 from ..experimental_designs import EyeMovement
@@ -20,8 +20,8 @@ def accuracy_over_eye_positions(
 ) -> Dict[str, Dict[str, float]]:
     """Computes gaze error at different eye positions.
 
-    Evaluates gaze tracking robustness across different observer positions.
-    Tests calibration stability by varying eye position while keeping gaze target fixed.
+    Runs gaze estimation at multiple eye positions with fixed target.
+    Returns error statistics for robustness analysis.
 
     Args:
         et: Eye tracker structure
@@ -130,7 +130,7 @@ def accuracy_over_eye_positions(
 
 
 def _plot_results_by_dimension(eye_movement, results, errors, et):
-    """Plot results using appropriate visualization for movement pattern dimensions."""
+    """Select and execute plotting function based on varying dimensions."""
     varies_x = eye_movement.dx[0] != eye_movement.dx[1]
     varies_y = eye_movement.dy[0] != eye_movement.dy[1]
     varies_z = eye_movement.dz[0] != eye_movement.dz[1]
@@ -147,8 +147,54 @@ def _plot_results_by_dimension(eye_movement, results, errors, et):
 
 
 def _plot_1d_results(eye_movement, results, errors):
-    """Plot 1D results with error vectors along the line."""
-    print("1D plotting: TODO - implement vector style similar to 2D")
+    """Plot 1D results with error vectors in 3D space."""
+    # Determine which axis varies
+    varies_x = eye_movement.dx[0] != eye_movement.dx[1]
+    varies_y = eye_movement.dy[0] != eye_movement.dy[1]
+    varies_z = eye_movement.dz[0] != eye_movement.dz[1]
+
+    if varies_x:
+        varying_axis = "X"
+    elif varies_y:
+        varying_axis = "Y"
+    else:  # must be Z if we're in 1D function
+        varying_axis = "Z"
+
+    # Extract eye positions and error vectors for valid results
+    positions = []
+    error_vectors = []
+    angular_errors = []
+
+    for result in results:
+        if result["predicted"] is not None:
+            # Eye position
+            eye_pos = result["eye_position"]
+            positions.append([eye_pos.x, eye_pos.y, eye_pos.z])
+
+            # Error vector (predicted gaze - target gaze)
+            error_vectors.append([result["error_x"], result["error_y"], result["error_z"]])
+
+            # Angular error
+            angular_errors.append(result["error_angular"])
+
+    if not positions:
+        print("Warning: No valid data for 1D plotting")
+        return
+
+    positions = np.array(positions)
+    error_vectors = np.array(error_vectors)
+    angular_errors = np.array(angular_errors)
+
+    # Use the 3D plotting function for 1D data
+    plot_error_vectors_3d(
+        positions=positions,
+        error_vectors=error_vectors,
+        angular_errors=angular_errors,
+        errors=errors,
+        title_prefix=f"Eye Movement Analysis (1D - {varying_axis} axis)",
+        convert_to_mm=True,
+        position_labels=("Eye X", "Eye Y", "Eye Z"),
+    )
 
 
 def _plot_2d_results(eye_movement, results, errors, et):
@@ -195,10 +241,6 @@ def _plot_2d_results(eye_movement, results, errors, et):
     else:
         print("Warning: 2D plotting requires exactly 2 varying dimensions")
         return
-
-    print(f"DEBUG: coord1_size={coord1_size}, coord2_size={coord2_size}")
-    print(f"DEBUG: len(coord1_values)={len(coord1_values)}, len(coord2_values)={len(coord2_values)}")
-    print(f"DEBUG: len(results)={len(results)}")
 
     # Convert results to 2D arrays for plotting
     U = np.zeros((coord2_size, coord1_size))
@@ -247,4 +289,38 @@ def _plot_2d_results(eye_movement, results, errors, et):
 
 def _plot_3d_results(eye_movement, results, errors):
     """Plot 3D results with error vectors in 3D space."""
-    print("3D plotting: TODO - implement 3D vector visualization similar to 2D style")
+    # Extract eye positions and error vectors for valid results
+    positions = []
+    error_vectors = []
+    angular_errors = []
+
+    for result in results:
+        if result["predicted"] is not None:
+            # Eye position
+            eye_pos = result["eye_position"]
+            positions.append([eye_pos.x, eye_pos.y, eye_pos.z])
+
+            # Error vector (predicted gaze - target gaze)
+            error_vectors.append([result["error_x"], result["error_y"], result["error_z"]])
+
+            # Angular error
+            angular_errors.append(result["error_angular"])
+
+    if not positions:
+        print("Warning: No valid data for 3D plotting")
+        return
+
+    positions = np.array(positions)
+    error_vectors = np.array(error_vectors)
+    angular_errors = np.array(angular_errors)
+
+    # Use the new 3D plotting function
+    plot_error_vectors_3d(
+        positions=positions,
+        error_vectors=error_vectors,
+        angular_errors=angular_errors,
+        errors=errors,
+        title_prefix="Eye Movement Analysis (3D)",
+        convert_to_mm=True,
+        position_labels=("Eye X", "Eye Y", "Eye Z"),
+    )

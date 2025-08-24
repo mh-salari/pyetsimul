@@ -1,7 +1,7 @@
-"""Binocular gaze movement experiment configuration.
+"""Multi gaze movement experiment configuration with binocular setup.
 
-This configuration defines left and right eyes with two cameras positioned 5cm apart
-and four light sources for comprehensive gaze movement tracking experiments.
+Configuration for gaze movement analysis using two eyes, two cameras,
+and four light sources for binocular tracking.
 """
 
 from pathlib import Path
@@ -10,8 +10,8 @@ from pyetsimul.experimental_designs import GazeMovement
 from pyetsimul.core import Eye, Camera, Light
 
 # Experiment metadata
-experiment_name = "two_eye_two_camera_four_light"
-output_dir = Path(__file__).parent.parent / "outputs" / experiment_name
+experiment_name = "gaze_movement_multi"
+output_dir = Path(__file__).parent.parent / "outputs"
 
 # Eye configuration
 first_eye = Eye()

@@ -30,8 +30,8 @@ def plot_error_vectors(
 ) -> None:
     """Plot gaze tracking error vectors with adaptive scaling.
 
-    Visualizes gaze tracking accuracy by plotting error vectors at each measurement point.
-    Uses adaptive scaling to ensure arrows remain visible and color-codes by magnitude.
+    Creates quiver plot showing error vectors at measurement points.
+    Applies scaling to normalize arrow lengths within plot range.
 
     Args:
         X, Y: Grid coordinates for vector positions
@@ -58,12 +58,12 @@ def plot_error_vectors(
         U_plot, V_plot = U, V
         unit_str = "m"
 
-    # Calculate adaptive scaling, filtering out NaN/Inf values
+    # Compute scaling factor for arrows, filtering out NaN/Inf values
     U_flat = U_plot.flatten()
     V_flat = V_plot.flatten()
     magnitudes = np.sqrt(U_flat**2 + V_flat**2)
 
-    # Use only finite magnitudes for scaling
+    # Extract finite values for scaling calculations
     finite_magnitudes = magnitudes[np.isfinite(magnitudes)]
     if len(finite_magnitudes) == 0:
         print("Warning: All error magnitudes are NaN/Inf, skipping plot")
@@ -74,7 +74,7 @@ def plot_error_vectors(
     plot_range_y = np.max(Y_plot) - np.min(Y_plot)
     plot_range = max(plot_range_x, plot_range_y)
 
-    # Target arrow length: configurable % of plot range
+    # Set target arrow length as fraction of plot range
     target_arrow_length = plot_range * max_arrow_ratio
 
     if max_magnitude > target_arrow_length:
@@ -178,8 +178,8 @@ def plot_error_vectors(
 def calculate_error_statistics(U: np.ndarray, V: np.ndarray, errs_deg: np.ndarray) -> Dict[str, Dict[str, float]]:
     """Calculate gaze tracking error statistics.
 
-    Computes performance metrics from error vectors and angular errors.
-    Handles missing data by filtering out NaN values.
+    Computes mean, max, std, median from error vectors and angular errors.
+    Filters out NaN values before calculations.
 
     Args:
         U, V: Error arrays in X and Y directions (in meters)
@@ -219,10 +219,142 @@ def calculate_error_statistics(U: np.ndarray, V: np.ndarray, errs_deg: np.ndarra
     }
 
 
+def plot_error_vectors_3d(
+    positions: np.ndarray,
+    error_vectors: np.ndarray,
+    angular_errors: np.ndarray,
+    errors: Dict[str, Dict[str, float]],
+    title_prefix: str = "",
+    convert_to_mm: bool = True,
+    max_arrow_ratio: float = 0.2,
+    show_grid: bool = True,
+    figure_size: Tuple[int, int] = (12, 10),
+    position_labels: Tuple[str, str, str] = ("X position", "Y position", "Z position"),
+) -> None:
+    """Plot 3D gaze tracking error vectors with adaptive scaling.
+
+    Creates 3D quiver plot showing error vectors in 3D space.
+    Applies same black arrow styling as 2D plots.
+
+    Args:
+        positions: Array of shape (N, 3) with [x, y, z] positions
+        error_vectors: Array of shape (N, 3) with [dx, dy, dz] error vectors
+        angular_errors: Array of shape (N,) with angular errors in degrees
+        errors: Dictionary with error statistics (from calculate_error_statistics)
+        title_prefix: Prefix text for plot title
+        convert_to_mm: Convert coordinates and vectors to mm
+        max_arrow_ratio: Maximum arrow length as fraction of plot range
+        show_grid: Show grid lines
+        figure_size: Figure size tuple
+        position_labels: Labels for X, Y, Z axes
+    """
+
+    # Filter out invalid entries
+    valid_mask = ~(np.isnan(positions).any(axis=1) | np.isnan(error_vectors).any(axis=1))
+    if not np.any(valid_mask):
+        print("Warning: No valid data points for 3D plotting")
+        return
+
+    positions_valid = positions[valid_mask]
+    error_vectors_valid = error_vectors[valid_mask]
+    angular_errors_valid = angular_errors[valid_mask]
+
+    # Apply unit conversion if requested
+    if convert_to_mm:
+        positions_plot = positions_valid * 1000
+        error_vectors_plot = error_vectors_valid * 1000
+        unit_str = "mm"
+    else:
+        positions_plot = positions_valid
+        error_vectors_plot = error_vectors_valid
+        unit_str = "m"
+
+    # Compute scaling factor for arrows
+    magnitudes = np.linalg.norm(error_vectors_plot, axis=1)
+    finite_magnitudes = magnitudes[np.isfinite(magnitudes)]
+
+    if len(finite_magnitudes) == 0:
+        print("Warning: All error magnitudes are NaN/Inf, skipping plot")
+        return
+
+    max_magnitude = np.max(finite_magnitudes)
+
+    # Calculate plot range in 3D
+    plot_ranges = np.ptp(positions_plot, axis=0)  # range in each dimension
+    plot_range = np.max(plot_ranges)
+
+    # Set target arrow length as fraction of plot range
+    target_arrow_length = plot_range * max_arrow_ratio
+
+    if max_magnitude > target_arrow_length:
+        scale_factor = target_arrow_length / max_magnitude
+        error_vectors_scaled = error_vectors_plot * scale_factor
+        scaling_applied = True
+    else:
+        scale_factor = 1.0
+        error_vectors_scaled = error_vectors_plot
+        scaling_applied = False
+
+    # Create 3D figure
+    plt.style.use("default")
+    fig = plt.figure(figsize=figure_size, facecolor="white")
+    ax = fig.add_subplot(111, projection="3d")
+    ax.set_facecolor("white")
+
+    # Plot error vectors as 3D arrows (matching exact 2D style)
+    ax.quiver(
+        positions_plot[:, 0],
+        positions_plot[:, 1],
+        positions_plot[:, 2],
+        error_vectors_scaled[:, 0],
+        error_vectors_scaled[:, 1],
+        error_vectors_scaled[:, 2],
+        color="black",
+        alpha=1,
+        linewidth=0.5,
+        arrow_length_ratio=0.05,
+    )
+
+    # Grid styling
+    if show_grid:
+        ax.grid(True, alpha=0.3, linestyle="-", linewidth=0.5)
+
+    # Set labels
+    ax.set_xlabel(f"{position_labels[0]} ({unit_str})")
+    ax.set_ylabel(f"{position_labels[1]} ({unit_str})")
+    ax.set_zlabel(f"{position_labels[2]} ({unit_str})")
+
+    # Set equal aspect ratio for all axes
+    ax.set_box_aspect([1, 1, 1])
+
+    # Create comprehensive title with scaling info
+    error_stats = (
+        f"Max: {errors['mtr']['max'] * 1e3:.2f} {unit_str}, "
+        f"Mean: {errors['mtr']['mean'] * 1e3:.2f} {unit_str}, "
+        f"Std: {errors['mtr']['std'] * 1e3:.2f} {unit_str}"
+    )
+
+    if scaling_applied:
+        scale_info = f" (arrows scaled {scale_factor:.2f}×)"
+    else:
+        scale_info = " (arrows at full scale)"
+
+    if title_prefix:
+        title = f"{title_prefix}\n{error_stats}{scale_info}"
+    else:
+        title = f"3D Gaze Error Vectors\n{error_stats}{scale_info}"
+
+    ax.set_title(title, pad=20)
+
+    # Improve layout and show
+    plt.tight_layout()
+    plt.show()
+
+
 def print_error_summary(errors: Dict[str, Dict[str, float]], title: str = "Error Summary") -> None:
     """Print formatted gaze tracking error statistics.
 
-    Displays performance metrics in both millimeters and degrees for easy analysis.
+    Displays error metrics in table format with mm and degree units.
 
     Args:
         errors: Dictionary with error statistics from calculate_error_statistics

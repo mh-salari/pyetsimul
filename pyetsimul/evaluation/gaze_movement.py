@@ -6,7 +6,7 @@ import numpy as np
 from tqdm import tqdm
 
 from ..geometry.conversions import calculate_angular_error_degrees
-from .analysis_utils import plot_error_vectors, calculate_error_statistics
+from .analysis_utils import plot_error_vectors, plot_error_vectors_3d, calculate_error_statistics
 from ..core import Eye, EyeTracker
 from ..types import Position3D
 from ..experimental_designs import GazeMovement
@@ -20,7 +20,7 @@ def accuracy_over_gaze_points(
 ) -> Dict[str, Dict[str, float]]:
     """Computes gaze error at different gaze target points.
 
-    Plotting varies by movement pattern dimensions.
+    Returns error statistics and generates dimension-appropriate plots.
 
     Args:
         et: Eye tracker structure
@@ -128,7 +128,7 @@ def accuracy_over_gaze_points(
 
 
 def _plot_results_by_dimension(gaze_movement, results, errors, et, observer_pos_test):
-    """Plot results using appropriate visualization for movement pattern dimensions."""
+    """Select and execute plotting function based on varying dimensions."""
     varies_x = gaze_movement.dx[0] != gaze_movement.dx[1]
     varies_y = gaze_movement.dy[0] != gaze_movement.dy[1]
     varies_z = gaze_movement.dz[0] != gaze_movement.dz[1]
@@ -145,8 +145,54 @@ def _plot_results_by_dimension(gaze_movement, results, errors, et, observer_pos_
 
 
 def _plot_1d_results(gaze_movement, results, errors):
-    """Plot 1D results with error vectors along the line."""
-    print("1D plotting: TODO - implement vector style similar to 2D")
+    """Plot 1D results with error vectors in 3D space."""
+    # Determine which axis varies
+    varies_x = gaze_movement.dx[0] != gaze_movement.dx[1]
+    varies_y = gaze_movement.dy[0] != gaze_movement.dy[1]
+    varies_z = gaze_movement.dz[0] != gaze_movement.dz[1]
+
+    if varies_x:
+        varying_axis = "X"
+    elif varies_y:
+        varying_axis = "Y"
+    else:  # must be Z if we're in 1D function
+        varying_axis = "Z"
+
+    # Extract positions and error vectors for valid results
+    positions = []
+    error_vectors = []
+    angular_errors = []
+
+    for result in results:
+        if result["predicted"] is not None:
+            # Target position
+            actual = result["actual"]
+            positions.append([actual.x, actual.y, actual.z])
+
+            # Error vector (predicted - actual)
+            error_vectors.append([result["error_x"], result["error_y"], result["error_z"]])
+
+            # Angular error
+            angular_errors.append(result["error_angular"])
+
+    if not positions:
+        print("Warning: No valid data for 1D plotting")
+        return
+
+    positions = np.array(positions)
+    error_vectors = np.array(error_vectors)
+    angular_errors = np.array(angular_errors)
+
+    # Use the 3D plotting function for 1D data
+    plot_error_vectors_3d(
+        positions=positions,
+        error_vectors=error_vectors,
+        angular_errors=angular_errors,
+        errors=errors,
+        title_prefix=f"Gaze Point Analysis (1D - {varying_axis} axis)",
+        convert_to_mm=True,
+        position_labels=("Gaze X", "Gaze Y", "Gaze Z"),
+    )
 
 
 def _plot_2d_results(gaze_movement, results, errors, et, observer_pos_test):
@@ -242,4 +288,38 @@ def _plot_2d_results(gaze_movement, results, errors, et, observer_pos_test):
 
 def _plot_3d_results(gaze_movement, results, errors):
     """Plot 3D results with error vectors in 3D space."""
-    print("3D plotting: TODO - implement 3D vector visualization similar to 2D style")
+    # Extract positions and error vectors for valid results
+    positions = []
+    error_vectors = []
+    angular_errors = []
+
+    for result in results:
+        if result["predicted"] is not None:
+            # Target position
+            actual = result["actual"]
+            positions.append([actual.x, actual.y, actual.z])
+
+            # Error vector (predicted - actual)
+            error_vectors.append([result["error_x"], result["error_y"], result["error_z"]])
+
+            # Angular error
+            angular_errors.append(result["error_angular"])
+
+    if not positions:
+        print("Warning: No valid data for 3D plotting")
+        return
+
+    positions = np.array(positions)
+    error_vectors = np.array(error_vectors)
+    angular_errors = np.array(angular_errors)
+
+    # Use the new 3D plotting function
+    plot_error_vectors_3d(
+        positions=positions,
+        error_vectors=error_vectors,
+        angular_errors=angular_errors,
+        errors=errors,
+        title_prefix="Gaze Point Analysis (3D)",
+        convert_to_mm=True,
+        position_labels=("Gaze X", "Gaze Y", "Gaze Z"),
+    )
