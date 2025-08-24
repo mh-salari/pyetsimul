@@ -17,7 +17,28 @@ from .interactive_calibration import create_interactive_calibration_plot
 from .calibration_utils import print_polynomial_parameters
 
 
-def accuracy_at_calibration_points(et: EyeTracker, eye: Eye) -> Dict[str, Dict[str, float]]:
+class CalibrationResults:
+    """Calibration accuracy results with printing method."""
+
+    def __init__(self, errors: Dict[str, Dict[str, float]]):
+        self.errors = errors
+
+    def print_summary(self, title: str = "Calibration Accuracy") -> None:
+        """Print formatted calibration error statistics."""
+        print(f"\n{title}:")
+
+        headers = ["Statistic", "Error (mm)", "Error (degrees)"]
+        data = [
+            ["Max", f"{self.errors['mtr']['max'] * 1e3:.4f}", f"{self.errors['deg']['max']:.4f}"],
+            ["Mean", f"{self.errors['mtr']['mean'] * 1e3:.4f}", f"{self.errors['deg']['mean']:.4f}"],
+            ["Std", f"{self.errors['mtr']['std'] * 1e3:.4f}", f"{self.errors['deg']['std']:.4f}"],
+            ["Median", f"{self.errors['mtr']['median'] * 1e3:.4f}", f"{self.errors['deg']['median']:.4f}"],
+        ]
+
+        print(tabulate(data, headers=headers, tablefmt="grid"))
+
+
+def accuracy_at_calibration_points(et: EyeTracker, eye: Eye, interactive_plot: bool = True) -> CalibrationResults:
     """Computes gaze error at calibration points to assess calibration quality.
 
     Evaluates calibration accuracy by testing gaze prediction at original calibration targets.
@@ -143,8 +164,9 @@ def accuracy_at_calibration_points(et: EyeTracker, eye: Eye) -> Dict[str, Dict[s
         print(f"Mean error {errors['mtr']['mean'] * 1e3:.3g} mm ({errors['deg']['mean']:.4f}°)")
         print(f"Standard deviation {errors['mtr']['std'] * 1e3:.3g} mm ({errors['deg']['std']:.4f}°)")
 
-        # Create interactive visualization
-        create_interactive_calibration_plot(et, e, X, Y, U, V, predicted_points, valid_mask, errs_deg, plane_info)
+        # Create interactive visualization if requested
+        if interactive_plot:
+            create_interactive_calibration_plot(et, e, X, Y, U, V, predicted_points, valid_mask, errs_deg, plane_info)
     else:
         print(f"\nCalibration Analysis Results: ALL {n_total} POINTS FAILED")
         errors = {
@@ -152,4 +174,4 @@ def accuracy_at_calibration_points(et: EyeTracker, eye: Eye) -> Dict[str, Dict[s
             "deg": {"max": np.nan, "mean": np.nan, "std": np.nan, "median": np.nan},
         }
 
-    return errors
+    return CalibrationResults(errors)

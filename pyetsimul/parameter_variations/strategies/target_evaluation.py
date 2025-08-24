@@ -10,6 +10,7 @@ from ...types import Position3D
 from ...geometry.conversions import calculate_angular_error_degrees
 from ...evaluation.analysis_utils import calculate_error_statistics, plot_error_vectors, plot_error_vectors_3d
 from ..core import ParameterVariation, VariationStrategy
+from .evaluation import ParameterVariationResults
 
 
 class TargetPositionEvaluationStrategy(VariationStrategy):
@@ -19,7 +20,7 @@ class TargetPositionEvaluationStrategy(VariationStrategy):
         self.observer_position = observer_position
         self.enable_plotting = enable_plotting
 
-    def execute(self, eye: Eye, et: EyeTracker, variation: ParameterVariation) -> Dict[str, Dict[str, float]]:
+    def execute(self, eye: Eye, et: EyeTracker, variation: ParameterVariation) -> ParameterVariationResults:
         """Run accuracy evaluation across all target position values."""
 
         if not et.algorithm_state.is_calibrated:
@@ -81,7 +82,7 @@ class TargetPositionEvaluationStrategy(VariationStrategy):
         if self.enable_plotting:
             self._plot_results(variation, results, statistics, et, e.position)
 
-        return statistics
+        return ParameterVariationResults(statistics, "target_position", len(target_positions))
 
     def _calculate_statistics(self, results: list) -> Dict[str, Dict[str, float]]:
         """Calculate error statistics from results."""

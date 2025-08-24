@@ -7,7 +7,6 @@ to ensure consistency and reduce code duplication.
 import numpy as np
 import matplotlib.pyplot as plt
 from typing import Dict, Tuple
-from tabulate import tabulate
 
 
 def plot_error_vectors(
@@ -348,26 +347,3 @@ def plot_error_vectors_3d(
     # Improve layout and show
     plt.tight_layout()
     plt.show()
-
-
-def print_error_summary(errors: Dict[str, Dict[str, float]], title: str = "Error Summary") -> None:
-    """Print formatted gaze tracking error statistics.
-
-    Displays error metrics in table format with mm and degree units.
-
-    Args:
-        errors: Dictionary with error statistics from calculate_error_statistics
-        title: Title for the summary section
-    """
-    print(f"\n{title}:")
-
-    # Create unified error statistics table
-    headers = ["Statistic", "Error (mm)", "Error (degrees)"]
-    data = [
-        ["Max", f"{errors['mtr']['max'] * 1e3:.4f}", f"{errors['deg']['max']:.4f}"],
-        ["Mean", f"{errors['mtr']['mean'] * 1e3:.4f}", f"{errors['deg']['mean']:.4f}"],
-        ["Std", f"{errors['mtr']['std'] * 1e3:.4f}", f"{errors['deg']['std']:.4f}"],
-        ["Median", f"{errors['mtr']['median'] * 1e3:.4f}", f"{errors['deg']['median']:.4f}"],
-    ]
-
-    print(tabulate(data, headers=headers, tablefmt="grid"))

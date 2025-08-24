@@ -4,12 +4,36 @@ import copy
 from typing import Dict
 import numpy as np
 from tqdm import tqdm
+from tabulate import tabulate
 
 from ...core import Eye, EyeTracker
 from ...types import Position3D
 from ...geometry.conversions import calculate_angular_error_degrees
 from ...evaluation.analysis_utils import plot_error_vectors, plot_error_vectors_3d
 from ..core import ParameterVariation, VariationStrategy
+
+
+class ParameterVariationResults:
+    """Parameter variation results with printing method."""
+
+    def __init__(self, errors: Dict[str, Dict[str, float]], test_type: str, test_count: int):
+        self.errors = errors
+        self.test_type = test_type
+        self.test_count = test_count
+
+    def print_summary(self, title: str) -> None:
+        """Print formatted parameter variation error statistics."""
+        print(f"\n{title}:")
+
+        headers = ["Statistic", "Error (mm)", "Error (degrees)"]
+        data = [
+            ["Max", f"{self.errors['mtr']['max'] * 1e3:.4f}", f"{self.errors['deg']['max']:.4f}"],
+            ["Mean", f"{self.errors['mtr']['mean'] * 1e3:.4f}", f"{self.errors['deg']['mean']:.4f}"],
+            ["Std", f"{self.errors['mtr']['std'] * 1e3:.4f}", f"{self.errors['deg']['std']:.4f}"],
+            ["Median", f"{self.errors['mtr']['median'] * 1e3:.4f}", f"{self.errors['deg']['median']:.4f}"],
+        ]
+
+        print(tabulate(data, headers=headers, tablefmt="grid"))
 
 
 class EyePositionEvaluationStrategy(VariationStrategy):
@@ -78,7 +102,7 @@ class EyePositionEvaluationStrategy(VariationStrategy):
         if self.enable_plotting:
             self._plot_results(variation, results, statistics, et)
 
-        return statistics
+        return ParameterVariationResults(statistics, "eye_position", len(values))
 
     def _calculate_statistics(self, results: list) -> Dict[str, Dict[str, float]]:
         """Calculate error statistics from results."""
