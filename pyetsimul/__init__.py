@@ -13,8 +13,7 @@ from . import geometry
 from . import optics
 from . import types
 from . import gaze_tracking_algorithms
-from . import experimental_designs
-from . import data_generation
+from . import parameter_variations
 
 # Also import commonly used structured types for convenience
 from .types import (
@@ -35,8 +34,7 @@ __all__ = [
     "optics",
     "types",
     "gaze_tracking_algorithms",
-    "experimental_designs",
-    "data_generation",
+    "parameter_variations",
     # Common structured types for convenience
     "Position3D",
     "Direction3D",

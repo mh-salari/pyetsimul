@@ -4,13 +4,13 @@ Demonstrates polynomial interpolation-based gaze tracking with comprehensive acc
 """
 
 from pyetsimul.gaze_tracking_algorithms.interpolate import InterpolationTracker
-from pyetsimul.evaluation import (
-    accuracy_over_eye_positions,
-    accuracy_at_calibration_points,
-)
-from pyetsimul.evaluation.gaze_movement import accuracy_over_gaze_points
-from pyetsimul.experimental_designs import GazeMovement, EyeMovement
 from pyetsimul.evaluation.analysis_utils import print_error_summary
+from pyetsimul.parameter_variations import (
+    Eye3DPositionVariation,
+    Target3DPositionVariation,
+    EyePositionEvaluationStrategy,
+    TargetPositionEvaluationStrategy,
+)
 from pyetsimul.core import Light, Camera, Eye
 from pyetsimul.types import Position3D, RotationMatrix
 from tabulate import tabulate
@@ -93,39 +93,43 @@ def main():
     print("Calibrating eye tracker...")
     et.run_calibration(eye)
 
-    print("1. Testing calibration accuracy:")
-    print("-" * 60)
-    calib_results = accuracy_at_calibration_points(et, eye=eye)
-    print_error_summary(calib_results, "Calibration Test Summary")
+    # print("1. Testing calibration accuracy:")
+    # print("-" * 60)
+    # calib_results = accuracy_at_calibration_points(et, eye=eye)
+    # print_error_summary(calib_results, "Calibration Test Summary")
 
     print("2. Testing over screen (fixed observer, sweep gaze positions):")
     print("-" * 60)
 
-    # Create 2D gaze movement pattern: X and Z vary (XZ plane), Y fixed
-    # This matches the calibration plane which is XZ
-    gaze_movement = GazeMovement(
+    # Create target 3D position variation using new architecture
+    target_position_variation = Target3DPositionVariation(
         grid_center=Position3D(0, 0, 200e-3),
         dx=[-200e-3, 200e-3],  # X varies: ±200mm
         dy=[0.0, 0.0],  # Y fixed: no variation
         dz=[-150e-3, 150e-3],  # Z varies: ±150mm
         grid_size=[16, 1, 16],  # 16x1x16 = 2D grid in XZ plane
     )
-    screen_results = accuracy_over_gaze_points(et, eye=eye, gaze_movement=gaze_movement)
+
+    # Use new target position evaluation strategy
+    target_strategy = TargetPositionEvaluationStrategy(observer_position=eye_position)
+    screen_results = target_strategy.execute(eye, et, target_position_variation)
 
     print_error_summary(screen_results, "Screen Test Summary")
 
     print("\n3. Testing over observer (fixed gaze, sweep observer positions):")
     print("-" * 60)
-    # Create eye movement pattern: observer position varies around central position
-    eye_movement = EyeMovement(
-        eye_center=eye_position,  # Central eye position
-        gaze_target=Position3D(0, 0, 200e-3),  # Fixed gaze target at screen center
+    # Create eye 3D position variation using new architecture
+    eye_position_variation = Eye3DPositionVariation(
+        center=eye_position,  # Central eye position
         dx=[-50e-3, 50e-3],  # X varies: ±50mm
         dy=[-50e-3, 50e-3],  # Y varies: ±50mm
         dz=[0.0, 0.0],  # Z fixed: no variation
         grid_size=[16, 16, 1],  # 16x16x1 = 2D grid in XY plane
     )
-    observer_results = accuracy_over_eye_positions(et, eye=eye, eye_movement=eye_movement)
+
+    # Use new eye position evaluation strategy
+    evaluation_strategy = EyePositionEvaluationStrategy(gaze_target=Position3D(0, 0, 200e-3))
+    observer_results = evaluation_strategy.execute(eye, et, eye_position_variation)
 
     print_error_summary(observer_results, "Observer Test Summary")
 

@@ -257,7 +257,6 @@ def plot_error_vectors_3d(
 
     positions_valid = positions[valid_mask]
     error_vectors_valid = error_vectors[valid_mask]
-    angular_errors_valid = angular_errors[valid_mask]
 
     # Apply unit conversion if requested
     if convert_to_mm:
