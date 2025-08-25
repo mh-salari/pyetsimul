@@ -5,7 +5,7 @@ from pathlib import Path
 from typing import Optional
 
 from .strategies import DataGenerationStrategy
-from ..visualization import plot_interactive_setup
+from ..visualization import plot_setup_and_camera_view
 
 
 def load_config(config_path: Path):
@@ -33,46 +33,39 @@ def run_single_config(config_path: Path, show_setup: bool = False):
     print(f"Type: {config.experiment_type}")
     print(f"{'=' * 60}")
 
-    eye = config.eyes[0]
-
     if show_setup:
         try:
             if config.experiment_type == "eye_position_variation":
-                target_point = config.gaze_target
+                target_points = [config.gaze_target] * len(config.eyes)
             else:
-                target_point = config.target_variation.grid_center
+                target_points = [config.target_variation.grid_center] * len(config.eyes)
 
-            plot_interactive_setup(eye, config.lights, config.cameras[0], target_point)
+            plot_setup_and_camera_view(config.eyes, target_points, config.cameras, config.lights)
             print("Setup visualization displayed.")
         except Exception as e:
             print(f"Setup visualization failed: {e}")
 
+    # Generate single unified dataset: camera → eye → variations
     if config.experiment_type == "eye_position_variation":
-        data_gen_strategy = DataGenerationStrategy(
-            cameras=config.cameras,
-            lights=config.lights,
-            gaze_target=config.gaze_target,
-            output_format="both",
-            output_dir=str(config.output_dir),
-            experiment_name=config.experiment_name,
-        )
-
-        print("Generating eye position variation data...")
-        result = data_gen_strategy.execute(eye, config.eye_variation)
-
+        variation = config.eye_variation
+        gaze_target = config.gaze_target
     elif config.experiment_type == "target_position_variation":
-        data_gen_strategy = DataGenerationStrategy(
-            cameras=config.cameras,
-            lights=config.lights,
-            output_format="both",
-            output_dir=str(config.output_dir),
-            experiment_name=config.experiment_name,
-        )
-
-        print("Generating target position variation data...")
-        result = data_gen_strategy.execute(eye, config.target_variation)
+        variation = config.target_variation
+        gaze_target = None
     else:
         raise ValueError(f"Unknown experiment_type: {config.experiment_type}")
+
+    data_gen_strategy = DataGenerationStrategy(
+        cameras=config.cameras,
+        lights=config.lights,
+        gaze_target=gaze_target,
+        output_format="both",
+        output_dir=str(config.output_dir),
+        experiment_name=config.experiment_name,
+    )
+
+    print(f"Generating {config.experiment_type} data...")
+    result = data_gen_strategy.execute(config.eyes, variation)
 
     print(f"\nResults for {config.experiment_name}:")
     print(f"- Parameter varied: {result['parameter_name']}")
@@ -80,8 +73,8 @@ def run_single_config(config_path: Path, show_setup: bool = False):
     print(f"- Eyes: {len(config.eyes)}, Cameras: {len(config.cameras)}, Lights: {len(config.lights)}")
 
     print("Files saved:")
-    for format_type, filepath in result["saved_files"].items():
-        print(f"- {format_type.upper()}: {filepath}")
+    for filepath in result["saved_files"]:
+        print(f"- {filepath}")
 
     return result
 
