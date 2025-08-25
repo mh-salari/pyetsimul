@@ -142,19 +142,18 @@ def plot_interactive_cameras(cameras, eye, target_point):
     ax1 = fig.add_subplot(1, 2, 1, projection="3d")
     ax2 = fig.add_subplot(1, 2, 2)
 
-    # Reference bounds for consistent 3D view (use first camera)
+    # Reference bounds for consistent 3D view (show all cameras)
     eye_ref = copy.deepcopy(eye)
     eye_ref.look_at(target_point)
-    first_camera = cameras[0]
 
-    prepared_data_ref = prepare_eye_data_for_plots(eye_ref, target_point, None, first_camera)
+    prepared_data_ref = prepare_eye_data_for_plots([eye_ref], [target_point], None, cameras)
     plot_setup(
         ax1,
-        prepared_data_ref["eye_data"],
-        target_point,
+        prepared_data_ref["eyes_data"],
+        [target_point],
         None,
-        first_camera,
-        prepared_data_ref["cr_3d_list"],
+        cameras,
+        prepared_data_ref["cr_3d_lists"],
         None,
         None,
     )
@@ -174,31 +173,28 @@ def plot_interactive_cameras(cameras, eye, target_point):
         # Make eye look at target point
         eye.look_at(target_point)
 
-        # Prepare data for all cameras
-        prepared_data_list = []
-        for camera in cameras:
-            prepared_data = prepare_eye_data_for_plots(eye, target_point, None, camera)
-            prepared_data_list.append(prepared_data)
+        # Prepare data for all cameras at once
+        prepared_data = prepare_eye_data_for_plots([eye], [target_point], None, cameras)
 
         # Clear axes
         ax1.cla()
         ax2.cla()
 
-        # Plot 3D setup (use first camera)
+        # Plot 3D setup (show all cameras)
         plot_setup(
             ax1,
-            prepared_data_list[0]["eye_data"],
-            target_point,
+            prepared_data["eyes_data"],
+            [target_point],
             None,
-            first_camera,
-            prepared_data_list[0]["cr_3d_list"],
+            cameras,
+            prepared_data["cr_3d_lists"],
             ref_bounds,
             None,
         )
 
         # Plot camera comparison for all cameras
-        for i, (camera, prepared_data) in enumerate(zip(cameras, prepared_data_list)):
-            camera_image = prepared_data["camera_image"]
+        for i, camera in enumerate(cameras):
+            camera_image = prepared_data["camera_images"][i]
             color = colors[i % len(colors)]
             marker = markers[i % len(markers)]
             camera_name = camera.name or f"Camera {i + 1}"
@@ -232,7 +228,7 @@ def plot_interactive_cameras(cameras, eye, target_point):
                 )
 
         # Set up axes
-        resolution = first_camera.camera_matrix.resolution
+        resolution = cameras[0].camera_matrix.resolution
         ax2.set_xlim(-resolution.x / 2, resolution.x / 2)
         ax2.set_ylim(-resolution.y / 2, resolution.y / 2)
         ax2.set_xlabel("X (pixels)")
@@ -243,16 +239,16 @@ def plot_interactive_cameras(cameras, eye, target_point):
         ax2.legend()
 
         # Calculate and display distortion info
-        if len(prepared_data_list) >= 2:
+        if len(cameras) >= 2:
             # Compare first camera with others
-            first_center = prepared_data_list[0]["camera_image"].pupil_center
+            first_center = prepared_data["camera_images"][0].pupil_center
             if first_center is not None:
                 first_center_array = first_center.to_array()
 
                 # Calculate differences from first camera
                 differences = []
-                for i, prepared_data in enumerate(prepared_data_list[1:], 1):
-                    camera_center = prepared_data["camera_image"].pupil_center
+                for i in range(1, len(cameras)):
+                    camera_center = prepared_data["camera_images"][i].pupil_center
                     if camera_center is not None:
                         camera_center_array = camera_center.to_array()
                         center_diff = np.linalg.norm(camera_center_array - first_center_array)
@@ -261,7 +257,7 @@ def plot_interactive_cameras(cameras, eye, target_point):
 
                 # Eye position info
                 eye_pos = eye.position
-                cam_pos = first_camera.position
+                cam_pos = cameras[0].position
                 distance = np.linalg.norm(
                     np.array([eye_pos.x, eye_pos.y, eye_pos.z]) - np.array([cam_pos.x, cam_pos.y, cam_pos.z])
                 )
@@ -368,14 +364,14 @@ def plot_interactive_pupil_comparison(eye_elliptical, eye_realistic, camera, tar
     # Reference bounds for consistent 3D view (same as camera comparison)
     eye_ref = copy.deepcopy(eye_elliptical)
     eye_ref.look_at(target_point)
-    prepared_data_ref = prepare_eye_data_for_plots(eye_ref, target_point, None, camera)
+    prepared_data_ref = prepare_eye_data_for_plots([eye_ref], [target_point], None, [camera])
     plot_setup(
         ax1,
-        prepared_data_ref["eye_data"],
-        target_point,
+        prepared_data_ref["eyes_data"],
+        [target_point],
         None,
-        camera,
-        prepared_data_ref["cr_3d_list"],
+        [camera],
+        prepared_data_ref["cr_3d_lists"],
         None,
         None,
     )
@@ -401,16 +397,16 @@ def plot_interactive_pupil_comparison(eye_elliptical, eye_realistic, camera, tar
         ax2.cla()
 
         # Prepare data for 3D setup (use elliptical eye for 3D view)
-        prepared_data = prepare_eye_data_for_plots(eye_elliptical, target_point, None, camera)
+        prepared_data = prepare_eye_data_for_plots([eye_elliptical], [target_point], None, [camera])
 
         # Plot 3D setup (same as camera comparison)
         plot_setup(
             ax1,
-            prepared_data["eye_data"],
-            target_point,
+            prepared_data["eyes_data"],
+            [target_point],
             None,
-            camera,
-            prepared_data["cr_3d_list"],
+            [camera],
+            prepared_data["cr_3d_lists"],
             ref_bounds,
             None,
         )

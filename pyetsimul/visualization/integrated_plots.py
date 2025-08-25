@@ -12,9 +12,9 @@ from .camera_view import plot_camera_view_of_eye
 
 
 def plot_setup_and_camera_view(
-    eye,
-    look_at_target,
-    camera,
+    eyes,
+    look_at_targets,
+    cameras=None,
     lights=None,
     calib_points=None,
     ax1=None,
@@ -24,51 +24,69 @@ def plot_setup_and_camera_view(
 ):
     """Create comprehensive eye tracking visualization with 3D setup and camera view.
 
-    Integrates 3D scene and camera image for full system visualization.
-    Useful for debugging, demonstration, and analysis of eye tracking setups.
+    Shows 3D scene and camera image for complete system visualization.
 
     Args:
-        eye: Eye object with transformation matrix and anatomy
-        look_at_target: Target point [x, y, z, 1] or [x, y, z]
-        lights: List of Light objects with positions
-        camera: Camera object with transformation and parameters
+        eyes: List of Eye objects
+        look_at_targets: List of target points for each eye
+        cameras: Optional list of Camera objects
+        lights: Optional list of Light objects with positions
+        calib_points: Optional calibration points array
         ax1, ax2: Optional matplotlib axes for reuse
         fig: Optional matplotlib figure for reuse
         ref_bounds: Optional reference bounds dict with 'x', 'y', 'z' keys
-        calib_points: Optional calibration points array to plot as black x markers
 
     Returns:
         fig: Matplotlib figure object
     """
+    # Ensure inputs are lists
+    if not isinstance(eyes, list):
+        eyes = [eyes]
+    if not isinstance(look_at_targets, list):
+        look_at_targets = [look_at_targets]
+    if cameras is not None and not isinstance(cameras, list):
+        cameras = [cameras]
+
     # Create figure and axes if not provided
     axes_provided = ax1 is not None and ax2 is not None
     if ax1 is None or ax2 is None:
         if fig is None:
-            fig = plt.figure(figsize=(16, 8))
+            fig = plt.figure(figsize=(20, 8))
         else:
-            fig.clear()  # Clear existing plots when reusing figure
+            fig.clear()
         ax1 = fig.add_subplot(1, 2, 1, projection="3d")
         ax2 = fig.add_subplot(1, 2, 2)
 
-    # Prepare all eye data
-    prepared_data = prepare_eye_data_for_plots(eye, look_at_target, lights, camera)
+        # Adjust subplot spacing to make room for legend
+        plt.subplots_adjust(right=0.85)
 
-    # Call the plotting functions
-    plot_setup(
+    # Prepare eye data
+    prepared_data = prepare_eye_data_for_plots(eyes, look_at_targets, lights, cameras)
+
+    # Plot 3D setup
+    eye_colors, camera_colors = plot_setup(
         ax1,
-        prepared_data["eye_data"],
-        look_at_target,
+        prepared_data["eyes_data"],
+        look_at_targets,
         lights,
-        camera,
-        prepared_data["cr_3d_list"],
+        cameras,
+        prepared_data["cr_3d_lists"],
         ref_bounds,
         calib_points,
     )
 
-    if ax2 is not None:
-        plot_camera_view_of_eye(prepared_data["camera_image"], camera, prepared_data["cr_3d_list"], ax=ax2)
+    # Plot camera views
+    if ax2 is not None and cameras:
+        plot_camera_view_of_eye(
+            prepared_data["camera_images"],
+            cameras,
+            prepared_data["cr_3d_lists"],
+            ax=ax2,
+            eye_colors=eye_colors,
+            camera_colors=camera_colors,
+        )
 
-    # Show plot if axes were not provided (user didn't create their own figure)
+    # Show plot if axes were not provided
     if not axes_provided:
         plt.show()
 

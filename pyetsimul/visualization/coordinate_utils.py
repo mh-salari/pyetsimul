@@ -2,6 +2,7 @@
 
 Provides coordinate transformations and data preparation for eye tracking visualization.
 Handles eye anatomy, camera imaging, and corneal reflection calculations.
+Support for multiple eyes, cameras, and lights.
 """
 
 import numpy as np
@@ -12,22 +13,72 @@ from ..types import Position3D
 
 
 def prepare_eye_data_for_plots(
-    eye: Eye, look_at_target: Position3D, lights: Optional[List[Light]], camera: Camera
+    eyes: List[Eye],
+    look_at_targets: List[Position3D],
+    lights: Optional[List[Light]] = None,
+    cameras: Optional[List[Camera]] = None,
 ) -> Dict[str, Any]:
     """Prepare eye visualization data for plotting.
 
-    Transforms eye anatomy to world coordinates and generates camera image.
-    Calculates corneal reflections and optical axis for 3D visualization.
+    Transforms eye anatomies to world coordinates and generates camera images.
+    Calculates corneal reflections and optical axes for 3D visualization.
 
     Args:
-        eye: Eye object with transformation matrix and anatomy
-        look_at_target: Target point [x, y, z, 1] or [x, y, z]
-        lights: List of Light objects with positions
-        camera: Camera object with transformation and parameters
+        eyes: List of Eye objects
+        look_at_targets: List of target points, one per eye
+        lights: Optional list of Light objects with positions
+        cameras: Optional list of Camera objects
 
     Returns:
-        dict: Contains eye_data, camera_image, and cr_3d_list for plotting
+        dict: Contains eyes_data list, camera_images list, and cr_3d_lists for plotting
     """
+    if len(eyes) != len(look_at_targets):
+        raise ValueError("Number of eyes must match number of look_at_targets")
+
+    if not eyes:
+        raise ValueError("At least one eye must be provided")
+
+    eyes_data = []
+    camera_images = []
+    cr_3d_lists = []
+
+    for i, (eye, target) in enumerate(zip(eyes, look_at_targets)):
+        eye_data = _prepare_single_eye_data(eye, target)
+        eyes_data.append(eye_data)
+
+        # Find corneal reflections for this eye (only if cameras available)
+        cr_3d_list = []
+        if lights is not None and cameras:
+            for light in lights:
+                cr_result = eye.find_cr(light, cameras[0])
+                cr_3d_list.append(cr_result)
+        cr_3d_lists.append(cr_3d_list)
+
+    if cameras:
+        for camera in cameras:
+            combined_pupil_boundaries = []
+            combined_pupil_centers = []
+
+            for eye in eyes:
+                eye_image = camera.take_image(eye, lights)
+                combined_pupil_boundaries.append(eye_image.pupil_boundary)
+                combined_pupil_centers.append(eye_image.pupil_center)
+
+            if eyes:
+                first_eye_image = camera.take_image(eyes[0], lights)
+                first_eye_image.pupil_boundaries = combined_pupil_boundaries
+                first_eye_image.pupil_centers = combined_pupil_centers
+                camera_images.append(first_eye_image)
+            else:
+                camera_images.append(None)
+    else:
+        camera_images = [None]
+
+    return {"eyes_data": eyes_data, "camera_images": camera_images, "cr_3d_lists": cr_3d_lists}
+
+
+def _prepare_single_eye_data(eye: Eye, look_at_target: Position3D) -> Dict[str, Any]:
+    """Helper function to prepare single eye data for visualization."""
 
     # Calculate all values once
     def transform_point(point):
@@ -80,17 +131,7 @@ def prepare_eye_data_for_plots(
         cornea_center_world.z + optical_axis_direction_world[2] * 0.02,
     )
 
-    # Generate eye image
-    camera_image = camera.take_image(eye, lights)
-
-    # Find corneal reflections if lights are provided
-    cr_3d_list = []
-    if lights is not None:
-        for light in lights:
-            cr_result = eye.find_cr(light, camera)
-            cr_3d_list.append(cr_result)
-
-    eye_data = {
+    return {
         "X_cornea": X_cornea,
         "Y_cornea": Y_cornea,
         "Z_cornea": Z_cornea,
@@ -98,5 +139,3 @@ def prepare_eye_data_for_plots(
         "pupil_world": pupil_world,
         "optical_axis_end": optical_axis_end,
     }
-
-    return {"eye_data": eye_data, "camera_image": camera_image, "cr_3d_list": cr_3d_list}
