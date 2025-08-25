@@ -258,7 +258,7 @@ class Camera:
         else:
             return [Position3D.from_array(world_coords[:, i]) for i in range(n)]
 
-    def pan_tilt(self, look_at: Position3D) -> None:
+    def pan_tilt(self, look_at: Position3D, world_frame: Optional[RotationMatrix] = None) -> None:
         """Pans and tilts a camera towards a certain location.
 
         Orients camera to look directly at specified point in world coordinates.
@@ -266,6 +266,7 @@ class Camera:
 
         Args:
             look_at: Point to look at in world coordinates
+            world_frame: Optional world coordinate frame for camera orientation
         """
         # Convert to homogeneous coordinates for transformation
         look_at_homogeneous = np.array(look_at)
@@ -308,7 +309,40 @@ class Camera:
         # Apply pan and tilt transformations
         self.trans = self.rest_trans @ pan_matrix @ tilt_matrix
 
-    def point_at(self, target_point: Position3D) -> None:
+        # If world_frame is specified, align camera with world coordinate frame
+        if world_frame is not None:
+            self._align_with_world_frame(world_frame)
+
+    def _align_with_world_frame(self, world_frame: RotationMatrix) -> None:
+        """Align camera orientation with world coordinate frame while preserving viewing direction."""
+        # Get current camera viewing direction (where camera is pointing)
+        current_rotation = self.trans[:3, :3]
+        viewing_direction = -current_rotation[:, 2]  # Camera looks along -Z
+        viewing_direction = viewing_direction / np.linalg.norm(viewing_direction)
+
+        # Use the world's up vector as a reference to define the camera's orientation
+        world_up = -world_frame[:, 2]
+
+        # Create the camera's x-axis (perpendicular to viewing direction and world up)
+        camera_x = np.cross(viewing_direction, world_up)
+
+        # If viewing direction is parallel to world up, use world x-axis as fallback
+        if np.linalg.norm(camera_x) < 1e-6:
+            world_x = world_frame[:, 0]
+            camera_x = np.cross(viewing_direction, world_x)
+
+        camera_x = camera_x / np.linalg.norm(camera_x)
+
+        # Compute camera y-axis orthogonal to x-axis and viewing direction
+        camera_y = np.cross(camera_x, viewing_direction)
+
+        # Construct orthogonal rotation matrix: [x, y, -viewing] as columns
+        camera_rotation = np.column_stack((camera_x, camera_y, -viewing_direction))
+
+        # Update camera's orientation
+        self.trans[:3, :3] = camera_rotation
+
+    def point_at(self, target_point: Position3D, world_frame: Optional[RotationMatrix] = None) -> None:
         """Points camera towards a certain location.
 
         Changes camera's rest position to point at specified target.
@@ -317,6 +351,7 @@ class Camera:
 
         Args:
             target_point: Point to point at in world coordinates
+            world_frame: Optional world coordinate frame for camera orientation
         """
         # Store the target point for later reference
         self._pointing_at = target_point
@@ -325,7 +360,7 @@ class Camera:
         self.rest_trans = self.trans.copy()
 
         # Pan and tilt towards the target point
-        self.pan_tilt(target_point)
+        self.pan_tilt(target_point, world_frame)
 
         # Update rest position to the new orientation
         self.rest_trans = self.trans.copy()
