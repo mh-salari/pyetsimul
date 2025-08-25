@@ -14,6 +14,7 @@ left_eye.position = Position3D(-0.032, 0.550, 0.350)
 right_eye = Eye()
 right_eye.set_rest_orientation(RotationMatrix([[1, 0, 0], [0, 0, 1], [0, 1, 0]], validate_handedness=False))
 right_eye.position = Position3D(0.032, 0.550, 0.350)
+right_eye.set_pupil_radii(5e-3, 5e-3)  # 5mm pupil radii (x, y)
 
 # Left camera configuration
 left_camera = Camera(err=0.0, err_type="gaussian")

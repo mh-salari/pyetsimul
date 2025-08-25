@@ -62,16 +62,16 @@ def create_interactive_calibration_plot(
             calib_points_list.append([coord1, coord2])
 
         # Prepare eye data
-        prepared_data = prepare_eye_data_for_plots(interactive_eye, target_3d, et.lights, et.cameras[0])
+        prepared_data = prepare_eye_data_for_plots([interactive_eye], [target_3d], et.lights, et.cameras)
 
         # Plot 3D setup
         plot_setup(
             ax_3d,
-            prepared_data["eye_data"],
-            target_3d,
+            prepared_data["eyes_data"],
+            [target_3d],
             et.lights,
-            et.cameras[0],
-            prepared_data["cr_3d_list"],
+            et.cameras,
+            prepared_data["cr_3d_lists"],
             calib_points=calib_points_list,
         )
 

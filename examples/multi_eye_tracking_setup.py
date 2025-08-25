@@ -13,14 +13,12 @@ from pyetsimul.visualization import plot_setup_and_camera_view
 
 # Create two eyes with realistic spacing (6-7cm interpupillary distance)
 eye1 = Eye(eyelid_enabled=True, pupil_boundary_points=50)
-eye1.pupil.set_radii(50e-3, 50e-3)
 eye1.eyelid.openness = 1
 rest_orientation1 = RotationMatrix([[-1, 0, 0], [0, 0, 1], [0, 1, 0]])
 eye1.set_rest_orientation(rest_orientation1)
 eye1.position = Position3D(-32e-3, 150e-3, 50e-3)
 
 eye2 = Eye(eyelid_enabled=True, pupil_boundary_points=50)
-eye2.pupil.set_radii(50e-3, 50e-3)
 eye2.eyelid.openness = 1
 rest_orientation2 = RotationMatrix([[-1, 0, 0], [0, 0, 1], [0, 1, 0]])
 eye2.set_rest_orientation(rest_orientation2)
