@@ -13,6 +13,7 @@ from pyetsimul.core import Eye, EyeTracker
 from ..types import Position3D, Point3D
 from ..geometry.conversions import calculate_angular_error_degrees
 from ..visualization import prepare_eye_data_for_plots, plot_setup
+from ..visualization.interactive_controls import InteractiveControls
 
 
 def create_interactive_calibration_plot(
@@ -32,18 +33,14 @@ def create_interactive_calibration_plot(
     Provides real-time exploration of gaze tracking accuracy with 3D setup visualization.
     Allows interactive target positioning to test calibration quality.
     """
-    # Create figure with two subplots: 3D setup and 2D calibration analysis
-    # Increased figure size for better visibility
     fig = plt.figure(figsize=(24, 10))
-
-    # Create a copy of the eye to avoid modifying the original
     interactive_eye = copy.deepcopy(eye)
 
-    # Interactive state
     mean_x = sum(pt.x for pt in et.calib_points) / len(et.calib_points)
     mean_z = sum(pt.z for pt in et.calib_points) / len(et.calib_points)
     current_target = Position3D(mean_x, 0, mean_z)
-    step_size = 10e-3  # 10mm steps
+
+    controls = InteractiveControls(interactive_eye, current_target, step_size=10e-3)
 
     def update_display():
         """Update both 3D and 2D plots with current target position."""
@@ -52,8 +49,7 @@ def create_interactive_calibration_plot(
         # Left subplot: 3D eye tracking setup
         ax_3d = fig.add_subplot(1, 2, 1, projection="3d")
 
-        # Create target for 3D visualization
-        target_3d = Position3D(current_target.x, 0, current_target.z)
+        target_3d = Position3D(controls.target_point.x, 0, controls.target_point.z)
 
         # Convert calibration points to list format using plane mapping
         calib_points_list = []
@@ -75,11 +71,10 @@ def create_interactive_calibration_plot(
             calib_points=calib_points_list,
         )
 
-        # Add current target position to 3D plot
         ax_3d.scatter(
-            [current_target.x],
+            [controls.target_point.x],
             [0],
-            [current_target.z],
+            [controls.target_point.z],
             c="green",
             s=40,
             marker="x",
@@ -153,12 +148,11 @@ def create_interactive_calibration_plot(
                 zorder=4,
             )
 
-        # Get real-time prediction for current target
-        current_prediction = et.estimate_gaze_at(interactive_eye, current_target)
+        current_prediction = et.estimate_gaze_at(interactive_eye, controls.target_point)
 
         if current_prediction is not None and current_prediction.gaze_point is not None:
             # Extract coordinates using plane mapping for consistent display
-            target_coord1, target_coord2 = plane_info.extract_2d_coords(current_target)
+            target_coord1, target_coord2 = plane_info.extract_2d_coords(controls.target_point)
             pred_pos = Position3D(
                 current_prediction.gaze_point.x, current_prediction.gaze_point.y, current_prediction.gaze_point.z
             )
@@ -204,7 +198,9 @@ def create_interactive_calibration_plot(
             # Calculate current error
             current_error_mm = np.sqrt(error_x**2 + error_y**2)
             # Calculate angular error using full 3D coordinates
-            current_error_deg = calculate_angular_error_degrees(current_target, pred_pos, interactive_eye.position)
+            current_error_deg = calculate_angular_error_degrees(
+                controls.target_point, pred_pos, interactive_eye.position
+            )
 
             # Create calibration error summary for title
             valid_errors = errs_deg[valid_mask]
@@ -224,7 +220,7 @@ def create_interactive_calibration_plot(
             )
         else:
             # Extract coordinates using plane mapping for failed prediction case
-            target_coord1, target_coord2 = plane_info.extract_2d_coords(current_target)
+            target_coord1, target_coord2 = plane_info.extract_2d_coords(controls.target_point)
             ax.scatter(
                 [target_coord1 * 1000],
                 [target_coord2 * 1000],
@@ -261,56 +257,11 @@ def create_interactive_calibration_plot(
         plt.subplots_adjust(top=0.9, bottom=0.1, left=0.05, right=0.95, wspace=0.3)
         fig.canvas.draw()
 
-    def on_key_press(event):
-        """Handle keyboard input for moving target and eye."""
-        nonlocal current_target
-
-        if event.key == "escape":
-            plt.close(fig)
-            return
-
-        # TARGET MOVEMENT (Arrow keys)
-        elif event.key == "up":
-            current_target = Position3D(current_target.x, current_target.y, current_target.z + step_size)
-        elif event.key == "down":
-            current_target = Position3D(current_target.x, current_target.y, current_target.z - step_size)
-        elif event.key == "left":
-            current_target = Position3D(current_target.x - step_size, current_target.y, current_target.z)
-        elif event.key == "right":
-            current_target = Position3D(current_target.x + step_size, current_target.y, current_target.z)
-
-        # EYE MOVEMENT (I/K/J/L/./,)
-        elif event.key == "j":
-            interactive_eye.trans[0, 3] -= step_size  # Eye left (decrease X)
-        elif event.key == "l":
-            interactive_eye.trans[0, 3] += step_size  # Eye right (increase X)
-        elif event.key == "i":
-            interactive_eye.trans[2, 3] += step_size  # Eye up (increase Z)
-        elif event.key == "k":
-            interactive_eye.trans[2, 3] -= step_size  # Eye down (decrease Z)
-        elif event.key == ".":
-            interactive_eye.trans[1, 3] -= step_size  # Eye closer to camera (decrease Y)
-        elif event.key == ",":
-            interactive_eye.trans[1, 3] += step_size  # Eye farther from camera (increase Y)
-        else:
-            return
-
-        update_display()
-
-    # Connect keyboard handler and display
-    fig.canvas.mpl_connect("key_press_event", on_key_press)
+    controls.set_update_callback(update_display)
+    fig.canvas.mpl_connect("key_press_event", controls.handle_key_press)
 
     print("\nINTERACTIVE MODE:")
-    print("Target Movement (Arrow keys):")
-    print("  ↑/↓: Move target up/down")
-    print("  ←/→: Move target left/right")
-    print()
-    print("Eye Movement (I/K/J/L/./):")
-    print("  I/K: Move eye up/down")
-    print("  J/L: Move eye left/right")
-    print("  ./,: Move eye closer/farther from camera")
-    print()
-    print("Press ESC to exit")
+    InteractiveControls.print_controls(additional_controls={"Exit": "ESC"})
     print("Click on the plot window to focus for keyboard input\n")
 
     update_display()

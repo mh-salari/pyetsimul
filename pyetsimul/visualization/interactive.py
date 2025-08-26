@@ -11,8 +11,8 @@ import copy
 from .integrated_plots import plot_setup_and_camera_view
 from .coordinate_utils import prepare_eye_data_for_plots
 from .setup_plots import plot_setup
-from pyetsimul.types import Position3D
 from .plot_config import create_plot_config
+from .interactive_controls import InteractiveControls
 
 
 def plot_interactive_setup(eye_base, lights, camera, target_point):
@@ -24,91 +24,39 @@ def plot_interactive_setup(eye_base, lights, camera, target_point):
         camera: Camera object
         target_point: Initial target point
     """
-    print("CONTROLS:")
-    print("Target Movement (Arrow keys):")
-    print("  ↑/↓: Move target up/down")
-    print("  ←/→: Move target left/right")
-    print()
-    print("Eye Movement (I/K/J/L/./):")
-    print("  I/K: Move eye up/down")
-    print("  J/L: Move eye left/right")
-    print("  ./,: Move eye closer/farther from camera")
+    InteractiveControls.print_controls()
 
     config = create_plot_config()
+    controls = InteractiveControls(eye_base, target_point)
 
-    # Create figure with 3D and camera views
     fig = plt.figure(figsize=config.layout.extra_wide, constrained_layout=True)
     ax1 = fig.add_subplot(1, 2, 1, projection="3d")
     ax2 = fig.add_subplot(1, 2, 2)
 
-    # Reference bounds from initial view
     e_ref = copy.deepcopy(eye_base)
     e_ref.look_at(target_point)
     plot_setup_and_camera_view(e_ref, target_point, camera, lights=lights, ax1=ax1, ax2=ax2, fig=fig)
-    xlim = ax1.get_xlim()
-    ylim = ax1.get_ylim()
-    zlim = ax1.get_zlim()
-    ref_bounds = {"x": xlim, "y": ylim, "z": zlim}
+    ref_bounds = {"x": ax1.get_xlim(), "y": ax1.get_ylim(), "z": ax1.get_zlim()}
 
     def update_plot():
         """Update the visualization with current eye and target positions."""
         e = copy.deepcopy(eye_base)
-        e.look_at(target_point)
+        e.look_at(controls.target_point)
 
-        # Update both 3D and camera views
         plot_setup_and_camera_view(
-            e,
-            target_point,
-            camera,
-            lights=lights,
-            ax1=ax1,
-            ax2=ax2,
-            fig=fig,
-            ref_bounds=ref_bounds,
+            e, controls.target_point, camera, lights=lights, ax1=ax1, ax2=ax2, fig=fig, ref_bounds=ref_bounds
         )
 
-        # Update title with current positions
         eye_pos = eye_base.position
         fig.suptitle(
-            f"Target X={target_point.x * 1000:.1f} mm, Y={target_point.y * 1000:.1f} mm, Z={target_point.z * 1000:.1f} mm\n"
+            f"Target X={controls.target_point.x * 1000:.1f} mm, Y={controls.target_point.y * 1000:.1f} mm, Z={controls.target_point.z * 1000:.1f} mm\n"
             f"Eye X={eye_pos.x * 1000:.1f} mm, Y={eye_pos.y * 1000:.1f} mm, Z={eye_pos.z * 1000:.1f} mm",
             fontsize=config.fonts.title,
         )
         fig.canvas.draw_idle()
 
-    def on_key_press(event):
-        """Handle keyboard input for target and eye movement."""
-        nonlocal target_point
-        step_size = 2.5e-3  # 2.5 mm step size
-
-        # TARGET MOVEMENT (Arrow keys)
-        if event.key in ["up", "Up", "↑"]:
-            target_point = Position3D(target_point.x, target_point.y, target_point.z + step_size)
-        elif event.key in ["down", "Down", "↓"]:
-            target_point = Position3D(target_point.x, target_point.y, target_point.z - step_size)
-        elif event.key in ["left", "Left", "←"]:
-            target_point = Position3D(target_point.x - step_size, target_point.y, target_point.z)
-        elif event.key in ["right", "Right", "→"]:
-            target_point = Position3D(target_point.x + step_size, target_point.y, target_point.z)
-
-        # EYE MOVEMENT (I/K/J/L/./,)
-        elif event.key == "j":
-            eye_base.trans[0, 3] -= step_size  # Eye left
-        elif event.key == "l":
-            eye_base.trans[0, 3] += step_size  # Eye right
-        elif event.key == "i":
-            eye_base.trans[2, 3] += step_size  # Eye up
-        elif event.key == "k":
-            eye_base.trans[2, 3] -= step_size  # Eye down
-        elif event.key == ".":
-            eye_base.trans[1, 3] -= step_size  # Eye closer to camera
-        elif event.key == ",":
-            eye_base.trans[1, 3] += step_size  # Eye farther from camera
-
-        update_plot()
-
-    # Connect keyboard events and show plot
-    fig.canvas.mpl_connect("key_press_event", on_key_press)
+    controls.set_update_callback(update_plot)
+    fig.canvas.mpl_connect("key_press_event", controls.handle_key_press)
     update_plot()
     plt.show()
 
@@ -121,26 +69,14 @@ def plot_interactive_cameras(cameras, eye, target_point):
         eye: Eye object
         target_point: Initial target point
     """
-    # Store initial positions for reset functionality
-    initial_eye_position = Position3D(eye.position.x, eye.position.y, eye.position.z)
-    initial_target_position = Position3D(target_point.x, target_point.y, target_point.z)
-
-    # Extract camera names for display
     camera_names = [cam.name or f"Camera {i + 1}" for i, cam in enumerate(cameras)]
     print(f"Camera Comparison: {' vs '.join(camera_names)}")
     print("=" * 50)
-    print("CONTROLS:")
-    print("Target Movement (Arrow keys):")
-    print("  ↑/↓: Move target up/down")
-    print("  ←/→: Move target left/right")
-    print("Eye Movement (I/K/J/L/./):")
-    print("  I/K: Move eye up/down")
-    print("  J/L: Move eye left/right")
-    print("  ./,: Move eye closer/farther from camera")
-    print("Reset (Space): Reset eye and target to initial positions")
+    InteractiveControls.print_controls()
     print("=" * 50)
 
     config = create_plot_config()
+    controls = InteractiveControls(eye, target_point, step_size=1e-3)
 
     # Create figure with 3D view and camera comparison subplot
     fig = plt.figure(figsize=config.layout.wide_comparison)
@@ -173,13 +109,8 @@ def plot_interactive_cameras(cameras, eye, target_point):
 
     def update():
         """Update the visualization with current eye position."""
-        nonlocal eye, target_point
-
-        # Make eye look at target point
-        eye.look_at(target_point)
-
-        # Prepare data for all cameras at once
-        prepared_data = prepare_eye_data_for_plots([eye], [target_point], None, cameras)
+        eye.look_at(controls.target_point)
+        prepared_data = prepare_eye_data_for_plots([eye], [controls.target_point], None, cameras)
 
         # Clear axes
         ax1.cla()
@@ -189,7 +120,7 @@ def plot_interactive_cameras(cameras, eye, target_point):
         plot_setup(
             ax1,
             prepared_data["eyes_data"],
-            [target_point],
+            [controls.target_point],
             None,
             cameras,
             prepared_data["cr_3d_lists"],
@@ -271,7 +202,7 @@ def plot_interactive_cameras(cameras, eye, target_point):
                 )
 
                 fig.suptitle(
-                    f"Target: ({target_point.x * 1000:.0f}, {target_point.y * 1000:.0f}, {target_point.z * 1000:.0f})mm, "
+                    f"Target: ({controls.target_point.x * 1000:.0f}, {controls.target_point.y * 1000:.0f}, {controls.target_point.z * 1000:.0f})mm, "
                     f"Eye: ({eye_pos.x * 1000:.0f}, {eye_pos.y * 1000:.0f}, {eye_pos.z * 1000:.0f})mm, "
                     f"Distance: {distance * 1000:.0f}mm\n"
                     f"Pupil center differences: {', '.join(differences)}",
@@ -280,58 +211,9 @@ def plot_interactive_cameras(cameras, eye, target_point):
 
         fig.canvas.draw_idle()
 
-    def on_key(event):
-        """Handle keyboard input for target and eye movement."""
-        nonlocal eye, target_point, initial_eye_position, initial_target_position
-        step = 1e-3  # 1mm step size
-
-        # RESET POSITIONS (Space)
-        if event.key == " ":
-            # Reset eye to initial position
-            eye.trans[0, 3] = initial_eye_position.x
-            eye.trans[1, 3] = initial_eye_position.y
-            eye.trans[2, 3] = initial_eye_position.z
-            eye.position = Position3D(eye.trans[0, 3], eye.trans[1, 3], eye.trans[2, 3])
-
-            # Reset target to initial position
-            target_point = Position3D(initial_target_position.x, initial_target_position.y, initial_target_position.z)
-
-        # TARGET MOVEMENT (Arrow keys)
-        elif event.key in ["up", "Up", "↑"]:
-            target_point = Position3D(target_point.x, target_point.y, target_point.z + step)
-        elif event.key in ["down", "Down", "↓"]:
-            target_point = Position3D(target_point.x, target_point.y, target_point.z - step)
-        elif event.key in ["left", "Left", "←"]:
-            target_point = Position3D(target_point.x - step, target_point.y, target_point.z)
-        elif event.key in ["right", "Right", "→"]:
-            target_point = Position3D(target_point.x + step, target_point.y, target_point.z)
-
-        # EYE MOVEMENT (I/K/J/L/./,)
-        elif event.key == "j":
-            eye.trans[0, 3] -= step  # Eye left
-        elif event.key == "l":
-            eye.trans[0, 3] += step  # Eye right
-        elif event.key == "i":
-            eye.trans[2, 3] += step  # Eye up
-        elif event.key == "k":
-            eye.trans[2, 3] -= step  # Eye down
-        elif event.key == ".":
-            eye.trans[1, 3] -= step  # Eye closer to camera
-        elif event.key == ",":
-            eye.trans[1, 3] += step  # Eye farther from camera
-        else:
-            return  # Ignore other keys
-
-        # Update eye position property to match transformation matrix
-        eye.position = Position3D(eye.trans[0, 3], eye.trans[1, 3], eye.trans[2, 3])
-        update()
-
-    # Connect keyboard events
-    fig.canvas.mpl_connect("key_press_event", on_key)
-
-    # Initial update
+    controls.set_update_callback(update)
+    fig.canvas.mpl_connect("key_press_event", controls.handle_key_press)
     update()
-
     plt.show()
 
 
@@ -344,34 +226,51 @@ def plot_interactive_pupil_comparison(eye_elliptical, eye_realistic, camera, tar
         camera: Camera object
         target_point: Initial target point
     """
-    # Store initial positions and pupil size for reset functionality
-    initial_eye_position = Position3D(eye_elliptical.position.x, eye_elliptical.position.y, eye_elliptical.position.z)
-    initial_target_position = Position3D(target_point.x, target_point.y, target_point.z)
     initial_pupil_radii = eye_elliptical.get_pupil_radii()
 
     print("Pupil Shape Comparison")
     print("=" * 50)
-    print("CONTROLS:")
-    print("Target Movement (Arrow keys):")
-    print("  ↑/↓: Move target up/down")
-    print("  ←/→: Move target left/right")
-    print("Eye Movement (I/K/J/L/./):")
-    print("  I/K: Move eye up/down")
-    print("  J/L: Move eye left/right")
-    print("  ./,: Move eye closer/farther from camera")
-    print("Pupil Size ([/]):")
-    print("  [: Make pupil smaller")
-    print("  ]: Make pupil bigger")
-    print("Reset (Space): Reset eye and target to initial positions")
+    InteractiveControls.print_controls(additional_controls={"Pupil Size ([/])": "[: smaller, ]: bigger"})
 
     config = create_plot_config()
+
+    def handle_pupil_size_decrease(event, controls):
+        """Handle [ key - make pupil smaller."""
+        current_radii = eye_elliptical.get_pupil_radii()
+        new_radius = max(0.5e-3, current_radii[0] - 0.5e-3)
+        eye_elliptical.set_pupil_radii(new_radius, new_radius)
+        eye_realistic.set_pupil_radii(new_radius, new_radius)
+
+    def handle_pupil_size_increase(event, controls):
+        """Handle ] key - make pupil bigger."""
+        current_radii = eye_elliptical.get_pupil_radii()
+        new_radius = min(5e-3, current_radii[0] + 0.5e-3)
+        eye_elliptical.set_pupil_radii(new_radius, new_radius)
+        eye_realistic.set_pupil_radii(new_radius, new_radius)
+
+    def handle_reset_with_pupil(event, controls):
+        """Reset positions and pupil size."""
+        # Let controls handle standard reset
+        controls._reset_positions()
+        # Sync realistic eye and reset pupil sizes
+        eye_realistic.trans = eye_elliptical.trans.copy()
+        eye_realistic.position = eye_elliptical.position
+        eye_elliptical.set_pupil_radii(initial_pupil_radii[0], initial_pupil_radii[1])
+        eye_realistic.set_pupil_radii(initial_pupil_radii[0], initial_pupil_radii[1])
+
+    custom_handlers = {
+        "[": handle_pupil_size_decrease,
+        "]": handle_pupil_size_increase,
+        " ": handle_reset_with_pupil,
+    }
+
+    controls = InteractiveControls(eye_elliptical, target_point, step_size=2.5e-3, custom_handlers=custom_handlers)
 
     # Create figure with 3D view and camera comparison subplot
     fig = plt.figure(figsize=config.layout.wide_comparison)
     ax1 = fig.add_subplot(1, 2, 1, projection="3d")
     ax2 = fig.add_subplot(1, 2, 2)
 
-    # Reference bounds for consistent 3D view (same as camera comparison)
     eye_ref = copy.deepcopy(eye_elliptical)
     eye_ref.look_at(target_point)
     prepared_data_ref = prepare_eye_data_for_plots([eye_ref], [target_point], None, [camera])
@@ -385,18 +284,17 @@ def plot_interactive_pupil_comparison(eye_elliptical, eye_realistic, camera, tar
         None,
         None,
     )
-    xlim = ax1.get_xlim()
-    ylim = ax1.get_ylim()
-    zlim = ax1.get_zlim()
-    ref_bounds = {"x": xlim, "y": ylim, "z": zlim}
+    ref_bounds = {"x": ax1.get_xlim(), "y": ax1.get_ylim(), "z": ax1.get_zlim()}
 
     def update():
         """Update the visualization with current eye positions."""
-        nonlocal target_point
+        # Sync realistic eye to match elliptical eye position
+        eye_realistic.trans = eye_elliptical.trans.copy()
+        eye_realistic.position = eye_elliptical.position
 
-        # Make both eyes look at target point
-        eye_elliptical.look_at(target_point)
-        eye_realistic.look_at(target_point)
+        # Both eyes look at the same target
+        eye_elliptical.look_at(controls.target_point)
+        eye_realistic.look_at(controls.target_point)
 
         # Get pupil images in camera view
         elliptical_pupil_img, elliptical_center = eye_elliptical.get_pupil_in_camera_image(camera)
@@ -406,14 +304,11 @@ def plot_interactive_pupil_comparison(eye_elliptical, eye_realistic, camera, tar
         ax1.cla()
         ax2.cla()
 
-        # Prepare data for 3D setup (use elliptical eye for 3D view)
-        prepared_data = prepare_eye_data_for_plots([eye_elliptical], [target_point], None, [camera])
-
-        # Plot 3D setup (same as camera comparison)
+        prepared_data = prepare_eye_data_for_plots([eye_elliptical], [controls.target_point], None, [camera])
         plot_setup(
             ax1,
             prepared_data["eyes_data"],
-            [target_point],
+            [controls.target_point],
             None,
             [camera],
             prepared_data["cr_3d_lists"],
@@ -492,76 +387,13 @@ def plot_interactive_pupil_comparison(eye_elliptical, eye_realistic, camera, tar
         pupil_radii = eye_elliptical.get_pupil_radii()
         pupil_diameter = pupil_radii[0] * 2000  # Convert to mm
         fig.suptitle(
-            f"Target X={target_point.x * 1000:.1f} mm, Y={target_point.y * 1000:.1f} mm, Z={target_point.z * 1000:.1f} mm\n"
+            f"Target X={controls.target_point.x * 1000:.1f} mm, Y={controls.target_point.y * 1000:.1f} mm, Z={controls.target_point.z * 1000:.1f} mm\n"
             f"Eye X={eye_pos.x * 1000:.1f} mm, Y={eye_pos.y * 1000:.1f} mm, Z={eye_pos.z * 1000:.1f} mm, Pupil diameter: {pupil_diameter:.1f}mm",
             fontsize=config.fonts.title,
         )
         fig.canvas.draw_idle()
 
-    def on_key(event):
-        """Handle keyboard input for target and eye movement."""
-        nonlocal target_point
-        step_size = 2.5e-3  # 2.5 mm step size
-
-        # TARGET MOVEMENT (Arrow keys)
-        if event.key in ["up", "Up", "↑"]:
-            target_point = Position3D(target_point.x, target_point.y, target_point.z + step_size)
-        elif event.key in ["down", "Down", "↓"]:
-            target_point = Position3D(target_point.x, target_point.y, target_point.z - step_size)
-        elif event.key in ["left", "Left", "←"]:
-            target_point = Position3D(target_point.x - step_size, target_point.y, target_point.z)
-        elif event.key in ["right", "Right", "→"]:
-            target_point = Position3D(target_point.x + step_size, target_point.y, target_point.z)
-
-        # EYE MOVEMENT (I/K/J/L/./,)
-        elif event.key == "j":
-            eye_elliptical.trans[0, 3] -= step_size  # Eye left
-            eye_realistic.trans[0, 3] -= step_size
-        elif event.key == "l":
-            eye_elliptical.trans[0, 3] += step_size  # Eye right
-            eye_realistic.trans[0, 3] += step_size
-        elif event.key == "i":
-            eye_elliptical.trans[2, 3] += step_size  # Eye up
-            eye_realistic.trans[2, 3] += step_size
-        elif event.key == "k":
-            eye_elliptical.trans[2, 3] -= step_size  # Eye down
-            eye_realistic.trans[2, 3] -= step_size
-        elif event.key == ".":
-            eye_elliptical.trans[1, 3] += step_size  # Eye closer
-            eye_realistic.trans[1, 3] += step_size
-        elif event.key == ",":
-            eye_elliptical.trans[1, 3] -= step_size  # Eye farther
-            eye_realistic.trans[1, 3] -= step_size
-
-        # RESET (Space)
-        elif event.key == " ":
-            eye_elliptical.position = initial_eye_position
-            eye_realistic.position = initial_eye_position
-            target_point = initial_target_position
-            # Reset pupil size to initial size
-            eye_elliptical.set_pupil_radii(initial_pupil_radii[0], initial_pupil_radii[1])
-            eye_realistic.set_pupil_radii(initial_pupil_radii[0], initial_pupil_radii[1])
-
-        # PUPIL SIZE ([/])
-        elif event.key == "[":
-            # Make pupil smaller
-            current_radii = eye_elliptical.get_pupil_radii()
-            new_radius = max(0.5e-3, current_radii[0] - 0.5e-3)  # Minimum 0.5mm radius
-            eye_elliptical.set_pupil_radii(new_radius, new_radius)
-            eye_realistic.set_pupil_radii(new_radius, new_radius)
-        elif event.key == "]":
-            # Make pupil bigger
-            current_radii = eye_elliptical.get_pupil_radii()
-            new_radius = min(5e-3, current_radii[0] + 0.5e-3)  # Maximum 5mm radius
-            eye_elliptical.set_pupil_radii(new_radius, new_radius)
-            eye_realistic.set_pupil_radii(new_radius, new_radius)
-
-        update()
-
-    # Connect the key press event
-    fig.canvas.mpl_connect("key_press_event", on_key)
-
-    # Initial plot
+    controls.set_update_callback(update)
+    fig.canvas.mpl_connect("key_press_event", controls.handle_key_press)
     update()
-
     plt.show()
