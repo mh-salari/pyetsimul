@@ -11,6 +11,7 @@ import numpy as np
 
 from pyetsimul.core import Camera
 from ..types import Position3D, CameraImage
+from .plot_config import create_plot_config
 
 
 def plot_camera_view_of_eye(
@@ -42,10 +43,12 @@ def plot_camera_view_of_eye(
     else:
         ax2.cla()
 
+    config = create_plot_config()
+
     if eye_colors is None:
-        eye_colors = ["blue", "red", "green", "purple", "orange", "brown"]
+        eye_colors = config.colors.eyes
     if camera_colors is None:
-        camera_colors = ["black", "gray", "darkgreen", "darkblue", "purple", "brown"]
+        camera_colors = config.colors.cameras
 
     all_resolutions = []
     has_valid_data = False
@@ -80,18 +83,18 @@ def plot_camera_view_of_eye(
                         border_x,
                         border_y,
                         color=cam_color,
-                        linewidth=2,
-                        alpha=0.8,
-                        linestyle="-",
+                        linewidth=config.elements.camera_border_width,
+                        alpha=config.elements.camera_border_alpha,
+                        linestyle=config.lines.solid,
                     )
                     ax2.plot(
                         pupil_x,
                         pupil_y,
                         color=eye_color,
-                        linewidth=1,
-                        alpha=0.9,
+                        linewidth=config.elements.pupil_boundary_width,
+                        alpha=config.elements.pupil_boundary_alpha,
                         label=f"Camera {cam_idx + 1} - Pupil {eye_idx + 1}",
-                        linestyle="-",
+                        linestyle=config.lines.solid,
                     )
 
         if camera_image.pupil_centers:
@@ -105,9 +108,9 @@ def plot_camera_view_of_eye(
                         pupil_center_img[0],
                         pupil_center_img[1],
                         color=eye_color,
-                        s=25,
+                        s=config.markers.small_details,
                         marker="*",
-                        linewidth=2,
+                        linewidth=config.lines.thick_lines,
                         label=f"Camera {cam_idx + 1} - Eye {eye_idx + 1} Center",
                         edgecolors=cam_color,
                     )
@@ -123,16 +126,16 @@ def plot_camera_view_of_eye(
                         ax2.scatter(
                             cr_img[0, 0],
                             cr_img[1, 0],
-                            color="gold",
-                            s=40,
+                            color=config.colors.corneal_reflection,
+                            s=config.markers.detail_elements,
                             marker="o",
                             edgecolor=cam_color,
-                            linewidth=1.5,
+                            linewidth=config.elements.corneal_reflection_width,
                             label=f"Camera {cam_idx + 1} - Eye {eye_idx + 1} CR {cr_idx + 1}",
                         )
 
     if not has_valid_data:
-        ax2.text(0, 0, "No camera data to display", ha="center", va="center", fontsize=12)
+        ax2.text(0, 0, "No camera data to display", ha="center", va="center", fontsize=config.fonts.subtitle)
         return
 
     if all_resolutions:
@@ -147,9 +150,10 @@ def plot_camera_view_of_eye(
     ax2.set_xlabel("X (pixels)")
     ax2.set_ylabel("Y (pixels)")
     ax2.set_title("Camera View")
-    ax2.grid(True, alpha=0.3)
-    ax2.set_aspect("equal")
+    ax2.grid(config.elements.grid_enabled, alpha=config.lines.grid_alpha)
+    if config.elements.equal_aspect:
+        ax2.set_aspect("equal")
 
     handles, _ = ax2.get_legend_handles_labels()
     if handles:
-        ax2.legend(fontsize=8, bbox_to_anchor=(1.05, 1), loc="upper left")
+        ax2.legend(fontsize=config.fonts.annotation, **config.layout.legend_outside_right)

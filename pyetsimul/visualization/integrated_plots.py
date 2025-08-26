@@ -5,10 +5,10 @@ Provides high-level functions that combine 3D setup and camera views for compreh
 
 import matplotlib.pyplot as plt
 
-
 from .coordinate_utils import prepare_eye_data_for_plots
 from .setup_plots import plot_setup
 from .camera_view import plot_camera_view_of_eye
+from .plot_config import create_plot_config
 
 
 def plot_setup_and_camera_view(
@@ -47,11 +47,13 @@ def plot_setup_and_camera_view(
     if cameras is not None and not isinstance(cameras, list):
         cameras = [cameras]
 
+    config = create_plot_config()
+
     # Create figure and axes if not provided
     axes_provided = ax1 is not None and ax2 is not None
     if ax1 is None or ax2 is None:
         if fig is None:
-            fig = plt.figure(figsize=(20, 8))
+            fig = plt.figure(figsize=config.layout.integrated_view)
         else:
             fig.clear()
         ax1 = fig.add_subplot(1, 2, 1, projection="3d")

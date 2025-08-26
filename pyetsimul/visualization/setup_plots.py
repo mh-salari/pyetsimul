@@ -10,6 +10,7 @@ from typing import Optional, List, Dict, Any, Tuple
 
 from pyetsimul.core import Camera, Light
 from ..types import Position3D, Point3D, Vector3D, TransformationMatrix
+from .plot_config import create_plot_config
 
 
 def plot_setup(
@@ -42,13 +43,16 @@ def plot_setup(
     ax1.cla()
 
     if not eyes_data:
-        ax1.text(0, 0, 0, "No eyes to display", fontsize=14, ha="center")
+        config = create_plot_config()
+        ax1.text(0, 0, 0, "No eyes to display", fontsize=config.fonts.title, ha="center")
         return [], []
 
-    # Define unique color palettes
-    eye_colors = ["blue", "red", "green", "purple", "orange", "brown"]
-    light_eye_colors = ["lightblue", "lightcoral", "lightgreen", "plum", "moccasin", "tan"]
-    camera_colors = ["black", "gray", "darkgreen", "darkblue", "purple", "brown"]
+    config = create_plot_config()
+
+    # Use centralized color palettes
+    eye_colors = config.colors.eyes
+    light_eye_colors = config.colors.eyes_light
+    camera_colors = config.colors.cameras
 
     # Plot all eyes
     for eye_idx, (eye_data, target) in enumerate(zip(eyes_data, look_at_targets)):
@@ -60,10 +64,10 @@ def plot_setup(
             eye_data["X_cornea"],
             eye_data["Y_cornea"],
             eye_data["Z_cornea"],
-            alpha=0.6,
+            alpha=config.lines.secondary_alpha,
             color=light_eye_color,
             edgecolor=eye_color,
-            linewidth=0.1,
+            linewidth=config.lines.thin_lines,
         )
 
         # Mark key anatomical points
@@ -73,16 +77,16 @@ def plot_setup(
             cornea_center.x,
             cornea_center.y,
             cornea_center.z,
-            color="green",
-            s=100,
+            color=config.colors.cornea_outer,
+            s=config.markers.landmarks,
             label=f"Eye {eye_idx + 1} Cornea Center",
         )
         ax1.scatter(
             pupil_center.x,
             pupil_center.y,
             pupil_center.z,
-            color="cornflowerblue",
-            s=100,
+            color=config.colors.pupil,
+            s=config.markers.landmarks,
             label=f"Eye {eye_idx + 1} Pupil Center",
         )
 
@@ -92,8 +96,9 @@ def plot_setup(
             [cornea_center.x, optical_axis_end.x],
             [cornea_center.y, optical_axis_end.y],
             [cornea_center.z, optical_axis_end.z],
-            "g--",
-            linewidth=2,
+            color=config.colors.optical_axis,
+            linestyle=config.lines.dashed,
+            linewidth=config.lines.thick_lines,
             label=f"Eye {eye_idx + 1} Optical Axis",
         )
 
@@ -102,24 +107,36 @@ def plot_setup(
             [pupil_center.x, target.x],
             [pupil_center.y, target.y],
             [pupil_center.z, target.z],
-            "r--",
-            linewidth=2,
+            color=config.colors.visual_axis,
+            linestyle=config.lines.dashed,
+            linewidth=config.lines.thick_lines,
             label=f"Eye {eye_idx + 1} Visual Axis",
         )
 
         # Mark gaze target
         ax1.scatter(
-            target.x, target.y, target.z, color="magenta", s=150, marker="D", label=f"Eye {eye_idx + 1} Target"
+            target.x,
+            target.y,
+            target.z,
+            color=config.colors.target,
+            s=config.markers.key_landmarks,
+            marker="D",
+            label=f"Eye {eye_idx + 1} Target",
         )
 
     # Add scene elements - multiple lights
     if lights is not None:
-        light_colors = ["yellow", "orange", "gold", "khaki"]
         for i, light in enumerate(lights):
             light_pos = light.position
-            color = light_colors[i % len(light_colors)]
+            color = config.colors.lights[i % len(config.colors.lights)]
             ax1.scatter(
-                light_pos.x, light_pos.y, light_pos.z, color=color, s=200, marker="*", label=f"Light Source {i + 1}"
+                light_pos.x,
+                light_pos.y,
+                light_pos.z,
+                color=color,
+                s=config.markers.scene_elements,
+                marker="*",
+                label=f"Light Source {i + 1}",
             )
 
     # Add cameras
@@ -128,7 +145,13 @@ def plot_setup(
             camera_pos = camera.position
             color = camera_colors[cam_idx % len(camera_colors)]
             ax1.scatter(
-                camera_pos.x, camera_pos.y, camera_pos.z, color=color, s=200, marker="s", label=f"Camera {cam_idx + 1}"
+                camera_pos.x,
+                camera_pos.y,
+                camera_pos.z,
+                color=color,
+                s=config.markers.scene_elements,
+                marker="s",
+                label=f"Camera {cam_idx + 1}",
             )
 
             # Add line from camera to where it's pointing
@@ -139,28 +162,29 @@ def plot_setup(
                     [camera_pos.y, pointing_pos.y],
                     [camera_pos.z, pointing_pos.z],
                     color=color,
-                    linestyle="--",
-                    alpha=0.5,
-                    linewidth=1,
+                    linestyle=config.lines.dashed,
+                    alpha=config.lines.background_alpha,
+                    linewidth=config.lines.standard_lines,
                 )
 
     # Add corneal reflections if provided
     if cr_3d_lists is not None:
-        cr_colors = ["#FFE171", "#F9F871", "#FFD67C", "#C9AF41"]
         for eye_idx, cr_3d_list in enumerate(cr_3d_lists):
             if cr_3d_list is not None:
                 for cr_idx, cr_3d in enumerate(cr_3d_list):
                     if cr_3d is not None:
-                        color = cr_colors[cr_idx % len(cr_colors)]
+                        color = config.colors.corneal_reflections_detailed[
+                            cr_idx % len(config.colors.corneal_reflections_detailed)
+                        ]
                         ax1.scatter(
                             cr_3d.x,
                             cr_3d.y,
                             cr_3d.z,
                             color=color,
-                            s=80,
+                            s=config.markers.detail_elements + 30,
                             marker="o",
-                            edgecolor="black",
-                            linewidth=1,
+                            edgecolor=config.colors.rotation_center,
+                            linewidth=config.lines.standard_lines,
                             label=f"Eye {eye_idx + 1} CR {cr_idx + 1}",
                         )
 
@@ -173,9 +197,9 @@ def plot_setup(
                                 [light_pos.y, cr_3d.y],
                                 [light_pos.z, cr_3d.z],
                                 color=color,
-                                linestyle="-",
-                                linewidth=2,
-                                alpha=0.7,
+                                linestyle=config.lines.solid,
+                                linewidth=config.lines.thick_lines,
+                                alpha=config.lines.secondary_alpha,
                             )
 
     # 3D plot formatting
@@ -183,7 +207,7 @@ def plot_setup(
     ax1.set_ylabel("Y (mm)")
     ax1.set_zlabel("Z (mm)")
     ax1.set_title("Eye Tracking Setup")
-    ax1.legend(loc="upper left", fontsize=8)
+    ax1.legend(**config.layout.legend_upper_left, fontsize=config.fonts.annotation)
 
     # Convert axes to mm for better readability
     ax1.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f"{x * 1000:.0f}"))
@@ -245,10 +269,10 @@ def plot_setup(
             calib_x,
             calib_y,
             calib_z,
-            color="black",
+            color=config.colors.calibration_points,
             marker="x",
-            s=50,
-            linewidth=2,
+            s=config.markers.detail_elements,
+            linewidth=config.lines.thick_lines,
             label="Calibration Points",
         )
 
@@ -275,6 +299,8 @@ def plot_axis(
     length: float = 0.003,
 ) -> None:
     """Plot a single axis with arrow and label"""
+    config = create_plot_config()
+
     axis_local = np.zeros(4)
     axis_local[axis_idx] = 1
     axis_world = trans_matrix @ axis_local
@@ -289,15 +315,15 @@ def plot_axis(
         axis_world[2] * length,
         color=color,
         arrow_length_ratio=0.2,
-        linewidth=2,
-        alpha=0.8,
+        linewidth=config.lines.thick_lines,
+        alpha=config.lines.secondary_alpha,
     )
     ax.text(
         axis_end[0],
         axis_end[1],
         axis_end[2],
         label,
-        fontsize=10,
+        fontsize=config.fonts.legend,
         color=color,
-        weight="bold",
+        weight=config.fonts.bold_weight,
     )

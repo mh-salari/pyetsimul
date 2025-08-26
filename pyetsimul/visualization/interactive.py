@@ -12,6 +12,7 @@ from .integrated_plots import plot_setup_and_camera_view
 from .coordinate_utils import prepare_eye_data_for_plots
 from .setup_plots import plot_setup
 from pyetsimul.types import Position3D
+from .plot_config import create_plot_config
 
 
 def plot_interactive_setup(eye_base, lights, camera, target_point):
@@ -33,8 +34,10 @@ def plot_interactive_setup(eye_base, lights, camera, target_point):
     print("  J/L: Move eye left/right")
     print("  ./,: Move eye closer/farther from camera")
 
+    config = create_plot_config()
+
     # Create figure with 3D and camera views
-    fig = plt.figure(figsize=(18, 8), constrained_layout=True)
+    fig = plt.figure(figsize=config.layout.extra_wide, constrained_layout=True)
     ax1 = fig.add_subplot(1, 2, 1, projection="3d")
     ax2 = fig.add_subplot(1, 2, 2)
 
@@ -69,7 +72,7 @@ def plot_interactive_setup(eye_base, lights, camera, target_point):
         fig.suptitle(
             f"Target X={target_point.x * 1000:.1f} mm, Y={target_point.y * 1000:.1f} mm, Z={target_point.z * 1000:.1f} mm\n"
             f"Eye X={eye_pos.x * 1000:.1f} mm, Y={eye_pos.y * 1000:.1f} mm, Z={eye_pos.z * 1000:.1f} mm",
-            fontsize=14,
+            fontsize=config.fonts.title,
         )
         fig.canvas.draw_idle()
 
@@ -137,8 +140,10 @@ def plot_interactive_cameras(cameras, eye, target_point):
     print("Reset (Space): Reset eye and target to initial positions")
     print("=" * 50)
 
+    config = create_plot_config()
+
     # Create figure with 3D view and camera comparison subplot
-    fig = plt.figure(figsize=(16, 8))
+    fig = plt.figure(figsize=config.layout.wide_comparison)
     ax1 = fig.add_subplot(1, 2, 1, projection="3d")
     ax2 = fig.add_subplot(1, 2, 2)
 
@@ -162,9 +167,9 @@ def plot_interactive_cameras(cameras, eye, target_point):
     zlim = ax1.get_zlim()
     ref_bounds = {"x": xlim, "y": ylim, "z": zlim}
 
-    # Define colors for different cameras
-    colors = ["cornflowerblue", "red", "green", "orange", "purple", "brown", "pink", "gray"]
-    markers = ["+", "x", "o", "s", "^", "v", "d", "p"]
+    # Use centralized colors and markers for camera comparison
+    colors = config.colors.camera_comparison
+    markers = config.markers.camera_comparison
 
     def update():
         """Update the visualization with current eye position."""
@@ -204,12 +209,14 @@ def plot_interactive_cameras(cameras, eye, target_point):
                 boundary = camera_image.pupil_boundary
                 pupil_x = [p.x for p in boundary] + [boundary[0].x]
                 pupil_y = [p.y for p in boundary] + [boundary[0].y]
-                linestyle = "-" if i == 0 else "--"  # Solid line for first camera, dashed for others
+                linestyle = (
+                    config.lines.solid if i == 0 else config.lines.dashed
+                )  # Solid line for first camera, dashed for others
                 ax2.plot(
                     pupil_x,
                     pupil_y,
                     color=color,
-                    linewidth=1.5,
+                    linewidth=config.lines.thick_lines,
                     linestyle=linestyle,
                     label=f"Pupil ({camera_name})",
                 )
@@ -221,9 +228,9 @@ def plot_interactive_cameras(cameras, eye, target_point):
                     center[0],
                     center[1],
                     color=color,
-                    s=50,
+                    s=config.markers.detail_elements,
                     marker=marker,
-                    linewidth=2,
+                    linewidth=config.lines.thick_lines,
                     label=f"Center ({camera_name})",
                 )
 
@@ -234,8 +241,9 @@ def plot_interactive_cameras(cameras, eye, target_point):
         ax2.set_xlabel("X (pixels)")
         ax2.set_ylabel("Y (pixels)")
         ax2.set_title(f"Camera View Comparison: {' vs '.join(camera_names)}")
-        ax2.grid(True, alpha=0.3)
-        ax2.set_aspect("equal")
+        ax2.grid(config.elements.grid_enabled, alpha=config.lines.grid_alpha)
+        if config.elements.equal_aspect:
+            ax2.set_aspect("equal")
         ax2.legend()
 
         # Calculate and display distortion info
@@ -267,7 +275,7 @@ def plot_interactive_cameras(cameras, eye, target_point):
                     f"Eye: ({eye_pos.x * 1000:.0f}, {eye_pos.y * 1000:.0f}, {eye_pos.z * 1000:.0f})mm, "
                     f"Distance: {distance * 1000:.0f}mm\n"
                     f"Pupil center differences: {', '.join(differences)}",
-                    fontsize=12,
+                    fontsize=config.fonts.subtitle,
                 )
 
         fig.canvas.draw_idle()
@@ -356,8 +364,10 @@ def plot_interactive_pupil_comparison(eye_elliptical, eye_realistic, camera, tar
     print("  ]: Make pupil bigger")
     print("Reset (Space): Reset eye and target to initial positions")
 
+    config = create_plot_config()
+
     # Create figure with 3D view and camera comparison subplot
-    fig = plt.figure(figsize=(16, 8))
+    fig = plt.figure(figsize=config.layout.wide_comparison)
     ax1 = fig.add_subplot(1, 2, 1, projection="3d")
     ax2 = fig.add_subplot(1, 2, 2)
 
@@ -415,27 +425,55 @@ def plot_interactive_pupil_comparison(eye_elliptical, eye_realistic, camera, tar
         ax2.set_title("Pupil Shape Comparison")
         ax2.set_xlabel("X (pixels)")
         ax2.set_ylabel("Y (pixels)")
-        ax2.grid(True, alpha=0.3)
+        ax2.grid(config.elements.grid_enabled, alpha=config.lines.grid_alpha)
 
         # Plot elliptical pupil with dashed line - closed loop
         if elliptical_pupil_img is not None:
             boundary = elliptical_pupil_img
             elliptical_x = [p.x for p in boundary] + [boundary[0].x]
             elliptical_y = [p.y for p in boundary] + [boundary[0].y]
-            ax2.plot(elliptical_x, elliptical_y, "b--", linewidth=1, label="Elliptical Pupil")
+            ax2.plot(
+                elliptical_x,
+                elliptical_y,
+                color=config.colors.eyes[0],
+                linestyle=config.lines.dashed,
+                linewidth=config.lines.standard_lines,
+                label="Elliptical Pupil",
+            )
 
         if elliptical_center is not None:
-            ax2.plot(elliptical_center.x, elliptical_center.y, "bx", markersize=6, label="Elliptical Center")
+            ax2.plot(
+                elliptical_center.x,
+                elliptical_center.y,
+                color=config.colors.eyes[0],
+                marker="x",
+                markersize=6,
+                label="Elliptical Center",
+            )
 
         # Plot realistic pupil with solid line - closed loop
         if realistic_pupil_img is not None:
             boundary = realistic_pupil_img
             realistic_x = [p.x for p in boundary] + [boundary[0].x]
             realistic_y = [p.y for p in boundary] + [boundary[0].y]
-            ax2.plot(realistic_x, realistic_y, "r-", linewidth=1, label="Realistic Pupil")
+            ax2.plot(
+                realistic_x,
+                realistic_y,
+                color=config.colors.eyes[1],
+                linestyle=config.lines.solid,
+                linewidth=config.lines.standard_lines,
+                label="Realistic Pupil",
+            )
 
         if realistic_center is not None:
-            ax2.plot(realistic_center.x, realistic_center.y, "r+", markersize=8, label="Realistic Center")
+            ax2.plot(
+                realistic_center.x,
+                realistic_center.y,
+                color=config.colors.eyes[1],
+                marker="+",
+                markersize=8,
+                label="Realistic Center",
+            )
 
         # Set up axes with camera resolution (same as camera comparison)
         resolution = camera.camera_matrix.resolution
@@ -444,8 +482,9 @@ def plot_interactive_pupil_comparison(eye_elliptical, eye_realistic, camera, tar
         ax2.set_xlabel("X (pixels)")
         ax2.set_ylabel("Y (pixels)")
         ax2.set_title("Pupil Shape Comparison")
-        ax2.grid(True, alpha=0.3)
-        ax2.set_aspect("equal")
+        ax2.grid(config.elements.grid_enabled, alpha=config.lines.grid_alpha)
+        if config.elements.equal_aspect:
+            ax2.set_aspect("equal")
         ax2.legend()
 
         # Update title with current positions and pupil size
@@ -455,7 +494,7 @@ def plot_interactive_pupil_comparison(eye_elliptical, eye_realistic, camera, tar
         fig.suptitle(
             f"Target X={target_point.x * 1000:.1f} mm, Y={target_point.y * 1000:.1f} mm, Z={target_point.z * 1000:.1f} mm\n"
             f"Eye X={eye_pos.x * 1000:.1f} mm, Y={eye_pos.y * 1000:.1f} mm, Z={eye_pos.z * 1000:.1f} mm, Pupil diameter: {pupil_diameter:.1f}mm",
-            fontsize=14,
+            fontsize=config.fonts.title,
         )
         fig.canvas.draw_idle()
 

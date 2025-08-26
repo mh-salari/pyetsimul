@@ -13,6 +13,7 @@ from ..utils.eye_surface_points import generate_corneal_surface_points, get_tran
 from ..utils.eyelid_surface_points import generate_eyelid_opening_edge_local, transform_eyelid_points_to_world
 from ..geometry.intersections import intersect_ray_sphere, intersect_ray_conic
 from .transforms import transform_surface
+from .plot_config import create_plot_config
 
 
 def _filter_points_by_eyelid_occlusion(points_world: np.ndarray, eye: Eye) -> np.ndarray:
@@ -138,13 +139,22 @@ def plot_eye_anatomy(eye: Eye, ax=None):
     visual_axis_direction = (eye_rotation_center - fovea_world).normalize()
     visual_axis_end = eye_rotation_center + visual_axis_direction * axis_length
 
+    config = create_plot_config()
+
     # Create figure if not provided
     if ax is None:
-        fig = plt.figure(figsize=(14, 10))
+        fig = plt.figure(figsize=config.layout.anatomy_detail)
         ax = fig.add_subplot(111, projection="3d")
 
     # Plot eye components using structured type coordinates
-    ax.plot_surface(x_eye_world, y_eye_world, z_eye_world, alpha=0.3, color="lightgray", label="Eye Globe")
+    ax.plot_surface(
+        x_eye_world,
+        y_eye_world,
+        z_eye_world,
+        alpha=config.lines.grid_alpha,
+        color=config.colors.eye_globe,
+        label="Eye Globe",
+    )
 
     # Plot corneal surfaces using filtered surface points
     if len(anterior_limited) > 0:
@@ -152,9 +162,9 @@ def plot_eye_anatomy(eye: Eye, ax=None):
             anterior_limited[:, 0],
             anterior_limited[:, 1],
             anterior_limited[:, 2],
-            alpha=0.9,
-            color="steelblue",
-            s=0.8,
+            alpha=config.lines.primary_alpha,
+            color=config.colors.cornea_outer,
+            s=config.markers.cornea_surface_anterior,
             label="Cornea outer surface",
         )
 
@@ -163,9 +173,9 @@ def plot_eye_anatomy(eye: Eye, ax=None):
             posterior_limited[:, 0],
             posterior_limited[:, 1],
             posterior_limited[:, 2],
-            alpha=0.9,
-            color="darkturquoise",
-            s=0.6,
+            alpha=config.lines.primary_alpha,
+            color=config.colors.cornea_inner,
+            s=config.markers.cornea_surface_posterior,
             label="Cornea inner surface",
         )
 
@@ -174,8 +184,8 @@ def plot_eye_anatomy(eye: Eye, ax=None):
         eye_rotation_center.x,
         eye_rotation_center.y,
         eye_rotation_center.z,
-        color="navy",
-        s=50,
+        color=config.colors.rotation_center,
+        s=config.markers.detail_elements,
         marker="o",
         label="Rotation Center",
     )
@@ -183,8 +193,8 @@ def plot_eye_anatomy(eye: Eye, ax=None):
         cornea_center_world.x,
         cornea_center_world.y,
         cornea_center_world.z,
-        color="steelblue",
-        s=30,
+        color=config.colors.cornea_outer,
+        s=config.markers.cornea_center_outer,
         marker="^",
         label="Cornea center (outer)",
     )
@@ -192,12 +202,20 @@ def plot_eye_anatomy(eye: Eye, ax=None):
         cornea_inner_center_world.x,
         cornea_inner_center_world.y,
         cornea_inner_center_world.z,
-        color="darkturquoise",
-        s=20,
+        color=config.colors.cornea_inner,
+        s=config.markers.cornea_center_inner,
         marker="^",
         label="Cornea center (inner)",
     )
-    ax.scatter(fovea_world.x, fovea_world.y, fovea_world.z, color="orange", s=80, marker="*", label="Fovea")
+    ax.scatter(
+        fovea_world.x,
+        fovea_world.y,
+        fovea_world.z,
+        color=config.colors.fovea,
+        s=config.markers.detail_elements + 30,
+        marker="*",
+        label="Fovea",
+    )
 
     # Plot pupil as filled dark circle using structured types
     n_pupil_points = 120
@@ -235,9 +253,9 @@ def plot_eye_anatomy(eye: Eye, ax=None):
             pupil_points_world_filtered[:, 0],
             pupil_points_world_filtered[:, 1],
             pupil_points_world_filtered[:, 2],
-            c="black",
-            s=3,
-            alpha=0.9,
+            c=config.colors.pupil,
+            s=config.markers.surface_points,
+            alpha=config.lines.primary_alpha,
             label="Pupil Opening",
         )
 
@@ -246,8 +264,9 @@ def plot_eye_anatomy(eye: Eye, ax=None):
         [eye_rotation_center.x, optical_axis_end.x],
         [eye_rotation_center.y, optical_axis_end.y],
         [eye_rotation_center.z, optical_axis_end.z],
-        "g--",
-        linewidth=1,
+        color=config.colors.optical_axis,
+        linestyle=config.lines.dashed,
+        linewidth=config.lines.standard_lines,
         label="Optical Axis",
     )
 
@@ -255,8 +274,9 @@ def plot_eye_anatomy(eye: Eye, ax=None):
         [fovea_world.x, visual_axis_end.x],
         [fovea_world.y, visual_axis_end.y],
         [fovea_world.z, visual_axis_end.z],
-        "r--",
-        linewidth=1,
+        color=config.colors.visual_axis,
+        linestyle=config.lines.dashed,
+        linewidth=config.lines.standard_lines,
         label="Visual Axis",
     )
 
@@ -270,8 +290,8 @@ def plot_eye_anatomy(eye: Eye, ax=None):
                 edge_world[:, 0],
                 edge_world[:, 1],
                 edge_world[:, 2],
-                color="#836641",
-                linewidth=2,
+                color=config.colors.eyelid,
+                linewidth=config.elements.eyelid_width,
                 label="Eyelid Opening",
             )
 
@@ -280,8 +300,8 @@ def plot_eye_anatomy(eye: Eye, ax=None):
         target_point.x,
         target_point.y,
         target_point.z,
-        color="hotpink",
-        s=100,
+        color=config.colors.target,
+        s=config.markers.landmarks,
         marker="x",
         label="Target",
     )
