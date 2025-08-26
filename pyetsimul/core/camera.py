@@ -103,7 +103,7 @@ class Camera:
         """
         return self._pointing_at
 
-    def project(self, pos: Union[Position3D, List[Position3D], np.ndarray]) -> ProjectionResult:
+    def project(self, pos: Union[Position3D, List[Position3D]]) -> ProjectionResult:
         """Projects points in space onto the camera's image plane.
 
         Transforms 3D positions to camera coordinates and projects to image plane.
@@ -114,7 +114,6 @@ class Camera:
             pos: 3D positions to project. Can be:
                 - Single Position3D object
                 - List of Position3D objects
-                - 4×n numpy array of homogeneous coordinates (legacy support)
 
         Returns:
             ProjectionResult containing:
@@ -129,13 +128,8 @@ class Camera:
         elif isinstance(pos, list) and all(isinstance(p, Position3D) for p in pos):
             # List of positions
             pos_homogeneous = np.column_stack([np.array(p) for p in pos])
-        elif isinstance(pos, np.ndarray):
-            # Legacy numpy array support
-            pos_homogeneous = pos.copy()
-            if pos_homogeneous.ndim == 1:
-                pos_homogeneous = pos_homogeneous.reshape(-1, 1)
         else:
-            raise ValueError(f"Unsupported position type: {type(pos)}")
+            raise ValueError(f"Position must be Position3D or list of Position3D objects, got: {type(pos)}")
 
         # Transform to camera coordinates
         pos_camera = np.linalg.solve(self.trans, pos_homogeneous)
@@ -184,7 +178,7 @@ class Camera:
         return ProjectionResult(image_points=x, distances=dist, valid_mask=condition)
 
     def unproject(
-        self, image_points: Union[Point2D, List[Point2D], np.ndarray], distance: Union[float, np.ndarray]
+        self, image_points: Union[Point2D, List[Point2D]], distance: Union[float, np.ndarray]
     ) -> Union[Position3D, List[Position3D]]:
         """Unprojects points on the image plane back into 3D space.
 
@@ -196,7 +190,6 @@ class Camera:
             image_points: 2D image points. Can be:
                 - Single Point2D object
                 - List of Point2D objects
-                - 2×n numpy array (legacy support)
             distance: Distance from camera along optical axis
 
         Returns:
@@ -211,14 +204,8 @@ class Camera:
             # List of points
             X = np.array([[p.x for p in image_points], [p.y for p in image_points]])
             single_point = False
-        elif isinstance(image_points, np.ndarray):
-            # Legacy numpy array support
-            X = image_points.copy()
-            if X.ndim == 1:
-                X = X.reshape(-1, 1)
-            single_point = X.shape[1] == 1
         else:
-            raise ValueError(f"Unsupported image_points type: {type(image_points)}")
+            raise ValueError(f"Image points must be Point2D or list of Point2D objects, got: {type(image_points)}")
 
         n = X.shape[1]
 

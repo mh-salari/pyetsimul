@@ -2,7 +2,7 @@
 
 import numpy as np
 from pyetsimul.core.camera import Camera
-from pyetsimul.types import Point2D
+from pyetsimul.types import Point2D, Position3D
 
 
 def test_mixed_points_in_out_bounds():
@@ -12,15 +12,8 @@ def test_mixed_points_in_out_bounds():
     c.camera_matrix.focal_length = 500
     c.camera_matrix.resolution = Point2D(640, 480)
 
-    # Define test points (homogeneous coordinates format)
-    pos = np.array(
-        [
-            [0, 0, 50],  # x coordinates
-            [100, -100, 50],  # y coordinates
-            [-200, -200, -300],  # z coordinates
-            [1, 1, 1],  # Homogeneous coordinates
-        ]
-    )
+    # Define test points using Position3D
+    pos = [Position3D(0, 100, -200), Position3D(0, -100, -200), Position3D(50, 50, -300)]
 
     result = c.project(pos)
     x = result.image_points
@@ -54,14 +47,7 @@ def test_all_points_outside_bounds():
     c.camera_matrix.resolution = Point2D(640, 480)
 
     # Define test points that are clearly out of bounds
-    pos = np.array(
-        [
-            [1000, 0, -1000],  # x coordinates
-            [0, 1000, -1000],  # y coordinates
-            [-200, -200, -200],  # z coordinates
-            [1, 1, 1],  # Homogeneous coordinates
-        ]
-    )
+    pos = [Position3D(1000, 0, -200), Position3D(0, 1000, -200), Position3D(-1000, -1000, -200)]
 
     result = c.project(pos)
     x = result.image_points
@@ -97,14 +83,12 @@ def test_boundary_points():
     x_left = -boundary_x * z_depth / c.camera_matrix.focal_length
     y_bottom = -boundary_y * z_depth / c.camera_matrix.focal_length
 
-    pos = np.array(
-        [
-            [x_right, 0, x_left, 0],  # x coordinates
-            [0, y_top, 0, y_bottom],  # y coordinates
-            [z_depth, z_depth, z_depth, z_depth],  # z coordinates
-            [1, 1, 1, 1],  # Homogeneous coordinates
-        ]
-    )
+    pos = [
+        Position3D(x_right, 0, z_depth),
+        Position3D(0, y_top, z_depth),
+        Position3D(x_left, 0, z_depth),
+        Position3D(0, y_bottom, z_depth),
+    ]
 
     result = c.project(pos)
     x = result.image_points
@@ -130,14 +114,7 @@ def test_center_point():
     c.camera_matrix.resolution = Point2D(640, 480)
 
     # Point at center
-    pos = np.array(
-        [
-            [0],  # x coordinate
-            [0],  # y coordinate
-            [-200],  # z coordinate
-            [1],  # Homogeneous coordinate
-        ]
-    )
+    pos = Position3D(0, 0, -200)
 
     result = c.project(pos)
     x = result.image_points
@@ -162,14 +139,7 @@ def test_output_properties():
     c.camera_matrix.resolution = Point2D(640, 480)
 
     # Simple test points
-    pos = np.array(
-        [
-            [0, 100],  # x coordinates
-            [0, 0],  # y coordinates
-            [-200, -300],  # z coordinates
-            [1, 1],  # Homogeneous coordinates
-        ]
-    )
+    pos = [Position3D(0, 0, -200), Position3D(100, 0, -300)]
 
     result = c.project(pos)
     x = result.image_points

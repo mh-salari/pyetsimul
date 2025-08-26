@@ -2,7 +2,7 @@
 
 import numpy as np
 from pyetsimul.core.camera import Camera
-from pyetsimul.types import Position3D
+from pyetsimul.types import Position3D, Point2D
 
 
 def test_single_point_unprojection():
@@ -11,7 +11,7 @@ def test_single_point_unprojection():
     c = Camera()
 
     # Single 2D point on image plane
-    X = np.array([[100.0], [50.0]])  # 2x1 matrix
+    X = Point2D(100.0, 50.0)
     d = 200.0  # Distance from camera
 
     pos = c.unproject(X, d)
@@ -36,12 +36,7 @@ def test_multiple_points_unprojection():
     c = Camera()
 
     # Multiple 2D points on image plane
-    X = np.array(
-        [
-            [0.0, 100.0, -150.0, 200.0],  # x coordinates
-            [0.0, 50.0, -75.0, 100.0],  # y coordinates (2x4 matrix)
-        ]
-    )
+    X = [Point2D(0.0, 0.0), Point2D(100.0, 50.0), Point2D(-150.0, -75.0), Point2D(200.0, 100.0)]
     d = 300.0  # Distance from camera
 
     pos = c.unproject(X, d)
@@ -86,7 +81,7 @@ def test_image_center_unprojection():
     c = Camera()
 
     # Point at image center
-    X = np.array([[0.0], [0.0]])  # Center of image plane
+    X = Point2D(0.0, 0.0)  # Center of image plane
     d = 150.0
 
     pos = c.unproject(X, d)
@@ -112,7 +107,7 @@ def test_different_focal_length():
     c.camera_matrix.focal_length = 1000.0  # Modified focal length
 
     # 2D point
-    X = np.array([[50.0], [-25.0]])
+    X = Point2D(50.0, -25.0)
     d = 500.0
 
     pos = c.unproject(X, d)
@@ -137,12 +132,7 @@ def test_large_coordinates():
     c = Camera()
 
     # Large 2D coordinates
-    X = np.array(
-        [
-            [500.0, -800.0],  # x coordinates
-            [300.0, -600.0],  # y coordinates (2x2 matrix)
-        ]
-    )
+    X = [Point2D(500.0, 300.0), Point2D(-800.0, -600.0)]
     d = 1000.0  # Large distance
 
     pos = c.unproject(X, d)
@@ -169,14 +159,7 @@ def test_projection_unprojection_roundtrip():
     c.err = 0  # No noise for exact roundtrip
 
     # Start with 3D points
-    original_3d = np.array(
-        [
-            [50.0, -30.0],  # x coordinates
-            [25.0, -15.0],  # y coordinates
-            [-400.0, -600.0],  # z coordinates (negative for in front of camera)
-            [1.0, 1.0],  # homogeneous (4x2 matrix)
-        ]
-    )
+    original_3d = [Position3D(50.0, 25.0, -400.0), Position3D(-30.0, -15.0, -600.0)]
 
     # Project to 2D
     result = c.project(original_3d)
@@ -185,13 +168,16 @@ def test_projection_unprojection_roundtrip():
     # valid = result.valid_mask
 
     # Unproject back using original distances
-    unprojected_3d = np.zeros((4, projected_2d.shape[1]))
+    unprojected_3d = []
     for i in range(projected_2d.shape[1]):
-        result_pos = c.unproject(projected_2d[:, i : i + 1], distances[i])
-        unprojected_3d[:, i] = np.array(result_pos)
+        point_2d = Point2D(projected_2d[0, i], projected_2d[1, i])
+        result_pos = c.unproject(point_2d, distances[i])
+        unprojected_3d.append(result_pos)
 
     # Check roundtrip accuracy
-    diff_matrix = np.abs(original_3d - unprojected_3d)
+    original_array = np.column_stack([np.array(p) for p in original_3d])
+    unprojected_array = np.column_stack([np.array(p) for p in unprojected_3d])
+    diff_matrix = np.abs(original_array - unprojected_array)
     max_diff = np.max(diff_matrix)
 
     # Roundtrip should be very accurate
@@ -203,7 +189,7 @@ def test_output_properties():
     c = Camera()
 
     # Single point test
-    X = np.array([[100.0], [50.0]])
+    X = Point2D(100.0, 50.0)
     d = 200.0
 
     pos = c.unproject(X, d)
@@ -215,7 +201,7 @@ def test_output_properties():
     assert pos_array.dtype == np.float64
 
     # Test multiple points
-    X_multi = np.array([[0.0, 100.0], [0.0, 50.0]])
+    X_multi = [Point2D(0.0, 0.0), Point2D(100.0, 50.0)]
     pos_multi = c.unproject(X_multi, d)
 
     # Check types and shapes for multiple points
