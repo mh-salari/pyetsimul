@@ -17,6 +17,7 @@ from ..optics.reflections import find_corneal_reflection
 from ..optics.refractions import find_refraction_point
 from ..optics.pupil_imaging import calculate_pupil_center_from_boundary
 from .eyelid import Eyelid, create_eyelid
+from .default_configs import EyeAnatomyDefaults
 
 if TYPE_CHECKING:
     from .camera import Camera
@@ -41,8 +42,8 @@ class Eye:
     # Instance parameters
     cornea: Optional[SphericalCornea] = None  # Spherical cornea object
     fovea_displacement: bool = True
-    fovea_alpha_deg: float = 6.0  # Horizontal fovea displacement (degrees)
-    fovea_beta_deg: float = 2.0  # Vertical fovea displacement (degrees)
+    fovea_alpha_deg: float = EyeAnatomyDefaults.FOVEA_ALPHA_DEG
+    fovea_beta_deg: float = EyeAnatomyDefaults.FOVEA_BETA_DEG
     pupil_type: str = "elliptical"  # Pupil type: "elliptical" (default), "realistic"
     pupil_boundary_points: Optional[int] = None  # Number of points for pupil boundary (uses pupil default if None)
     pupil_random_seed: Optional[int] = None  # Random seed for realistic pupil (None = random, int = deterministic)
@@ -67,10 +68,9 @@ class Eye:
         Sets up cornea geometry, transformation matrices, and pupil object.
         Scales pupil size based on corneal scaling factor.
         """
-        # General eye constants (not cornea-specific)
-        pupil_radius_default = 3e-3  # Default pupil radius (m)
-        n_aqueous_humor_default = 1.336  # Refractive index of aqueous humor
-        axial_length_default = 24.75e-3  # Default total axial length of eye (m)
+        pupil_radius_default = EyeAnatomyDefaults.PUPIL_RADIUS
+        n_aqueous_humor_default = EyeAnatomyDefaults.N_AQUEOUS_HUMOR
+        axial_length_default = EyeAnatomyDefaults.AXIAL_LENGTH
 
         # Create default cornea if none provided
         if self.cornea is None:
@@ -133,7 +133,7 @@ class Eye:
                 center=Position3D(0.0, 0.0, 0.0),
                 sphere_radius=S,
                 phi_max=phi_max,
-                openness=1.0,
+                openness=EyeAnatomyDefaults.EYELID_OPENNESS,
             )
             # Keep eyelid orientation locked to rest orientation (fixed to face)
             self.eyelid_trans[:3, :3] = self._rest_orientation

@@ -8,6 +8,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Tuple, Optional
 from ..types import Position3D, Direction3D, TransformationMatrix
+from .default_configs import PupilDefaults
 
 
 class Pupil(ABC):
@@ -22,7 +23,13 @@ class Pupil(ABC):
         y_pupil: Vector defining Y-axis radius/direction
     """
 
-    def __init__(self, pos_pupil: Position3D, x_pupil: Direction3D, y_pupil: Direction3D, N: int = 100):
+    def __init__(
+        self,
+        pos_pupil: Position3D,
+        x_pupil: Direction3D,
+        y_pupil: Direction3D,
+        N: int = PupilDefaults.BOUNDARY_POINTS_ELLIPTICAL,
+    ):
         self.pos_pupil = pos_pupil
         self.x_pupil = x_pupil
         self.y_pupil = y_pupil
@@ -181,13 +188,13 @@ class RealisticPupilParams:
         random_seed: Random seed for reproducible shape generation (None for random)
     """
 
-    base_radius: float = 2.5  # mm, average radius
-    noncircularity: float = 0.0166  # typical human noncircularity
-    ellipse_contribution: float = 0.5  # fraction of noncircularity from ellipse
-    major_axis_angle: float = 0.0  # radians, 0=vertical, π/2=horizontal
-    pupil_offset_from_limbus: Tuple[float, float] = (0.27e-3, 0.20e-3)  # (nasal, superior) in meters
-    n_harmonics: int = 6  # number of harmonics to include
-    age: float = 35.8  # age in years (study mean from Wyatt 1995)
+    base_radius: float = PupilDefaults.BASE_RADIUS * 1000  # mm, converted from m
+    noncircularity: float = PupilDefaults.NONCIRCULARITY
+    ellipse_contribution: float = PupilDefaults.ELLIPSE_CONTRIBUTION
+    major_axis_angle: float = PupilDefaults.MAJOR_AXIS_ANGLE
+    pupil_offset_from_limbus: Tuple[float, float] = PupilDefaults.OFFSET_FROM_LIMBUS
+    n_harmonics: int = PupilDefaults.N_HARMONICS
+    age: float = PupilDefaults.REFERENCE_AGE
     random_seed: Optional[int] = None  # seed for reproducible random generation (None = random)
 
 
@@ -214,7 +221,7 @@ class RealisticPupil(Pupil):
         x_pupil: Direction3D,
         y_pupil: Direction3D,
         params: Optional[RealisticPupilParams] = None,
-        N: int = 360,
+        N: int = PupilDefaults.BOUNDARY_POINTS_REALISTIC,
     ):
         super().__init__(pos_pupil, x_pupil, y_pupil, N)
         self.params = params or RealisticPupilParams()
@@ -246,7 +253,7 @@ class RealisticPupil(Pupil):
         """Generate harmonic amplitudes for realistic pupil shape using Wyatt (1995) formula."""
         self._set_random_seed()
         # Apply age effects to base parameters
-        age_offset = self.params.age - 35.8  # offset from study mean
+        age_offset = self.params.age - PupilDefaults.REFERENCE_AGE
         noncircularity_age_adjusted = self.params.noncircularity + (age_offset / 10) * 0.0015
 
         # Get lighting-dependent ellipse contribution
@@ -441,11 +448,11 @@ def create_pupil(
         ValueError: If pupil_type is not supported
     """
     if pupil_type == "elliptical":
-        N = kwargs.get("N", 20)
+        N = kwargs.get("N", PupilDefaults.BOUNDARY_POINTS_FACTORY)
         return EllipticalPupil(pos_pupil, x_pupil, y_pupil, N)
     elif pupil_type == "realistic":
         params = kwargs.get("params", None)
-        N = kwargs.get("N", 360)
+        N = kwargs.get("N", PupilDefaults.BOUNDARY_POINTS_REALISTIC)
         return RealisticPupil(pos_pupil, x_pupil, y_pupil, params, N)
     else:
         raise ValueError(f"Unsupported pupil type: {pupil_type}. Supported types: 'elliptical', 'realistic'")

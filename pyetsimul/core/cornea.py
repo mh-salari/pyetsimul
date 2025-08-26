@@ -10,6 +10,7 @@ from typing import Optional, TYPE_CHECKING
 from ..types import Point3D, Vector3D, Position3D, Ray, IntersectionResult, TransformationMatrix
 from ..geometry import intersections
 from ..optics import reflections, refractions
+from .default_configs import CorneaDefaults
 
 if TYPE_CHECKING:
     from .eye import Eye
@@ -25,8 +26,8 @@ class Cornea(ABC):
 
     center: Optional[Position3D] = None
 
-    _cornea_depth_default: float = 3.54e-3  # Reference corneal depth (apex to limbus)
-    _cornea_center_to_rotation_center_default: float = 10.20e-3  # Reference distance
+    _cornea_depth_default: float = CorneaDefaults.CORNEA_DEPTH
+    _cornea_center_to_rotation_center_default: float = CorneaDefaults.CENTER_TO_ROTATION
 
     @property
     @abstractmethod
@@ -100,12 +101,12 @@ class SphericalCornea(Cornea):
         center (Point4D): Inherited from parent. If None, will be calculated by Eye based on anatomical scaling.
     """
 
-    anterior_radius: float = 7.98e-3  # Default anterior corneal radius
-    refractive_index: float = 1.376  # Refractive index of cornea
+    anterior_radius: float = CorneaDefaults.ANTERIOR_RADIUS
+    refractive_index: float = CorneaDefaults.REFRACTIVE_INDEX
 
     # Reference values for scaling (from Boff and Lincoln [1988])
-    _posterior_radius_default: float = 6.22e-3  # Default posterior corneal radius
-    _thickness_offset_default: float = 1.15e-3  # Default corneal thickness offset
+    _posterior_radius_default: float = CorneaDefaults.POSTERIOR_RADIUS
+    _thickness_offset_default: float = CorneaDefaults.THICKNESS_OFFSET
 
     @property
     def cornea_type(self) -> str:
@@ -113,7 +114,7 @@ class SphericalCornea(Cornea):
         return "spherical"
 
     # Sphere-specific constants from Boff and Lincoln [1988, Section 1.210]
-    _r_cornea_default: float = 7.98e-3  # Reference corneal radius for scaling
+    _r_cornea_default: float = CorneaDefaults.ANTERIOR_RADIUS
 
     @property
     def posterior_radius(self) -> float:
@@ -293,12 +294,12 @@ class ConicCornea(Cornea):
     """
 
     # Anterior surface (30-year defaults from Goncharov & Dainty 2007)
-    anterior_radius: float = 7.76e-3  # Anterior radius of curvature
-    anterior_k: float = -0.10  # Anterior conic constant
+    anterior_radius: float = CorneaDefaults.CONIC_ANTERIOR_RADIUS
+    anterior_k: float = CorneaDefaults.CONIC_ANTERIOR_K
 
     # Posterior surface (30-year defaults from Goncharov & Dainty 2007)
-    posterior_radius: float = 6.52e-3  # Posterior radius of curvature
-    posterior_k: float = -0.30  # Posterior conic constant
+    posterior_radius: float = CorneaDefaults.CONIC_POSTERIOR_RADIUS
+    posterior_k: float = CorneaDefaults.CONIC_POSTERIOR_K
 
     @property
     def cornea_type(self) -> str:
@@ -306,8 +307,8 @@ class ConicCornea(Cornea):
         return "conic"
 
     # Corneal properties
-    thickness_offset: float = 0.55e-3  # Central corneal thickness
-    refractive_index: float = 1.376  # Refractive index of cornea
+    thickness_offset: float = CorneaDefaults.CONIC_THICKNESS_OFFSET
+    refractive_index: float = CorneaDefaults.REFRACTIVE_INDEX
 
     def get_posterior_center(self) -> Position3D:
         """Calculate the center of the posterior surface based on conic geometry and thickness."""

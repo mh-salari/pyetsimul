@@ -6,6 +6,7 @@ from typing import Tuple
 import numpy as np
 
 from ..types import Position3D
+from .default_configs import EyelidDefaults
 
 
 @dataclass
@@ -49,7 +50,7 @@ class Eyelid:
 
         # Solve for fixed lower cap phi1_fixed
         lo, hi = 0.0, phi_max
-        for _ in range(80):  # Bisection iterations for numerical stability
+        for _ in range(EyelidDefaults.BISECTION_ITERATIONS_PHI1):
             mid = 0.5 * (lo + hi)
             if cap_area(mid) < target_lower:
                 lo = mid
@@ -64,7 +65,7 @@ class Eyelid:
         if target_open_area <= max_area_with_fixed:
             phi1 = phi1_fixed
             lo, hi = phi1, phi_max
-            for _ in range(100):  # Bisection iterations for band area calculation
+            for _ in range(EyelidDefaults.BISECTION_ITERATIONS_PHI2):
                 mid = 0.5 * (lo + hi)
                 if band_area(phi1, mid) < target_open_area:
                     lo = mid
@@ -74,7 +75,7 @@ class Eyelid:
         else:
             phi2 = phi_max
             lo, hi = 0.0, phi_max
-            for _ in range(120):  # Bisection iterations for full area calculation
+            for _ in range(EyelidDefaults.BISECTION_ITERATIONS_AREA):
                 mid = 0.5 * (lo + hi)
                 if band_area(mid, phi2) > target_open_area:
                     lo = mid
@@ -105,8 +106,8 @@ class Eyelid:
 
         r_xy = self._max_xy_radius()
         # Fix width at the footprint chord (limbus). At full openness the opening matches the footprint circle.
-        width = 2.0 * r_xy
-        height_max = 2.0 * r_xy  # ensure fully open does not occlude cornea
+        width = EyelidDefaults.ELLIPSE_WIDTH_MULTIPLIER * r_xy
+        height_max = EyelidDefaults.HEIGHT_MULTIPLIER * r_xy
         openness = float(np.clip(self.openness, 0.0, 1.0))
         height = openness * height_max
         return float(width), float(height)
@@ -123,7 +124,7 @@ class Eyelid:
         """
 
         r_xy = self._max_xy_radius()
-        height_max = 2.0 * r_xy
+        height_max = EyelidDefaults.HEIGHT_MULTIPLIER * r_xy
         openness = float(np.clip(self.openness, 0.0, 1.0))
         height = openness * height_max
 
@@ -173,8 +174,8 @@ def create_eyelid(
     sphere_radius: float,
     phi_max: float,
     openness: float,
-    lower_cap_fraction: float = 0.5,
-    ellipse_width_to_height: float = 1.5,
+    lower_cap_fraction: float = EyelidDefaults.LOWER_CAP_FRACTION,
+    ellipse_width_to_height: float = EyelidDefaults.ELLIPSE_WIDTH_TO_HEIGHT,
 ) -> Eyelid:
     """Factory function to create an Eyelid with explicit parameters.
 

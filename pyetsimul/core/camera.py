@@ -20,6 +20,7 @@ from ..types import (
     ProjectionResult,
 )
 from ..camera_noise import apply_glint_noise, GlintNoiseConfig
+from .default_configs import CameraDefaults
 
 if TYPE_CHECKING:
     from .eye import Eye
@@ -46,7 +47,7 @@ class Camera:
 
     camera_matrix: CameraMatrix = field(default_factory=CameraMatrix)
     dist_coeffs: Optional[np.ndarray] = None
-    err: float = 0.0
+    err: float = CameraDefaults.MEASUREMENT_ERROR
     err_type: str = "gaussian"
     glint_noise_config: Optional[GlintNoiseConfig] = None
     name: Optional[str] = None

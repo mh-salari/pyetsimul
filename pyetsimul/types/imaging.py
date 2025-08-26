@@ -7,6 +7,7 @@ from dataclasses import dataclass
 from typing import Optional, List, Union
 import numpy as np
 from .geometry import Point2D, Point3D
+from ..core.default_configs import CameraDefaults
 
 
 @dataclass
@@ -89,8 +90,14 @@ class CameraMatrix:
         if matrix is not None:
             self._matrix = np.asarray(matrix, dtype=np.float64)
         else:
-            # Default pinhole camera: focal_length=2880, resolution=1280x1024
-            self._matrix = np.array([[2880.0, 0.0, 640.0], [0.0, 2880.0, 512.0], [0.0, 0.0, 1.0]], dtype=np.float64)
+            self._matrix = np.array(
+                [
+                    [CameraDefaults.FOCAL_LENGTH, 0.0, CameraDefaults.PRINCIPAL_POINT_X],
+                    [0.0, CameraDefaults.FOCAL_LENGTH, CameraDefaults.PRINCIPAL_POINT_Y],
+                    [0.0, 0.0, 1.0],
+                ],
+                dtype=np.float64,
+            )
 
     @property
     def focal_length(self) -> float:
