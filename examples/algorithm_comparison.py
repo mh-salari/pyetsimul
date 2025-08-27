@@ -62,7 +62,7 @@ def main():
 
         # Test calibration accuracy
         calib_results = accuracy_at_calibration_points(et, eye=eye, interactive_plot=False)
-        calib_results.print_summary(f"{name} Calibration Accuracy")
+        calib_results.pprint(f"{name} Calibration Accuracy")
 
         algorithms.append(et)
         algorithm_names.append(name)
@@ -85,8 +85,8 @@ def main():
     comparison_strategy = AlgorithmComparisonStrategy(algorithms=algorithms, algorithm_names=algorithm_names)
 
     print("Running eye position comparison...")
-    eye_results = comparison_strategy.execute(eye, eye_variation, gaze_target)
-    comparison_strategy.print_results(eye_results, "Eye Position Variation")
+    eye_results = comparison_strategy.execute(eye, eye_variation, gaze_target, "Eye Position Variation")
+    eye_results.pprint()
 
     # Test 2: Target position variation (fixed eye position)
     print("\n" + "=" * 60)
@@ -102,8 +102,8 @@ def main():
     )
 
     print("Running target position comparison...")
-    target_results = comparison_strategy.execute(eye, target_variation)
-    comparison_strategy.print_results(target_results, "Target Position Variation")
+    target_results = comparison_strategy.execute(eye, target_variation, test_name="Target Position Variation")
+    target_results.pprint()
 
 
 if __name__ == "__main__":

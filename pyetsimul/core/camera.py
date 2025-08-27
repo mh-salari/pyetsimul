@@ -8,6 +8,7 @@ import numpy as np
 import cv2
 from dataclasses import dataclass, field
 from typing import Union, List, TYPE_CHECKING, Optional
+from tabulate import tabulate
 
 from .light import Light
 from ..types import (
@@ -413,3 +414,40 @@ class Camera:
             pupil_center=pupil_center,
             resolution=self.camera_matrix.resolution,
         )
+
+    def __str__(self) -> str:
+        """Basic string representation of the camera."""
+        res = self.camera_matrix.resolution
+        pos = self.position
+        return f"Camera(pos=({pos.x * 1000:.1f}, {pos.y * 1000:.1f}, {pos.z * 1000:.1f})mm, f={self.camera_matrix.focal_length:.0f}px, {res.x}x{res.y})"
+
+    def pprint(self) -> None:
+        """Print detailed camera parameters in a formatted table."""
+        pos = self.position
+        matrix = self.camera_matrix.matrix
+        res = self.camera_matrix.resolution
+
+        # Prepare distortion coefficients display
+        if self.dist_coeffs is not None:
+            dist_info = f"k1={self.dist_coeffs[0]:.3f}"
+            if len(self.dist_coeffs) > 1:
+                dist_info += f", k2={self.dist_coeffs[1]:.3f}"
+            if len(self.dist_coeffs) > 4:
+                dist_info += f", p1={self.dist_coeffs[3]:.3f}, p2={self.dist_coeffs[4]:.3f}"
+        else:
+            dist_info = "None (pinhole)"
+
+        data = [
+            ["Focal length (px)", f"{self.camera_matrix.focal_length:.1f}"],
+            ["Resolution", f"{res.x} × {res.y}"],
+            ["Principal point (px)", f"({matrix[0, 2]:.1f}, {matrix[1, 2]:.1f})"],
+            ["Position (x,y,z) mm", f"({pos.x * 1000:.1f}, {pos.y * 1000:.1f}, {pos.z * 1000:.1f})"],
+            ["Distortion coefficients", dist_info],
+            ["Measurement error", f"{self.err:.4f}"],
+            ["Error type", self.err_type],
+            ["Glint noise", "Enabled" if self.glint_noise_config else "Disabled"],
+        ]
+
+        headers = ["Parameter", "Value"]
+        print("Camera Parameters:")
+        print(tabulate(data, headers=headers, tablefmt="grid"))

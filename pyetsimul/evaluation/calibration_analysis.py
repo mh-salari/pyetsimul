@@ -23,7 +23,13 @@ class CalibrationResults:
     def __init__(self, errors: Dict[str, Dict[str, float]]):
         self.errors = errors
 
-    def print_summary(self, title: str = "Calibration Accuracy") -> None:
+    def __str__(self) -> str:
+        """Basic string representation of calibration results."""
+        mean_error_mm = self.errors["mtr"]["mean"] * 1e3
+        mean_error_deg = self.errors["deg"]["mean"]
+        return f"CalibrationResults(mean_error={mean_error_mm:.2f}mm / {mean_error_deg:.3f}°)"
+
+    def pprint(self, title: str = "Calibration Accuracy") -> None:
         """Print formatted calibration error statistics."""
         print(f"\n{title}:")
 

@@ -7,6 +7,7 @@ import numpy as np
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Optional, TYPE_CHECKING
+from tabulate import tabulate
 from ..types import Point3D, Vector3D, Position3D, Ray, IntersectionResult, TransformationMatrix
 from ..geometry import intersections
 from ..optics import reflections, refractions
@@ -85,6 +86,51 @@ class Cornea(ABC):
     ) -> Optional[Point3D]:
         """Finds position where refraction occurs on the corneal surface."""
         pass
+
+    def __str__(self) -> str:
+        """Basic string representation of the cornea."""
+        center_str = (
+            f"({self.center.x * 1000:.1f}, {self.center.y * 1000:.1f}, {self.center.z * 1000:.1f})mm"
+            if self.center
+            else "unset"
+        )
+        return f"{self.__class__.__name__}(center={center_str}, type={self.cornea_type})"
+
+    def pprint(self) -> None:
+        """Print detailed cornea parameters in a formatted table."""
+        # Base parameters
+        data = [
+            ["Cornea type", self.cornea_type],
+            [
+                "Center (x,y,z) mm",
+                f"({self.center.x * 1000:.3f}, {self.center.y * 1000:.3f}, {self.center.z * 1000:.3f})"
+                if self.center
+                else "unset",
+            ],
+        ]
+
+        # SphericalCornea and ConicCornea parameters
+        if isinstance(self, (SphericalCornea, ConicCornea)):
+            data.append(["Anterior radius (mm)", f"{self.anterior_radius * 1000:.3f}"])
+            data.append(["Posterior radius (mm)", f"{self.posterior_radius * 1000:.3f}"])
+            data.append(["Refractive index", f"{self.refractive_index:.3f}"])
+            data.append(["Thickness offset (mm)", f"{self.thickness_offset * 1000:.3f}"])
+            data.append(["Corneal depth (mm)", f"{self.get_corneal_depth() * 1000:.3f}"])
+
+            if self.center:
+                apex = self.get_apex_position()
+                data.append(
+                    ["Apex position (x,y,z) mm", f"({apex.x * 1000:.3f}, {apex.y * 1000:.3f}, {apex.z * 1000:.3f})"]
+                )
+
+        # ConicCornea-specific parameters
+        if isinstance(self, ConicCornea):
+            data.append(["Anterior k (conic)", f"{self.anterior_k:.3f}"])
+            data.append(["Posterior k (conic)", f"{self.posterior_k:.3f}"])
+
+        headers = ["Parameter", "Value"]
+        print(f"{self.__class__.__name__} Parameters:")
+        print(tabulate(data, headers=headers, tablefmt="grid"))
 
 
 @dataclass

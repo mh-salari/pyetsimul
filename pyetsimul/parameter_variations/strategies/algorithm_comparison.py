@@ -12,6 +12,72 @@ from ...geometry.conversions import calculate_angular_error_degrees
 from ..core import ParameterVariation, VariationStrategy
 
 
+class ComparisonResults:
+    """Algorithm comparison results with printing methods."""
+
+    def __init__(self, results: Dict[str, Any], test_name: str):
+        """Initialize comparison results.
+
+        Args:
+            results: Dictionary with comparison results for each algorithm
+            test_name: Name/description of the test
+        """
+        self.results = results
+        self.test_name = test_name
+
+    def __str__(self) -> str:
+        """Basic string representation of the comparison results."""
+        num_algorithms = len(self.results.get("algorithms", []))
+        total_tests = self.results.get("total_tests", 0)
+        return f"ComparisonResults({self.test_name}, {num_algorithms} algorithms, {total_tests} test points)"
+
+    def pprint(self) -> None:
+        """Print detailed algorithm comparison results in a formatted table."""
+        results = self.results
+
+        headers = ["Algorithm", "Position Error (mm)", "Angular Error (°)", "Success Rate"]
+        sub_headers = ["", "Mean ± Std (Max | Median)", "Mean ± Std (Max | Median)", "Points"]
+
+        data = []
+        for algorithm_name in results["algorithms"]:
+            stats = results["summary_statistics"][algorithm_name]
+
+            # Format position error statistics
+            if not np.isnan(stats["position_error"]["mean"]):
+                position_error = (
+                    f"{stats['position_error']['mean'] * 1000:.2f} ± "
+                    f"{stats['position_error']['std'] * 1000:.2f} "
+                    f"({stats['position_error']['max'] * 1000:.2f} | "
+                    f"{stats['position_error']['median'] * 1000:.2f})"
+                )
+            else:
+                position_error = "N/A"
+
+            # Format angular error statistics
+            if not np.isnan(stats["angular_error"]["mean"]):
+                angular_error = (
+                    f"{stats['angular_error']['mean']:.3f} ± "
+                    f"{stats['angular_error']['std']:.3f} "
+                    f"({stats['angular_error']['max']:.3f} | "
+                    f"{stats['angular_error']['median']:.3f})"
+                )
+            else:
+                angular_error = "N/A"
+
+            data.append(
+                [
+                    algorithm_name,
+                    position_error,
+                    angular_error,
+                    f"{stats['successful_points']}/{stats['total_points']}",
+                ]
+            )
+
+        print(f"\n{self.test_name} ({results['total_tests']} test points):")
+        print(tabulate([sub_headers] + data, headers=headers, tablefmt="grid"))
+        print()
+
+
 class AlgorithmComparisonStrategy(VariationStrategy):
     """Compare multiple algorithms across parameter variations."""
 
@@ -31,16 +97,23 @@ class AlgorithmComparisonStrategy(VariationStrategy):
         if len(self.algorithm_names) != len(self.algorithms):
             raise ValueError("Number of algorithm names must match number of algorithms")
 
-    def execute(self, eye: Eye, variation: ParameterVariation, gaze_target: Position3D = None) -> Dict[str, Any]:
+    def execute(
+        self,
+        eye: Eye,
+        variation: ParameterVariation,
+        gaze_target: Position3D = None,
+        test_name: str = "Algorithm Comparison",
+    ) -> ComparisonResults:
         """Compare all algorithms across parameter variation values.
 
         Args:
             eye: Eye object for simulation
             variation: Parameter variation to test across
             gaze_target: Target gaze point (for eye position variations)
+            test_name: Name/description of the test
 
         Returns:
-            Dictionary with comparison results for each algorithm
+            ComparisonResults object with structured results
         """
         # Ensure all algorithms are calibrated
         for i, algorithm in enumerate(self.algorithms):
@@ -132,13 +205,15 @@ class AlgorithmComparisonStrategy(VariationStrategy):
         # Calculate summary statistics for each algorithm
         summary = self._calculate_summary_statistics(results)
 
-        return {
+        results_dict = {
             "algorithms": self.algorithm_names,
             "parameter_variation": variation.param_name,
             "total_tests": len(values),
             "detailed_results": results,
             "summary_statistics": summary,
         }
+
+        return ComparisonResults(results_dict, test_name)
 
     def _calculate_summary_statistics(self, results: Dict[str, List[Dict]]) -> Dict[str, Dict]:
         """Calculate summary statistics for each algorithm."""
@@ -185,55 +260,3 @@ class AlgorithmComparisonStrategy(VariationStrategy):
                 }
 
         return summary
-
-    def print_results(self, results: Dict[str, Any], test_name: str) -> None:
-        """Print algorithm comparison results in tabulated format.
-
-        Args:
-            results: Results dictionary from execute()
-            test_name: Name of the test for display
-        """
-        headers = ["Algorithm", "Error (mm)", "Error (deg)", "Tests"]
-
-        # Add sub-headers for error statistics
-        sub_headers = ["", "Mean ± Std (Max | Median)", "Mean ± Std (Max | Median)", "Success/Total"]
-
-        data = []
-        for algorithm_name in results["algorithms"]:
-            stats = results["summary_statistics"][algorithm_name]
-
-            # Format position error statistics
-            if not np.isnan(stats["position_error"]["mean"]):
-                position_error = (
-                    f"{stats['position_error']['mean'] * 1000:.2f} ± "
-                    f"{stats['position_error']['std'] * 1000:.2f} "
-                    f"({stats['position_error']['max'] * 1000:.2f} | "
-                    f"{stats['position_error']['median'] * 1000:.2f})"
-                )
-            else:
-                position_error = "N/A"
-
-            # Format angular error statistics
-            if not np.isnan(stats["angular_error"]["mean"]):
-                angular_error = (
-                    f"{stats['angular_error']['mean']:.3f} ± "
-                    f"{stats['angular_error']['std']:.3f} "
-                    f"({stats['angular_error']['max']:.3f} | "
-                    f"{stats['angular_error']['median']:.3f})"
-                )
-            else:
-                angular_error = "N/A"
-
-            data.append(
-                [
-                    algorithm_name,
-                    position_error,
-                    angular_error,
-                    f"{stats['successful_points']}/{stats['total_points']}",
-                ]
-            )
-
-        # Print the table with descriptive title
-        print(f"\n{test_name} ({results['total_tests']} test points):")
-        print(tabulate([sub_headers] + data, headers=headers, tablefmt="grid"))
-        print()

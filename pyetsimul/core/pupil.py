@@ -7,6 +7,7 @@ import numpy as np
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Tuple, Optional
+from tabulate import tabulate
 from ..types import Position3D, Direction3D, TransformationMatrix
 from .default_configs import PupilDefaults
 
@@ -90,6 +91,36 @@ class Pupil(ABC):
             Noncircularity value (0.0 for perfect circle)
         """
         return 0.0
+
+    def __str__(self) -> str:
+        """Basic string representation of the pupil."""
+        pos = self.pos_pupil
+        x_radius, y_radius = self.get_radii()
+        return f"{self.__class__.__name__}(pos=({pos.x * 1000:.1f}, {pos.y * 1000:.1f}, {pos.z * 1000:.1f})mm, r=({x_radius * 1000:.1f}, {y_radius * 1000:.1f})mm)"
+
+    def pprint(self) -> None:
+        """Print detailed pupil parameters in a formatted table."""
+        pos = self.pos_pupil
+        x_radius, y_radius = self.get_radii()
+
+        # Base parameters
+        data = [
+            ["Pupil type", self.__class__.__name__],
+            ["Position (x,y,z) mm", f"({pos.x * 1000:.3f}, {pos.y * 1000:.3f}, {pos.z * 1000:.3f})"],
+            ["X-axis radius (mm)", f"{x_radius * 1000:.3f}"],
+            ["Y-axis radius (mm)", f"{y_radius * 1000:.3f}"],
+            ["Boundary points", str(self.N)],
+            ["Noncircularity", f"{self.get_noncircularity():.6f}"],
+        ]
+
+        # Add RealisticPupil-specific parameters
+        if isinstance(self, RealisticPupil):
+            data.append(["Base radius (mm)", f"{self.params.base_radius * 1000:.3f}"])
+            data.append(["Random seed", str(self.params.random_seed) if self.params.random_seed else "Random"])
+
+        headers = ["Parameter", "Value"]
+        print(f"{self.__class__.__name__} Parameters:")
+        print(tabulate(data, headers=headers, tablefmt="grid"))
 
 
 class EllipticalPupil(Pupil):

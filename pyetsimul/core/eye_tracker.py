@@ -8,6 +8,7 @@ import numpy as np
 from dataclasses import dataclass, field
 from typing import Optional, List, Dict, Any, Tuple
 from abc import ABC, abstractmethod
+from tabulate import tabulate
 
 from .camera import Camera
 from .light import Light
@@ -255,3 +256,59 @@ class EyeTracker(ABC):
             GazePrediction with estimated gaze position or None if prediction fails
         """
         pass
+
+    def __str__(self) -> str:
+        """Basic string representation of the eye tracker."""
+        try:
+            calibrated = self.algorithm_state.is_calibrated
+        except AttributeError:
+            calibrated = False
+        return f"{self.__class__.__name__}(algorithm={self.algorithm_name}, cameras={len(self.cameras)}, lights={len(self.lights)}, calibrated={calibrated})"
+
+    def pprint(self) -> None:
+        """Print detailed eye tracker parameters in a formatted table."""
+        # Check calibration status
+        try:
+            calibrated = self.algorithm_state.is_calibrated
+        except AttributeError:
+            calibrated = False
+
+        calib_points = len(self.calib_points) if self.calib_points else 0
+
+        data = [
+            ["Algorithm", self.algorithm_name],
+            ["Cameras", str(len(self.cameras))],
+            ["Lights", str(len(self.lights))],
+            ["Calibration points", str(calib_points)],
+            ["Calibration status", "Calibrated" if calibrated else "Not calibrated"],
+            ["Use refraction", "Yes" if self.use_refraction else "No"],
+            ["Legacy look_at mode", "Yes" if self.use_legacy_look_at else "No"],
+        ]
+
+        # Add algorithm-specific configuration
+        if hasattr(self, "algorithm_state") and hasattr(self.algorithm_state, "config"):
+            config = self.algorithm_state.config
+            if hasattr(config, "method"):
+                data.append(["Algorithm method", config.method])
+            if hasattr(config, "degree"):
+                data.append(["Polynomial degree", str(config.degree)])
+
+        # Add camera details
+        if self.cameras:
+            for i, cam in enumerate(self.cameras):
+                pos = cam.position
+                data.append(
+                    [f"Camera {i + 1} position (mm)", f"({pos.x * 1000:.1f}, {pos.y * 1000:.1f}, {pos.z * 1000:.1f})"]
+                )
+
+        # Add light details
+        if self.lights:
+            for i, light in enumerate(self.lights):
+                pos = light.position
+                data.append(
+                    [f"Light {i + 1} position (mm)", f"({pos.x * 1000:.1f}, {pos.y * 1000:.1f}, {pos.z * 1000:.1f})"]
+                )
+
+        headers = ["Parameter", "Value"]
+        print(f"{self.__class__.__name__} Configuration:")
+        print(tabulate(data, headers=headers, tablefmt="grid"))

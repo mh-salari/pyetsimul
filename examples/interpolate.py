@@ -96,7 +96,7 @@ def main():
     print("1. Testing calibration accuracy:")
     print("-" * 60)
     calib_results = accuracy_at_calibration_points(et, eye=eye)
-    calib_results.print_summary("Calibration Test Summary")
+    calib_results.pprint("Calibration Test Summary")
 
     print("2. Testing over screen (fixed observer, sweep gaze positions):")
     print("-" * 60)
@@ -114,7 +114,7 @@ def main():
     target_strategy = TargetPositionEvaluationStrategy(observer_position=eye_position)
     screen_results = target_strategy.execute(eye, et, target_position_variation)
 
-    screen_results.print_summary("Screen Test Summary")
+    screen_results.pprint("Screen Test Summary")
 
     print("\n3. Testing over observer (fixed gaze, sweep observer positions):")
     print("-" * 60)
@@ -131,7 +131,7 @@ def main():
     evaluation_strategy = EyePositionEvaluationStrategy(gaze_target=Position3D(0, 0, 200e-3))
     observer_results = evaluation_strategy.execute(eye, et, eye_position_variation)
 
-    observer_results.print_summary("Observer Test Summary")
+    observer_results.pprint("Observer Test Summary")
 
 
 if __name__ == "__main__":

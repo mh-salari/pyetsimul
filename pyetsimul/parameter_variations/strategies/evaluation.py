@@ -21,7 +21,13 @@ class ParameterVariationResults:
         self.test_type = test_type
         self.test_count = test_count
 
-    def print_summary(self, title: str) -> None:
+    def __str__(self) -> str:
+        """Basic string representation of parameter variation results."""
+        mean_error_mm = self.errors["mtr"]["mean"] * 1e3
+        mean_error_deg = self.errors["deg"]["mean"]
+        return f"ParameterVariationResults({self.test_type}, {self.test_count} tests, mean_error={mean_error_mm:.2f}mm / {mean_error_deg:.3f}°)"
+
+    def pprint(self, title: str = "Parameter Variation Results") -> None:
         """Print formatted parameter variation error statistics."""
         print(f"\n{title}:")
 

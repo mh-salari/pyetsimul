@@ -7,10 +7,10 @@ import numpy as np
 import warnings
 from dataclasses import dataclass, field
 from typing import Optional, TYPE_CHECKING
-
+from tabulate import tabulate
 
 from ..types import Position3D, Direction3D, TransformationMatrix, RotationMatrix, PupilData, Point2D
-from .pupil import Pupil, create_pupil
+from .pupil import Pupil, create_pupil, RealisticPupilParams
 from .cornea import SphericalCornea
 from .eye_operations import look_at_target, look_at_target_optical_then_kappa
 from ..optics.reflections import find_corneal_reflection
@@ -110,8 +110,6 @@ class Eye:
 
         # For realistic pupils, create params with random seed if specified
         if self.pupil_type == "realistic" and self.pupil_random_seed is not None:
-            from .pupil import RealisticPupilParams
-
             pupil_params = RealisticPupilParams(random_seed=self.pupil_random_seed)
             pupil_kwargs["params"] = pupil_params
 
@@ -566,3 +564,49 @@ class Eye:
             )
 
         return pupil_boundary_points, pupil_center
+
+    def __str__(self) -> str:
+        """Basic string representation of the eye."""
+        pos = self.position
+        return f"Eye(pos=({pos.x * 1000:.1f}, {pos.y * 1000:.1f}, {pos.z * 1000:.1f})mm, axial_length={self.axial_length * 1000:.1f}mm)"
+
+    def pprint(self) -> None:
+        """Print detailed eye anatomy parameters in a formatted table."""
+        cornea_center = self.cornea.center
+        apex_pos = self.cornea.get_apex_position()
+        pupil_pos = self.pupil.pos_pupil
+        x_radius, _ = self.get_pupil_radii()
+
+        data = [
+            ["Anterior corneal radius R_a (mm)", f"{self.cornea.anterior_radius * 1000:.3f}"],
+            ["Posterior corneal radius R_p (mm)", f"{self.cornea.posterior_radius * 1000:.3f}"],
+            ["Axial length L (mm)", f"{self.axial_length * 1000:.3f}"],
+            [
+                "Cornea center to rotation center (mm)",
+                f"{self.cornea._cornea_center_to_rotation_center_default * 1000:.3f}",
+            ],
+            ["Thickness offset t_offset (mm)", f"{self.cornea.thickness_offset * 1000:.3f}"],
+            ["Corneal depth d_c (mm)", f"{self.cornea.get_corneal_depth() * 1000:.3f}"],
+            ["Refractive index n_cornea", f"{self.cornea.refractive_index:.3f}"],
+            ["Refractive index n_aqueous", f"{self.n_aqueous_humor:.3f}"],
+            ["Fovea α (deg)", f"{self.fovea_alpha_deg:.1f}"],
+            ["Fovea β (deg)", f"{self.fovea_beta_deg:.1f}"],
+            ["Angle κ (deg)", f"{self.angle_kappa:.3f}"],
+            [
+                "Cornea center (x,y,z) mm",
+                f"({cornea_center.x * 1000:.3f}, {cornea_center.y * 1000:.3f}, {cornea_center.z * 1000:.3f})",
+            ],
+            [
+                "Anterior apex (x,y,z) mm",
+                f"({apex_pos.x * 1000:.3f}, {apex_pos.y * 1000:.3f}, {apex_pos.z * 1000:.3f})",
+            ],
+            [
+                "Pupil center (x,y,z) mm",
+                f"({pupil_pos.x * 1000:.3f}, {pupil_pos.y * 1000:.3f}, {pupil_pos.z * 1000:.3f})",
+            ],
+            ["Pupil radius r_p (mm)", f"{x_radius * 1000:.3f}"],
+        ]
+
+        headers = ["Parameter", "Value"]
+        print("Eye Anatomy Parameters:")
+        print(tabulate(data, headers=headers, tablefmt="grid"))
