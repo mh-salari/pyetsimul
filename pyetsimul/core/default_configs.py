@@ -4,7 +4,7 @@ Defaults for anatomical and hardware parameters.
 """
 
 from dataclasses import dataclass
-from typing import Tuple, Dict, Any
+from typing import Tuple
 
 
 @dataclass
@@ -78,41 +78,6 @@ class EyelidDefaults:
     BISECTION_ITERATIONS_PHI1: int = 80
     BISECTION_ITERATIONS_PHI2: int = 100
     BISECTION_ITERATIONS_AREA: int = 120
-
-
-def create_myopic_eye_config() -> Dict[str, Any]:
-    """Myopic eye configuration."""
-    return {"axial_length": 26.5e-3}
-
-
-def create_hyperopic_eye_config() -> Dict[str, Any]:
-    """Hyperopic eye configuration."""
-    return {"axial_length": 23.0e-3}
-
-
-def create_elderly_eye_config() -> Dict[str, Any]:
-    """Elderly subject configuration."""
-    return {"pupil_radius": 2.5e-3, "fovea_alpha_deg": 5.5}
-
-
-def create_child_eye_config() -> Dict[str, Any]:
-    """Pediatric eye configuration."""
-    return {"axial_length": 22.0e-3}
-
-
-def create_desktop_camera_config() -> Dict[str, Any]:
-    """Desktop eye tracker camera configuration."""
-    return {"focal_length": 800.0, "resolution": (640, 480)}
-
-
-def create_lab_camera_config() -> Dict[str, Any]:
-    """Research camera configuration."""
-    return {"focal_length": 2880.0, "resolution": (1280, 1024)}
-
-
-def create_mobile_camera_config() -> Dict[str, Any]:
-    """Mobile camera configuration."""
-    return {"focal_length": 600.0, "resolution": (320, 240)}
 
 
 def print_anatomical_defaults() -> None:
