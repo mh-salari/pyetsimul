@@ -11,6 +11,35 @@ Core functionalities are based on "A Software Framework for Simulating Eye Track
 
 ## Installation
 
+### Requirements
+- Python ≥3.13
+- [uv](https://docs.astral.sh/uv/) (recommended package manager)
+
+### Using uv (Recommended)
+
+1. Clone the repository:
+```bash
+git clone https://github.com/mh-salari/pyetsimul.git
+cd pyetsimul
+```
+
+2. Install dependencies and run in development mode:
+```bash
+uv sync
+```
+
+3. Run examples:
+```bash
+uv run python examples/example.py
+uv run python examples/interpolate.py
+uv run python examples/eye_anatomy.py
+uv run python examples/setup_visualization.py
+uv run python examples/camera_distortion.py
+uv run python examples/realistic_pupil.py
+```
+
+### Using pip (Alternative)
+
 1. Clone the repository:
 ```bash
 git clone https://github.com/mh-salari/pyetsimul.git
@@ -25,16 +54,6 @@ pip install -e .
 Or install from PyPI (when published):
 ```bash
 pip install pyetsimul
-```
-
-3. Run examples:
-```bash
-python examples/example.py
-python examples/interpolate.py
-python examples/eye_anatomy.py
-python examples/setup_visualization.py
-python examples/camera_distortion.py
-python examples/realistic_pupil.py
 ```
 
 ## Citation
