@@ -313,6 +313,23 @@ class SphericalCornea(Cornea):
             camera_pos, object_pos, world_center, self.anterior_radius, n_outside, n_cornea
         )
 
+    def serialize(self) -> dict:
+        """Serialize to dictionary representation."""
+        return {
+            "cornea_type": self.cornea_type,
+            "center": self.center.serialize() if self.center else None,
+            "anterior_radius": float(self.anterior_radius),
+            "refractive_index": float(self.refractive_index),
+        }
+
+    @classmethod
+    def deserialize(cls, data: dict) -> "SphericalCornea":
+        """Deserialize from dictionary representation."""
+        cornea = cls(anterior_radius=data["anterior_radius"], refractive_index=data["refractive_index"])
+        if data["center"]:
+            cornea.center = Position3D.deserialize(data["center"])
+        return cornea
+
 
 @dataclass
 class ConicCornea(Cornea):

@@ -451,3 +451,50 @@ class Camera:
         headers = ["Parameter", "Value"]
         print("Camera Parameters:")
         print(tabulate(data, headers=headers, tablefmt="grid"))
+
+    def serialize(self) -> dict:
+        """Serialize to dictionary representation."""
+        return {
+            "position": self.position.serialize(),
+            "orientation": self.orientation.tolist(),
+            "focal_length": float(self.camera_matrix.focal_length),
+            "resolution": self.camera_matrix.resolution.serialize(),
+            "camera_matrix": self.camera_matrix.matrix.tolist(),
+            "distortion_coefficients": self.dist_coeffs.tolist(),
+            "measurement_error": float(self.err),
+            "error_type": self.err_type,
+            "name": self.name,
+            "pointing_at": self._pointing_at.serialize() if self._pointing_at else None,
+            "rest_transformation": self.rest_trans.tolist(),
+            "glint_noise_config": self.glint_noise_config.serialize() if self.glint_noise_config else None,
+        }
+
+    @classmethod
+    def deserialize(cls, data: dict) -> "Camera":
+        """Deserialize from dictionary representation."""
+
+        # Create camera with basic parameters
+        camera = cls(err=data["measurement_error"], err_type=data["error_type"], name=data["name"])
+
+        # Restore position and orientation
+        camera.position = Position3D.deserialize(data["position"])
+        camera.orientation = np.array(data["orientation"])
+
+        # Restore camera matrix
+        camera.camera_matrix = CameraMatrix(np.array(data["camera_matrix"]))
+
+        # Restore distortion coefficients
+        camera.dist_coeffs = np.array(data["distortion_coefficients"])
+
+        # Restore rest transformation
+        camera.rest_trans = np.array(data["rest_transformation"])
+
+        # Restore pointing direction
+        if data["pointing_at"]:
+            camera._pointing_at = Position3D.deserialize(data["pointing_at"])
+
+        # Restore glint noise config
+        if data["glint_noise_config"]:
+            camera.glint_noise_config = GlintNoiseConfig.deserialize(data["glint_noise_config"])
+
+        return camera

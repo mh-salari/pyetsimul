@@ -84,6 +84,15 @@ class Point2D:
         # For other operations, defer to numpy
         return NotImplemented
 
+    def serialize(self) -> dict:
+        """Serialize to dictionary representation."""
+        return {"x": float(self.x), "y": float(self.y)}
+
+    @classmethod
+    def deserialize(cls, data: dict) -> "Point2D":
+        """Deserialize from dictionary representation."""
+        return cls(data["x"], data["y"])
+
 
 @dataclass(frozen=True)
 class Point3D:
@@ -316,6 +325,15 @@ class Vector3D:
         # For other operations, defer to numpy
         return NotImplemented
 
+    def serialize(self) -> dict:
+        """Serialize to dictionary representation."""
+        return {"x": float(self.x), "y": float(self.y), "z": float(self.z)}
+
+    @classmethod
+    def deserialize(cls, data: dict) -> "Point3D":
+        """Deserialize from dictionary representation."""
+        return cls(data["x"], data["y"], data["z"])
+
 
 @dataclass(frozen=True)
 class Position3D:
@@ -442,6 +460,15 @@ class Position3D:
     def distance_to(self, other: "Position3D") -> float:
         """Calculate Euclidean distance to another position."""
         return np.sqrt((self.x - other.x) ** 2 + (self.y - other.y) ** 2 + (self.z - other.z) ** 2)
+
+    def serialize(self) -> dict:
+        """Serialize to dictionary representation."""
+        return {"x": float(self.x), "y": float(self.y), "z": float(self.z)}
+
+    @classmethod
+    def deserialize(cls, data: dict) -> "Position3D":
+        """Deserialize from dictionary representation."""
+        return cls(data["x"], data["y"], data["z"])
 
 
 @dataclass(frozen=True)
@@ -578,6 +605,15 @@ class Direction3D:
     def from_vector3d(cls, vector: Vector3D) -> "Direction3D":
         """Create Direction3D from Vector3D."""
         return cls(vector.x, vector.y, vector.z)
+
+    def serialize(self) -> dict:
+        """Serialize to dictionary representation."""
+        return {"x": float(self.x), "y": float(self.y), "z": float(self.z)}
+
+    @classmethod
+    def deserialize(cls, data: dict) -> "Direction3D":
+        """Deserialize from dictionary representation."""
+        return cls(data["x"], data["y"], data["z"])
 
 
 @dataclass(frozen=True)

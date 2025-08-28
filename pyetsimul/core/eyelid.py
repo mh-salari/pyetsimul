@@ -168,6 +168,29 @@ class Eyelid:
 
         return True
 
+    def serialize(self) -> dict:
+        """Serialize to dictionary representation."""
+        return {
+            "center": self.center.serialize(),
+            "sphere_radius": float(self.sphere_radius),
+            "phi_max": float(self.phi_max),
+            "openness": float(self.openness),
+            "lower_cap_fraction": float(self.lower_cap_fraction),
+            "ellipse_width_to_height": float(self.ellipse_width_to_height),
+        }
+
+    @classmethod
+    def deserialize(cls, data: dict) -> "Eyelid":
+        """Deserialize from dictionary representation."""
+        return cls(
+            center=Position3D.deserialize(data["center"]),
+            sphere_radius=data["sphere_radius"],
+            phi_max=data["phi_max"],
+            openness=data["openness"],
+            lower_cap_fraction=data["lower_cap_fraction"],
+            ellipse_width_to_height=data["ellipse_width_to_height"],
+        )
+
 
 def create_eyelid(
     center: Position3D,

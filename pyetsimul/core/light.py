@@ -43,3 +43,12 @@ class Light:
         headers = ["Parameter", "Value"]
         print("Light Source Parameters:")
         print(tabulate(data, headers=headers, tablefmt="grid"))
+
+    def serialize(self) -> dict:
+        """Serialize to dictionary representation."""
+        return {"position": self.position.serialize()}
+
+    @classmethod
+    def deserialize(cls, data: dict) -> "Light":
+        """Deserialize from dictionary representation."""
+        return cls(position=Position3D.deserialize(data["position"]))

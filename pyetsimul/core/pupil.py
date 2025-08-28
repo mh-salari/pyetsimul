@@ -190,6 +190,25 @@ class EllipticalPupil(Pupil):
         if y_radius is not None:
             self.y_pupil = Direction3D(0, y_radius, 0)
 
+    def serialize(self) -> dict:
+        """Serialize to dictionary representation."""
+        return {
+            "pos_pupil": self.pos_pupil.serialize(),
+            "x_pupil": self.x_pupil.serialize(),
+            "y_pupil": self.y_pupil.serialize(),
+            "N": self.N,
+        }
+
+    @classmethod
+    def deserialize(cls, data: dict) -> "EllipticalPupil":
+        """Deserialize from dictionary representation."""
+        return cls(
+            pos_pupil=Position3D.deserialize(data["pos_pupil"]),
+            x_pupil=Direction3D.deserialize(data["x_pupil"]),
+            y_pupil=Direction3D.deserialize(data["y_pupil"]),
+            N=data["N"],
+        )
+
 
 @dataclass
 class RealisticPupilParams:

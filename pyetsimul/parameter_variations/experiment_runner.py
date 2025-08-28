@@ -9,7 +9,7 @@ from ..visualization import plot_setup_and_camera_view
 
 
 def load_config(config_path: Path):
-    """Load configuration from Python file."""
+    """Load configuration from Python file and return all config objects."""
     if not config_path.exists():
         raise FileNotFoundError(f"Config file not found: {config_path}")
 
@@ -17,66 +17,73 @@ def load_config(config_path: Path):
     if spec is None or spec.loader is None:
         raise ImportError(f"Could not load config from {config_path}")
 
-    config = importlib.util.module_from_spec(spec)
-    spec.loader.exec_module(config)
+    config_module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(config_module)
 
-    return config
+    # Find all config objects by checking for required attributes
+    configs = {}
+    for attr_name in dir(config_module):
+        if not attr_name.startswith("_"):  # Skip private attributes
+            attr_value = getattr(config_module, attr_name)
+            # Check if it's a config object by looking for required attributes
+            if hasattr(attr_value, "experiment_name") and hasattr(attr_value, "experiment_type"):
+                configs[attr_name] = attr_value
+
+    if not configs:
+        raise ValueError(
+            f"No config objects found in {config_path}. Looking for objects with 'experiment_name' and 'experiment_type' attributes."
+        )
+
+    return configs
 
 
 def run_single_config(config_path: Path, show_setup: bool = False):
     """Generate eye tracking data for a single config file."""
-    config_module = load_config(config_path)
-    config = config_module.config  # Get the actual config object
-    print(f"\n{'=' * 60}")
-    print(f"Running: {config.experiment_name}")
-    print(f"Config: {config_path.name}")
-    print(f"Type: {config.experiment_type}")
-    print(f"{'=' * 60}")
+    configs = load_config(config_path)
 
-    if show_setup:
-        try:
-            if config.experiment_type == "eye_position_variation":
-                target_points = [config.gaze_target] * len(config.eyes)
-            else:
-                target_points = [config.target_variation.grid_center] * len(config.eyes)
+    results = []
+    for config_name, config in configs.items():
+        print(f"\n{'=' * 60}")
+        print(f"Running: {config.experiment_name}")
+        print(f"Config: {config_path.name} -> {config_name}")
+        print(f"Type: {config.experiment_type}")
+        print(f"{'=' * 60}")
 
-            plot_setup_and_camera_view(config.eyes, target_points, config.cameras, config.lights)
-            print("Setup visualization displayed.")
-        except Exception as e:
-            print(f"Setup visualization failed: {e}")
+        if show_setup:
+            try:
+                target_points = config.get_visualization_targets()
+                plot_setup_and_camera_view(config.eyes, target_points, config.cameras, config.lights)
+                print("Setup visualization displayed.")
+            except Exception as e:
+                print(f"Setup visualization failed: {e}")
 
-    # Generate single unified dataset: camera → eye → variations
-    if config.experiment_type == "eye_position_variation":
-        variation = config.eye_variation
-        gaze_target = config.gaze_target
-    elif config.experiment_type == "target_position_variation":
-        variation = config.target_variation
-        gaze_target = None
-    else:
-        raise ValueError(f"Unknown experiment_type: {config.experiment_type}")
+        # Generate single unified dataset: camera → eye → variations
+        variation = config.get_variation()
+        gaze_target = config.get_gaze_target()
 
-    data_gen_strategy = DataGenerationStrategy(
-        cameras=config.cameras,
-        lights=config.lights,
-        gaze_target=gaze_target,
-        output_format="both",
-        output_dir=str(config.output_dir),
-        experiment_name=config.experiment_name,
-    )
+        data_gen_strategy = DataGenerationStrategy(
+            cameras=config.cameras,
+            lights=config.lights,
+            gaze_target=gaze_target,
+            output_dir=str(config.output_dir),
+            experiment_name=config.experiment_name,
+        )
 
-    print(f"Generating {config.experiment_type} data...")
-    result = data_gen_strategy.execute(config.eyes, variation)
+        print(f"Generating {config.experiment_type} data...")
+        result = data_gen_strategy.execute(config.eyes, variation)
 
-    print(f"\nResults for {config.experiment_name}:")
-    print(f"- Parameter varied: {result['parameter_name']}")
-    print(f"- Total measurements: {result['total_measurements']}")
-    print(f"- Eyes: {len(config.eyes)}, Cameras: {len(config.cameras)}, Lights: {len(config.lights)}")
+        print(f"\nResults for {config.experiment_name}:")
+        print(f"- Parameter varied: {result['parameter_name']}")
+        print(f"- Total measurements: {result['total_measurements']}")
+        print(f"- Eyes: {len(config.eyes)}, Cameras: {len(config.cameras)}, Lights: {len(config.lights)}")
 
-    print("Files saved:")
-    for filepath in result["saved_files"]:
-        print(f"- {filepath}")
+        print("Files saved:")
+        for filepath in result["saved_files"]:
+            print(f"- {filepath}")
 
-    return result
+        results.append(result)
+
+    return results if len(results) > 1 else results[0] if results else None
 
 
 def run_all_configs(configs_dir: Path, show_setup: bool = False):
@@ -93,7 +100,11 @@ def run_all_configs(configs_dir: Path, show_setup: bool = False):
     for config_file in config_files:
         try:
             result = run_single_config(config_file, show_setup)
-            results.append(result)
+            # Handle both single result and list of results
+            if isinstance(result, list):
+                results.extend(result)
+            elif result is not None:
+                results.append(result)
         except Exception as e:
             print(f"ERROR running {config_file.name}: {e}")
             continue

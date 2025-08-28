@@ -10,7 +10,7 @@ from typing import Optional, TYPE_CHECKING
 from tabulate import tabulate
 
 from ..types import Position3D, Direction3D, TransformationMatrix, RotationMatrix, PupilData, Point2D
-from .pupil import Pupil, create_pupil, RealisticPupilParams
+from .pupil import Pupil, create_pupil, RealisticPupilParams, EllipticalPupil
 from .cornea import SphericalCornea
 from .eye_operations import look_at_target, look_at_target_optical_then_kappa
 from ..optics.reflections import find_corneal_reflection
@@ -610,3 +610,103 @@ class Eye:
         headers = ["Parameter", "Value"]
         print("Eye Anatomy Parameters:")
         print(tabulate(data, headers=headers, tablefmt="grid"))
+
+    def serialize(self) -> dict:
+        """Serialize eye state to a dictionary.
+
+        Returns complete eye state that can be used to perfectly reconstruct
+        the eye object in its exact current state.
+
+        Returns:
+            Dictionary containing all eye parameters and current state
+        """
+
+        # Core anatomical parameters
+        data = {
+            # Position and orientation
+            "position": self.position.serialize() if self.position else None,
+            "transformation_matrix": self.trans.tolist(),
+            "rest_orientation": self._rest_orientation.tolist(),
+            "current_target_point": self._current_target_point.serialize() if self._current_target_point else None,
+            # Anatomical parameters
+            "axial_length": float(self.axial_length),
+            "n_aqueous_humor": float(self.n_aqueous_humor),
+            "fovea_displacement": bool(self.fovea_displacement),
+            "fovea_alpha_deg": float(self.fovea_alpha_deg),
+            "fovea_beta_deg": float(self.fovea_beta_deg),
+            # Pupil configuration
+            "pupil_type": self.pupil_type,
+            "pupil_boundary_points": self.pupil_boundary_points,
+            "pupil_random_seed": self.pupil_random_seed,
+            # Eyelid configuration
+            "eyelid_enabled": bool(self.eyelid_enabled),
+            "eyelid_transformation_matrix": self.eyelid_trans.tolist(),
+        }
+
+        # Serialize cornea
+        if self.cornea:
+            data["cornea"] = self.cornea.serialize()
+
+        # Serialize pupil state
+        if self.pupil:
+            data["pupil"] = self.pupil.serialize()
+
+        # Serialize eyelid if enabled
+        if self.eyelid and self.eyelid_enabled:
+            data["eyelid"] = self.eyelid.serialize()
+
+        return data
+
+    @classmethod
+    def deserialize(cls, data: dict) -> "Eye":
+        """Reconstruct eye from serialized data.
+
+        Creates a new Eye instance and restores it to the exact state
+        captured in the serialized data.
+
+        Args:
+            data: Dictionary from serialize() method
+
+        Returns:
+            Eye instance in the exact state when serialized
+        """
+
+        # Create new eye with basic configuration
+        eye = cls(
+            fovea_displacement=data["fovea_displacement"],
+            fovea_alpha_deg=data["fovea_alpha_deg"],
+            fovea_beta_deg=data["fovea_beta_deg"],
+            pupil_type=data["pupil_type"],
+            pupil_boundary_points=data["pupil_boundary_points"],
+            pupil_random_seed=data["pupil_random_seed"],
+            eyelid_enabled=data["eyelid_enabled"],
+        )
+
+        # Restore position and orientation
+        if data["position"]:
+            eye.position = Position3D.deserialize(data["position"])
+
+        eye.trans = np.array(data["transformation_matrix"])
+        eye._rest_orientation = np.array(data["rest_orientation"])
+        eye.eyelid_trans = np.array(data["eyelid_transformation_matrix"])
+
+        if data["current_target_point"]:
+            eye._current_target_point = Position3D.deserialize(data["current_target_point"])
+
+        # Restore anatomical parameters
+        eye.axial_length = data["axial_length"]
+        eye.n_aqueous_humor = data["n_aqueous_humor"]
+
+        # Restore cornea
+        if "cornea" in data and data["cornea"]:
+            eye.cornea = SphericalCornea.deserialize(data["cornea"])
+
+        # Restore pupil
+        if "pupil" in data and data["pupil"]:
+            eye.pupil = EllipticalPupil.deserialize(data["pupil"])
+
+        # Restore eyelid if enabled
+        if "eyelid" in data and data["eyelid"] and eye.eyelid_enabled:
+            eye.eyelid = Eyelid.deserialize(data["eyelid"])
+
+        return eye
