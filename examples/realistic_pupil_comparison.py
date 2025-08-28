@@ -14,19 +14,19 @@ from pyetsimul.types import Position3D, RotationMatrix, Direction3D
 
 
 def main():
-    # Create three different pupil sizes (diameters in mm)
+    # Create three different pupil sizes (diameters in meters)
     # Default comes from our code's default pupil radius (3mm radius = 6mm diameter)
     # Research-based extremes: ~2mm (bright light) to ~8mm (dark adaptation)
-    small_diameter = 2.5  # Research: bright light condition (constricted)
-    default_diameter = 6.0  # Our code's default: 3mm radius = 6mm diameter
-    large_diameter = 7.5  # Research: dark adaptation (dilated)
+    small_diameter = 2.5e-3  # Research: bright light condition (constricted)
+    default_diameter = 6.0e-3  # Our code's default: 3mm radius = 6mm diameter
+    large_diameter = 7.5e-3  # Research: dark adaptation (dilated)
 
     pupil_sizes = [("Small", small_diameter), ("Default", default_diameter), ("Large", large_diameter)]
 
     # Create figure with three subplots
     fig, axes = plt.subplots(1, 3, figsize=(15, 5))
 
-    for i, (size_name, diameter_mm) in enumerate(pupil_sizes):
+    for i, (size_name, diameter) in enumerate(pupil_sizes):
         ax = axes[i]
 
         # Create eye with realistic pupil
@@ -36,10 +36,10 @@ def main():
         eye_circular = Eye(pupil_type="elliptical", pupil_boundary_points=100)
 
         # Update realistic pupil size
-        eye_realistic.pupil.set_diameter(diameter_mm)
+        eye_realistic.pupil.set_diameter(diameter)
 
         # Update circular pupil size by scaling the radius vectors
-        target_radius = (diameter_mm / 2) * 1e-3  # Convert mm to meters
+        target_radius = diameter / 2
         eye_circular.pupil.x_pupil = Direction3D(target_radius, 0, 0)
         eye_circular.pupil.y_pupil = Direction3D(0, target_radius, 0)
 
@@ -83,10 +83,10 @@ def main():
         ax.grid(True, alpha=0.3)
         ax.set_xlabel("x (mm)", fontsize=10)
         ax.set_ylabel("y (mm)", fontsize=10)
-        ax.set_title(f"{size_name} pupil\n(d = {diameter_mm:.1f} mm)", fontsize=12, fontweight="bold")
+        ax.set_title(f"{size_name} pupil\n(d = {diameter * 1000:.1f} mm)", fontsize=12, fontweight="bold")
 
         # Set consistent axis limits based on the largest pupil
-        max_radius_mm = (large_diameter / 2) * 1.2  # Add some margin
+        max_radius_mm = (large_diameter * 1000 / 2) * 1.2  # Add some margin
         ax.set_xlim(-max_radius_mm, max_radius_mm)
         ax.set_ylim(-max_radius_mm, max_radius_mm)
 
@@ -109,9 +109,9 @@ def main():
     print("\nRealistic Pupil Comparison")
     print("Generated comparison showing realistic vs circular pupil shapes")
     print("across pupil sizes:")
-    print(f"  Small (research - bright light): {small_diameter:.1f}mm")
-    print(f"  Default (code default): {default_diameter:.1f}mm")
-    print(f"  Large (research - dark adaptation): {large_diameter:.1f}mm")
+    print(f"  Small (research - bright light): {small_diameter * 1000:.1f}mm")
+    print(f"  Default (code default): {default_diameter * 1000:.1f}mm")
+    print(f"  Large (research - dark adaptation): {large_diameter * 1000:.1f}mm")
 
 
 if __name__ == "__main__":

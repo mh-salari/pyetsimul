@@ -1,7 +1,6 @@
 """Unit tests for Eye pupil radii methods."""
 
 import numpy as np
-import pytest
 from pyetsimul.core.eye import Eye
 from pyetsimul.types import Position3D
 
@@ -27,25 +26,22 @@ def test_set_get_pupil_radii():
     assert np.isclose(x_radius, 3e-3, rtol=1e-12)
     assert np.isclose(y_radius, 2e-3, rtol=1e-12)
 
-    # Test setting only x_radius
-    e.set_pupil_radii(x_radius=4e-3)
+    # Test setting different radii
+    e.set_pupil_radii(x_radius=4e-3, y_radius=1e-3)
     x_radius, y_radius = e.get_pupil_radii()
     assert np.isclose(x_radius, 4e-3, rtol=1e-12)
-    assert np.isclose(y_radius, 2e-3, rtol=1e-12)  # Should remain unchanged
-
-    # Test setting only y_radius
-    e.set_pupil_radii(y_radius=1e-3)
-    x_radius, y_radius = e.get_pupil_radii()
-    assert np.isclose(x_radius, 4e-3, rtol=1e-12)  # Should remain unchanged
     assert np.isclose(y_radius, 1e-3, rtol=1e-12)
 
 
-def test_set_pupil_radii_error_handling():
-    """Test that set_pupil_radii raises error when both radii are None."""
+def test_set_pupil_diameter():
+    """Test set_pupil_diameter method."""
     e = Eye()
 
-    with pytest.raises(ValueError, match="At least one radius must be specified"):
-        e.set_pupil_radii()
+    # Test setting diameter
+    e.set_pupil_diameter(diameter=6e-3)  # 6mm diameter = 3mm radius
+    x_radius, y_radius = e.get_pupil_radii()
+    assert np.isclose(x_radius, 3e-3, rtol=1e-12)
+    assert np.isclose(y_radius, 3e-3, rtol=1e-12)
 
 
 def test_set_pupil_radii_updates_vectors():

@@ -58,12 +58,21 @@ class Pupil(ABC):
         pass
 
     @abstractmethod
-    def set_radii(self, x_radius: float = None, y_radius: float = None) -> None:
+    def set_radii(self, x_radius: float, y_radius: float) -> None:
         """Set pupil radii and update geometry.
 
         Args:
             x_radius: Pupil radius in X direction (meters)
             y_radius: Pupil radius in Y direction (meters)
+        """
+        pass
+
+    @abstractmethod
+    def set_diameter(self, diameter: float) -> None:
+        """Set pupil diameter and update geometry.
+
+        Args:
+            diameter: Pupil diameter in meters
         """
         pass
 
@@ -172,23 +181,24 @@ class EllipticalPupil(Pupil):
         y_radius = self.y_pupil.magnitude()
         return x_radius, y_radius
 
-    def set_radii(self, x_radius: float = None, y_radius: float = None) -> None:
+    def set_radii(self, x_radius: float, y_radius: float) -> None:
         """Set pupil radii and update geometry.
 
         Args:
             x_radius: Pupil radius in X direction (meters)
             y_radius: Pupil radius in Y direction (meters)
-
-        Raises:
-            ValueError: If both radii are None
         """
-        if x_radius is None and y_radius is None:
-            raise ValueError("At least one radius must be specified")
+        self.x_pupil = Direction3D(x_radius, 0, 0)
+        self.y_pupil = Direction3D(0, y_radius, 0)
 
-        if x_radius is not None:
-            self.x_pupil = Direction3D(x_radius, 0, 0)
-        if y_radius is not None:
-            self.y_pupil = Direction3D(0, y_radius, 0)
+    def set_diameter(self, diameter: float) -> None:
+        """Set pupil diameter and update geometry.
+
+        Args:
+            diameter: Pupil diameter in meters
+        """
+        radius = diameter / 2
+        self.set_radii(x_radius=radius, y_radius=radius)
 
     def serialize(self) -> dict:
         """Serialize to dictionary representation."""
@@ -228,7 +238,7 @@ class RealisticPupilParams:
     Vision Research, 35(14), 2021-2036.
 
     Attributes:
-        base_radius: Average pupil radius in mm
+        base_radius: Average pupil radius in meters
         noncircularity: Measure of deviation from circularity (0 = perfect circle)
         ellipse_contribution: Fraction of noncircularity from elliptical component
         major_axis_angle: Orientation of ellipse major axis in radians (0=vertical)
@@ -238,7 +248,7 @@ class RealisticPupilParams:
         random_seed: Random seed for reproducible shape generation (None for random)
     """
 
-    base_radius: float = PupilDefaults.BASE_RADIUS * 1000  # mm, converted from m
+    base_radius: float = PupilDefaults.BASE_RADIUS  # meters
     noncircularity: float = PupilDefaults.NONCIRCULARITY
     ellipse_contribution: float = PupilDefaults.ELLIPSE_CONTRIBUTION
     major_axis_angle: float = PupilDefaults.MAJOR_AXIS_ANGLE
@@ -279,18 +289,18 @@ class RealisticPupil(Pupil):
         # Extract current pupil size from elliptical parameters
         current_radius_x = x_pupil.magnitude()
         current_radius_y = y_pupil.magnitude()
-        avg_radius_m = (current_radius_x + current_radius_y) / 2
-        diameter_mm = avg_radius_m * 2 * 1000  # Convert to mm
+        avg_radius = (current_radius_x + current_radius_y) / 2
 
         # Initialize realistic pupil
-        self.params.base_radius = diameter_mm / 2
+        self.params.base_radius = avg_radius
 
         # Initialize attributes that will be set dynamically
         self.r2 = None
         self.harmonics = {}
 
         # Set dilated/constricted condition and orientation based on pupil size
-        self._update_condition_and_orientation(diameter_mm)
+        diameter = avg_radius * 2
+        self._update_condition_and_orientation(diameter)
 
         self._generate_harmonics()
 
@@ -336,17 +346,17 @@ class RealisticPupil(Pupil):
                     "phase": np.random.uniform(0, 2 * np.pi),  # Individual variation
                 }
 
-    def _update_condition_and_orientation(self, diameter_mm: float):
+    def _update_condition_and_orientation(self, diameter: float):
         """Update dilated/constricted condition and major axis orientation based on pupil size.
 
         Args:
-            diameter_mm: Pupil diameter in millimeters
+            diameter: Pupil diameter in meters
         """
         self._set_random_seed()
         # Determine orientation based on size (using paper's reference values)
         # Large pupils (dilated) tend to have vertical ellipse orientation
         # Small pupils (constricted) tend to have horizontal ellipse orientation
-        if diameter_mm >= 4.0:  # Closer to dilated condition size (4.93mm)
+        if diameter >= 0.004:  # Closer to dilated condition size (4.93mm = 0.00493m)
             self._is_dilated = True
             # Major axis orientation: clusters around vertical (0°)
             concentration = 3.0  # Controls spread (~±30° for this value)
@@ -358,24 +368,24 @@ class RealisticPupil(Pupil):
             concentration = 3.0
             self.params.major_axis_angle = np.random.vonmises(base_angle, concentration)
 
-    def set_diameter(self, diameter_mm: float):
+    def set_diameter(self, diameter: float):
         """Set pupil diameter and automatically determine shape characteristics.
 
         Args:
-            diameter_mm: Pupil diameter in millimeters
+            diameter: Pupil diameter in meters
         """
-        self.params.base_radius = diameter_mm / 2
+        self.params.base_radius = diameter / 2
 
         # Update condition and orientation based on new size
-        self._update_condition_and_orientation(diameter_mm)
+        self._update_condition_and_orientation(diameter)
 
         # Regenerate harmonics with new conditions
         self._generate_harmonics()
 
         # Update elliptical parameters to match average radius for compatibility
-        avg_radius_m = (diameter_mm / 2) * 1e-3  # Convert mm to meters
-        self.x_pupil = Direction3D(avg_radius_m, 0, 0)
-        self.y_pupil = Direction3D(0, avg_radius_m, 0)
+        radius = diameter / 2
+        self.x_pupil = Direction3D(radius, 0, 0)
+        self.y_pupil = Direction3D(0, radius, 0)
 
     def get_boundary_points(self, N: Optional[int] = None) -> np.ndarray:
         """Generate realistic pupil boundary points using Fourier series.
@@ -390,22 +400,21 @@ class RealisticPupil(Pupil):
             N = self.N
         theta = np.linspace(0, 2 * np.pi, N, endpoint=False)
 
-        # Start with average radius (in mm)
-        radius_mm = np.full_like(theta, self.params.base_radius)
+        # Start with average radius (in meters)
+        radius = np.full_like(theta, self.params.base_radius)
 
         # Add 2nd harmonic (elliptical component)
         if self.r2 is not None:
-            radius_mm += self.r2 * np.cos(2 * (theta - self.params.major_axis_angle))
+            radius += self.r2 * np.cos(2 * (theta - self.params.major_axis_angle))
 
         # Add higher harmonics for individual variation
         if self.harmonics:
             for n, harmonic in self.harmonics.items():
-                radius_mm += harmonic["amplitude"] * np.cos(n * (theta - harmonic["phase"]))
+                radius += harmonic["amplitude"] * np.cos(n * (theta - harmonic["phase"]))
 
-        # Convert to Cartesian coordinates in meters
-        radius_m = radius_mm * 1e-3  # Convert mm to meters
-        x = radius_m * np.cos(theta)
-        y = radius_m * np.sin(theta)
+        # Convert to Cartesian coordinates
+        x = radius * np.cos(theta)
+        y = radius * np.sin(theta)
 
         # Create 4×N homogeneous coordinate matrix centered at pupil position
         pupil_points = np.zeros((4, N))
@@ -424,32 +433,19 @@ class RealisticPupil(Pupil):
         Returns:
             Tuple of (x_radius, y_radius) in meters
         """
-        avg_radius_m = self.params.base_radius * 1e-3  # Convert mm to meters
-        return avg_radius_m, avg_radius_m
+        return self.params.base_radius, self.params.base_radius
 
-    def set_radii(self, x_radius: float = None, y_radius: float = None) -> None:
+    def set_radii(self, x_radius: float, y_radius: float) -> None:
         """Set pupil radii and update geometry.
 
         Args:
             x_radius: Pupil radius in X direction (meters)
             y_radius: Pupil radius in Y direction (meters)
-
-        Raises:
-            ValueError: If both radii are None
         """
-        if x_radius is None and y_radius is None:
-            raise ValueError("At least one radius must be specified")
-
         # For realistic pupil, use average radius and update realistic parameters
-        if x_radius is not None and y_radius is not None:
-            avg_radius_m = (x_radius + y_radius) / 2
-        elif x_radius is not None:
-            avg_radius_m = x_radius
-        else:
-            avg_radius_m = y_radius
-
-        diameter_mm = avg_radius_m * 2 * 1000  # Convert to mm
-        self.set_diameter(diameter_mm)
+        avg_radius = (x_radius + y_radius) / 2
+        diameter = avg_radius * 2
+        self.set_diameter(diameter)
 
     def get_noncircularity(self) -> float:
         """Calculate actual noncircularity using Wyatt (1995) exact formula.

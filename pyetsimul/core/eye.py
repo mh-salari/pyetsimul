@@ -346,7 +346,7 @@ class Eye:
         """
         return self.pupil.get_radii()
 
-    def set_pupil_radii(self, x_radius: float = None, y_radius: float = None) -> None:
+    def set_pupil_radii(self, x_radius: float, y_radius: float) -> None:
         """Set pupil radii.
 
         Delegates to pupil object for radius modification.
@@ -356,6 +356,16 @@ class Eye:
             y_radius: Pupil radius in Y direction (meters)
         """
         self.pupil.set_radii(x_radius, y_radius)
+
+    def set_pupil_diameter(self, diameter: float) -> None:
+        """Set pupil diameter.
+
+        Delegates to pupil object for diameter modification.
+
+        Args:
+            diameter: Pupil diameter in meters
+        """
+        self.pupil.set_diameter(diameter)
 
     def get_pupil_center_in_world(self) -> Position3D:
         """Get pupil center in world coordinates.
