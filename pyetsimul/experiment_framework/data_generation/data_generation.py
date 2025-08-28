@@ -8,7 +8,8 @@ from tqdm import tqdm
 
 from ...core import Eye
 from ...types import Position3D
-from ..core import ParameterVariation, VariationStrategy
+from .core import ParameterVariation, EyeParameterVariation, TargetVariation, VariationStrategy
+from .composed_variation import ComposedVariation, SequentialVariation
 
 
 class DataGenerationStrategy(VariationStrategy):
@@ -39,7 +40,7 @@ class DataGenerationStrategy(VariationStrategy):
         }
         total_measurements = 0
 
-        # Progress bars: Camera (outer) → Eye (middle) → Variations (inner)
+        # The main loop iterates through cameras, then eyes, then parameter variations.
         for camera_idx, camera in enumerate(tqdm(self.cameras, desc="Processing cameras", position=0)):
             camera_data = {
                 "camera_id": camera_idx,
@@ -49,7 +50,6 @@ class DataGenerationStrategy(VariationStrategy):
             }
 
             for eye_idx, eye in enumerate(tqdm(eyes, desc=f"Camera {camera_idx + 1} eyes", position=1, leave=False)):
-                eye_copy = copy.deepcopy(eye)
                 eye_data = {
                     "eye_id": eye_idx,
                     "eye_name": f"Eye {eye_idx + 1}",
@@ -57,19 +57,58 @@ class DataGenerationStrategy(VariationStrategy):
                     "measurements": [],
                 }
 
-                # Process all parameter variations for this camera-eye combination
+                # Process all parameter variations for this camera-eye combination.
+                # For each value in the variation, a new measurement is generated.
                 for i, value in enumerate(
                     tqdm(values, desc=f"C{camera_idx + 1}E{eye_idx + 1} variations", position=2, leave=False)
                 ):
-                    # Apply parameter variation (eye properties)
-                    variation.apply_to_eye(eye_copy, value)
+                    # A deep copy of the eye is created for each measurement to ensure a stateless starting point.
+                    eye_copy = copy.deepcopy(eye)
 
-                    # Apply user's gaze target (required except for target variations)
-                    if self.gaze_target:
-                        eye_copy.look_at(self.gaze_target)
+                    current_gaze_target = self.gaze_target
 
-                    # Generate measurement for this specific camera-eye-variation
-                    measurement = self._generate_single_measurement(eye_copy, camera, value, i)
+                    # This block handles the different types of parameter variations.
+                    if isinstance(variation, ComposedVariation):
+                        # For ComposedVariation, iterate through the inner variations and apply them.
+                        # This supports combining different types of variations (e.g., eye position and target position).
+                        for v_inner in variation.variations:
+                            inner_value = value[v_inner.param_name]
+                            if isinstance(v_inner, EyeParameterVariation):
+                                v_inner.apply_to_eye(eye_copy, inner_value)
+                            elif isinstance(v_inner, TargetVariation):
+                                eye_copy.look_at(inner_value)
+                                current_gaze_target = inner_value
+                        # If no target variation is present in the composition, use the default gaze target.
+                        if current_gaze_target == self.gaze_target and self.gaze_target:
+                            eye_copy.look_at(self.gaze_target)
+
+                    elif isinstance(variation, SequentialVariation):
+                        # For SequentialVariation, apply one variation at a time from the sequence.
+                        v_inner = variation.variations[value["variation_index"]]
+                        inner_value = value["value"]
+                        if isinstance(v_inner, EyeParameterVariation):
+                            v_inner.apply_to_eye(eye_copy, inner_value)
+                            if self.gaze_target:
+                                eye_copy.look_at(self.gaze_target)
+                        elif isinstance(v_inner, TargetVariation):
+                            eye_copy.look_at(inner_value)
+                            current_gaze_target = inner_value
+
+                    elif isinstance(variation, EyeParameterVariation):
+                        # For a simple eye parameter variation, apply it and use the default gaze target.
+                        variation.apply_to_eye(eye_copy, value)
+                        if self.gaze_target:
+                            eye_copy.look_at(self.gaze_target)
+
+                    elif isinstance(variation, TargetVariation):
+                        # For a target variation, the value itself is the gaze target.
+                        eye_copy.look_at(value)
+                        current_gaze_target = value
+                    else:
+                        raise ValueError(f"Unknown variation type: {type(variation)}")
+
+                    # Generate and store the measurement for the current configuration.
+                    measurement = self._generate_single_measurement(eye_copy, camera, value, i, current_gaze_target)
                     eye_data["measurements"].append(measurement)
                     total_measurements += 1
 
@@ -77,7 +116,7 @@ class DataGenerationStrategy(VariationStrategy):
 
             all_data["cameras"].append(camera_data)
 
-        # Save dataset
+        # Save the collected data to a file.
         saved_files = self._save_data(all_data, variation.param_name, self.experiment_name)
 
         return {
@@ -87,7 +126,9 @@ class DataGenerationStrategy(VariationStrategy):
             "data": all_data,
         }
 
-    def _generate_single_measurement(self, eye: Eye, camera, param_value: Any, index: int) -> Dict[str, Any]:
+    def _generate_single_measurement(
+        self, eye: Eye, camera, param_value: Any, index: int, gaze_target: Position3D = None
+    ) -> Dict[str, Any]:
         """Generate measurement data for single camera-eye-parameter combination."""
 
         # Take image with this specific camera
@@ -117,7 +158,7 @@ class DataGenerationStrategy(VariationStrategy):
             "eye_state": eye.serialize(),
             "camera_state": camera.serialize(),
             "lights_state": [light.serialize() for light in self.lights],
-            "gaze_target": self.gaze_target.serialize() if self.gaze_target else None,
+            "gaze_target": gaze_target.serialize() if gaze_target else None,
         }
 
     def _save_data(self, data: Dict, param_name: str, experiment_name: str) -> List[str]:
