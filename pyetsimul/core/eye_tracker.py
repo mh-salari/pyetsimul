@@ -38,7 +38,7 @@ class EyeTracker(ABC):
     # Refraction setting
     use_refraction: bool = True
 
-    # Legacy eye rotation mode
+    # MATLAB compatibility mode for eye rotation
     use_legacy_look_at: bool = False
 
     @property
@@ -109,8 +109,8 @@ class EyeTracker(ABC):
             # Make eye look at calibration point
             eye.look_at(calib_point, legacy=self.use_legacy_look_at)
 
-            # Take images from all cameras (for now use first camera)
-            # TODO: Support multi-camera setups properly
+            # Take images from all cameras (currently uses first camera)
+            # TODO: Multi-camera support requires algorithm-specific implementation
             if not self.cameras:
                 raise ValueError("No cameras available for calibration")
 
@@ -159,7 +159,7 @@ class EyeTracker(ABC):
         target = Position3D(look_at_pos.x, look_at_pos.y, look_at_pos.z)
         eye.look_at(target, legacy=self.use_legacy_look_at)
 
-        # For now, use first camera (TODO: support multi-camera)
+        # Use first camera (TODO: multi-camera support is algorithm-dependent)
         camera_image = self.cameras[0].take_image(eye, self.lights, use_refraction=self.use_refraction)
 
         # Create EyeMeasurement from camera image
@@ -265,8 +265,12 @@ class EyeTracker(ABC):
             calibrated = False
         return f"{self.__class__.__name__}(algorithm={self.algorithm_name}, cameras={len(self.cameras)}, lights={len(self.lights)}, calibrated={calibrated})"
 
-    def pprint(self) -> None:
-        """Print detailed eye tracker parameters in a formatted table."""
+    def pprint(self, eye=None) -> None:
+        """Print detailed eye tracker parameters in a formatted table.
+
+        Args:
+            eye: Optional Eye instance to include eye position in the summary.
+        """
         # Check calibration status
         try:
             calibrated = self.algorithm_state.is_calibrated
@@ -275,15 +279,24 @@ class EyeTracker(ABC):
 
         calib_points = len(self.calib_points) if self.calib_points else 0
 
-        data = [
-            ["Algorithm", self.algorithm_name],
-            ["Cameras", str(len(self.cameras))],
-            ["Lights", str(len(self.lights))],
-            ["Calibration points", str(calib_points)],
-            ["Calibration status", "Calibrated" if calibrated else "Not calibrated"],
-            ["Use refraction", "Yes" if self.use_refraction else "No"],
-            ["Legacy look_at mode", "Yes" if self.use_legacy_look_at else "No"],
-        ]
+        data = []
+
+        # Add eye position if provided
+        if eye is not None:
+            pos = eye.position
+            data.append(["Eye position (mm)", f"({pos.x * 1000:.1f}, {pos.y * 1000:.1f}, {pos.z * 1000:.1f})"])
+
+        data.extend(
+            [
+                ["Algorithm", self.algorithm_name],
+                ["Cameras", str(len(self.cameras))],
+                ["Lights", str(len(self.lights))],
+                ["Calibration points", str(calib_points)],
+                ["Calibration status", "Calibrated" if calibrated else "Not calibrated"],
+                ["Use refraction", "Yes" if self.use_refraction else "No"],
+                ["Legacy look_at mode", "Yes" if self.use_legacy_look_at else "No"],
+            ]
+        )
 
         # Add algorithm-specific configuration
         if hasattr(self, "algorithm_state") and hasattr(self.algorithm_state, "config"):
