@@ -100,9 +100,10 @@ def validate_measurements(data: Dict[str, Any]) -> bool:
 
                     # Compare corneal reflections
                     actual_glints = []
-                    for light in lights:
-                        cr = eye.find_cr(light, camera)
-                        actual_glints.append([float(cr.x), float(cr.y)] if cr is not None else None)
+                    if img.corneal_reflections is not None:
+                        actual_glints = [[float(cr.x), float(cr.y)] for cr in img.corneal_reflections]
+                    else:
+                        actual_glints = [None] * len(lights)
 
                     if not compare_values(actual_glints, expected_glints, "corneal_reflections"):
                         continue
