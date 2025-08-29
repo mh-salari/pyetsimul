@@ -1,48 +1,41 @@
-"""Polynomial interpolation eye tracking example.
+"""Refactored polynomial interpolation eye tracking example with DRY principles.
 
-Demonstrates polynomial interpolation-based gaze tracking with comprehensive accuracy evaluation.
+Demonstrates complete separation of data generation and evaluation:
+1. Data Generation: Uses existing DataGenerationStrategy to generate measurement data in-memory
+2. Evaluation: Uses new evaluate_gaze_accuracy to feed pre-generated data to eye tracker
 """
 
 from pyetsimul.gaze_tracking_algorithms.interpolate import InterpolationTracker
-from pyetsimul.parameter_variations import (
-    EyePositionVariation,
-    TargetPositionVariation,
-    EyePositionEvaluationStrategy,
-    TargetPositionEvaluationStrategy,
-)
+from pyetsimul.experiment_framework.data_generation import DataGenerationStrategy
+from pyetsimul.experiment_framework.data_generation.spatial import TargetPositionVariation, EyePositionVariation
 from pyetsimul.evaluation.calibration_analysis import accuracy_at_calibration_points
+from pyetsimul.evaluation.gaze_accuracy import evaluate_gaze_accuracy
+from pyetsimul.visualization.gaze_accuracy_plots import GazeAccuracyPlotter
 from pyetsimul.core import Light, Camera, Eye
 from pyetsimul.types import Position3D, RotationMatrix
-from tabulate import tabulate
 
 
 def main():
-    """Run polynomial interpolation eye tracking demonstration with comprehensive evaluation."""
-    print("Python Interpolate Test (System Integration)\n")
+    """Run polynomial interpolation eye tracking with separated data generation and evaluation."""
+    print("Python Interpolate Test - Refactored (Data Generation + Evaluation Separation)\n")
 
     # Eye position
     eye_position = Position3D(0, 550e-3, 350e-3)
 
-    # Use validate_handedness=False for legacy MATLAB coordinate system compatibility
-
     # Create eye configuration with structured types
     eye = Eye()
-    # Use validate_handedness=False for legacy MATLAB coordinate system compatibility
     eye.set_rest_orientation(RotationMatrix([[1, 0, 0], [0, 0, 1], [0, 1, 0]], validate_handedness=False))
     eye.position = eye_position
 
     # Create camera configuration with structured types
     cam = Camera(err=0.0, err_type="gaussian")
-    # Use validate_handedness=False for legacy MATLAB coordinate system compatibility
     cam.orientation = RotationMatrix([[1, 0, 0], [0, 0, -1], [0, 1, 0]], validate_handedness=False)
-    # Point camera at the eye position
     cam.point_at(eye.position)
 
-    # Create light configuration with structured type
+    # Create light configuration
     light = Light(position=Position3D(200e-3, 0, 350e-3))
 
-    # Create calibration grid using structured Position3D objects
-    # Original format was [x, z] pairs, now converted to Position3D(x, y=0.0, z)
+    # Create calibration grid
     calib_points = [
         Position3D(-200e-3, 0.0, 50e-3),
         Position3D(0, 0.0, 50e-3),
@@ -55,39 +48,13 @@ def main():
         Position3D(200e-3, 0.0, 350e-3),
     ]
 
-    # Setup tracker with default method
+    # Setup tracker
     method = "cerrolaza_2008"
     et = InterpolationTracker.create([cam], [light], calib_points, method)
-    # Set legacy optical-then-kappa behavior for evaluation with the original MATLAB behavior
     et.use_legacy_look_at = True
 
     # Display configuration summary
-    print("Configuration Summary:")
-    headers = ["Component", "Parameter", "Value", "Unit"]
-    data = [
-        [
-            "Eye",
-            "Position (x, y, z)",
-            f"({eye_position.x * 1000:.1f}, {eye_position.y * 1000:.1f}, {eye_position.z * 1000:.1f})",
-            "mm",
-        ],
-        [
-            "Camera",
-            "Position (x, y, z)",
-            f"({cam.position.x * 1000:.1f}, {cam.position.y * 1000:.1f}, {cam.position.z * 1000:.1f})",
-            "mm",
-        ],
-        [
-            "Light",
-            "Position (x, y, z)",
-            f"({light.position.x * 1000:.1f}, {light.position.y * 1000:.1f}, {light.position.z * 1000:.1f})",
-            "mm",
-        ],
-        ["Algorithm", "Method", method, "-"],
-        ["Calibration", "Points", f"{len(calib_points)}", "points"],
-    ]
-    print(tabulate(data, headers=headers, tablefmt="grid"))
-    print()
+    et.pprint(eye)
 
     # Calibrate the eye tracker once
     print("Calibrating eye tracker...")
@@ -98,11 +65,11 @@ def main():
     calib_results = accuracy_at_calibration_points(et, eye=eye)
     calib_results.pprint("Calibration Test Summary")
 
-    print("2. Testing over screen (fixed observer, sweep gaze positions):")
+    print("\n2. Testing over screen (fixed observer, sweep gaze positions):")
     print("-" * 60)
 
-    # Create target position variation using new architecture
-    target_position_variation = TargetPositionVariation(
+    # Step 1: Generate screen test data using existing DataGenerationStrategy
+    screen_target_variation = TargetPositionVariation(
         grid_center=Position3D(0, 0, 200e-3),
         dx=[-200e-3, 200e-3],  # X varies: ±200mm
         dy=[0.0, 0.0],  # Y fixed: no variation
@@ -110,16 +77,35 @@ def main():
         grid_size=[16, 1, 16],  # 16x1x16 = 2D grid in XZ plane
     )
 
-    # Use new target position evaluation strategy
-    target_strategy = TargetPositionEvaluationStrategy(observer_position=eye_position)
-    screen_results = target_strategy.execute(eye, et, target_position_variation)
+    screen_data_gen = DataGenerationStrategy(
+        cameras=[cam],
+        lights=[light],
+        gaze_target=None,  # Targets come from variation
+        experiment_name="screen_test",
+        save_to_file=False,  # Keep in memory only
+        use_legacy_look_at=et.use_legacy_look_at,
+        use_refraction=et.use_refraction,
+    )
+
+    # Generate data in-memory
+    screen_dataset = screen_data_gen.execute([eye], screen_target_variation)
+
+    # Step 2: Evaluate using generic evaluation function
+    screen_results = evaluate_gaze_accuracy(
+        eye_tracker=et, dataset=screen_dataset, description="Evaluating screen test data"
+    )
 
     screen_results.pprint("Screen Test Summary")
 
+    # Plot screen test results using dedicated plotter
+    plotter = GazeAccuracyPlotter()
+    plotter.plot(screen_results, et, "Screen Test - Gaze Accuracy")
+
     print("\n3. Testing over observer (fixed gaze, sweep observer positions):")
     print("-" * 60)
-    # Create eye position variation using new architecture
-    eye_position_variation = EyePositionVariation(
+
+    # Step 1: Generate observer test data
+    observer_eye_variation = EyePositionVariation(
         center=eye_position,  # Central eye position
         dx=[-50e-3, 50e-3],  # X varies: ±50mm
         dy=[-50e-3, 50e-3],  # Y varies: ±50mm
@@ -127,11 +113,28 @@ def main():
         grid_size=[16, 16, 1],  # 16x16x1 = 2D grid in XY plane
     )
 
-    # Use new eye position evaluation strategy
-    evaluation_strategy = EyePositionEvaluationStrategy(gaze_target=Position3D(0, 0, 200e-3))
-    observer_results = evaluation_strategy.execute(eye, et, eye_position_variation)
+    observer_data_gen = DataGenerationStrategy(
+        cameras=[cam],
+        lights=[light],
+        gaze_target=Position3D(0, 0, 200e-3),  # Fixed gaze target
+        experiment_name="observer_test",
+        save_to_file=False,  # Keep in memory only
+        use_legacy_look_at=et.use_legacy_look_at,
+        use_refraction=et.use_refraction,
+    )
+
+    # Generate data in-memory
+    observer_dataset = observer_data_gen.execute([eye], observer_eye_variation)
+
+    # Step 2: Evaluate using generic evaluation function
+    observer_results = evaluate_gaze_accuracy(
+        eye_tracker=et, dataset=observer_dataset, description="Evaluating observer test data"
+    )
 
     observer_results.pprint("Observer Test Summary")
+
+    # Plot observer test results using dedicated plotter
+    plotter.plot(observer_results, et, "Observer Test - Eye Movement Analysis")
 
 
 if __name__ == "__main__":
