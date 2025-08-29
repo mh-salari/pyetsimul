@@ -80,8 +80,8 @@ class EyelidDefaults:
     BISECTION_ITERATIONS_AREA: int = 120
 
 
-def print_anatomical_defaults() -> None:
-    """Print anatomical default values."""
+def pprint_anatomical_defaults() -> None:
+    """Print anatomical default values in formatted table."""
     print("Eye Anatomy:")
     print(f"  Axial Length: {EyeAnatomyDefaults.AXIAL_LENGTH * 1000:.2f} mm")
     print(f"  Pupil Radius: {EyeAnatomyDefaults.PUPIL_RADIUS * 1000:.1f} mm")
@@ -96,8 +96,8 @@ def print_anatomical_defaults() -> None:
     print(f"  Thickness: {CorneaDefaults.THICKNESS_OFFSET * 1000:.2f} mm")
 
 
-def print_hardware_defaults() -> None:
-    """Print hardware default values."""
+def pprint_hardware_defaults() -> None:
+    """Print hardware default values in formatted table."""
     print("Camera:")
     print(f"  Focal Length: {CameraDefaults.FOCAL_LENGTH:.0f} pixels")
     print(f"  Resolution: {CameraDefaults.RESOLUTION_WIDTH}×{CameraDefaults.RESOLUTION_HEIGHT}")
@@ -109,9 +109,9 @@ def print_hardware_defaults() -> None:
     print(f"  Boundary Points: {PupilDefaults.BOUNDARY_POINTS_REALISTIC}")
 
 
-def print_all_defaults() -> None:
-    """Print all default parameters."""
+def pprint_all_defaults() -> None:
+    """Print all default parameters in formatted tables."""
     print("=== PyEtSimul Default Parameters ===")
-    print_anatomical_defaults()
+    pprint_anatomical_defaults()
     print()
-    print_hardware_defaults()
+    pprint_hardware_defaults()

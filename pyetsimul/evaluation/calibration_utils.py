@@ -8,7 +8,7 @@ from pyetsimul.core import EyeTracker
 from tabulate import tabulate
 
 
-def print_polynomial_parameters(et: EyeTracker) -> None:
+def pprint_polynomial_parameters(et: EyeTracker) -> None:
     """Print polynomial parameters from calibrated eye tracker.
 
     Displays calibration coefficients and polynomial type for analysis.
@@ -31,7 +31,7 @@ def print_polynomial_parameters(et: EyeTracker) -> None:
     headers = ["Parameter", "Value"]
     general_data = [
         ["Polynomial type", et.polynomial_name],
-        ["Calibration status", "✓ Calibrated" if et.algorithm_state.is_calibrated else "✗ Not calibrated"],
+        ["Calibration status", "Calibrated" if et.algorithm_state.is_calibrated else "✗ Not calibrated"],
     ]
 
     if et.algorithm_state.is_calibrated:

@@ -7,14 +7,13 @@ at the original calibration points to assess calibration quality.
 import numpy as np
 from typing import Dict
 from tabulate import tabulate
-from ..geometry.conversions import calculate_angular_error_degrees
-from .analysis_utils import calculate_error_statistics
+
 from ..core import Eye, EyeTracker
 from ..types import Point3D, Position3D
-
-# Import functions from specialized modules
-from .interactive_calibration import create_interactive_calibration_plot
-from .calibration_utils import print_polynomial_parameters
+from ..geometry.conversions import calculate_angular_error_degrees
+from .analysis_utils import calculate_error_statistics
+from .calibration_utils import pprint_polynomial_parameters
+from ..visualization.interactive_calibration import create_interactive_calibration_plot
 
 
 class CalibrationResults:
@@ -53,12 +52,11 @@ def accuracy_at_calibration_points(et: EyeTracker, eye: Eye, interactive_plot: b
     Args:
         et: Eye tracker structure
         eye: Pre-configured Eye object (required)
+        interactive_plot: Whether to create interactive visualization (default: True)
 
     Returns:
-        Dictionary with error statistics (mean, max, std, median for both mm and degrees)
+        CalibrationResults object with error statistics and formatted printing methods
     """
-    e = eye
-
     # Ensure eye tracker is calibrated before running analysis
     if not et.algorithm_state.is_calibrated:
         raise ValueError(
@@ -76,9 +74,9 @@ def accuracy_at_calibration_points(et: EyeTracker, eye: Eye, interactive_plot: b
     print(f"Analyzing calibration accuracy at {n_points} points...")
 
     # Output eye measurements
-    apex_pos = e.cornea.get_apex_position()
-    apex_cornea_dist = np.linalg.norm(apex_pos - e.cornea.center)
-    cornea_pupil_dist = np.linalg.norm(e.cornea.center - e.pupil.pos_pupil)
+    apex_pos = eye.cornea.get_apex_position()
+    apex_cornea_dist = np.linalg.norm(apex_pos - eye.cornea.center)
+    cornea_pupil_dist = np.linalg.norm(eye.cornea.center - eye.pupil.pos_pupil)
 
     print(f"Corneal radius: {apex_cornea_dist * 1e3:.3g} mm")
     print(f"Pupil radius:   {cornea_pupil_dist * 1e3:.3g} mm")
@@ -91,11 +89,11 @@ def accuracy_at_calibration_points(et: EyeTracker, eye: Eye, interactive_plot: b
     errs_deg = np.zeros(n_points)
 
     # Print polynomial parameters
-    print_polynomial_parameters(et)
+    pprint_polynomial_parameters(et)
 
     # Test calibrated polynomial by predicting each calibration point with fresh measurements
     # Use calibrated polynomial to test each calibration point with fresh measurements
-    calibration_fit_results = et.test_calibration_fit(e)
+    calibration_fit_results = et.test_calibration_fit(eye)
 
     # Collect data for tabulate
     table_data = []
@@ -120,8 +118,10 @@ def accuracy_at_calibration_points(et: EyeTracker, eye: Eye, interactive_plot: b
             U[i] = predicted_coord1 - actual_coord1
             V[i] = predicted_coord2 - actual_coord2
 
-            # Compute error in degrees using full 3D coordinates
-            errs_deg[i] = calculate_angular_error_degrees(target_position, predicted_pos, e.position)
+            # Compute error in degrees using full 3D coordinates (convert to Point3D)
+            target_point = Point3D(target_position.x, target_position.y, target_position.z)
+            predicted_point = Point3D(predicted_pos.x, predicted_pos.y, predicted_pos.z)
+            errs_deg[i] = calculate_angular_error_degrees(target_point, predicted_point, eye.position)
 
             # Collect data for table
             error_mm = np.sqrt(U[i] ** 2 + V[i] ** 2)
@@ -172,7 +172,9 @@ def accuracy_at_calibration_points(et: EyeTracker, eye: Eye, interactive_plot: b
 
         # Create interactive visualization if requested
         if interactive_plot:
-            create_interactive_calibration_plot(et, e, X, Y, U, V, predicted_points, valid_mask, errs_deg, plane_info)
+            create_interactive_calibration_plot(
+                et, eye, X, Y, U, V, predicted_points, valid_mask, errs_deg, plane_info
+            )
     else:
         print(f"\nCalibration Analysis Results: ALL {n_total} POINTS FAILED")
         errors = {

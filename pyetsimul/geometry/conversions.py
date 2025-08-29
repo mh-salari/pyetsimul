@@ -5,7 +5,7 @@ Implements conversions between gaze direction, rotation angles, and observer/scr
 
 import numpy as np
 from typing import Optional
-from ..types import Point2D, Direction3D, Position3D, RotationMatrix
+from ..types import Point2D, Point3D, Direction3D, Position3D, RotationMatrix
 
 
 def gaze2angle(gaze: Direction3D, rest_pos: Optional[RotationMatrix] = None) -> Point2D:
@@ -82,7 +82,7 @@ def angle2gaze(angles: Point2D, rest_pos: Optional[RotationMatrix] = None) -> Di
 
 
 def calculate_angular_error_degrees(
-    actual_point: Position3D, predicted_point: Position3D, observer_pos: Position3D
+    actual_point: Point3D, predicted_point: Point3D, observer_pos: Position3D
 ) -> float:
     """Calculate angular error between actual and predicted gaze points.
 
@@ -90,17 +90,17 @@ def calculate_angular_error_degrees(
     between them using the dot product formula. Handles numerical precision issues.
 
     Args:
-        actual_point: Actual target position [x, y, z] in meters
-        predicted_point: Predicted gaze position [x, y, z] in meters
+        actual_point: Actual target point [x, y, z] in meters
+        predicted_point: Predicted gaze point [x, y, z] in meters
         observer_pos: Observer position [x, y, z] in meters
 
     Returns:
         Angular error in degrees
     """
-    if not isinstance(actual_point, Position3D):
-        raise TypeError(f"actual_point must be Position3D, got {type(actual_point)}")
-    if not isinstance(predicted_point, Position3D):
-        raise TypeError(f"predicted_point must be Position3D, got {type(predicted_point)}")
+    if not isinstance(actual_point, Point3D):
+        raise TypeError(f"actual_point must be Point3D, got {type(actual_point)}")
+    if not isinstance(predicted_point, Point3D):
+        raise TypeError(f"predicted_point must be Point3D, got {type(predicted_point)}")
     if not isinstance(observer_pos, Position3D):
         raise TypeError(f"observer_pos must be Position3D, got {type(observer_pos)}")
 
