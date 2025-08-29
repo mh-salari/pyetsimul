@@ -10,7 +10,7 @@ import copy
 from typing import List
 
 from pyetsimul.core import Eye, EyeTracker
-from ..types import Position3D, Point3D
+from ..types import Point3D
 from ..geometry.conversions import calculate_angular_error_degrees
 from ..visualization import prepare_eye_data_for_plots, plot_setup
 from ..visualization.interactive_controls import InteractiveControls
@@ -38,7 +38,7 @@ def create_interactive_calibration_plot(
 
     mean_x = sum(pt.x for pt in et.calib_points) / len(et.calib_points)
     mean_z = sum(pt.z for pt in et.calib_points) / len(et.calib_points)
-    current_target = Position3D(mean_x, 0, mean_z)
+    current_target = Point3D(mean_x, 0, mean_z)
 
     controls = InteractiveControls(interactive_eye, current_target, step_size=10e-3)
 
@@ -49,7 +49,7 @@ def create_interactive_calibration_plot(
         # Left subplot: 3D eye tracking setup
         ax_3d = fig.add_subplot(1, 2, 1, projection="3d")
 
-        target_3d = Position3D(controls.target_point.x, 0, controls.target_point.z)
+        target_3d = Point3D(controls.target_point.x, 0, controls.target_point.z)
 
         # Convert calibration points to list format using plane mapping
         calib_points_list = []
@@ -116,7 +116,7 @@ def create_interactive_calibration_plot(
                     U_valid.append(U[i] * 1000)
                     V_valid.append(V[i] * 1000)
                     # Use plane coordinates for consistent mapping
-                    pred_pos = Position3D(pred_point.x, pred_point.y, pred_point.z)
+                    pred_pos = Point3D(pred_point.x, pred_point.y, pred_point.z)
                     pred_coord1, pred_coord2 = plane_info.extract_2d_coords(pred_pos)
                     pred_x.append(pred_coord1 * 1000)
                     pred_y.append(pred_coord2 * 1000)
@@ -153,7 +153,7 @@ def create_interactive_calibration_plot(
         if current_prediction is not None and current_prediction.gaze_point is not None:
             # Extract coordinates using plane mapping for consistent display
             target_coord1, target_coord2 = plane_info.extract_2d_coords(controls.target_point)
-            pred_pos = Position3D(
+            pred_pos = Point3D(
                 current_prediction.gaze_point.x, current_prediction.gaze_point.y, current_prediction.gaze_point.z
             )
             pred_coord1, pred_coord2 = plane_info.extract_2d_coords(pred_pos)

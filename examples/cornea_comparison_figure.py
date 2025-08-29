@@ -58,26 +58,35 @@ def main():
     # Create single figure comparing both cornea types
     fig, ax = plt.subplots(1, 1, figsize=(8, 8))
 
-    # Plot pupil boundaries
-    pupil_points = image_spherical.pupil_boundary
-    closed_points = np.hstack((pupil_points, pupil_points[:, 0:1]))
-    ax.plot(
-        closed_points[0, :],
-        closed_points[1, :],
-        color="blue",
-        linewidth=1,
-        label="Spherical Cornea",
-    )
+    # Plot pupil boundaries - convert structured types to numpy
+    pupil_boundary = image_spherical.pupil_boundary
+    if pupil_boundary:
+        pupil_points = np.array([[p.x for p in pupil_boundary], [p.y for p in pupil_boundary]])
+        closed_points = np.hstack((pupil_points, pupil_points[:, 0:1]))
+    else:
+        closed_points = None
 
-    pupil_points = image_conic.pupil_boundary
-    closed_points = np.hstack((pupil_points, pupil_points[:, 0:1]))
-    ax.plot(
-        closed_points[0, :],
-        closed_points[1, :],
-        color="red",
-        linewidth=1,
-        label="Conic Cornea",
-    )
+    if closed_points is not None:
+        ax.plot(
+            closed_points[0, :],
+            closed_points[1, :],
+            color="blue",
+            linewidth=1,
+            label="Spherical Cornea",
+        )
+
+    # Plot conic cornea pupil boundary
+    pupil_boundary_conic = image_conic.pupil_boundary
+    if pupil_boundary_conic:
+        pupil_points_conic = np.array([[p.x for p in pupil_boundary_conic], [p.y for p in pupil_boundary_conic]])
+        closed_points_conic = np.hstack((pupil_points_conic, pupil_points_conic[:, 0:1]))
+        ax.plot(
+            closed_points_conic[0, :],
+            closed_points_conic[1, :],
+            color="red",
+            linewidth=1,
+            label="Conic Cornea",
+        )
 
     # Plot pupil centers
     center = image_spherical.pupil_center.to_array()

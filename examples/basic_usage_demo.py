@@ -52,15 +52,13 @@ ax1 = fig.add_subplot(1, 2, 1, projection="3d")
 ax2 = fig.add_subplot(1, 2, 2)
 
 # Prepare data for plotting
-prepared_data = prepare_eye_data_for_plots(eye, target_point, [light], camera)
+prepared_data = prepare_eye_data_for_plots(eye, target_point, light, camera)
 
 # Left panel: 3D setup view
-plot_setup(ax1, prepared_data["eye_data"], target_point, [light], camera, prepared_data["cr_3d_list"])
+plot_setup(ax1, prepared_data["eyes_data"], target_point, light, camera, prepared_data["cr_3d_lists"])
 
 # Right panel: Camera view
-plot_camera_view_of_eye(image, camera, prepared_data["cr_3d_list"], ax=ax2)
-
-plt.tight_layout()
+plot_camera_view_of_eye(prepared_data["camera_images"], camera, prepared_data["cr_3d_lists"], ax=ax2)
 
 # Create figures directory if it doesn't exist
 Path("figures").mkdir(exist_ok=True)
