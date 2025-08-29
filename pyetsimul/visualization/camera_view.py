@@ -9,15 +9,13 @@ from typing import Optional, List
 import matplotlib.pyplot as plt
 import numpy as np
 
-from pyetsimul.core import Camera
-from ..types import Position3D, CameraImage
 from .plot_config import create_plot_config
 
 
 def plot_camera_view_of_eye(
-    camera_images: List[CameraImage],
-    cameras: List[Camera],
-    cr_3d_lists: Optional[List[List[Optional[Position3D]]]] = None,
+    camera_images,
+    cameras,
+    cr_3d_lists=None,
     ax=None,
     eye_colors: Optional[List[str]] = None,
     camera_colors: Optional[List[str]] = None,
@@ -27,13 +25,21 @@ def plot_camera_view_of_eye(
     Shows what each camera sees - all eyes visible in that camera's field of view.
 
     Args:
-        camera_images: List of CameraImage objects (each contains all eyes seen by that camera)
-        cameras: List of Camera objects
-        cr_3d_lists: List of lists of corneal reflection 3D positions for each eye
+        camera_images: CameraImage object or list of CameraImage objects (each contains all eyes seen by that camera)
+        cameras: Camera object or list of Camera objects
+        cr_3d_lists: List of lists of corneal reflection 3D positions for each eye, or single list
         ax: Optional matplotlib axis
         eye_colors: Optional list of colors for the eyes.
         camera_colors: Optional list of colors for the cameras.
     """
+    # Convert single objects to lists
+    if not isinstance(camera_images, list):
+        camera_images = [camera_images]
+    if not isinstance(cameras, list):
+        cameras = [cameras]
+    if cr_3d_lists is not None and not isinstance(cr_3d_lists, list):
+        cr_3d_lists = [cr_3d_lists]
+
     if len(camera_images) != len(cameras):
         raise ValueError("Number of camera images must match number of cameras")
 

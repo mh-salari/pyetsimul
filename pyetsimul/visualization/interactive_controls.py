@@ -2,7 +2,7 @@
 
 from typing import Dict, Any, Optional, Callable
 import matplotlib.pyplot as plt
-from pyetsimul.types import Position3D
+from pyetsimul.types import Position3D, Point3D
 
 
 class InteractiveControls:
@@ -11,10 +11,10 @@ class InteractiveControls:
     def __init__(
         self,
         eye: Any,
-        target_point: Position3D,
+        target_point: Point3D,
         step_size: float = 2.5e-3,
         initial_eye_position: Optional[Position3D] = None,
-        initial_target_position: Optional[Position3D] = None,
+        initial_target_position: Optional[Point3D] = None,
         custom_handlers: Optional[Dict[str, Callable]] = None,
     ):
         self.eye = eye
@@ -22,7 +22,7 @@ class InteractiveControls:
 
         self.step_size = step_size
         self.initial_eye_position = initial_eye_position or Position3D(eye.position.x, eye.position.y, eye.position.z)
-        self.initial_target_position = initial_target_position or Position3D(
+        self.initial_target_position = initial_target_position or Point3D(
             target_point.x, target_point.y, target_point.z
         )
         self.custom_handlers = custom_handlers or {}
@@ -78,7 +78,7 @@ class InteractiveControls:
 
     def _move_target(self, dx: float, dy: float, dz: float):
         """Move target by the specified amounts."""
-        self.target_point = Position3D(self.target_point.x + dx, self.target_point.y + dy, self.target_point.z + dz)
+        self.target_point = Point3D(self.target_point.x + dx, self.target_point.y + dy, self.target_point.z + dz)
 
     def _move_eye(self, dx: float, dy: float, dz: float):
         """Move eye by the specified amounts."""
@@ -94,7 +94,7 @@ class InteractiveControls:
         self.eye.trans[2, 3] = self.initial_eye_position.z
         self.eye.position = Position3D(self.eye.trans[0, 3], self.eye.trans[1, 3], self.eye.trans[2, 3])
 
-        self.target_point = Position3D(
+        self.target_point = Point3D(
             self.initial_target_position.x, self.initial_target_position.y, self.initial_target_position.z
         )
 

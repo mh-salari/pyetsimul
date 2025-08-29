@@ -6,17 +6,17 @@ Support for multiple eyes, cameras, and lights.
 """
 
 import numpy as np
-from typing import Optional, List, Dict, Any
+from typing import Dict, Any
 
-from pyetsimul.core import Eye, Camera, Light
+from pyetsimul.core import Eye
 from ..types import Position3D
 
 
 def prepare_eye_data_for_plots(
-    eyes: List[Eye],
-    look_at_targets: List[Position3D],
-    lights: Optional[List[Light]] = None,
-    cameras: Optional[List[Camera]] = None,
+    eyes,
+    look_at_targets,
+    lights=None,
+    cameras=None,
 ) -> Dict[str, Any]:
     """Prepare eye visualization data for plotting.
 
@@ -24,14 +24,24 @@ def prepare_eye_data_for_plots(
     Calculates corneal reflections and optical axes for 3D visualization.
 
     Args:
-        eyes: List of Eye objects
-        look_at_targets: List of target points, one per eye
-        lights: Optional list of Light objects with positions
-        cameras: Optional list of Camera objects
+        eyes: Eye object or list of Eye objects
+        look_at_targets: Target point or list of target points, one per eye
+        lights: Optional Light object or list of Light objects with positions
+        cameras: Optional Camera object or list of Camera objects
 
     Returns:
         dict: Contains eyes_data list, camera_images list, and cr_3d_lists for plotting
     """
+    # Convert single objects to lists
+    if not isinstance(eyes, list):
+        eyes = [eyes]
+    if not isinstance(look_at_targets, list):
+        look_at_targets = [look_at_targets]
+    if lights is not None and not isinstance(lights, list):
+        lights = [lights]
+    if cameras is not None and not isinstance(cameras, list):
+        cameras = [cameras]
+
     if len(eyes) != len(look_at_targets):
         raise ValueError("Number of eyes must match number of look_at_targets")
 

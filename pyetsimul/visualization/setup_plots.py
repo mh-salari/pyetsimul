@@ -6,20 +6,19 @@ Handles coordinate transformations and anatomical structure plotting.
 
 import numpy as np
 import matplotlib.pyplot as plt
-from typing import Optional, List, Dict, Any, Tuple
+from typing import Optional, List, Dict, Tuple
 
-from pyetsimul.core import Camera, Light
 from ..types import Position3D, Point3D, Vector3D, TransformationMatrix
 from .plot_config import create_plot_config
 
 
 def plot_setup(
     ax1,
-    eyes_data: List[Dict[str, Any]],
-    look_at_targets: List[Position3D],
-    lights: Optional[List[Light]] = None,
-    cameras: Optional[List[Camera]] = None,
-    cr_3d_lists: Optional[List[List[Optional[Position3D]]]] = None,
+    eyes_data,
+    look_at_targets,
+    lights=None,
+    cameras=None,
+    cr_3d_lists=None,
     ref_bounds: Optional[Dict[str, Tuple[float, float]]] = None,
     calib_points: Optional[Position3D] = None,
 ) -> Tuple[List[str], List[str]]:
@@ -29,10 +28,10 @@ def plot_setup(
 
     Args:
         ax1: 3D matplotlib axis
-        eyes_data: List of eye data dicts with transformed eye anatomy data
-        look_at_targets: List of target points for each eye
-        lights: Optional list of Light objects with positions
-        cameras: Optional list of Camera objects
+        eyes_data: Eye data dict or list of eye data dicts with transformed eye anatomy data
+        look_at_targets: Target point or list of target points for each eye
+        lights: Optional Light object or list of Light objects with positions
+        cameras: Optional Camera object or list of Camera objects
         cr_3d_lists: List of lists of corneal reflection 3D positions for each eye
         ref_bounds: Optional reference bounds dict with 'x', 'y', 'z' keys
         calib_points: Optional calibration points array to plot as black x markers
@@ -40,6 +39,18 @@ def plot_setup(
     Returns:
         Tuple[List[str], List[str]]: Lists of eye and camera colors used in the plot.
     """
+    # Convert single objects to lists
+    if not isinstance(eyes_data, list):
+        eyes_data = [eyes_data]
+    if not isinstance(look_at_targets, list):
+        look_at_targets = [look_at_targets]
+    if lights is not None and not isinstance(lights, list):
+        lights = [lights]
+    if cameras is not None and not isinstance(cameras, list):
+        cameras = [cameras]
+    if cr_3d_lists is not None and not isinstance(cr_3d_lists, list):
+        cr_3d_lists = [cr_3d_lists]
+
     ax1.cla()
 
     if not eyes_data:
