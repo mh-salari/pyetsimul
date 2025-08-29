@@ -5,7 +5,7 @@ Shows 3D view of eye, camera, lights, and target with camera view of corneal ref
 """
 
 from pyetsimul.core import Eye, Camera, Light
-from pyetsimul.types import Position3D, RotationMatrix
+from pyetsimul.types import Position3D, Point3D, RotationMatrix
 from pyetsimul.visualization import plot_interactive_setup
 
 
@@ -30,7 +30,7 @@ def run_setup_demo():
     c.point_at(e_base.position)
 
     # Start target point
-    target_point = Position3D(-50e-3, 0, 50e-3)
+    target_point = Point3D(-50e-3, 0, 50e-3)
 
     # Create and run setup visualization
     plot_interactive_setup(e_base, lights, c, target_point)
