@@ -42,6 +42,20 @@ class InterpolationConfig:
         else:
             return self.polynomial_degree + 1
 
+    def serialize(self) -> dict:
+        """Serialize configuration to dictionary."""
+        return {
+            "polynomial_degree": self.polynomial_degree,
+            "cross_terms": self.cross_terms,
+            "regularization": self.regularization,
+            "calibration_points": self.calibration_points,
+        }
+
+    @classmethod
+    def deserialize(cls, data: dict) -> "InterpolationConfig":
+        """Deserialize from dictionary representation."""
+        return cls(**data)
+
 
 @dataclass
 class AlgorithmState:
@@ -123,3 +137,32 @@ class InterpolationState(AlgorithmState):
     x_coefficients: Optional[np.ndarray] = None  # Polynomial coefficients for x
     y_coefficients: Optional[np.ndarray] = None  # Polynomial coefficients for y
     input_normalization: Optional[Dict[str, float]] = None  # Input scaling parameters
+
+    def serialize(self) -> dict:
+        """Serialize interpolation state to dictionary."""
+        return {
+            "is_calibrated": self.is_calibrated,
+            "calibration_error": self.calibration_error,
+            "last_update": self.last_update,
+            "x_coefficients": self.x_coefficients.tolist() if self.x_coefficients is not None else None,
+            "y_coefficients": self.y_coefficients.tolist() if self.y_coefficients is not None else None,
+            "input_normalization": self.input_normalization,
+        }
+
+    @classmethod
+    def deserialize(cls, data: dict) -> "InterpolationState":
+        """Deserialize from dictionary representation."""
+        state = cls(
+            is_calibrated=data["is_calibrated"],
+            calibration_error=data["calibration_error"],
+            last_update=data["last_update"],
+            input_normalization=data["input_normalization"],
+        )
+
+        # Convert coefficient lists back to numpy arrays
+        if data["x_coefficients"] is not None:
+            state.x_coefficients = np.array(data["x_coefficients"])
+        if data["y_coefficients"] is not None:
+            state.y_coefficients = np.array(data["y_coefficients"])
+
+        return state

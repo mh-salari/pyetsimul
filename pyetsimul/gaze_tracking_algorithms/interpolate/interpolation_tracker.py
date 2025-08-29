@@ -3,12 +3,12 @@
 Pupil-CR tracker with polynomial interpolation.
 """
 
-from pyetsimul.core import EyeTracker
+from pyetsimul.core import EyeTracker, Camera, Light
 from pyetsimul.types.algorithms import InterpolationConfig, InterpolationState, GazePrediction
 from pyetsimul.types.imaging import EyeMeasurement
 from pyetsimul.types.geometry import Point3D, Position3D
 from .polynomials import get_polynomial
-from ...geometry.plane_detection import detect_calibration_plane, summarize_plane_detection
+from ...geometry.plane_detection import detect_calibration_plane, summarize_plane_detection, PlaneInfo
 import time
 import numpy as np
 from typing import List
@@ -255,3 +255,65 @@ class InterpolationTracker(EyeTracker):
             processing_time=processing_time,
             intermediate_results=intermediate_results,
         )
+
+    def serialize(self) -> dict:
+        """Serialize eye tracker to dictionary.
+
+        Saves all eye tracker parameters, calibration data, and algorithm state
+        for later restoration and validation.
+
+        Returns:
+            dict: Complete eye tracker state including hardware configuration
+        """
+        return {
+            "polynomial_name": self.polynomial_name,
+            "config": self.config.serialize(),
+            "algorithm_state": self.algorithm_state.serialize(),
+            "plane_info": self.plane_info.serialize() if self.plane_info else None,
+            "cameras": [camera.serialize() for camera in self.cameras],
+            "lights": [light.serialize() for light in self.lights],
+            "calib_points": [point.serialize() for point in self.calib_points],
+            "use_refraction": self.use_refraction,
+            "use_legacy_look_at": self.use_legacy_look_at,
+            "state": self.state,  # Additional state from parent class
+        }
+
+    @classmethod
+    def deserialize(cls, data: dict) -> "InterpolationTracker":
+        """Deserialize eye tracker from dictionary.
+
+        Restores complete eye tracker state including calibration and hardware configuration.
+        The restored tracker is ready to use without recalibration.
+
+        Args:
+            data: Dictionary from serialize() method
+
+        Returns:
+            InterpolationTracker: Fully configured and calibrated eye tracker
+        """
+
+        # Deserialize hardware components
+        cameras = [Camera.deserialize(cam_data) for cam_data in data["cameras"]]
+        lights = [Light.deserialize(light_data) for light_data in data["lights"]]
+        calib_points = [Position3D.deserialize(pt_data) for pt_data in data["calib_points"]]
+
+        # Create tracker instance
+        tracker = cls(
+            polynomial=data["polynomial_name"],
+            config=InterpolationConfig.deserialize(data["config"]),
+            cameras=cameras,
+            lights=lights,
+            calib_points=calib_points,
+            use_refraction=data["use_refraction"],
+        )
+
+        # Restore algorithm state and plane info
+        tracker.algorithm_state = InterpolationState.deserialize(data["algorithm_state"])
+        if data["plane_info"]:
+            tracker.plane_info = PlaneInfo.deserialize(data["plane_info"])
+
+        # Restore parent class state and legacy mode
+        tracker.use_legacy_look_at = data["use_legacy_look_at"]
+        tracker.state = data["state"]
+
+        return tracker

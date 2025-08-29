@@ -44,6 +44,21 @@ class PlaneInfo:
         coords[self.secondary_axis] = coord2
         return Point3D(coords["x"], coords["y"], coords["z"])
 
+    def serialize(self) -> dict:
+        """Serialize plane info to dictionary."""
+        return {
+            "plane_type": self.plane_type,
+            "primary_axis": self.primary_axis,
+            "secondary_axis": self.secondary_axis,
+            "constant_axis": self.constant_axis,
+            "constant_value": self.constant_value,
+        }
+
+    @classmethod
+    def deserialize(cls, data: dict) -> "PlaneInfo":
+        """Deserialize from dictionary representation."""
+        return cls(**data)
+
 
 def detect_calibration_plane(calib_points: List[Position3D], tolerance: float = 1e-6) -> PlaneInfo:
     """Automatically detect which 2D plane the calibration points lie in.
