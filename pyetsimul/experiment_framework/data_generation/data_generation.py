@@ -47,7 +47,7 @@ class DataGenerationStrategy(VariationStrategy):
         total_measurements = 0
 
         # The main loop iterates through cameras, then eyes, then parameter variations.
-        for camera_idx, camera in enumerate(tqdm(self.cameras, desc="Processing cameras", position=0)):
+        for camera_idx, camera in enumerate(tqdm(self.cameras, desc="Processing cameras", position=0, leave=False)):
             camera_data = {
                 "camera_id": camera_idx,
                 "camera_name": getattr(camera, "name", f"Camera {camera_idx + 1}"),
@@ -66,7 +66,7 @@ class DataGenerationStrategy(VariationStrategy):
                 # Process all parameter variations for this camera-eye combination.
                 # For each value in the variation, a new measurement is generated.
                 for i, value in enumerate(
-                    tqdm(values, desc=f"C{camera_idx + 1}E{eye_idx + 1} variations", position=2, leave=False)
+                    tqdm(values, desc=f"Camera {camera_idx + 1} Eye {eye_idx + 1} variations", position=2, leave=False)
                 ):
                     # A deep copy of the eye is created for each measurement to ensure a stateless starting point.
                     eye_copy = copy.deepcopy(eye)
