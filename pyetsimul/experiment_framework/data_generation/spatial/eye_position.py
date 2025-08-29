@@ -14,6 +14,10 @@ class EyePositionVariation(EyeParameterVariation):
         super().__init__("eye_position")
         self.grid = RegularGrid(center=center, dx=dx, dy=dy, dz=dz, grid_size=grid_size)
 
+    @property
+    def description(self):
+        return f"{self.__class__.__name__} (grid_size={self.grid.grid_size})"
+
     def generate_values(self) -> List[Position3D]:
         """Generate all eye positions using the grid system."""
         return self.grid.generate_positions()

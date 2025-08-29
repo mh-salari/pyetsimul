@@ -20,6 +20,11 @@ class ComposedVariation(ParameterVariation):
         if not variations:
             raise ValueError("Must provide at least one variation")
 
+    @property
+    def description(self):
+        names = [v.__class__.__name__ for v in self.variations]
+        return f"Composed({', '.join(names)})"
+
     def generate_values(self) -> List[Dict[str, Any]]:
         """Generate cartesian product of all variation values."""
         # Get all individual variation values

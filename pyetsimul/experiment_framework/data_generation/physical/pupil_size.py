@@ -28,6 +28,10 @@ class PupilSizeVariation(EyeParameterVariation):
         if num_steps < 1:
             raise ValueError("num_steps must be at least 1")
 
+    @property
+    def description(self):
+        return f"{self.__class__.__name__} ({self.num_steps} steps)"
+
     def generate_values(self) -> List[float]:
         """Generate pupil diameter values in meters."""
         min_diameter, max_diameter = self.diameter_range

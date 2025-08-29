@@ -57,7 +57,9 @@ def load_cached_dataset(config, test_name):
     # Ensure output directory exists
     config.output_dir.mkdir(parents=True, exist_ok=True)
 
-    cache_filename = f"{config.experiment_name}_data.json"
+    # Sanitize test_name for use in a filename
+    safe_test_name = test_name.replace(" ", "_").lower()
+    cache_filename = f"{config.experiment_name}_{safe_test_name}_data.json"
     cache_path = config.output_dir / cache_filename
 
     print(f"Looking for cached dataset: {cache_path}")
@@ -97,12 +99,17 @@ def generate_and_cache_dataset(config, test_name, use_cache=True):
 
     # Generate new dataset
     print("Generating new dataset...")
+
+    # Sanitize test_name for use in a filename
+    safe_test_name = test_name.replace(" ", "_").lower()
+    experiment_name = f"{config.experiment_name}_{safe_test_name}"
+
     data_gen = DataGenerationStrategy(
         cameras=config.cameras,
         lights=config.lights,
         gaze_target=config.gaze_target,
         output_dir=config.output_dir,  # Use config's output directory
-        experiment_name=config.experiment_name,  # Use config's experiment name
+        experiment_name=experiment_name,  # Use unique name for this run
         save_to_file=use_cache,  # Save to file if caching is enabled
         use_legacy_look_at=True,
     )
@@ -141,7 +148,6 @@ def create_composed_config():
     gaze_mov_var = create_gaze_movement_config().variation
     pupil_size_var = create_pupil_size_config().variation
 
-    # Compose them together (125 * 25 * 10 = 31,250 measurements!)
     composed = ComposedVariation(
         variations=[eye_pos_var, gaze_mov_var, pupil_size_var], param_name="eye_pos_gaze_pupil_composed"
     )

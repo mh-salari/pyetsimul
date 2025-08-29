@@ -86,6 +86,8 @@ class DataGenerationStrategy(VariationStrategy):
         saved_files = []
         if self.save_to_file:
             saved_files = self._save_data(all_data, variation.param_name, self.experiment_name)
+        else:
+            print("Data generated but not saved (save_to_file=False).")
 
         return {
             "total_measurements": total_measurements,
@@ -137,6 +139,8 @@ class DataGenerationStrategy(VariationStrategy):
         json_file = Path(self.output_dir) / f"{experiment_name}_data.json"
         with open(json_file, "w") as f:
             json.dump(data, f, indent=2)
+
+        print(f"Dataset saved to: {json_file}")
 
         return [str(json_file)]
 
