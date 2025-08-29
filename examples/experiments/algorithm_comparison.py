@@ -12,24 +12,12 @@ from pyetsimul.evaluation.algorithm_comparison import compare_algorithms
 from pyetsimul.evaluation.calibration_analysis import accuracy_at_calibration_points
 from pyetsimul.experiment_framework.data_generation import DataGenerationStrategy
 from pyetsimul.experiment_framework.data_generation import ComposedVariation, ExperimentConfig
-from config import create_eye_position_config, create_gaze_movement_config, create_pupil_size_config
-
-
-def create_calibration_points():
-    """Create standard calibration grid for all algorithms."""
-    from pyetsimul.types import Position3D
-
-    return [
-        Position3D(-200e-3, 0.0, 50e-3),
-        Position3D(0, 0.0, 50e-3),
-        Position3D(200e-3, 0.0, 50e-3),
-        Position3D(-200e-3, 0.0, 200e-3),
-        Position3D(0, 0.0, 200e-3),
-        Position3D(200e-3, 0.0, 200e-3),
-        Position3D(-200e-3, 0.0, 350e-3),
-        Position3D(0, 0.0, 350e-3),
-        Position3D(200e-3, 0.0, 350e-3),
-    ]
+from config import (
+    create_eye_position_config,
+    create_calibration_points,
+    create_gaze_movement_config,
+    create_pupil_size_config,
+)
 
 
 def setup_algorithms(config):
