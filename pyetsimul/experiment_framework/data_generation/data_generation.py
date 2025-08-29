@@ -22,12 +22,18 @@ class DataGenerationStrategy(VariationStrategy):
         gaze_target: Position3D = None,
         output_dir: str = "output",
         experiment_name: str = None,
+        save_to_file: bool = True,
+        use_legacy_look_at: bool = False,
+        use_refraction: bool = True,
     ):
         self.cameras = cameras
         self.lights = lights
         self.gaze_target = gaze_target  # Fixed gaze target for eye position variations
         self.output_dir = Path(output_dir)
         self.experiment_name = experiment_name
+        self.save_to_file = save_to_file
+        self.use_legacy_look_at = use_legacy_look_at
+        self.use_refraction = use_refraction
 
     def execute(self, eyes: list, variation: ParameterVariation) -> Dict[str, Any]:
         """Generate eye tracking data: camera → eye → parameter variations."""
@@ -65,47 +71,7 @@ class DataGenerationStrategy(VariationStrategy):
                     # A deep copy of the eye is created for each measurement to ensure a stateless starting point.
                     eye_copy = copy.deepcopy(eye)
 
-                    current_gaze_target = self.gaze_target
-
-                    # This block handles the different types of parameter variations.
-                    if isinstance(variation, ComposedVariation):
-                        # For ComposedVariation, iterate through the inner variations and apply them.
-                        # This supports combining different types of variations (e.g., eye position and target position).
-                        for v_inner in variation.variations:
-                            inner_value = value[v_inner.param_name]
-                            if isinstance(v_inner, EyeParameterVariation):
-                                v_inner.apply_to_eye(eye_copy, inner_value)
-                            elif isinstance(v_inner, TargetVariation):
-                                eye_copy.look_at(inner_value)
-                                current_gaze_target = inner_value
-                        # If no target variation is present in the composition, use the default gaze target.
-                        if current_gaze_target == self.gaze_target and self.gaze_target:
-                            eye_copy.look_at(self.gaze_target)
-
-                    elif isinstance(variation, SequentialVariation):
-                        # For SequentialVariation, apply one variation at a time from the sequence.
-                        v_inner = variation.variations[value["variation_index"]]
-                        inner_value = value["value"]
-                        if isinstance(v_inner, EyeParameterVariation):
-                            v_inner.apply_to_eye(eye_copy, inner_value)
-                            if self.gaze_target:
-                                eye_copy.look_at(self.gaze_target)
-                        elif isinstance(v_inner, TargetVariation):
-                            eye_copy.look_at(inner_value)
-                            current_gaze_target = inner_value
-
-                    elif isinstance(variation, EyeParameterVariation):
-                        # For a simple eye parameter variation, apply it and use the default gaze target.
-                        variation.apply_to_eye(eye_copy, value)
-                        if self.gaze_target:
-                            eye_copy.look_at(self.gaze_target)
-
-                    elif isinstance(variation, TargetVariation):
-                        # For a target variation, the value itself is the gaze target.
-                        eye_copy.look_at(value)
-                        current_gaze_target = value
-                    else:
-                        raise ValueError(f"Unknown variation type: {type(variation)}")
+                    current_gaze_target = self._apply_parameter_variation(eye_copy, variation, value)
 
                     # Generate and store the measurement for the current configuration.
                     measurement = self._generate_single_measurement(eye_copy, camera, value, i, current_gaze_target)
@@ -116,14 +82,17 @@ class DataGenerationStrategy(VariationStrategy):
 
             all_data["cameras"].append(camera_data)
 
-        # Save the collected data to a file.
-        saved_files = self._save_data(all_data, variation.param_name, self.experiment_name)
+        # Save the collected data to a file (if requested).
+        saved_files = []
+        if self.save_to_file:
+            saved_files = self._save_data(all_data, variation.param_name, self.experiment_name)
 
         return {
             "total_measurements": total_measurements,
             "parameter_name": variation.param_name,
             "saved_files": saved_files,
             "data": all_data,
+            "parameter_variation": variation,  # Store variation for plotting
         }
 
     def _generate_single_measurement(
@@ -131,10 +100,10 @@ class DataGenerationStrategy(VariationStrategy):
     ) -> Dict[str, Any]:
         """Generate measurement data for single camera-eye-parameter combination."""
 
-        # Take image with this specific camera
-        img = camera.take_image(eye, self.lights)
+        # Take image with this specific camera using same parameters as estimate_gaze_at
+        img = camera.take_image(eye, self.lights, use_refraction=self.use_refraction)
 
-        # Extract pupil data
+        # Extract pupil data including boundary_points like estimate_gaze_at does
         pupil_points = []
         pupil_center = None
         if img.pupil_boundary is not None:
@@ -142,10 +111,9 @@ class DataGenerationStrategy(VariationStrategy):
         if img.pupil_center is not None:
             pupil_center = [float(img.pupil_center.x), float(img.pupil_center.y)]
 
-        # Extract corneal reflections (glints) from all lights
+        # Extract corneal reflections (glints) from camera image (not eye.find_cr!)
         glints = []
-        for light in self.lights:
-            cr = eye.find_cr(light, camera)
+        for cr in img.corneal_reflections:
             glints.append([float(cr.x), float(cr.y)] if cr is not None else None)
 
         return {
@@ -171,6 +139,85 @@ class DataGenerationStrategy(VariationStrategy):
             json.dump(data, f, indent=2)
 
         return [str(json_file)]
+
+    def _apply_parameter_variation(self, eye_copy: Eye, variation: ParameterVariation, value: Any) -> Position3D:
+        """Apply parameter variation to eye copy and return gaze target.
+
+        Args:
+            eye_copy: Eye object to modify
+            variation: Parameter variation to apply
+            value: Variation value to apply
+
+        Returns:
+            Current gaze target position after applying variation
+        """
+        current_gaze_target = self.gaze_target
+
+        if isinstance(variation, ComposedVariation):
+            current_gaze_target = self._handle_composed_variation(eye_copy, variation, value)
+        elif isinstance(variation, SequentialVariation):
+            current_gaze_target = self._handle_sequential_variation(eye_copy, variation, value)
+        elif isinstance(variation, EyeParameterVariation):
+            current_gaze_target = self._handle_eye_parameter_variation(eye_copy, variation, value)
+        elif isinstance(variation, TargetVariation):
+            current_gaze_target = self._handle_target_variation(eye_copy, value)
+        else:
+            raise ValueError(f"Unknown variation type: {type(variation)}")
+
+        return current_gaze_target
+
+    def _handle_composed_variation(self, eye_copy: Eye, variation: ComposedVariation, value: dict) -> Position3D:
+        """Handle ComposedVariation by applying each inner variation."""
+        current_gaze_target = self.gaze_target
+
+        # For ComposedVariation, iterate through the inner variations and apply them.
+        # This supports combining different types of variations (e.g., eye position and target position).
+        for v_inner in variation.variations:
+            inner_value = value[v_inner.param_name]
+            if isinstance(v_inner, EyeParameterVariation):
+                v_inner.apply_to_eye(eye_copy, inner_value)
+            elif isinstance(v_inner, TargetVariation):
+                eye_copy.look_at(inner_value)
+                current_gaze_target = inner_value
+
+        # If no target variation is present in the composition, use the default gaze target.
+        if current_gaze_target == self.gaze_target and self.gaze_target:
+            eye_copy.look_at(self.gaze_target)
+
+        return current_gaze_target
+
+    def _handle_sequential_variation(self, eye_copy: Eye, variation: SequentialVariation, value: dict) -> Position3D:
+        """Handle SequentialVariation by applying one variation from the sequence."""
+        current_gaze_target = self.gaze_target
+
+        # For SequentialVariation, apply one variation at a time from the sequence.
+        v_inner = variation.variations[value["variation_index"]]
+        inner_value = value["value"]
+        if isinstance(v_inner, EyeParameterVariation):
+            v_inner.apply_to_eye(eye_copy, inner_value)
+            if self.gaze_target:
+                eye_copy.look_at(self.gaze_target, legacy=self.use_legacy_look_at)
+        elif isinstance(v_inner, TargetVariation):
+            eye_copy.look_at(inner_value, legacy=self.use_legacy_look_at)
+            current_gaze_target = inner_value
+
+        return current_gaze_target
+
+    def _handle_eye_parameter_variation(
+        self, eye_copy: Eye, variation: EyeParameterVariation, value: Any
+    ) -> Position3D:
+        """Handle simple EyeParameterVariation."""
+        # For a simple eye parameter variation, apply it and use the default gaze target.
+        variation.apply_to_eye(eye_copy, value)
+        if self.gaze_target:
+            eye_copy.look_at(self.gaze_target, legacy=self.use_legacy_look_at)
+        return self.gaze_target
+
+    def _handle_target_variation(self, eye_copy: Eye, value: Any) -> Position3D:
+        """Handle TargetVariation."""
+        # For a target variation, the value itself is the gaze target.
+        eye_copy.look_at(value, legacy=self.use_legacy_look_at)
+        return value
 
     def _serialize_param_value(self, param_value):
         """Serialize parameter values for JSON storage."""

@@ -6,6 +6,13 @@ from typing import List
 from ....types import Position3D
 
 
+def _generate_axis_values(center_coord: float, min_offset: float, max_offset: float, num_points: int) -> np.ndarray:
+    """Generate values along a single axis."""
+    if min_offset == max_offset or num_points == 1:
+        return np.array([center_coord + min_offset])
+    return np.linspace(center_coord + min_offset, center_coord + max_offset, num_points)
+
+
 class GridGenerator(ABC):
     """Abstract base for 3D grid generation."""
 
@@ -38,16 +45,15 @@ class RegularGrid(GridGenerator):
 
     def _validate_parameters(self):
         """Validate grid parameters."""
-        if len(self.dx) != 2:
-            raise ValueError("dx must have exactly 2 elements [min, max]")
-        if len(self.dy) != 2:
-            raise ValueError("dy must have exactly 2 elements [min, max]")
-        if len(self.dz) != 2:
-            raise ValueError("dz must have exactly 2 elements [min, max]")
+        for name, param in [("dx", self.dx), ("dy", self.dy), ("dz", self.dz)]:
+            if len(param) != 2:
+                raise ValueError(f"{name} must have exactly 2 elements [min, max], got {len(param)}")
+
         if len(self.grid_size) != 3:
-            raise ValueError("grid_size must have exactly 3 elements [nx, ny, nz]")
+            raise ValueError(f"grid_size must have exactly 3 elements [nx, ny, nz], got {len(self.grid_size)}")
+
         if any(n < 1 for n in self.grid_size):
-            raise ValueError("grid_size elements must be >= 1")
+            raise ValueError(f"grid_size elements must be >= 1, got {self.grid_size}")
 
     def generate_positions(self) -> List[Position3D]:
         """Generate regular grid positions."""
@@ -58,26 +64,15 @@ class RegularGrid(GridGenerator):
         dz_min, dz_max = self.dz
         nx, ny, nz = self.grid_size
 
-        # Handle single point cases
-        x_values = (
-            [self.center.x + dx_min]
-            if dx_min == dx_max or nx == 1
-            else np.linspace(self.center.x + dx_min, self.center.x + dx_max, nx)
-        )
-        y_values = (
-            [self.center.y + dy_min]
-            if dy_min == dy_max or ny == 1
-            else np.linspace(self.center.y + dy_min, self.center.y + dy_max, ny)
-        )
-        z_values = (
-            [self.center.z + dz_min]
-            if dz_min == dz_max or nz == 1
-            else np.linspace(self.center.z + dz_min, self.center.z + dz_max, nz)
-        )
+        x_values = _generate_axis_values(self.center.x, dx_min, dx_max, nx)
+        y_values = _generate_axis_values(self.center.y, dy_min, dy_max, ny)
+        z_values = _generate_axis_values(self.center.z, dz_min, dz_max, nz)
 
-        for x in x_values:
+        # For XZ plane: Z outer (slow), Y middle, X inner (fast)
+        # For XY plane: Y outer (slow), Z middle, X inner (fast)
+        for z in z_values:
             for y in y_values:
-                for z in z_values:
+                for x in x_values:
                     positions.append(Position3D(x, y, z))
 
         return positions
@@ -111,13 +106,13 @@ class RandomGrid(GridGenerator):
     def _validate_parameters(self):
         """Validate grid parameters."""
         if len(self.dx) != 2:
-            raise ValueError("dx must have exactly 2 elements [min, max]")
+            raise ValueError(f"dx must have exactly 2 elements [min, max], got {len(self.dx)} elements: {self.dx}")
         if len(self.dy) != 2:
-            raise ValueError("dy must have exactly 2 elements [min, max]")
+            raise ValueError(f"dy must have exactly 2 elements [min, max], got {len(self.dy)} elements: {self.dy}")
         if len(self.dz) != 2:
-            raise ValueError("dz must have exactly 2 elements [min, max]")
+            raise ValueError(f"dz must have exactly 2 elements [min, max], got {len(self.dz)} elements: {self.dz}")
         if self.num_points < 1:
-            raise ValueError("num_points must be >= 1")
+            raise ValueError(f"num_points must be >= 1, got {self.num_points}")
 
     def generate_positions(self) -> List[Position3D]:
         """Generate random positions."""
