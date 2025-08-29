@@ -53,8 +53,9 @@ class AlgorithmRanking:
         headers = ["Rank", "Algorithm", "Mean Error (°)", "Max Error (°)", "Std Error (°)", "Success Rate"]
         print(tabulate(data, headers=headers, tablefmt="grid"))
 
-        # Pairwise comparison tables
-        self._print_pairwise_comparisons()
+        # Pairwise comparison tables (only if data exists)
+        if self.pairwise_angular_diff:
+            self._print_pairwise_comparisons()
 
     def get_best_algorithm(self) -> str:
         """Return best algorithm name."""
@@ -120,7 +121,10 @@ class AlgorithmRanking:
 
 
 def compare_algorithms(
-    algorithms: Dict[str, EyeTracker], dataset: Dict, description: str = "Comparing algorithms"
+    algorithms: Dict[str, EyeTracker],
+    dataset: Dict,
+    description: str = "Comparing algorithms",
+    calculate_pairwise: bool = False,
 ) -> AlgorithmRanking:
     """Compare multiple algorithms on same dataset."""
 
@@ -144,10 +148,15 @@ def compare_algorithms(
     for i, algo in enumerate(failed_algos):
         rankings[algo] = len(sorted_algos) + i + 1
 
-    # Calculate pairwise comparisons
-    pairwise_angular_diff = _calculate_pairwise_angular_differences(results)
-    pairwise_cosine_sim = _calculate_pairwise_cosine_similarities(results)
-    pairwise_amplitude = _calculate_pairwise_amplitude_differences(results)
+    # Calculate pairwise comparisons (only if requested)
+    if calculate_pairwise:
+        pairwise_angular_diff = _calculate_pairwise_angular_differences(results)
+        pairwise_cosine_sim = _calculate_pairwise_cosine_similarities(results)
+        pairwise_amplitude = _calculate_pairwise_amplitude_differences(results)
+    else:
+        pairwise_angular_diff = {}
+        pairwise_cosine_sim = {}
+        pairwise_amplitude = {}
 
     return AlgorithmRanking(
         rankings=rankings,

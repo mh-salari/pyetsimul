@@ -2,8 +2,8 @@
 
 import math
 from typing import List, Iterable
-from ....types import Position3D
-from ..core import TargetVariation
+from ..types import Position3D
+from .core import TargetVariation
 from .grid_base import RegularGrid
 
 
@@ -16,9 +16,10 @@ class TargetPositionVariation(TargetVariation):
         super().__init__("target_position")
         self.grid = RegularGrid(center=grid_center, dx=dx, dy=dy, dz=dz, grid_size=grid_size)
 
-    @property
-    def description(self):
-        return f"{self.__class__.__name__} (grid_size={self.grid.grid_size})"
+    def describe(self) -> str:
+        """Return human-readable description of target position variation."""
+        total_targets = len(self)
+        return f"gaze targets across {total_targets} screen positions"
 
     def __len__(self) -> int:
         return math.prod(self.grid.grid_size)

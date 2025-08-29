@@ -3,7 +3,7 @@
 import numpy as np
 from abc import ABC, abstractmethod
 from typing import List, Iterable
-from ....types import Position3D
+from ..types import Position3D
 
 
 def _generate_axis_values(center_coord: float, min_offset: float, max_offset: float, num_points: int) -> np.ndarray:

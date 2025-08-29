@@ -2,7 +2,7 @@
 
 from abc import ABC, abstractmethod
 from typing import Any, Iterable, List
-from ...core import Eye
+from ..core import Eye
 
 
 class ParameterVariation(ABC):
@@ -19,6 +19,11 @@ class ParameterVariation(ABC):
     @abstractmethod
     def __len__(self) -> int:
         """Return the total number of variation values."""
+        pass
+
+    @abstractmethod
+    def describe(self) -> str:
+        """Return a human-readable description of this variation."""
         pass
 
 

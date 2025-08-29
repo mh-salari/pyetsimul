@@ -10,13 +10,16 @@ from pyetsimul.gaze_tracking_algorithms.interpolate import InterpolationTracker
 from pyetsimul.gaze_tracking_algorithms.interpolate.polynomials import list_available_polynomials
 from pyetsimul.evaluation.algorithm_comparison import compare_algorithms
 from pyetsimul.evaluation.calibration_analysis import accuracy_at_calibration_points
-from pyetsimul.experiment_framework.data_generation import DataGenerationStrategy
-from pyetsimul.experiment_framework.data_generation import ComposedVariation, ExperimentConfig
+from pyetsimul.simulation import DataGenerationStrategy
+from pyetsimul.simulation import ComposedVariation, ExperimentConfig
 from config import (
     create_eye_position_config,
     create_calibration_points,
     create_gaze_movement_config,
     create_pupil_size_config,
+    create_angle_kappa_config,
+    create_corneal_radius_config,
+    create_corneal_thickness_config,
 )
 
 
@@ -58,7 +61,7 @@ def load_cached_dataset(config, test_name):
     config.output_dir.mkdir(parents=True, exist_ok=True)
 
     # Sanitize test_name for use in a filename
-    safe_test_name = test_name.replace(" ", "_").lower()
+    safe_test_name = test_name.replace(" ", "_").replace("+", "").lower()
     cache_filename = f"{config.experiment_name}_{safe_test_name}_data.json"
     cache_path = config.output_dir / cache_filename
 
@@ -101,7 +104,7 @@ def generate_and_cache_dataset(config, test_name, use_cache=True):
     print("Generating new dataset...")
 
     # Sanitize test_name for use in a filename
-    safe_test_name = test_name.replace(" ", "_").lower()
+    safe_test_name = test_name.replace(" ", "_").replace("+", "").lower()
     experiment_name = f"{config.experiment_name}_{safe_test_name}"
 
     data_gen = DataGenerationStrategy(
@@ -134,7 +137,8 @@ def run_experiment(config, algorithms, test_name, use_cache=True):
 
     # Compare algorithms
     comparison = compare_algorithms(algorithms, dataset, test_name)
-    comparison.pprint(f"{test_name} - Algorithm Ranking")
+    description = config.variation.describe()
+    comparison.pprint(f"{description}")
 
     return comparison
 
@@ -177,17 +181,19 @@ def main():
         "Eye Position Variation": create_eye_position_config(),
         "Gaze Movement Variation": create_gaze_movement_config(),
         "Pupil Size Variation": create_pupil_size_config(),
-        "Composed Variation": create_composed_config(),
+        "Angle Kappa Variation": create_angle_kappa_config(),
+        "Corneal Radius Variation": create_corneal_radius_config(),
+        "Corneal Thickness Variation": create_corneal_thickness_config(),
+        # "Individual Differences": create_individual_differences_config(),
+        # "Observer + Individual": create_observer_individual_config(),
+        # "Corneal Shape Study": create_corneal_shape_config(),
+        # "Observer Movement + Gaze + Pupil": create_composed_config(),
     }
 
     print("Loaded experiment configurations:")
     for name, config in configs.items():
-        var_info = f"{config.variation.__class__.__name__}"
-        if hasattr(config.variation, "grid_size"):
-            var_info += f" ({config.variation.grid_size})"
-        elif hasattr(config.variation, "num_steps"):
-            var_info += f" ({config.variation.num_steps} steps)"
-        print(f"  - {name}: {var_info}")
+        description = config.variation.describe()
+        print(f"  - {name}: {description}")
 
     # Setup algorithms using first config (they all use same hardware)
     base_config = next(iter(configs.values()))

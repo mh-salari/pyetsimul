@@ -4,8 +4,8 @@ from dataclasses import dataclass, field
 from pathlib import Path
 from typing import List, Union, Optional
 
-from ...core import Eye, Camera, Light
-from ...types import Position3D
+from ..core import Eye, Camera, Light
+from ..types import Position3D
 from .core import ParameterVariation
 
 

@@ -6,7 +6,7 @@ Provides specialized plotting functionality for gaze accuracy analysis results.
 import numpy as np
 
 from .analysis_plots import plot_error_vectors_2d, plot_error_vectors_3d
-from ..experiment_framework.data_generation.core import TargetVariation
+from ..simulation.core import TargetVariation
 
 
 def detect_variation_plane(variation):

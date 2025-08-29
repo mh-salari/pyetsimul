@@ -38,12 +38,17 @@ class GazeAccuracyResult:
         print(f"Success rate: {self.successful_predictions}/{self.total_measurements} ({success_rate:.1f}%)")
 
         if self.successful_predictions > 0:
-            print(f"Maximum error {self.error_stats['mtr']['max'] * 1e3:.2f} mm")
-            print(f"Mean error {self.error_stats['mtr']['mean'] * 1e3:.2f} mm")
-            print(f"Standard deviation {self.error_stats['mtr']['std'] * 1e3:.2f} mm")
+            # Display both mm and degrees together
+            max_mm = self.error_stats["mtr"]["max"] * 1e3
+            max_deg = self.error_stats["deg"]["max"]
+            mean_mm = self.error_stats["mtr"]["mean"] * 1e3
+            mean_deg = self.error_stats["deg"]["mean"]
+            std_mm = self.error_stats["mtr"]["std"] * 1e3
+            std_deg = self.error_stats["deg"]["std"]
 
-            if not np.isnan(self.error_stats["deg"]["mean"]):
-                print(f"Mean angular error {self.error_stats['deg']['mean']:.2f}°")
+            print(f"Maximum error {max_mm:.2f} mm ({max_deg:.2f}°)")
+            print(f"Mean error {mean_mm:.2f} mm ({mean_deg:.2f}°)")
+            print(f"Standard deviation {std_mm:.2f} mm ({std_deg:.2f}°)")
         else:
             print("No successful predictions to analyze")
 

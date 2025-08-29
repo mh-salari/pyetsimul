@@ -1,11 +1,17 @@
 """Pure data generation for eye tracking simulation."""
 
 from .core import ParameterVariation, EyeParameterVariation, TargetVariation, VariationStrategy
-from .spatial.eye_position import EyePositionVariation
-from .spatial.target_position import TargetPositionVariation
-from .spatial.grid_base import GridGenerator, RegularGrid, RandomGrid
+from .eye_position import EyePositionVariation
+from .target_position import TargetPositionVariation
+from .grid_base import GridGenerator, RegularGrid, RandomGrid
 from .composed_variation import ComposedVariation, SequentialVariation
-from .physical.pupil_size import PupilSizeVariation
+from .generic import GenericEyeVariation
+from .anatomy import (
+    PupilSizeVariation,
+    AngleKappaVariation,
+    CorneaRadiusVariation,
+    CorneaThicknessVariation,
+)
 from .data_generation import DataGenerationStrategy
 from .config import (
     ExperimentConfig,
@@ -25,7 +31,11 @@ __all__ = [
     "RandomGrid",
     "ComposedVariation",
     "SequentialVariation",
+    "GenericEyeVariation",
     "PupilSizeVariation",
+    "AngleKappaVariation",
+    "CorneaRadiusVariation",
+    "CorneaThicknessVariation",
     "DataGenerationStrategy",
     "ExperimentConfig",
     "create_experiment_config",

@@ -40,6 +40,11 @@ class ComposedVariation(ParameterVariation):
         all_values = [(v.param_name, v.generate_values()) for v in self.variations]
         yield from self._generate_combinations(all_values, {}, 0)
 
+    def describe(self) -> str:
+        """Return a human-readable description of the composed variations."""
+        descriptions = [var.describe() for var in self.variations]
+        return f"Combined: {' + '.join(descriptions)}"
+
     def _generate_combinations(self, all_values, current_combo, index):
         """Recursively generate all combinations."""
         if index == len(all_values):
@@ -68,6 +73,11 @@ class SequentialVariation(ParameterVariation):
 
         if not variations:
             raise ValueError("Must provide at least one variation")
+
+    def describe(self) -> str:
+        """Return a human-readable description of the sequential variations."""
+        descriptions = [var.describe() for var in self.variations]
+        return f"Sequential: {' → '.join(descriptions)}"
 
     def __len__(self) -> int:
         """Return the total number of values (sum of lengths)."""

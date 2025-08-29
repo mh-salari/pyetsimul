@@ -6,8 +6,8 @@ import multiprocessing
 from pathlib import Path
 from typing import Dict, List, Any
 
-from ...core import Eye
-from ...types import Position3D
+from ..core import Eye
+from ..types import Position3D
 from .core import ParameterVariation, EyeParameterVariation, TargetVariation, VariationStrategy
 from .composed_variation import ComposedVariation, SequentialVariation
 

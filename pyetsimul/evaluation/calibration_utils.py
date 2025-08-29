@@ -19,7 +19,7 @@ def pprint_polynomial_parameters(et: EyeTracker) -> None:
         print(f"\nCalibration Parameters ({et.algorithm_name}):")
         print("-" * 40)
         if et.algorithm_state.is_calibrated:
-            print("Calibration status: ✓ Calibrated")
+            print("Calibration status: Calibrated")
             print("Algorithm: Geometric gaze estimation (non-polynomial)")
         else:
             print("Calibration status: ✗ Not calibrated")
