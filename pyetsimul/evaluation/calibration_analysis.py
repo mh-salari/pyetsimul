@@ -62,7 +62,6 @@ def accuracy_at_calibration_points(et: EyeTracker, eye: Eye, interactive_plot: b
         raise ValueError(
             "Eye tracker must be calibrated before running accuracy analysis. Call et.run_calibration(eye) first."
         )
-    print("Using existing calibration...")
 
     # Get calibration points and plane info
     calib_points = et.calib_points  # List[Position3D]

@@ -49,7 +49,7 @@ def create_eye_position_config():
         cameras=[camera],
         lights=[light],
         gaze_target=Position3D(0.0, 0.0, 200e-3),
-        output_dir=Path("examples/experiments/outputs"),
+        output_dir=Path(__file__).parent / "outputs",
     )
 
 
@@ -73,7 +73,7 @@ def create_gaze_movement_config():
         cameras=[camera],
         lights=[light],
         gaze_target=Position3D(0.0, 0.0, 200e-3),
-        output_dir=Path("examples/experiments/outputs"),
+        output_dir=Path(__file__).parent / "outputs",
     )
 
 
@@ -94,5 +94,5 @@ def create_pupil_size_config():
         cameras=[camera],
         lights=[light],
         gaze_target=Position3D(0.0, 0.0, 200e-3),
-        output_dir=Path("examples/experiments/outputs"),
+        output_dir=Path(__file__).parent / "outputs",
     )

@@ -1,7 +1,6 @@
 """Validate generated eye tracking data."""
 
 import json
-import sys
 from pathlib import Path
 from typing import Dict, Any, List
 from tqdm import tqdm
@@ -251,10 +250,7 @@ def main():
     print("Data Validation")
     print("=" * 30)
 
-    if len(sys.argv) > 1:
-        outputs_dir = Path(sys.argv[1])
-    else:
-        outputs_dir = Path("examples/experiments/outputs")
+    outputs_dir = Path(__file__).parent / "outputs"
 
     json_files = find_data_files(outputs_dir)
     if not json_files:

@@ -51,9 +51,9 @@ class GazeAccuracyResult:
 def evaluate_gaze_accuracy(
     eye_tracker: EyeTracker,
     dataset: Dict[str, Any],
+    description: str = "Evaluating gaze accuracy",
     camera_id: int = 0,
     eye_id: int = 0,
-    description: str = "Evaluating gaze accuracy",
 ) -> GazeAccuracyResult:
     """Evaluate gaze accuracy using pre-generated dataset.
 
@@ -127,7 +127,7 @@ def _process_measurements(
     observer_positions = []
     successful_predictions = 0
 
-    for measurement in tqdm(measurements, desc=description):
+    for measurement in tqdm(measurements, desc=description, leave=False):
         # Extract ground truth data
         ground_truth, eye_position = _extract_ground_truth_data(measurement)
         if ground_truth is None:
