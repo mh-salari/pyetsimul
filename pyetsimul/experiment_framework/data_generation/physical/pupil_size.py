@@ -1,7 +1,7 @@
 """Pupil size variations for eye tracking simulation."""
 
 import numpy as np
-from typing import List
+from typing import List, Iterable
 
 from ....core import Eye
 from ..core import EyeParameterVariation
@@ -32,14 +32,16 @@ class PupilSizeVariation(EyeParameterVariation):
     def description(self):
         return f"{self.__class__.__name__} ({self.num_steps} steps)"
 
-    def generate_values(self) -> List[float]:
+    def __len__(self) -> int:
+        return self.num_steps
+
+    def generate_values(self) -> Iterable[float]:
         """Generate pupil diameter values in meters."""
-        min_diameter, max_diameter = self.diameter_range
-
         if self.num_steps == 1:
-            return [(min_diameter + max_diameter) / 2]
+            yield (self.diameter_range[0] + self.diameter_range[1]) / 2
+            return
 
-        return list(np.linspace(min_diameter, max_diameter, self.num_steps))
+        yield from np.linspace(self.diameter_range[0], self.diameter_range[1], self.num_steps)
 
     def apply_to_eye(self, eye: Eye, value: float) -> None:
         """Apply pupil diameter to the eye."""

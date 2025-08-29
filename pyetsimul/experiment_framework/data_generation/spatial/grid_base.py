@@ -2,7 +2,7 @@
 
 import numpy as np
 from abc import ABC, abstractmethod
-from typing import List
+from typing import List, Iterable
 from ....types import Position3D
 
 
@@ -17,7 +17,7 @@ class GridGenerator(ABC):
     """Abstract base for 3D grid generation."""
 
     @abstractmethod
-    def generate_positions(self) -> List[Position3D]:
+    def generate_positions(self) -> Iterable[Position3D]:
         """Generate list of 3D positions."""
         pass
 
@@ -55,10 +55,8 @@ class RegularGrid(GridGenerator):
         if any(n < 1 for n in self.grid_size):
             raise ValueError(f"grid_size elements must be >= 1, got {self.grid_size}")
 
-    def generate_positions(self) -> List[Position3D]:
+    def generate_positions(self) -> Iterable[Position3D]:
         """Generate regular grid positions."""
-        positions = []
-
         dx_min, dx_max = self.dx
         dy_min, dy_max = self.dy
         dz_min, dz_max = self.dz
@@ -73,9 +71,7 @@ class RegularGrid(GridGenerator):
         for z in z_values:
             for y in y_values:
                 for x in x_values:
-                    positions.append(Position3D(x, y, z))
-
-        return positions
+                    yield Position3D(x, y, z)
 
 
 class RandomGrid(GridGenerator):
@@ -114,12 +110,11 @@ class RandomGrid(GridGenerator):
         if self.num_points < 1:
             raise ValueError(f"num_points must be >= 1, got {self.num_points}")
 
-    def generate_positions(self) -> List[Position3D]:
+    def generate_positions(self) -> Iterable[Position3D]:
         """Generate random positions."""
         if self.seed is not None:
             np.random.seed(self.seed)
 
-        positions = []
         dx_min, dx_max = self.dx
         dy_min, dy_max = self.dy
         dz_min, dz_max = self.dz
@@ -128,6 +123,4 @@ class RandomGrid(GridGenerator):
             x = self.center.x + np.random.uniform(dx_min, dx_max)
             y = self.center.y + np.random.uniform(dy_min, dy_max)
             z = self.center.z + np.random.uniform(dz_min, dz_max)
-            positions.append(Position3D(x, y, z))
-
-        return positions
+            yield Position3D(x, y, z)

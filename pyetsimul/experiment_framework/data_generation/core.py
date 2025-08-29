@@ -1,7 +1,7 @@
 """Core parameter variation architecture for pure data generation."""
 
 from abc import ABC, abstractmethod
-from typing import Any, List
+from typing import Any, Iterable, List
 from ...core import Eye
 
 
@@ -12,8 +12,13 @@ class ParameterVariation(ABC):
         self.param_name = param_name
 
     @abstractmethod
-    def generate_values(self) -> List[Any]:
+    def generate_values(self) -> Iterable[Any]:
         """Generate all values for this parameter variation."""
+        pass
+
+    @abstractmethod
+    def __len__(self) -> int:
+        """Return the total number of variation values."""
         pass
 
 

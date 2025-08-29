@@ -1,6 +1,7 @@
 """Composed parameter variations for complex experiment designs."""
 
-from typing import List, Any, Dict
+import math
+from typing import List, Any, Dict, Iterable
 from .core import ParameterVariation
 
 
@@ -25,30 +26,30 @@ class ComposedVariation(ParameterVariation):
         names = [v.__class__.__name__ for v in self.variations]
         return f"Composed({', '.join(names)})"
 
-    def generate_values(self) -> List[Dict[str, Any]]:
-        """Generate cartesian product of all variation values."""
-        # Get all individual variation values
-        all_values = []
-        for variation in self.variations:
-            values = variation.generate_values()
-            all_values.append((variation.param_name, values))
+    def __len__(self) -> int:
+        """Return the total number of combinations (Cartesian product)."""
+        if not self.variations:
+            return 0
+        return math.prod(len(v) for v in self.variations)
 
-        # Generate cartesian product
-        combinations = []
-        self._generate_combinations(all_values, {}, 0, combinations)
+    def generate_values(self) -> Iterable[Dict[str, Any]]:
+        """Generate Cartesian product of all variation values using a generator."""
+        if not self.variations:
+            return
 
-        return combinations
+        all_values = [(v.param_name, v.generate_values()) for v in self.variations]
+        yield from self._generate_combinations(all_values, {}, 0)
 
-    def _generate_combinations(self, all_values, current_combo, index, result):
+    def _generate_combinations(self, all_values, current_combo, index):
         """Recursively generate all combinations."""
         if index == len(all_values):
-            result.append(current_combo.copy())
+            yield current_combo.copy()
             return
 
         param_name, values = all_values[index]
         for value in values:
             current_combo[param_name] = value
-            self._generate_combinations(all_values, current_combo, index + 1, result)
+            yield from self._generate_combinations(all_values, current_combo, index + 1)
             del current_combo[param_name]
 
 
@@ -68,14 +69,13 @@ class SequentialVariation(ParameterVariation):
         if not variations:
             raise ValueError("Must provide at least one variation")
 
-    def generate_values(self) -> List[Dict[str, Any]]:
+    def __len__(self) -> int:
+        """Return the total number of values (sum of lengths)."""
+        return sum(len(v) for v in self.variations)
+
+    def generate_values(self) -> Iterable[Dict[str, Any]]:
         """Generate sequential values from all variations."""
-        all_combinations = []
-
         for i, variation in enumerate(self.variations):
-            values = variation.generate_values()
-            for value in values:
+            for value in variation.generate_values():
                 combination = {"variation_index": i, "variation_name": variation.param_name, "value": value}
-                all_combinations.append(combination)
-
-        return all_combinations
+                yield combination

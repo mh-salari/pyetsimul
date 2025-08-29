@@ -1,6 +1,7 @@
 """Eye 3D position variations."""
 
-from typing import List
+import math
+from typing import List, Iterable
 from ....types import Position3D
 from ..core import Eye
 from ..core import EyeParameterVariation
@@ -18,9 +19,12 @@ class EyePositionVariation(EyeParameterVariation):
     def description(self):
         return f"{self.__class__.__name__} (grid_size={self.grid.grid_size})"
 
-    def generate_values(self) -> List[Position3D]:
+    def __len__(self) -> int:
+        return math.prod(self.grid.grid_size)
+
+    def generate_values(self) -> Iterable[Position3D]:
         """Generate all eye positions using the grid system."""
-        return self.grid.generate_positions()
+        yield from self.grid.generate_positions()
 
     def apply_to_eye(self, eye: Eye, value: Position3D) -> None:
         """Set eye position to the specified location."""

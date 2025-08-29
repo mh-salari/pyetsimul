@@ -2,14 +2,46 @@
 
 import copy
 import json
+import multiprocessing
 from pathlib import Path
 from typing import Dict, List, Any
-from tqdm import tqdm
 
 from ...core import Eye
 from ...types import Position3D
 from .core import ParameterVariation, EyeParameterVariation, TargetVariation, VariationStrategy
 from .composed_variation import ComposedVariation, SequentialVariation
+
+
+def _process_single_variation(args):
+    """Processes a single variation, designed to be called in parallel from DataGenerationStrategy."""
+    (
+        eye,
+        variation,
+        camera,
+        lights,
+        value,
+        index,
+        gaze_target,
+        use_legacy_look_at,
+        use_refraction,
+    ) = args
+
+    eye_copy = copy.deepcopy(eye)
+
+    # This re-instantiates a minimal strategy object inside the worker process
+    # to avoid pickling the entire parent object.
+    strategy = DataGenerationStrategy(
+        [camera],
+        lights,
+        gaze_target,
+        use_legacy_look_at=use_legacy_look_at,
+        use_refraction=use_refraction,
+        save_to_file=False,  # Avoid child processes trying to save
+    )
+
+    current_gaze_target = strategy._apply_parameter_variation(eye_copy, variation, value)
+    measurement = strategy._generate_single_measurement(eye_copy, camera, value, index, current_gaze_target)
+    return measurement
 
 
 class DataGenerationStrategy(VariationStrategy):
@@ -38,7 +70,6 @@ class DataGenerationStrategy(VariationStrategy):
     def execute(self, eyes: list, variation: ParameterVariation) -> Dict[str, Any]:
         """Generate eye tracking data: camera → eye → parameter variations."""
 
-        values = variation.generate_values()
         all_data = {
             "experiment_metadata": self._get_experiment_metadata(variation),
             "setup_configuration": self._get_setup_configuration(eyes),
@@ -46,8 +77,7 @@ class DataGenerationStrategy(VariationStrategy):
         }
         total_measurements = 0
 
-        # The main loop iterates through cameras, then eyes, then parameter variations.
-        for camera_idx, camera in enumerate(tqdm(self.cameras, desc="Processing cameras", position=0, leave=False)):
+        for camera_idx, camera in enumerate(self.cameras):
             camera_data = {
                 "camera_id": camera_idx,
                 "camera_name": getattr(camera, "name", f"Camera {camera_idx + 1}"),
@@ -55,7 +85,8 @@ class DataGenerationStrategy(VariationStrategy):
                 "eyes": [],
             }
 
-            for eye_idx, eye in enumerate(tqdm(eyes, desc=f"Camera {camera_idx + 1} eyes", position=1, leave=False)):
+            for eye_idx, eye in enumerate(eyes):
+                print(f"Processing Camera {camera_idx + 1}/{len(self.cameras)}, Eye {eye_idx + 1}/{len(eyes)}...")
                 eye_data = {
                     "eye_id": eye_idx,
                     "eye_name": f"Eye {eye_idx + 1}",
@@ -63,21 +94,28 @@ class DataGenerationStrategy(VariationStrategy):
                     "measurements": [],
                 }
 
-                # Process all parameter variations for this camera-eye combination.
-                # For each value in the variation, a new measurement is generated.
-                for i, value in enumerate(
-                    tqdm(values, desc=f"Camera {camera_idx + 1} Eye {eye_idx + 1} variations", position=2, leave=False)
-                ):
-                    # A deep copy of the eye is created for each measurement to ensure a stateless starting point.
-                    eye_copy = copy.deepcopy(eye)
+                # Prepare arguments for parallel processing
+                tasks = [
+                    (
+                        eye,
+                        variation,
+                        camera,
+                        self.lights,
+                        value,
+                        i,
+                        self.gaze_target,
+                        self.use_legacy_look_at,
+                        self.use_refraction,
+                    )
+                    for i, value in enumerate(variation.generate_values())
+                ]
 
-                    current_gaze_target = self._apply_parameter_variation(eye_copy, variation, value)
+                # Use multiprocessing Pool to parallelize the generation of measurements
+                with multiprocessing.Pool() as pool:
+                    results = pool.map(_process_single_variation, tasks)
 
-                    # Generate and store the measurement for the current configuration.
-                    measurement = self._generate_single_measurement(eye_copy, camera, value, i, current_gaze_target)
-                    eye_data["measurements"].append(measurement)
-                    total_measurements += 1
-
+                eye_data["measurements"] = results
+                total_measurements += len(results)
                 camera_data["eyes"].append(eye_data)
 
             all_data["cameras"].append(camera_data)
@@ -87,7 +125,7 @@ class DataGenerationStrategy(VariationStrategy):
         if self.save_to_file:
             saved_files = self._save_data(all_data, variation.param_name, self.experiment_name)
         else:
-            print("Data generated but not saved (save_to_file=False).")
+            print("Dataset generated but not saved (save_to_file=False).")
 
         return {
             "total_measurements": total_measurements,
@@ -248,7 +286,7 @@ class DataGenerationStrategy(VariationStrategy):
         return {
             "experiment_name": self.experiment_name,
             "parameter_variation": variation.param_name,
-            "total_parameter_values": len(variation.generate_values()),
+            "total_parameter_values": len(variation),
             "gaze_target": self.gaze_target.serialize() if self.gaze_target else None,
             "num_cameras": len(self.cameras),
             "num_lights": len(self.lights),
