@@ -1,52 +1,42 @@
-"""Algorithm comparison experiment using configuration system.
+"""Algorithm comparison experiment using shared configuration."""
 
-Compares multiple eye tracking algorithms on identical datasets using the experiment
-framework configurations. Tests algorithm performance across different variations.
-Supports caching/loading of experiment data to avoid regeneration.
-"""
-
-import json
 from pyetsimul.gaze_tracking_algorithms.interpolate import InterpolationTracker
 from pyetsimul.gaze_tracking_algorithms.interpolate.polynomials import list_available_polynomials
 from pyetsimul.evaluation.algorithm_comparison import compare_algorithms
 from pyetsimul.evaluation.calibration_analysis import accuracy_at_calibration_points
 from pyetsimul.simulation import DataGenerationStrategy
-from pyetsimul.simulation import ComposedVariation, ExperimentConfig
+from pyetsimul.simulation.data_loading import load_experiment_data
 from config import (
-    create_eye_position_config,
-    create_calibration_points,
-    create_gaze_movement_config,
-    create_pupil_size_config,
-    create_angle_kappa_config,
-    create_corneal_radius_config,
-    create_corneal_thickness_config,
+    create_experiment_config,
+    calibration_points,
+    eye_position_variation,
+    target_position_variation,
+    pupil_size_variation,
+    angle_kappa_variation,
+    corneal_radius_variation,
+    corneal_thickness_variation,
 )
 
 
-def setup_algorithms(config):
-    """Setup and calibrate all available algorithms using experiment config."""
-    calib_points = create_calibration_points()
+def setup_algorithms():
+    """Setup and calibrate all available algorithms."""
+    base_config = create_experiment_config("base")
     available_methods = list_available_polynomials()
-
     algorithms = {}
+
     print(f"\nCalibrating {len(available_methods)} algorithms:")
 
     for method in available_methods:
-        # Create algorithm using config hardware
         algorithm = InterpolationTracker.create(
-            cameras=config.cameras, lights=config.lights, calib_points=calib_points, polynomial=method
+            cameras=base_config.cameras, lights=base_config.lights, calib_points=calibration_points, polynomial=method
         )
         algorithm.use_legacy_look_at = True
+        algorithm.run_calibration(base_config.eyes[0])
 
-        # Calibrate using first eye from config
-        algorithm.run_calibration(config.eyes[0])
-
-        # Use polynomial name as display name
         display_name = algorithm.polynomial_name.replace("_", " ").title()
         print(f"  - {display_name}...")
 
-        # Verify calibration
-        calib_results = accuracy_at_calibration_points(algorithm, eye=config.eyes[0], interactive_plot=False)
+        calib_results = accuracy_at_calibration_points(algorithm, eye=base_config.eyes[0], interactive_plot=False)
         mean_error = calib_results.errors["deg"]["mean"]
         print(f"    Calibration accuracy: {mean_error:.3f}°")
 
@@ -55,69 +45,31 @@ def setup_algorithms(config):
     return algorithms
 
 
-def load_cached_dataset(config, test_name):
-    """Load cached dataset if it exists."""
-    # Ensure output directory exists
-    config.output_dir.mkdir(parents=True, exist_ok=True)
-
-    # Sanitize test_name for use in a filename
-    safe_test_name = test_name.replace(" ", "_").replace("+", "").lower()
-    cache_filename = f"{config.experiment_name}_{safe_test_name}_data.json"
-    cache_path = config.output_dir / cache_filename
-
-    print(f"Looking for cached dataset: {cache_path}")
-
-    if cache_path.exists():
-        print(f"Found cached dataset: {cache_path}")
-        try:
-            with open(cache_path, "r") as f:
-                cached_data = json.load(f)
-
-            # Create dataset structure expected by compare_algorithms
-            # The JSON contains the raw experiment data, so we need to wrap it
-            total_measurements = cached_data.get("experiment_metadata", {}).get("total_parameter_values", 0)
-            dataset = {
-                "total_measurements": total_measurements,
-                "data": cached_data,
-                "parameter_name": cached_data.get("experiment_metadata", {}).get("parameter_variation", ""),
-                "saved_files": [str(cache_path)],
-            }
-            print(f"Loaded cached dataset with {total_measurements} measurements")
-            return dataset
-        except (json.JSONDecodeError, KeyError) as e:
-            print(f"Warning: Failed to load cached data ({e}), will regenerate")
-            return None
-    else:
-        print(f"No cached dataset found at: {cache_path}")
-        return None
-
-
-def generate_and_cache_dataset(config, test_name, use_cache=True):
+def generate_dataset(config, variation, use_cache=True):
     """Generate dataset and optionally cache it."""
-    # Try to load cached data first if use_cache is True
     if use_cache:
-        cached_dataset = load_cached_dataset(config, test_name)
-        if cached_dataset is not None:
+        try:
+            cached_dataset = load_experiment_data(config.experiment_name, config.output_dir)
+            total_measurements = cached_dataset["total_measurements"]
+            print(f"Loaded cached dataset with {total_measurements} measurements")
             return cached_dataset
+        except FileNotFoundError:
+            print(f"No cached dataset found for experiment '{config.experiment_name}'")
 
-    # Generate new dataset
     print("Generating new dataset...")
 
-    # Sanitize test_name for use in a filename
-    safe_test_name = test_name.replace(" ", "_").replace("+", "").lower()
-    experiment_name = f"{config.experiment_name}_{safe_test_name}"
-
     data_gen = DataGenerationStrategy(
+        eyes=config.eyes,
         cameras=config.cameras,
         lights=config.lights,
         gaze_target=config.gaze_target,
-        output_dir=config.output_dir,  # Use config's output directory
-        experiment_name=experiment_name,  # Use unique name for this run
-        save_to_file=use_cache,  # Save to file if caching is enabled
+        output_dir=config.output_dir,
+        experiment_name=config.experiment_name,
+        save_to_file=use_cache,
         use_legacy_look_at=True,
     )
 
-    dataset = data_gen.execute(config.eyes, config.variation)
+    dataset = data_gen.execute(variation)
     print(f"Generated {dataset['total_measurements']} measurements")
 
     if use_cache:
@@ -126,45 +78,18 @@ def generate_and_cache_dataset(config, test_name, use_cache=True):
     return dataset
 
 
-def run_experiment(config, algorithms, test_name, use_cache=True):
-    """Run algorithm comparison on a specific experiment configuration."""
+def run_experiment(config, variation, algorithms, use_cache=True):
+    """Run algorithm comparison on a specific variation."""
     print("\n" + "=" * 60)
-    print(f"TEST: {test_name.upper()}")
+    print(f"TEST: {config.experiment_name.upper()}")
     print("=" * 60)
 
-    # Load or generate dataset
-    dataset = generate_and_cache_dataset(config, test_name, use_cache)
-
-    # Compare algorithms
-    comparison = compare_algorithms(algorithms, dataset, test_name)
-    description = config.variation.describe()
+    dataset = generate_dataset(config, variation, use_cache)
+    comparison = compare_algorithms(algorithms, dataset, config.experiment_name)
+    description = variation.describe()
     comparison.pprint(f"{description}")
 
     return comparison
-
-
-def create_composed_config():
-    """Create composed variation using existing config variations."""
-    base_config = create_eye_position_config()
-
-    # Get variations from existing configs
-    eye_pos_var = create_eye_position_config().variation
-    gaze_mov_var = create_gaze_movement_config().variation
-    pupil_size_var = create_pupil_size_config().variation
-
-    composed = ComposedVariation(
-        variations=[eye_pos_var, gaze_mov_var, pupil_size_var], param_name="eye_pos_gaze_pupil_composed"
-    )
-
-    return ExperimentConfig(
-        experiment_name="composed_variation",
-        variation=composed,
-        eyes=base_config.eyes,
-        cameras=base_config.cameras,
-        lights=base_config.lights,
-        gaze_target=base_config.gaze_target,
-        output_dir=base_config.output_dir,
-    )
 
 
 def main():
@@ -176,33 +101,28 @@ def main():
     print(f"Dataset Caching: {use_cache}")
     print("=" * 80)
 
-    # Load experiment configurations
-    configs = {
-        "Eye Position Variation": create_eye_position_config(),
-        "Gaze Movement Variation": create_gaze_movement_config(),
-        "Pupil Size Variation": create_pupil_size_config(),
-        "Angle Kappa Variation": create_angle_kappa_config(),
-        "Corneal Radius Variation": create_corneal_radius_config(),
-        "Corneal Thickness Variation": create_corneal_thickness_config(),
-        # "Individual Differences": create_individual_differences_config(),
-        # "Observer + Individual": create_observer_individual_config(),
-        # "Corneal Shape Study": create_corneal_shape_config(),
-        # "Observer Movement + Gaze + Pupil": create_composed_config(),
+    # Define experiments to run
+    experiments = {
+        "Eye Position Variation": eye_position_variation,
+        "Target Position Variation": target_position_variation,
+        "Pupil Size Variation": pupil_size_variation,
+        "Angle Kappa Variation": angle_kappa_variation,
+        "Corneal Radius Variation": corneal_radius_variation,
+        "Corneal Thickness Variation": corneal_thickness_variation,
     }
 
     print("Loaded experiment configurations:")
-    for name, config in configs.items():
-        description = config.variation.describe()
+    for name, variation in experiments.items():
+        config = create_experiment_config(name)
+        description = variation.describe()
         print(f"  - {name}: {description}")
 
-    # Setup algorithms using first config (they all use same hardware)
-    base_config = next(iter(configs.values()))
-    algorithms = setup_algorithms(base_config)
+    algorithms = setup_algorithms()
 
-    # Run comparisons on each configuration
     results = {}
-    for test_name, config in configs.items():
-        results[test_name] = run_experiment(config, algorithms, test_name, use_cache)
+    for experiment_name, variation in experiments.items():
+        config = create_experiment_config(experiment_name)
+        results[experiment_name] = run_experiment(config, variation, algorithms, use_cache)
 
 
 if __name__ == "__main__":

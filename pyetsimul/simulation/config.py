@@ -6,7 +6,6 @@ from typing import List, Union, Optional
 
 from ..core import Eye, Camera, Light
 from ..types import Position3D
-from .core import ParameterVariation
 
 
 @dataclass
@@ -15,7 +14,6 @@ class ExperimentConfig:
 
     # Required experiment metadata
     experiment_name: str
-    variation: ParameterVariation
 
     # Required hardware setup
     eyes: List[Eye]
@@ -36,17 +34,6 @@ class ExperimentConfig:
             raise ValueError("Must specify at least one camera")
         if not self.lights:
             raise ValueError("Must specify at least one light")
-        if self.variation is None:
-            raise ValueError("Must specify a parameter variation")
-
-    @property
-    def experiment_type(self) -> str:
-        """Get experiment type from the variation."""
-        return f"{self.variation.param_name}_variation"
-
-    def get_variation(self) -> ParameterVariation:
-        """Get the parameter variation object."""
-        return self.variation
 
     def get_gaze_target(self) -> Optional[Position3D]:
         """Get the gaze target if specified."""
@@ -56,7 +43,6 @@ class ExperimentConfig:
 # Helper factory functions for common setups
 def create_experiment_config(
     experiment_name: str,
-    variation: ParameterVariation,
     eyes: List[Eye],
     cameras: List[Camera],
     lights: List[Light],
@@ -66,7 +52,6 @@ def create_experiment_config(
     """Create experiment configuration with validation."""
     return ExperimentConfig(
         experiment_name=experiment_name,
-        variation=variation,
         eyes=eyes,
         cameras=cameras,
         lights=lights,

@@ -10,6 +10,7 @@ from ..core import Eye
 from ..types import Position3D
 from .core import ParameterVariation, EyeParameterVariation, TargetVariation, VariationStrategy
 from .composed_variation import ComposedVariation, SequentialVariation
+from ..utils.filename import sanitize_filename
 
 
 def _process_single_variation(args):
@@ -31,9 +32,11 @@ def _process_single_variation(args):
     # This re-instantiates a minimal strategy object inside the worker process
     # to avoid pickling the entire parent object.
     strategy = DataGenerationStrategy(
-        [camera],
-        lights,
-        gaze_target,
+        eyes=[eye_copy],  # Include the eye copy in the strategy
+        cameras=[camera],
+        lights=lights,
+        experiment_name="worker",
+        gaze_target=gaze_target,
         use_legacy_look_at=use_legacy_look_at,
         use_refraction=use_refraction,
         save_to_file=False,  # Avoid child processes trying to save
@@ -45,34 +48,84 @@ def _process_single_variation(args):
 
 
 class DataGenerationStrategy(VariationStrategy):
-    """Generates and saves eye tracking data across parameter variations."""
+    """Generates eye tracking data across parameter variations.
+
+    This class encapsulates a complete experimental setup (eyes + hardware) and can
+    generate datasets by applying different parameter variations to the same setup.
+
+    Design Philosophy:
+    - Eyes are part of the experimental setup (biological configuration)
+    - Cameras/lights define the hardware configuration
+    - Variations are the experimental parameters to test
+    - The same setup can be reused to test multiple variations efficiently
+
+    Example Usage:
+        # Create strategy with complete setup
+        strategy = DataGenerationStrategy(
+            eyes=[eye],
+            cameras=[camera],
+            lights=[light],
+            gaze_target=Position3D(0, 0, 200e-3)
+        )
+
+        # Test multiple parameter variations on same setup
+        pupil_data = strategy.execute(PupilSizeVariation([3e-3, 7e-3], 10))
+        kappa_data = strategy.execute(AngleKappaVariation([4, 8], [1, 3], 10))
+        radius_data = strategy.execute(CorneaRadiusVariation([7.5e-3, 8.5e-3], 10))
+    """
 
     def __init__(
         self,
+        eyes: list,
         cameras: list,
         lights: list,
+        experiment_name: str,
         gaze_target: Position3D = None,
         output_dir: str = "output",
-        experiment_name: str = None,
         save_to_file: bool = True,
         use_legacy_look_at: bool = False,
         use_refraction: bool = True,
     ):
+        """Initialize data generation strategy with complete experimental setup.
+
+        Args:
+            eyes: List of Eye objects to use in experiments
+            cameras: List of Camera objects for data capture
+            lights: List of Light objects for corneal reflections
+            gaze_target: Fixed target position (None allows variation-specific targets)
+            output_dir: Directory to save generated datasets
+            experiment_name: Base name for experiment files
+            save_to_file: Whether to save datasets to disk
+            use_legacy_look_at: Use legacy eye rotation method for compatibility
+            use_refraction: Enable corneal refraction in image capture
+        """
+        self.eyes = eyes
         self.cameras = cameras
         self.lights = lights
-        self.gaze_target = gaze_target  # Fixed gaze target for eye position variations
+        self.gaze_target = gaze_target
         self.output_dir = Path(output_dir)
         self.experiment_name = experiment_name
+
+        # Auto-generate safe experiment name for file operations
+        self.safe_experiment_name = sanitize_filename(experiment_name)
+
         self.save_to_file = save_to_file
         self.use_legacy_look_at = use_legacy_look_at
         self.use_refraction = use_refraction
 
-    def execute(self, eyes: list, variation: ParameterVariation) -> Dict[str, Any]:
-        """Generate eye tracking data: camera → eye → parameter variations."""
+    def execute(self, variation: ParameterVariation) -> Dict[str, Any]:
+        """Generate eye tracking data using the configured setup and given variation.
+
+        Args:
+            variation: Parameter variation to apply across the experimental setup
+
+        Returns:
+            Dictionary containing generated dataset with measurements and metadata
+        """
 
         all_data = {
             "experiment_metadata": self._get_experiment_metadata(variation),
-            "setup_configuration": self._get_setup_configuration(eyes),
+            "setup_configuration": self._get_setup_configuration(self.eyes),
             "cameras": [],
         }
         total_measurements = 0
@@ -85,8 +138,8 @@ class DataGenerationStrategy(VariationStrategy):
                 "eyes": [],
             }
 
-            for eye_idx, eye in enumerate(eyes):
-                print(f"Processing Camera {camera_idx + 1}/{len(self.cameras)}, Eye {eye_idx + 1}/{len(eyes)}...")
+            for eye_idx, eye in enumerate(self.eyes):
+                print(f"Processing Camera {camera_idx + 1}/{len(self.cameras)}, Eye {eye_idx + 1}/{len(self.eyes)}...")
                 eye_data = {
                     "eye_id": eye_idx,
                     "eye_name": f"Eye {eye_idx + 1}",
@@ -123,7 +176,7 @@ class DataGenerationStrategy(VariationStrategy):
         # Save the collected data to a file (if requested).
         saved_files = []
         if self.save_to_file:
-            saved_files = self._save_data(all_data, variation.param_name, self.experiment_name)
+            saved_files = self._save_data(all_data, variation.param_name, self.safe_experiment_name)
         else:
             print("Dataset generated but not saved (save_to_file=False).")
 
