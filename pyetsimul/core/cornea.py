@@ -524,6 +524,34 @@ class ConicCornea(Cornea):
             camera_pos, object_pos, world_center, self.anterior_radius, self.anterior_k, n_outside, n_cornea
         )
 
+    def serialize(self) -> dict:
+        """Serialize to dictionary representation."""
+        return {
+            "cornea_type": self.cornea_type,
+            "center": self.center.serialize() if self.center else None,
+            "anterior_radius": float(self.anterior_radius),
+            "anterior_k": float(self.anterior_k),
+            "posterior_radius": float(self.posterior_radius),
+            "posterior_k": float(self.posterior_k),
+            "refractive_index": float(self.refractive_index),
+            "thickness_offset": float(self.thickness_offset),
+        }
+
+    @classmethod
+    def deserialize(cls, data: dict) -> "ConicCornea":
+        """Deserialize from dictionary representation."""
+        cornea = cls(
+            anterior_radius=data["anterior_radius"],
+            anterior_k=data["anterior_k"],
+            posterior_radius=data["posterior_radius"],
+            posterior_k=data["posterior_k"],
+            refractive_index=data["refractive_index"],
+            thickness_offset=data["thickness_offset"],
+        )
+        if data["center"]:
+            cornea.center = Position3D.deserialize(data["center"])
+        return cornea
+
 
 def create_cornea(cornea_model_type: str, center: Position3D, **kwargs) -> Cornea:
     """Factory function to create a cornea object of specified type.
