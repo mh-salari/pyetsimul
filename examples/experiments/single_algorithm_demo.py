@@ -41,21 +41,23 @@ def main():
     calib_results = accuracy_at_calibration_points(et, eye=base_config.eyes[0])
     calib_results.pprint("Calibration Test Summary")
 
-    print("\n2. Testing over screen (target position variation):")
-    print("-" * 60)
-
-    screen_data_gen = DataGenerationStrategy(
+    # Single reusable strategy for all tests
+    data_gen = DataGenerationStrategy(
         eyes=base_config.eyes,
         cameras=base_config.cameras,
         lights=base_config.lights,
         gaze_target=base_config.gaze_target,
-        experiment_name="screen_test",
+        experiment_name="base",
         save_to_file=False,
         use_legacy_look_at=et.use_legacy_look_at,
         use_refraction=et.use_refraction,
     )
 
-    screen_dataset = screen_data_gen.execute(target_position_variation)
+    print("\n2. Testing over screen (target position variation):")
+    print("-" * 60)
+
+    data_gen.set_experiment_name("screen_test")
+    screen_dataset = data_gen.execute(target_position_variation)
     screen_results = evaluate_gaze_accuracy(
         eye_tracker=et, dataset=screen_dataset, description="Evaluating screen test data"
     )
@@ -71,18 +73,8 @@ def main():
     print("\n3. Testing over observer (eye position movement):")
     print("-" * 60)
 
-    observer_data_gen = DataGenerationStrategy(
-        eyes=base_config.eyes,
-        cameras=base_config.cameras,
-        lights=base_config.lights,
-        gaze_target=base_config.gaze_target,
-        experiment_name="observer_test",
-        save_to_file=False,
-        use_legacy_look_at=et.use_legacy_look_at,
-        use_refraction=et.use_refraction,
-    )
-
-    observer_dataset = observer_data_gen.execute(eye_position_variation)
+    data_gen.set_experiment_name("observer_test")
+    observer_dataset = data_gen.execute(eye_position_variation)
     observer_results = evaluate_gaze_accuracy(
         eye_tracker=et, dataset=observer_dataset, description="Evaluating observer test data"
     )
@@ -97,18 +89,6 @@ def main():
     print("\n4. Testing multiple anatomical variations:")
     print("-" * 60)
 
-    # Single strategy with shared hardware setup
-    shared_strategy = DataGenerationStrategy(
-        eyes=base_config.eyes,
-        cameras=base_config.cameras,
-        lights=base_config.lights,
-        gaze_target=base_config.gaze_target,
-        experiment_name="reuse_demo",
-        save_to_file=False,
-        use_legacy_look_at=et.use_legacy_look_at,
-        use_refraction=et.use_refraction,
-    )
-
     # Test multiple variations with the same strategy
     variations = {
         "Pupil Size": pupil_size_variation,
@@ -120,7 +100,8 @@ def main():
         print(f"\n    {test_name} Test:")
         print("    " + "-" * 30)
 
-        test_dataset = shared_strategy.execute(variation)
+        data_gen.set_experiment_name(f"{test_name.lower().replace(' ', '_')}_test")
+        test_dataset = data_gen.execute(variation)
         test_results = evaluate_gaze_accuracy(
             eye_tracker=et, dataset=test_dataset, description=f"Evaluating {test_name.lower()} variation data"
         )

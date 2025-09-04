@@ -113,6 +113,15 @@ class DataGenerationStrategy(VariationStrategy):
         self.use_legacy_look_at = use_legacy_look_at
         self.use_refraction = use_refraction
 
+    def set_experiment_name(self, experiment_name: str):
+        """Update the experiment name for subsequent operations.
+
+        Args:
+            experiment_name: New experiment name for metadata and file operations
+        """
+        self.experiment_name = experiment_name
+        self.safe_experiment_name = sanitize_filename(experiment_name)
+
     def execute(self, variation: ParameterVariation) -> Dict[str, Any]:
         """Generate eye tracking data using the configured setup and given variation.
 
