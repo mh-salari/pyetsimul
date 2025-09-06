@@ -4,7 +4,7 @@ Implements Snell's law, ray-surface intersection, and optimization for refractio
 """
 
 import numpy as np
-from typing import Optional, Tuple
+from typing import Optional, Tuple, cast
 from scipy.optimize import brentq
 from ..types import Point3D, Ray, IntersectionResult, Position3D, Vector3D
 from ..geometry.intersections import intersect_ray_sphere, intersect_ray_conic, conic_surface_normal
@@ -89,7 +89,7 @@ def find_refraction_sphere(
         Position on sphere surface where refraction occurs, or None if not found.
     """
     try:
-        a = brentq(
+        alpha = brentq(
             lambda x: _refraction_objective_sphere(
                 x, camera_pos, object_pos, sphere_center, sphere_radius, n_outside, n_sphere
             )[0],
@@ -97,7 +97,7 @@ def find_refraction_sphere(
             1,
         )
         _, result = _refraction_objective_sphere(
-            a, camera_pos, object_pos, sphere_center, sphere_radius, n_outside, n_sphere
+            cast(float,alpha), camera_pos, object_pos, sphere_center, sphere_radius, n_outside, n_sphere
         )
         return result
     except (ValueError, RuntimeError):
@@ -228,7 +228,7 @@ def find_refraction_conic(
             upper_bound,
         )
         _, intersection = _refraction_objective_conic(
-            alpha, camera_pos, object_pos, conic_center, radius, conic_constant, n_outside, n_conic
+            cast(float,alpha), camera_pos, object_pos, conic_center, radius, conic_constant, n_outside, n_conic
         )
         return intersection
     except (ValueError, RuntimeError):
@@ -261,7 +261,7 @@ def refract_ray_sphere(
     if intersection_result is None or not intersection_result.intersects:
         return None, None
 
-    intersection_point = intersection_result.point
+    intersection_point = cast(Point3D,intersection_result.point)
 
     # Find surface normal at point of intersection (pointing inwards)
     normal_vec = (sphere_center.to_point3d() - intersection_point).normalize()
@@ -314,7 +314,7 @@ def refract_ray_conic(
     if intersection_result is None or not intersection_result.intersects:
         return None, None
 
-    intersection_point = intersection_result.point
+    intersection_point = cast(Point3D,intersection_result.point)
 
     # Calculate surface normal at intersection point
     surface_normal = conic_surface_normal(intersection_point, conic_center, radius, conic_constant)
@@ -344,8 +344,8 @@ def refract_ray_conic(
 
 
 def refract_ray_dual_surface(
-    eye, ray_origin: Position3D, ray_direction: Vector3D
-) -> Tuple[Optional[Position3D], Optional[Position3D], Optional[Vector3D]]:
+    eye, ray_origin: Point3D, ray_direction: Vector3D
+) -> Tuple[Optional[Point3D], Optional[Point3D], Optional[Vector3D]]:
     """Computes refraction through both anterior and posterior corneal surfaces.
 
     Models complete corneal optical path by calculating refraction at both:
