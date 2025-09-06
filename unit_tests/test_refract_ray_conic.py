@@ -1,14 +1,14 @@
 """Unit tests for refract_ray_conic function."""
 
 from pyetsimul.optics.refractions import refract_ray_sphere, refract_ray_conic
-from pyetsimul.types import Ray, Point3D, Vector3D, Position3D
+from pyetsimul.types import Ray, Point3D, Direction3D, Position3D
 
 
 def test_conic_equals_sphere_refraction():
     """Test conic refraction with k=0 gives sphere behavior."""
     # Off-axis ray for realistic refraction
     ray_origin = Point3D(-1.0, 0.5, -2.0)
-    ray_direction = Vector3D(0.2, -0.1, 1.0).normalize()
+    ray_direction = Direction3D(0.2, -0.1, 1.0).normalize()
     ray = Ray(origin=ray_origin, direction=ray_direction)
 
     radius = 1.0

@@ -2,14 +2,14 @@
 
 import numpy as np
 from pyetsimul.geometry.intersections import intersect_ray_circle
-from pyetsimul.types import Ray, Point3D, Vector3D, IntersectionResult
+from pyetsimul.types import Ray, Point3D, Direction3D, IntersectionResult
 
 
 def test_normal_intersection():
     """Test ray intersecting circle with MATLAB reference values."""
     # Ray hitting circle from below (returns closest intersection)
     ray_origin = Point3D(0.0, -2.0, 0.0)  # Ray origin (z=0 for 2D context)
-    ray_direction = Vector3D(0.0, 1.0, 0.0)  # Ray direction (z=0 for 2D context)
+    ray_direction = Direction3D(0.0, 1.0, 0.0)  # Ray direction (z=0 for 2D context)
     ray = Ray(ray_origin, ray_direction)
     circle_center = Point3D(0.0, 0.0, 0.0)  # Circle center (z=0 for 2D context)
     circle_radius = 1.0  # Circle radius
@@ -27,7 +27,7 @@ def test_tangent_intersection():
     """Test ray tangent to circle with MATLAB reference values."""
     # Ray just touching circle surface
     ray_origin = Point3D(1.0, -2.0, 0.0)  # Ray origin
-    ray_direction = Vector3D(0.0, 1.0, 0.0)  # Ray direction
+    ray_direction = Direction3D(0.0, 1.0, 0.0)  # Ray direction
     ray = Ray(ray_origin, ray_direction)
     circle_center = Point3D(0.0, 0.0, 0.0)  # Circle center
     circle_radius = 1.0  # Circle radius
@@ -45,7 +45,7 @@ def test_ray_missing_circle():
     """Test ray that misses circle - should return None."""
     # Ray misses circle completely
     ray_origin = Point3D(2.0, -2.0, 0.0)  # Ray origin
-    ray_direction = Vector3D(0.0, 1.0, 0.0)  # Ray direction
+    ray_direction = Direction3D(0.0, 1.0, 0.0)  # Ray direction
     ray = Ray(ray_origin, ray_direction)
     circle_center = Point3D(0.0, 0.0, 0.0)  # Circle center
     circle_radius = 1.0  # Circle radius
@@ -60,7 +60,7 @@ def test_ray_inside_circle():
     """Test ray starting inside circle with MATLAB reference values."""
     # Ray origin at circle center
     ray_origin = Point3D(0.0, 0.0, 0.0)  # Ray origin (at center)
-    ray_direction = Vector3D(1.0, 0.0, 0.0)  # Ray direction
+    ray_direction = Direction3D(1.0, 0.0, 0.0)  # Ray direction
     ray = Ray(ray_origin, ray_direction)
     circle_center = Point3D(0.0, 0.0, 0.0)  # Circle center
     circle_radius = 2.0  # Circle radius
@@ -78,7 +78,7 @@ def test_non_unit_direction():
     """Test with non-unit ray direction and MATLAB reference values."""
     # Ray direction with length 2.0 (should be normalized)
     ray_origin = Point3D(0.0, -3.0, 0.0)  # Ray origin
-    ray_direction = Vector3D(0.0, 2.0, 0.0)  # Ray direction (length 2.0)
+    ray_direction = Direction3D(0.0, 2.0, 0.0)  # Ray direction (length 2.0)
     ray = Ray(ray_origin, ray_direction)
     circle_center = Point3D(0.0, 0.0, 0.0)  # Circle center
     circle_radius = 1.0  # Circle radius
@@ -96,7 +96,7 @@ def test_diagonal_intersection():
     """Test diagonal ray intersection with MATLAB reference values."""
     # Ray moving diagonally
     ray_origin = Point3D(-2.0, -2.0, 0.0)  # Ray origin
-    ray_direction = Vector3D(1.0, 1.0, 0.0)  # Ray direction (diagonal)
+    ray_direction = Direction3D(1.0, 1.0, 0.0)  # Ray direction (diagonal)
     ray = Ray(ray_origin, ray_direction)
     circle_center = Point3D(0.0, 0.0, 0.0)  # Circle center
     circle_radius = 1.0  # Circle radius
@@ -118,7 +118,7 @@ def test_diagonal_intersection():
 def test_output_properties():
     """Test that output has correct properties."""
     ray_origin = Point3D(0.0, -2.0, 0.0)
-    ray_direction = Vector3D(0.0, 1.0, 0.0)
+    ray_direction = Direction3D(0.0, 1.0, 0.0)
     ray = Ray(ray_origin, ray_direction)
     circle_center = Point3D(0.0, 0.0, 0.0)
     circle_radius = 1.0

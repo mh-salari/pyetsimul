@@ -2,14 +2,14 @@
 
 import numpy as np
 from pyetsimul.geometry.intersections import intersect_ray_plane
-from pyetsimul.types import Ray, Position3D, Direction3D, IntersectionResult, Point3D, Vector3D
+from pyetsimul.types import Ray, Position3D, Direction3D, IntersectionResult, Point3D
 
 
 def test_normal_intersection():
     """Test normal ray-plane intersection with MATLAB reference values."""
     # Ray perpendicular to plane
     ray_origin = Point3D(0.0, 0.0, -2.0)  # Ray origin
-    ray_direction = Vector3D(0.0, 0.0, 1.0)  # Ray direction
+    ray_direction = Direction3D(0.0, 0.0, 1.0)  # Ray direction
     ray = Ray(ray_origin, ray_direction)
     plane_point = Position3D(0.0, 0.0, 0.0)  # Point on plane
     plane_normal = Direction3D(0.0, 0.0, 1.0)  # Plane normal
@@ -27,7 +27,7 @@ def test_ray_parallel_to_plane():
     """Test ray parallel to plane - should return None."""
     # Ray parallel to plane (no intersection)
     ray_origin = Point3D(0.0, 0.0, 1.0)  # Ray origin
-    ray_direction = Vector3D(1.0, 0.0, 0.0)  # Ray direction (parallel to plane)
+    ray_direction = Direction3D(1.0, 0.0, 0.0)  # Ray direction (parallel to plane)
     ray = Ray(ray_origin, ray_direction)
     plane_point = Position3D(0.0, 0.0, 0.0)  # Point on plane
     plane_normal = Direction3D(0.0, 0.0, 1.0)  # Plane normal
@@ -42,7 +42,7 @@ def test_ray_starting_on_plane():
     """Test ray starting on plane with MATLAB reference values."""
     # Ray origin on plane surface
     ray_origin = Point3D(0.0, 0.0, 0.0)  # Ray origin (on plane)
-    ray_direction = Vector3D(0.0, 0.0, 1.0)  # Ray direction
+    ray_direction = Direction3D(0.0, 0.0, 1.0)  # Ray direction
     ray = Ray(ray_origin, ray_direction)
     plane_point = Position3D(0.0, 0.0, 0.0)  # Point on plane
     plane_normal = Direction3D(0.0, 0.0, 1.0)  # Plane normal
@@ -60,7 +60,7 @@ def test_oblique_intersection():
     """Test oblique intersection with tilted plane and MATLAB reference values."""
     # Angled ray with tilted plane
     ray_origin = Point3D(0.0, 0.0, -2.0)  # Ray origin
-    ray_direction = Vector3D(1.0, 1.0, 1.0)  # Ray direction (diagonal)
+    ray_direction = Direction3D(1.0, 1.0, 1.0)  # Ray direction (diagonal)
     ray = Ray(ray_origin, ray_direction)
     plane_point = Position3D(1.0, 1.0, 0.0)  # Point on plane
     plane_normal = Direction3D(1.0, 1.0, 1.0)  # Plane normal (diagonal)
@@ -82,7 +82,7 @@ def test_backward_intersection():
     """Test ray pointing away from plane (backward intersection) with MATLAB reference values."""
     # Ray pointing away from plane
     ray_origin = Point3D(0.0, 0.0, 1.0)  # Ray origin
-    ray_direction = Vector3D(0.0, 0.0, 1.0)  # Ray direction (away from plane)
+    ray_direction = Direction3D(0.0, 0.0, 1.0)  # Ray direction (away from plane)
     ray = Ray(ray_origin, ray_direction)
     plane_point = Position3D(0.0, 0.0, 0.0)  # Point on plane
     plane_normal = Direction3D(0.0, 0.0, 1.0)  # Plane normal
@@ -100,7 +100,7 @@ def test_xy_plane_intersection():
     """Test intersection with XY plane and MATLAB reference values."""
     # Ray hitting XY plane from above
     ray_origin = Point3D(1.0, 2.0, 3.0)  # Ray origin
-    ray_direction = Vector3D(0.0, 0.0, -1.0)  # Ray direction (downward)
+    ray_direction = Direction3D(0.0, 0.0, -1.0)  # Ray direction (downward)
     ray = Ray(ray_origin, ray_direction)
     plane_point = Position3D(0.0, 0.0, 0.0)  # Point on plane
     plane_normal = Direction3D(0.0, 0.0, 1.0)  # Plane normal
@@ -117,7 +117,7 @@ def test_xy_plane_intersection():
 def test_output_properties():
     """Test that output has correct properties."""
     ray_origin = Point3D(0.0, 0.0, -2.0)
-    ray_direction = Vector3D(0.0, 0.0, 1.0)
+    ray_direction = Direction3D(0.0, 0.0, 1.0)
     ray = Ray(ray_origin, ray_direction)
     plane_point = Position3D(0.0, 0.0, 0.0)
     plane_normal = Direction3D(0.0, 0.0, 1.0)

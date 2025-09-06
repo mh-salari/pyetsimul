@@ -1,7 +1,7 @@
 """Unit tests for intersect_ray_conic function."""
 
 from pyetsimul.geometry.intersections import intersect_ray_sphere, intersect_ray_conic
-from pyetsimul.types import Ray, Position3D, Point3D, Vector3D
+from pyetsimul.types import Ray, Position3D, Point3D, Direction3D, IntersectionResult
 
 
 def test_conic_equals_sphere_on_axis():
@@ -12,7 +12,7 @@ def test_conic_equals_sphere_on_axis():
     """
     # On-axis ray
     ray_origin = Point3D(0.0, 0.0, -2.0)  # Ray origin
-    ray_direction = Vector3D(0.0, 0.0, 1.0)  # Ray direction
+    ray_direction = Direction3D(0.0, 0.0, 1.0)  # Ray direction
     ray = Ray(ray_origin, ray_direction)
     radius = 1.0
 
@@ -43,7 +43,7 @@ def test_conic_equals_sphere_off_axis():
     """
     # Off-axis ray
     ray_origin = Point3D(-1.5, 0.5, -2.0)
-    ray_direction = Vector3D(0.3, -0.1, 1.0).normalize()
+    ray_direction = Direction3D(0.3, -0.1, 1.0).normalize()
     ray = Ray(ray_origin, ray_direction)
     radius = 1.0
 

@@ -335,8 +335,7 @@ class TestTypeConversions:
 
     def test_vector3d_direction3d_conversion(self):
         """Test Vector3D and Direction3D conversions."""
-        v = Vector3D(1, 2, 3)
-        d = Direction3D.from_vector3d(v)
+        d = Vector3D(1, 2, 3).to_direction3d()
         assert isinstance(d, Direction3D)
         assert d == Direction3D(1, 2, 3)
 
