@@ -397,7 +397,7 @@ class Eye:
 
         # Check if point is on visible cornea (within boundaries and not occluded by eyelid)
         if refraction_point is not None:
-            if not self.point_on_visible_cornea(refraction_point.to_position3d()):
+            if not self.point_on_visible_cornea(refraction_point):
                 refraction_point = None
 
         return refraction_point
@@ -517,7 +517,7 @@ class Eye:
                 refracted_point = self.find_refracted_position(camera.position, pupil_point)
                 if refracted_point is not None:
                     # Convert Point3D result to Position3D for camera projection
-                    refracted_points.append(refracted_point.to_position3d())
+                    refracted_points.append(refracted_point)
 
             # Project refracted points to camera image coordinates
             if refracted_points:

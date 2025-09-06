@@ -436,4 +436,4 @@ def find_refraction_point(
         eye_transform,
     )
 
-    return refraction_point
+    return None if refraction_point is None else refraction_point.to_position3d()
