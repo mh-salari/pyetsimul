@@ -693,9 +693,9 @@ class Eye:
         if data["position"]:
             eye.position = Position3D.deserialize(data["position"])
 
-        eye.trans = np.array(data["transformation_matrix"])
-        eye._rest_orientation = np.array(data["rest_orientation"])
-        eye.eyelid_trans = np.array(data["eyelid_transformation_matrix"])
+        eye.trans = TransformationMatrix(np.array(data["transformation_matrix"]))
+        eye._rest_orientation = RotationMatrix(np.array(data["rest_orientation"]))
+        eye.eyelid_trans = TransformationMatrix(np.array(data["eyelid_transformation_matrix"]))
 
         if data["current_target_point"]:
             eye._current_target_point = Position3D.deserialize(data["current_target_point"])
