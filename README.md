@@ -4,18 +4,17 @@ PyEtSimul is a framework that simulates measurements made by video-oculographic 
 
 ## About
 
-Core functionalities are based on "A Software Framework for Simulating Eye Trackers" by Böhme et al. (2008), ported from the original MATLAB codebase. This Python implementation includes enhancements, improvements, bug fixes, and additional features. 
+Core functionalities are based on "A Software Framework for Simulating Eye Trackers" by Böhme et al. (2008), ported from the original MATLAB codebase. This Python implementation includes enhancements, improvements, bug fixes, and additional features.
 
-> [!WARNING]  
+> [!WARNING]
 > **Note**: There is no guarantee that this code works exactly like the original MATLAB implementation.
 
 ## Installation
 
 ### Requirements
-- Python ≥3.13
-- [uv](https://docs.astral.sh/uv/) (recommended package manager)
+- Python ≥3.11
 
-### Using uv (Recommended)
+### Using [uv](https://docs.astral.sh/uv/) (Recommended)
 
 1. Clone the repository:
 ```bash
@@ -67,15 +66,15 @@ If you use this software in your research, please cite both:
 
 2. **Original work:**
 ```
-Martin Böhme, Michael Dorr, Mathis Graw, Thomas Martinetz, and Erhardt Barth. 
-"A software framework for simulating eye trackers." 
-In Proceedings of the 2008 Symposium on Eye Tracking Research & Applications (ETRA '08), 
+Martin Böhme, Michael Dorr, Mathis Graw, Thomas Martinetz, and Erhardt Barth.
+"A software framework for simulating eye trackers."
+In Proceedings of the 2008 Symposium on Eye Tracking Research & Applications (ETRA '08),
 pages 251-258, ACM, 2008.
 ```
 
 ## Original MATLAB Implementation
 
-For the original MATLAB version and detailed background, visit:  
+For the original MATLAB version and detailed background, visit:
 https://github.com/mh-salari/et_simul-1.01
 
 ## License
