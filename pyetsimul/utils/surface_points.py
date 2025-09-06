@@ -2,10 +2,10 @@
 
 import numpy as np
 from typing import Callable
-from ..types import Position3D, Direction3D, Ray
+from ..types import Point3D, Direction3D, Ray
 
 
-def generate(intersection_func: Callable, center: Position3D, radius: float, *args, n_points: int = 40) -> np.ndarray:
+def generate(intersection_func: Callable, center: Point3D, radius: float, *args, n_points: int = 40) -> np.ndarray:
     """Generate surface points using a given intersection function.
 
     Args:
