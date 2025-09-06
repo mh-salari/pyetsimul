@@ -28,8 +28,7 @@ def test_basic_refraction():
     )
 
     assert I is not None
-    arr = np.append(np.array(I), 1.0)
-    np.testing.assert_allclose(arr, expected_I, rtol=1e-10, atol=1e-12)
+    np.testing.assert_allclose(I, expected_I, rtol=1e-10, atol=1e-12)
 
 
 def test_close_camera():
@@ -55,8 +54,7 @@ def test_close_camera():
     )
 
     assert I is not None
-    arr = np.append(np.array(I), 1.0)
-    np.testing.assert_allclose(arr, expected_I, rtol=1e-10, atol=1e-12)
+    np.testing.assert_allclose(I, expected_I, rtol=1e-10, atol=1e-12)
 
 
 def test_refraction_impossible_geometry():
@@ -81,9 +79,4 @@ def test_output_properties():
     O = Position3D(0.5, 0.2, -4.0)
 
     I = e.find_refracted_position(C, O)
-    assert I is not None, "I should not be None for these inputs"
-
-    # Check types and shapes
-    arr = np.append(np.array(I), 1.0)
-    assert arr.shape == (4,)
-    assert arr[3] == 1.0  # Homogeneous coordinate
+    assert isinstance(I,Position3D), "I should not be None for these inputs"
