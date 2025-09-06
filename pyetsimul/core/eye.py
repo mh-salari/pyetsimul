@@ -11,7 +11,7 @@ from tabulate import tabulate
 
 from ..types import Position3D, Direction3D, TransformationMatrix, RotationMatrix, PupilData, Point2D
 from .pupil import Pupil, create_pupil, RealisticPupilParams, EllipticalPupil
-from .cornea import SphericalCornea
+from .cornea import SphericalCornea, ConicCornea
 from .eye_operations import look_at_target, look_at_target_optical_then_kappa
 from ..optics.reflections import find_corneal_reflection
 from ..optics.refractions import find_refraction_point
@@ -40,7 +40,7 @@ class Eye:
     """
 
     # Instance parameters
-    cornea: Optional[SphericalCornea] = None  # Spherical cornea object
+    cornea: SphericalCornea|ConicCornea = field(default_factory=lambda: SphericalCornea())  # Spherical cornea object by default
     fovea_displacement: bool = True
     fovea_alpha_deg: float = EyeAnatomyDefaults.FOVEA_ALPHA_DEG
     fovea_beta_deg: float = EyeAnatomyDefaults.FOVEA_BETA_DEG

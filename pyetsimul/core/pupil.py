@@ -76,6 +76,11 @@ class Pupil(ABC):
         """
         pass
 
+    @abstractmethod
+    def serialize(self) -> dict:
+        """Serialize to dictionary representation."""
+        pass
+
     def get_center_world_coords(self, eye_transform: TransformationMatrix) -> Position3D:
         """Get pupil center in world coordinates.
 

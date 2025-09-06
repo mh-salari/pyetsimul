@@ -5,7 +5,7 @@ Defines abstract and concrete cornea models (spherical, conic) for anatomical an
 
 import numpy as np
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, field, InitVar
 from typing import Optional, TYPE_CHECKING
 from tabulate import tabulate
 from ..types import Point3D, Vector3D, Position3D, Ray, IntersectionResult, TransformationMatrix
@@ -24,11 +24,24 @@ class Cornea(ABC):
     Defines common interface for corneal models to ensure interchangeability.
     Provides unified interface for intersection, reflection, and refraction calculations.
     """
-
-    center: Optional[Position3D] = None
+    center_init: InitVar[Optional[Position3D]] = None
+    _center: Optional[Position3D] = field(default=None, init=False)
 
     _cornea_depth_default: float = CorneaDefaults.CORNEA_DEPTH
     _cornea_center_to_rotation_center_default: float = CorneaDefaults.CENTER_TO_ROTATION
+
+    def __post_init__(self, center_init: Optional[Position3D]) -> None:
+        if center_init is not None:
+            self._center = center_init
+
+    @property
+    def center(self) -> Position3D:
+        if self._center is None:
+            raise ValueError("Center has not been initialized.")
+        return self._center
+    @center.setter
+    def center(self, value: Position3D):
+        self._center = value
 
     @property
     @abstractmethod
@@ -264,7 +277,7 @@ class SphericalCornea(Cornea):
         scale = self.get_scale_factor()
 
         # Calculate center position if not already set
-        if self.center is None:
+        if self._center is None:
             self.center = self.calculate_center_position(
                 scale, axial_length, self._cornea_center_to_rotation_center_default
             )
@@ -466,7 +479,8 @@ class ConicCornea(Cornea):
             "cornea_center_to_rotation_center": 0.0,  # Not applicable for conic #CHECK
         }
 
-    def __post_init__(self):
+    def __post_init__(self, center_init: Optional[Position3D]):
+        super().__post_init__(center_init)
         # Validate k parameter ranges for both surfaces
         if self.anterior_k < -1:
             print(f"Warning: anterior_k = {self.anterior_k} < -1 may represent unusual corneal geometry")
@@ -574,8 +588,8 @@ def create_cornea(cornea_model_type: str, center: Position3D, **kwargs) -> Corne
         ValueError: If an unsupported cornea_model_type is provided.
     """
     if cornea_model_type == "spherical":
-        return SphericalCornea(center=center, **kwargs)
+        return SphericalCornea(center_init=center, **kwargs)
     elif cornea_model_type == "conic":
-        return ConicCornea(center=center, **kwargs)
+        return ConicCornea(center_init=center, **kwargs)
     else:
         raise ValueError(f"Unknown cornea model type: '{cornea_model_type}'")
