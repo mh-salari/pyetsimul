@@ -241,7 +241,11 @@ class Vector3D:
             raise ValueError("Cannot normalize zero vector")
         return Vector3D(self.x / mag, self.y / mag, self.z / mag)
 
-    def dot(self, other: "Vector3D") -> float:
+    @overload
+    def dot(self, other: "Direction3D") -> float: ...
+    @overload
+    def dot(self, other: "Vector3D") -> float: ...
+    def dot(self, other) -> float:
         """Calculate dot product with another vector."""
         return self.x * other.x + self.y * other.y + self.z * other.z
 
@@ -252,6 +256,10 @@ class Vector3D:
             self.z * other.x - self.x * other.z,
             self.x * other.y - self.y * other.x,
         )
+
+    def to_direction3d(self) -> 'Direction3D':
+        """Convert to Direction3D."""
+        return Direction3D(self.x, self.y, self.z)
 
     def isclose(self, other: "Vector3D", rtol=1e-9, atol=1e-12) -> bool:
         """Compare with tolerance."""
@@ -501,9 +509,7 @@ class Direction3D:
     @classmethod
     def from_array(cls, arr: np.ndarray) -> "Direction3D":
         """Create from 4D homogeneous array [x,y,z,0] or 3D array [x,y,z]."""
-        if arr.shape == (4,):
-            return cls(arr[0], arr[1], arr[2])
-        elif arr.shape == (3,):
+        if arr.shape == (4,) or arr.shape == (3,):
             return cls(arr[0], arr[1], arr[2])
         else:
             raise ValueError(f"Expected array shape (3,) or (4,), got {arr.shape}")
@@ -519,7 +525,11 @@ class Direction3D:
             raise ValueError("Cannot normalize zero vector")
         return Direction3D(self.x / mag, self.y / mag, self.z / mag)
 
-    def dot(self, other: "Direction3D") -> float:
+    @overload
+    def dot(self, other: "Direction3D") -> float: ...
+    @overload
+    def dot(self, other: Vector3D) -> float: ...
+    def dot(self, other) -> float:
         """Calculate dot product with another direction."""
         return self.x * other.x + self.y * other.y + self.z * other.z
 
@@ -608,11 +618,6 @@ class Direction3D:
             return Direction3D(self.x - other, self.y - other, self.z - other)
         else:
             return NotImplemented
-
-    @classmethod
-    def from_vector3d(cls, vector: Vector3D) -> "Direction3D":
-        """Create Direction3D from Vector3D."""
-        return cls(vector.x, vector.y, vector.z)
 
     def serialize(self) -> dict:
         """Serialize to dictionary representation."""
