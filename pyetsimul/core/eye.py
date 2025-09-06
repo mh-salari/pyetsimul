@@ -80,14 +80,11 @@ class Eye:
         self.cornea.setup_eye_geometry(axial_length_default)
 
         # Initialize transformation matrix (identity at rest position)
-        self.trans = np.eye(4)
-        self._rest_orientation = np.eye(3)
-        self.trans[:3, :3] = self._rest_orientation
+        self._rest_orientation = RotationMatrix.identity()
+        self.trans = TransformationMatrix.from_rotation(self._rest_orientation)
 
         # Initialize eyelid transform (same position as eye, orientation = rest)
-        self.eyelid_trans = np.eye(4)
-        self.eyelid_trans[:3, :3] = self._rest_orientation
-        self.eyelid_trans[:3, 3] = self.trans[:3, 3]
+        self.eyelid_trans = TransformationMatrix.from_translation_and_rotation(self.trans.get_translation(), self._rest_orientation)
 
         # Set general anatomical parameters
         self.axial_length = axial_length_default
@@ -139,7 +136,7 @@ class Eye:
     @property
     def orientation(self) -> RotationMatrix:
         """Get/set the eye's current orientation (3x3 rotation matrix)."""
-        return self.trans[:3, :3]
+        return self.trans.get_rotation()
 
     @orientation.setter
     def orientation(self, value: RotationMatrix) -> None:
@@ -240,7 +237,7 @@ class Eye:
 
         # Rotation mapping local visual basis to world visual basis
         rest_orientation = R_world @ R_local.T
-        self.set_rest_orientation(rest_orientation)
+        self.set_rest_orientation(RotationMatrix(rest_orientation))
 
     @property
     def position(self) -> Position3D:
@@ -511,7 +508,7 @@ class Eye:
 
         if use_refraction:
             # Apply refraction: for each pupil point, find where it appears due to corneal refraction
-            refracted_points = []
+            refracted_points: list[Position3D] = []
             for i in range(pupil_world.shape[1]):
                 pupil_point = Position3D.from_array(pupil_world[:, i])
                 refracted_point = self.find_refracted_position(camera.position, pupil_point)
