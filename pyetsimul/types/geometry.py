@@ -634,7 +634,7 @@ class Ray:
     """A ray defined by origin point and direction vector."""
 
     origin: Point3D
-    direction: Vector3D
+    direction: Direction3D
 
     def point_at(self, t: float) -> Point3D:
         """Get point along ray at parameter t."""
@@ -647,7 +647,7 @@ class Ray:
     @classmethod
     def from_two_points(cls, p1: Point3D, p2: Point3D) -> "Ray":
         """Create ray from two points."""
-        direction_vec = Vector3D(p2.x - p1.x, p2.y - p1.y, p2.z - p1.z)
+        direction_vec = Direction3D(p2.x - p1.x, p2.y - p1.y, p2.z - p1.z)
         return cls(origin=p1, direction=direction_vec.normalize())
 
 
@@ -658,7 +658,7 @@ class IntersectionResult:
     intersects: bool
     point: Optional[Point3D] = None
     distance: Optional[float] = None
-    surface_normal: Optional[Vector3D] = None
+    surface_normal: Optional[Direction3D] = None
 
     @classmethod
     def no_intersection(cls) -> "IntersectionResult":
@@ -667,7 +667,7 @@ class IntersectionResult:
 
     @classmethod
     def intersection_at(
-        cls, point: Point3D, distance: float, normal: Optional[Vector3D] = None
+        cls, point: Point3D, distance: float, normal: Optional[Direction3D] = None
     ) -> "IntersectionResult":
         """Create result indicating intersection at given point."""
         return cls(intersects=True, point=point, distance=distance, surface_normal=normal)
