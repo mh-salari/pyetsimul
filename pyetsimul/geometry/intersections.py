@@ -53,8 +53,8 @@ def intersect_ray_sphere(
         t_close, t_far = t2, t1
 
     # Compute intersection points using structured type arithmetic
-    point_close = ray.origin + direction_normalized * t_close
-    point_far = ray.origin + direction_normalized * t_far
+    point_close = ray.origin + (direction_normalized * t_close).to_vector3d()
+    point_far = ray.origin + (direction_normalized * t_far).to_vector3d()
 
     return IntersectionResult.intersection_at(point_close, abs(t_close)), IntersectionResult.intersection_at(
         point_far, abs(t_far)
@@ -206,7 +206,7 @@ def intersect_ray_conic(
         return result1, result2
 
 
-def conic_surface_normal(point: Point3D, conic_center: Position3D, radius: float, conic_constant: float) -> Vector3D:
+def conic_surface_normal(point: Point3D, conic_center: Position3D, radius: float, conic_constant: float) -> Direction3D:
     """Calculate surface normal at a point on conic section surface.
 
     Uses gradient of conic equation to compute normal vector.
@@ -235,14 +235,14 @@ def conic_surface_normal(point: Point3D, conic_center: Position3D, radius: float
     normal_y = 2 * y
     normal_z = 2 * (1 + conic_constant) * z - 2 * radius
 
-    normal = Vector3D(normal_x, normal_y, normal_z)
+    normal = Direction3D(normal_x, normal_y, normal_z)
 
     # Normalize to unit vector
     try:
         return normal.normalize()
     except ValueError:
         warnings.warn("Degenerate normal vector at conic apex", RuntimeWarning)
-        return Vector3D(0, 0, 1)  # Default to z-axis
+        return Direction3D(0, 0, 1)  # Default to z-axis
 
 
 def point_on_conic_surface(

@@ -6,7 +6,7 @@ Implements Snell's law, ray-surface intersection, and optimization for refractio
 import numpy as np
 from typing import Optional, Tuple, cast
 from scipy.optimize import brentq
-from ..types import Point3D, Ray, IntersectionResult, Position3D, Vector3D
+from ..types import Point3D, Ray, IntersectionResult, Position3D, Vector3D, Direction3D
 from ..geometry.intersections import intersect_ray_sphere, intersect_ray_conic, conic_surface_normal
 from ..geometry.intersections import point_on_conic_surface
 
@@ -264,7 +264,7 @@ def refract_ray_sphere(
     intersection_point = cast(Point3D,intersection_result.point)
 
     # Find surface normal at point of intersection (pointing inwards)
-    normal_vec = (sphere_center.to_point3d() - intersection_point).normalize()
+    normal_vec = (sphere_center.to_point3d() - intersection_point).to_direction3d().normalize()
 
     # Calculate angles
     incident_normalized = ray.direction.normalize()
@@ -344,8 +344,8 @@ def refract_ray_conic(
 
 
 def refract_ray_dual_surface(
-    eye, ray_origin: Point3D, ray_direction: Vector3D
-) -> Tuple[Optional[Point3D], Optional[Point3D], Optional[Vector3D]]:
+    eye, ray_origin: Point3D, ray_direction: Direction3D
+) -> Tuple[Optional[Point3D], Optional[Point3D], Optional[Direction3D]]:
     """Computes refraction through both anterior and posterior corneal surfaces.
 
     Models complete corneal optical path by calculating refraction at both:

@@ -8,7 +8,7 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass, field, InitVar
 from typing import Optional, TYPE_CHECKING
 from tabulate import tabulate
-from ..types import Point3D, Vector3D, Position3D, Ray, IntersectionResult, TransformationMatrix
+from ..types import Point3D, Vector3D, Position3D, Direction3D, Ray, IntersectionResult, TransformationMatrix
 from ..geometry import intersections
 from ..optics import reflections, refractions
 from .default_configs import CorneaDefaults
@@ -55,7 +55,7 @@ class Cornea(ABC):
         pass
 
     @abstractmethod
-    def normal_at(self, point: Point3D) -> Vector3D:
+    def normal_at(self, point: Point3D) -> Direction3D:
         """Calculates the normal vector at a given point on the cornea's surface."""
         pass
 
@@ -297,10 +297,10 @@ class SphericalCornea(Cornea):
         intersection_result, _ = intersections.intersect_ray_sphere(ray, self.center, self.anterior_radius)
         return intersection_result
 
-    def normal_at(self, point: Point3D) -> Vector3D:
+    def normal_at(self, point: Point3D) -> Direction3D:
         """Calculates the normal vector for a spherical surface."""
         # Calculate normal vector from center to point
-        normal_vec = Vector3D(point.x - self.center.x, point.y - self.center.y, point.z - self.center.z)
+        normal_vec = Direction3D(point.x - self.center.x, point.y - self.center.y, point.z - self.center.z)
         return normal_vec.normalize()
 
     def find_reflection(
@@ -509,7 +509,7 @@ class ConicCornea(Cornea):
         )
         return intersection_result
 
-    def normal_at(self, point: Point3D) -> Vector3D:
+    def normal_at(self, point: Point3D) -> Direction3D:
         """Calculates the normal vector for the anterior conic surface."""
         return intersections.conic_surface_normal(point, self.center, self.anterior_radius, self.anterior_k)
 
