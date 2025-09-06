@@ -4,7 +4,7 @@ improving type safety and code readability.
 """
 
 from dataclasses import dataclass
-from typing import Optional
+from typing import Optional, overload, Union
 import numpy as np
 
 
@@ -35,7 +35,10 @@ class Point2D:
 
     def isclose(self, other: "Point2D", rtol=1e-9, atol=1e-12) -> bool:
         """Compare with tolerance."""
-        return np.isclose(self.x, other.x, rtol=rtol, atol=atol) and np.isclose(self.y, other.y, rtol=rtol, atol=atol)
+        return bool(
+            np.isclose(self.x, other.x, rtol=rtol, atol=atol)
+            and np.isclose(self.y, other.y, rtol=rtol, atol=atol)
+        )
 
     def assert_close(self, other: "Point2D", rtol=1e-9, atol=1e-12, msg="") -> None:
         """Assert close with custom error message."""
@@ -130,7 +133,7 @@ class Point3D:
 
     def isclose(self, other: "Point3D", rtol=1e-9, atol=1e-12) -> bool:
         """Compare with tolerance."""
-        return (
+        return bool(
             np.isclose(self.x, other.x, rtol=rtol, atol=atol)
             and np.isclose(self.y, other.y, rtol=rtol, atol=atol)
             and np.isclose(self.z, other.z, rtol=rtol, atol=atol)
@@ -144,22 +147,21 @@ class Point3D:
                 error_msg = f"{msg}: {error_msg}"
             raise AssertionError(error_msg)
 
+    @overload
+    def __sub__(self, other: Union['Point3D', 'Position3D']) -> 'Vector3D': ...
+    @overload
+    def __sub__(self, other: Union['Vector3D', 'Direction3D']) -> 'Point3D': ...
+    @overload
+    def __sub__(self, other: int | float) -> 'Point3D': ...
     def __sub__(self, other):
         """Subtract point, position, vector, or scalar from point.
-
-        - Point3D - Point3D => Vector3D
-        - Point3D - Position3D => Vector3D
-        - Point3D - Vector3D => Point3D
-        - Point3D - scalar => Point3D
         """
         if isinstance(other, (Point3D, Position3D)):
             return Vector3D(self.x - other.x, self.y - other.y, self.z - other.z)
-        elif isinstance(other, (Vector3D, int, float)):
-            return Point3D(
-                self.x - other.x if hasattr(other, "x") else self.x - other,
-                self.y - other.y if hasattr(other, "y") else self.y - other,
-                self.z - other.z if hasattr(other, "z") else self.z - other,
-            )
+        elif isinstance(other, (Vector3D, Direction3D)):
+            return Point3D(self.x - other.x, self.y - other.y, self.z - other.z)
+        elif isinstance(other, (int, float)):
+            return Point3D(self.x - other, self.y - other, self.z - other)
         else:
             return NotImplemented
 
@@ -253,7 +255,7 @@ class Vector3D:
 
     def isclose(self, other: "Vector3D", rtol=1e-9, atol=1e-12) -> bool:
         """Compare with tolerance."""
-        return (
+        return bool (
             np.isclose(self.x, other.x, rtol=rtol, atol=atol)
             and np.isclose(self.y, other.y, rtol=rtol, atol=atol)
             and np.isclose(self.z, other.z, rtol=rtol, atol=atol)
@@ -330,7 +332,7 @@ class Vector3D:
         return {"x": float(self.x), "y": float(self.y), "z": float(self.z)}
 
     @classmethod
-    def deserialize(cls, data: dict) -> "Point3D":
+    def deserialize(cls, data: dict) -> "Vector3D":
         """Deserialize from dictionary representation."""
         return cls(data["x"], data["y"], data["z"])
 
@@ -373,7 +375,7 @@ class Position3D:
 
     def isclose(self, other: "Position3D", rtol=1e-9, atol=1e-12) -> bool:
         """Compare with tolerance."""
-        return (
+        return bool(
             np.isclose(self.x, other.x, rtol=rtol, atol=atol)
             and np.isclose(self.y, other.y, rtol=rtol, atol=atol)
             and np.isclose(self.z, other.z, rtol=rtol, atol=atol)
@@ -401,6 +403,12 @@ class Position3D:
             return Position3D.from_array(result)
         return NotImplemented
 
+    @overload
+    def __sub__(self, other: Union['Position3D', Point3D]) -> Vector3D: ...
+    @overload
+    def __sub__(self, other: Union[Vector3D, 'Direction3D']) -> 'Position3D': ...
+    @overload
+    def __sub__(self, other: int | float) -> 'Position3D': ...
     def __sub__(self, other):
         """Subtract position, point, vector, direction, or scalar from position."""
         if isinstance(other, (Position3D, Point3D)):
@@ -529,7 +537,7 @@ class Direction3D:
 
     def isclose(self, other: "Direction3D", rtol=1e-9, atol=1e-12) -> bool:
         """Compare with tolerance."""
-        return (
+        return bool(
             np.isclose(self.x, other.x, rtol=rtol, atol=atol)
             and np.isclose(self.y, other.y, rtol=rtol, atol=atol)
             and np.isclose(self.z, other.z, rtol=rtol, atol=atol)
