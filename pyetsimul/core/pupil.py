@@ -5,7 +5,7 @@ Defines abstract and concrete pupil models (elliptical, realistic) for boundary 
 
 import numpy as np
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
+from dataclasses import dataclass, asdict
 from typing import Tuple, Optional
 from tabulate import tabulate
 from ..types import Position3D, Direction3D, TransformationMatrix
@@ -473,6 +473,46 @@ class RealisticPupil(Pupil):
                 nc_squared += 0.5 * (harmonic["amplitude"] / r_ave) ** 2
 
         return np.sqrt(nc_squared)
+
+    def serialize(self) -> dict:
+        """Serialize to dictionary representation."""
+        return {
+            "pos_pupil": self.pos_pupil.serialize(),
+            "x_pupil": self.x_pupil.serialize(),
+            "y_pupil": self.y_pupil.serialize(),
+            "params": asdict(self.params),
+            "N": self.N,
+            "harmonics": {
+                str(n): {
+                    "amplitude": h["amplitude"],
+                    "phase": h["phase"]
+                } for n, h in self.harmonics.items()
+            },
+            "r2": self.r2,
+        }
+
+    @classmethod
+    def deserialize(cls, data: dict) -> "RealisticPupil":
+        """Deserialize from dictionary representation."""
+        pupil = cls(
+            pos_pupil=Position3D.deserialize(data["pos_pupil"]),
+            x_pupil=Direction3D.deserialize(data["x_pupil"]),
+            y_pupil=Direction3D.deserialize(data["y_pupil"]),
+            params=RealisticPupilParams(**data["params"]),
+            N=data["N"],
+        )
+
+        # Restore harmonics and r2
+        pupil.r2 = data.get("r2")
+        pupil.harmonics = {
+            int(n): {
+                "amplitude": h["amplitude"],
+                "phase": h["phase"]
+            } for n, h in data.get("harmonics", {}).items()
+        }
+
+        return pupil
+
 
 
 def create_pupil(
