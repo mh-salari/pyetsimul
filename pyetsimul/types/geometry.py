@@ -660,46 +660,6 @@ class IntersectionResult:
         return cls(intersects=True, point=point, distance=distance, surface_normal=normal)
 
 
-class TransformationMatrix(np.ndarray):
-    """A 4x4 homogeneous transformation matrix with convenient factory methods."""
-
-    def __new__(cls, input_array):
-        """Create a new transformation matrix from input array."""
-        obj = np.asarray(input_array).view(cls)
-        if obj.shape != (4, 4):
-            raise ValueError(f"TransformationMatrix must be 4x4, got shape {obj.shape}")
-        return obj
-
-    @classmethod
-    def identity(cls) -> "TransformationMatrix":
-        """Create an identity transformation matrix."""
-        return cls(np.eye(4))
-
-    @classmethod
-    def from_position(cls, position: Position3D) -> "TransformationMatrix":
-        """Create a translation matrix from a Position3D."""
-        matrix = np.eye(4)
-        matrix[0:3, 3] = [position.x, position.y, position.z]
-        return cls(matrix)
-
-    @classmethod
-    def from_rotation(cls, rotation_matrix: np.ndarray) -> "TransformationMatrix":
-        """Create a transformation matrix from a 3x3 rotation matrix."""
-        if rotation_matrix.shape != (3, 3):
-            raise ValueError(f"Rotation matrix must be 3x3, got shape {rotation_matrix.shape}")
-        matrix = np.eye(4)
-        matrix[0:3, 0:3] = rotation_matrix
-        return cls(matrix)
-
-    def get_rotation(self) -> np.ndarray:
-        """Extract the 3x3 rotation matrix."""
-        return self[0:3, 0:3]
-
-    def get_translation(self) -> Position3D:
-        """Extract the translation vector as Position3D."""
-        return Position3D(x=self[0, 3], y=self[1, 3], z=self[2, 3])
-
-
 class RotationMatrix(np.ndarray):
     """A 3x3 rotation matrix that validates its mathematical properties."""
 
@@ -747,3 +707,67 @@ class RotationMatrix(np.ndarray):
     def identity(cls) -> "RotationMatrix":
         """Create an identity rotation matrix."""
         return cls(np.eye(3))
+
+
+class TransformationMatrix(np.ndarray):
+    """A 4x4 homogeneous transformation matrix with convenient factory methods."""
+
+    def __new__(cls, input_array):
+        """Create a new transformation matrix from input array."""
+        obj = np.asarray(input_array).view(cls)
+        if obj.shape != (4, 4):
+            raise ValueError(f"TransformationMatrix must be 4x4, got shape {obj.shape}")
+        return obj
+
+    @classmethod
+    def identity(cls) -> "TransformationMatrix":
+        """Create an identity transformation matrix."""
+        return cls(np.eye(4))
+
+    @classmethod
+    def from_translation(cls, translation: Position3D) -> "TransformationMatrix":
+        """Create a translation matrix from a Position3D."""
+        matrix = np.eye(4)
+        matrix[0:3, 3] = [translation.x, translation.y, translation.z]
+        return cls(matrix)
+
+    @classmethod
+    def from_rotation(cls, rotation_matrix: RotationMatrix) -> "TransformationMatrix":
+        """Create a transformation matrix from a 3x3 rotation matrix."""
+        if rotation_matrix.shape != (3, 3):
+            raise ValueError(f"Rotation matrix must be 3x3, got shape {rotation_matrix.shape}")
+        matrix = np.eye(4)
+        matrix[0:3, 0:3] = rotation_matrix
+        return cls(matrix)
+
+    @classmethod
+    def from_translation_and_rotation(cls, translation: Position3D, rotation_matrix: RotationMatrix) -> "TransformationMatrix":
+        """Create a transformation matrix from a 3x3 rotation matrix."""
+        if rotation_matrix.shape != (3, 3):
+            raise ValueError(f"Rotation matrix must be 3x3, got shape {rotation_matrix.shape}")
+        matrix = np.eye(4)
+        matrix[0:3, 0:3] = rotation_matrix
+        matrix[0:3, 3] = [translation.x, translation.y, translation.z]
+        return cls(matrix)
+
+    def get_rotation(self) -> RotationMatrix:
+        """Extract the 3x3 rotation matrix."""
+        if self.shape != (4, 4):
+            raise ValueError("Input must be a 4x4 matrix.")
+
+        # Extract the 3x3 upper-left submatrix as column vectors
+        c1 = self[:3, 0]
+        c2 = self[:3, 1]
+        c3 = self[:3, 2]
+
+        # Normalize columns to get pure rotation matrix, assemble
+        rotation_matrix = np.column_stack((
+            c1/np.linalg.norm(c1),
+            c2/np.linalg.norm(c2),
+            c3/np.linalg.norm(c3)))
+
+        return RotationMatrix(rotation_matrix)
+
+    def get_translation(self) -> Position3D:
+        """Extract the translation vector as Position3D."""
+        return Position3D(x=self[0, 3], y=self[1, 3], z=self[2, 3])

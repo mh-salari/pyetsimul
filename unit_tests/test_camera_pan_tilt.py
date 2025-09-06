@@ -55,7 +55,7 @@ def test_modified_rest_trans():
 
     # Translate camera position
     position = Position3D(x=2.0, y=1.0, z=3.0)
-    translation_matrix = TransformationMatrix.from_position(position)
+    translation_matrix = TransformationMatrix.from_translation(position)
     c.trans = c.trans @ translation_matrix
     c.rest_trans = c.trans.copy()  # Update rest position
 
