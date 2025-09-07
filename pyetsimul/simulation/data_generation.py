@@ -286,7 +286,7 @@ class DataGenerationStrategy(VariationStrategy):
 
         # If no target variation is present in the composition, use the default gaze target.
         if current_gaze_target == self.gaze_target and self.gaze_target:
-            eye_copy.look_at(self.gaze_target)
+            eye_copy.look_at(self.gaze_target, self.use_legacy_look_at)
 
         return current_gaze_target
 
