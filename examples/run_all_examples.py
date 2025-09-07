@@ -1,11 +1,19 @@
 #!/usr/bin/env python3
 """
 Simple script to run all examples in the PyEtSimul project.
-Usage: uv run python tmp/run_all_examples.py
+    python tmp/run_all_examples.py          # uses current Python interpreter
+    python tmp/run_all_examples.py --use-uv # uses 'uv run python'
+
 """
 
 import subprocess
+import sys
 from pathlib import Path
+
+# Check if --use-uv flag is passed
+use_uv = "--use-uv" in sys.argv
+if use_uv:
+    sys.argv.remove("--use-uv")
 
 # Get project root directory
 project_root = Path(__file__).parent.parent
@@ -42,9 +50,15 @@ for example_file in example_files:
     print(f"\n🔄 Running: {relative_path}")
     print("-" * 40)
 
+    cmd = (
+            ["uv", "run", "python", str(example_file)]
+            if use_uv
+            else [sys.executable, str(example_file)]
+        )
+
     try:
         result = subprocess.run(
-            ["uv", "run", "python", str(example_file)], cwd=project_root, capture_output=False, timeout=60
+            cmd, cwd=project_root, capture_output=False, timeout=60
         )
 
         if result.returncode == 0:
