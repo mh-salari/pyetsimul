@@ -38,7 +38,7 @@ class Cornea(ABC):
     @property
     def center(self) -> Position3D:
         if self._center is None:
-            raise ValueError("Center has not been initialized.")
+            raise ValueError("Center has not been initialized. Did you call setup_eye_geometry() already?")
         return self._center
 
     @center.setter
