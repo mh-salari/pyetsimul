@@ -36,8 +36,7 @@ class Point2D:
     def isclose(self, other: "Point2D", rtol=1e-9, atol=1e-12) -> bool:
         """Compare with tolerance."""
         return bool(
-            np.isclose(self.x, other.x, rtol=rtol, atol=atol)
-            and np.isclose(self.y, other.y, rtol=rtol, atol=atol)
+            np.isclose(self.x, other.x, rtol=rtol, atol=atol) and np.isclose(self.y, other.y, rtol=rtol, atol=atol)
         )
 
     def assert_close(self, other: "Point2D", rtol=1e-9, atol=1e-12, msg="") -> None:
@@ -148,14 +147,13 @@ class Point3D:
             raise AssertionError(error_msg)
 
     @overload
-    def __sub__(self, other: Union['Point3D', 'Position3D']) -> 'Vector3D': ...
+    def __sub__(self, other: Union["Point3D", "Position3D"]) -> "Vector3D": ...
     @overload
-    def __sub__(self, other: Union['Vector3D', 'Direction3D']) -> 'Point3D': ...
+    def __sub__(self, other: Union["Vector3D", "Direction3D"]) -> "Point3D": ...
     @overload
-    def __sub__(self, other: int | float) -> 'Point3D': ...
+    def __sub__(self, other: int | float) -> "Point3D": ...
     def __sub__(self, other):
-        """Subtract point, position, vector, or scalar from point.
-        """
+        """Subtract point, position, vector, or scalar from point."""
         if isinstance(other, (Point3D, Position3D)):
             return Vector3D(self.x - other.x, self.y - other.y, self.z - other.z)
         elif isinstance(other, (Vector3D, Direction3D)):
@@ -257,13 +255,13 @@ class Vector3D:
             self.x * other.y - self.y * other.x,
         )
 
-    def to_direction3d(self) -> 'Direction3D':
+    def to_direction3d(self) -> "Direction3D":
         """Convert to Direction3D."""
         return Direction3D(self.x, self.y, self.z)
 
     def isclose(self, other: "Vector3D", rtol=1e-9, atol=1e-12) -> bool:
         """Compare with tolerance."""
-        return bool (
+        return bool(
             np.isclose(self.x, other.x, rtol=rtol, atol=atol)
             and np.isclose(self.y, other.y, rtol=rtol, atol=atol)
             and np.isclose(self.z, other.z, rtol=rtol, atol=atol)
@@ -412,11 +410,11 @@ class Position3D:
         return NotImplemented
 
     @overload
-    def __sub__(self, other: Union['Position3D', Point3D]) -> Vector3D: ...
+    def __sub__(self, other: Union["Position3D", Point3D]) -> Vector3D: ...
     @overload
-    def __sub__(self, other: Union[Vector3D, 'Direction3D']) -> 'Position3D': ...
+    def __sub__(self, other: Union[Vector3D, "Direction3D"]) -> "Position3D": ...
     @overload
-    def __sub__(self, other: int | float) -> 'Position3D': ...
+    def __sub__(self, other: int | float) -> "Position3D": ...
     def __sub__(self, other):
         """Subtract position, point, vector, direction, or scalar from position."""
         if isinstance(other, (Position3D, Point3D)):
@@ -721,6 +719,23 @@ class RotationMatrix(np.ndarray):
         """Create an identity rotation matrix."""
         return cls(np.eye(3))
 
+    @classmethod
+    def deserialize(cls, data) -> "RotationMatrix":
+        """Create RotationMatrix from serialized data with automatic handedness detection.
+
+        Tries strict right-handed validation first, falls back to allowing left-handed
+        matrices for legacy compatibility.
+
+        Args:
+            data: Matrix data (list or array)
+        """
+        try:
+            # Try with strict right-handed validation first
+            return cls(data, validate_handedness=True)
+        except ValueError:
+            # Fall back to allowing left-handed matrices for legacy data
+            return cls(data, validate_handedness=False)
+
 
 class TransformationMatrix(np.ndarray):
     """A 4x4 homogeneous transformation matrix with convenient factory methods."""
@@ -754,7 +769,9 @@ class TransformationMatrix(np.ndarray):
         return cls(matrix)
 
     @classmethod
-    def from_translation_and_rotation(cls, translation: Position3D, rotation_matrix: RotationMatrix) -> "TransformationMatrix":
+    def from_translation_and_rotation(
+        cls, translation: Position3D, rotation_matrix: RotationMatrix
+    ) -> "TransformationMatrix":
         """Create a transformation matrix from a 3x3 rotation matrix."""
         if rotation_matrix.shape != (3, 3):
             raise ValueError(f"Rotation matrix must be 3x3, got shape {rotation_matrix.shape}")
@@ -774,10 +791,7 @@ class TransformationMatrix(np.ndarray):
         c3 = self[:3, 2]
 
         # Normalize columns to get pure rotation matrix, assemble
-        rotation_matrix = np.column_stack((
-            c1/np.linalg.norm(c1),
-            c2/np.linalg.norm(c2),
-            c3/np.linalg.norm(c3)))
+        rotation_matrix = np.column_stack((c1 / np.linalg.norm(c1), c2 / np.linalg.norm(c2), c3 / np.linalg.norm(c3)))
 
         return RotationMatrix(rotation_matrix)
 

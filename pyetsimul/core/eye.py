@@ -40,7 +40,9 @@ class Eye:
     """
 
     # Instance parameters
-    cornea: SphericalCornea|ConicCornea = field(default_factory=lambda: SphericalCornea())  # Spherical cornea object by default
+    cornea: SphericalCornea | ConicCornea = field(
+        default_factory=lambda: SphericalCornea()
+    )  # Spherical cornea object by default
     fovea_displacement: bool = True
     fovea_alpha_deg: float = EyeAnatomyDefaults.FOVEA_ALPHA_DEG
     fovea_beta_deg: float = EyeAnatomyDefaults.FOVEA_BETA_DEG
@@ -84,7 +86,9 @@ class Eye:
         self.trans = TransformationMatrix.from_rotation(self._rest_orientation)
 
         # Initialize eyelid transform (same position as eye, orientation = rest)
-        self.eyelid_trans = TransformationMatrix.from_translation_and_rotation(self.trans.get_translation(), self._rest_orientation)
+        self.eyelid_trans = TransformationMatrix.from_translation_and_rotation(
+            self.trans.get_translation(), self._rest_orientation
+        )
 
         # Set general anatomical parameters
         self.axial_length = axial_length_default
@@ -694,7 +698,7 @@ class Eye:
             eye.position = Position3D.deserialize(data["position"])
 
         eye.trans = TransformationMatrix(np.array(data["transformation_matrix"]))
-        eye._rest_orientation = RotationMatrix(np.array(data["rest_orientation"]))
+        eye._rest_orientation = RotationMatrix.deserialize(data["rest_orientation"])
         eye.eyelid_trans = TransformationMatrix(np.array(data["eyelid_transformation_matrix"]))
 
         if data["current_target_point"]:
