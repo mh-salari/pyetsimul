@@ -7,7 +7,6 @@ allowing real-time exploration of calibration accuracy and gaze estimation.
 import numpy as np
 import matplotlib.pyplot as plt
 import copy
-from typing import List
 
 from pyetsimul.core import Eye, EyeTracker
 from ..types import Point3D, Point2D
@@ -24,7 +23,7 @@ def create_interactive_calibration_plot(
     Y: np.ndarray,
     U: np.ndarray,
     V: np.ndarray,
-    predicted_points: List,
+    predicted_points: list,
     valid_mask: np.ndarray,
     errs_deg: np.ndarray,
     plane_info: PlaneInfo,

@@ -7,7 +7,6 @@ for polynomial fitting.
 """
 
 import numpy as np
-from typing import List, Tuple
 from dataclasses import dataclass
 from ..types.geometry import Position3D, Point3D
 
@@ -26,7 +25,7 @@ class PlaneInfo:
     constant_axis: str  # Fixed coordinate (e.g., "y")
     constant_value: float  # Value of the constant coordinate
 
-    def extract_2d_coords(self, position: Position3D) -> Tuple[float, float]:
+    def extract_2d_coords(self, position: Position3D) -> tuple[float, float]:
         """Extract 2D coordinates for polynomial fitting.
 
         Maps 3D position to 2D coordinates based on plane orientation.
@@ -60,7 +59,7 @@ class PlaneInfo:
         return cls(**data)
 
 
-def detect_calibration_plane(calib_points: List[Position3D], tolerance: float = 1e-6) -> PlaneInfo:
+def detect_calibration_plane(calib_points: list[Position3D], tolerance: float = 1e-6) -> PlaneInfo:
     """Automatically detect which 2D plane the calibration points lie in.
 
     Uses variance analysis to determine which axis is constant and which two axes vary.
@@ -128,7 +127,7 @@ def detect_calibration_plane(calib_points: List[Position3D], tolerance: float = 
     )
 
 
-def summarize_plane_detection(calib_points: List[Position3D], plane_info: PlaneInfo) -> str:
+def summarize_plane_detection(calib_points: list[Position3D], plane_info: PlaneInfo) -> str:
     """Create a human-readable summary of the plane detection results.
 
     Generates formatted output showing plane type, coordinate mapping, and coverage area

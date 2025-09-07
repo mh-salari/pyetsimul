@@ -4,7 +4,7 @@ to replace dictionary-based state management.
 """
 
 from dataclasses import dataclass
-from typing import Optional, Dict, Any
+from typing import Optional, Any
 import numpy as np
 from .geometry import Point3D
 
@@ -17,7 +17,7 @@ class GazePrediction:
     confidence: float  # Confidence score [0, 1]
     algorithm_name: str  # Name of algorithm used
     processing_time: Optional[float] = None  # Processing time in seconds
-    intermediate_results: Optional[Dict[str, Any]] = None  # Algorithm-specific data
+    intermediate_results: Optional[dict[str, Any]] = None  # Algorithm-specific data
 
     @property
     def is_reliable(self) -> bool:
@@ -136,7 +136,7 @@ class InterpolationState(AlgorithmState):
 
     x_coefficients: Optional[np.ndarray] = None  # Polynomial coefficients for x
     y_coefficients: Optional[np.ndarray] = None  # Polynomial coefficients for y
-    input_normalization: Optional[Dict[str, float]] = None  # Input scaling parameters
+    input_normalization: Optional[dict[str, float]] = None  # Input scaling parameters
 
     def serialize(self) -> dict:
         """Serialize interpolation state to dictionary."""

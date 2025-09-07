@@ -2,7 +2,7 @@
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import List, Union, Optional
+from typing import Optional
 
 from ..core import Eye, Camera, Light
 from ..types import Position3D
@@ -16,9 +16,9 @@ class ExperimentConfig:
     experiment_name: str
 
     # Required hardware setup
-    eyes: List[Eye]
-    cameras: List[Camera]
-    lights: List[Light]
+    eyes: list[Eye]
+    cameras: list[Camera]
+    lights: list[Light]
 
     # Optional configuration
     gaze_target: Optional[Position3D] = None
@@ -43,11 +43,11 @@ class ExperimentConfig:
 # Helper factory functions for common setups
 def create_experiment_config(
     experiment_name: str,
-    eyes: List[Eye],
-    cameras: List[Camera],
-    lights: List[Light],
+    eyes: list[Eye],
+    cameras: list[Camera],
+    lights: list[Light],
     gaze_target: Optional[Position3D] = None,
-    output_dir: Union[str, Path] = "outputs",
+    output_dir: str | Path = "outputs",
 ) -> ExperimentConfig:
     """Create experiment configuration with validation."""
     return ExperimentConfig(

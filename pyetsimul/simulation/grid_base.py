@@ -2,7 +2,7 @@
 
 import numpy as np
 from abc import ABC, abstractmethod
-from typing import List, Iterable, Optional
+from typing import Iterable, Optional
 from ..types import Position3D
 
 
@@ -25,7 +25,7 @@ class GridGenerator(ABC):
 class RegularGrid(GridGenerator):
     """Regular 3D grid generation with uniform spacing."""
 
-    def __init__(self, center: Position3D, dx: List[float], dy: List[float], dz: List[float], grid_size: List[int]):
+    def __init__(self, center: Position3D, dx: list[float], dy: list[float], dz: list[float], grid_size: list[int]):
         """Initialize regular grid.
 
         Args:
@@ -78,7 +78,7 @@ class RandomGrid(GridGenerator):
     """Random 3D positions within bounds."""
 
     def __init__(
-        self, center: Position3D, dx: List[float], dy: List[float], dz: List[float], num_points: int, seed: Optional[int] = None
+        self, center: Position3D, dx: list[float], dy: list[float], dz: list[float], num_points: int, seed: Optional[int] = None
     ):
         """Initialize random grid.
 

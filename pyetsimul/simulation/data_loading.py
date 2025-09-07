@@ -2,12 +2,12 @@
 
 import json
 from pathlib import Path
-from typing import Union, Dict, Any
+from typing import Any
 
 from ..utils.filename import sanitize_filename
 
 
-def load_experiment_data(experiment_name: str, output_dir: Union[str, Path] = "outputs") -> Dict[str, Any]:
+def load_experiment_data(experiment_name: str, output_dir: str | Path = "outputs") -> dict[str, Any]:
     """Load cached experiment dataset by name.
 
     Args:

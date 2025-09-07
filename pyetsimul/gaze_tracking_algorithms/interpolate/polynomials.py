@@ -4,7 +4,7 @@ Based on various eye tracking calibration papers with different polynomial formu
 """
 
 import numpy as np
-from typing import Callable, Dict, List, Optional
+from typing import Callable, Optional
 from dataclasses import dataclass
 from ...types.algorithms import PolynomialFeatures
 
@@ -146,8 +146,8 @@ class PolynomialRegistry:
 
     def __init__(self):
         """Initialize empty registry."""
-        self._polynomials: Dict[str, PolynomialInfo] = {}
-        self._aliases: Dict[str, str] = {}  # Alias -> canonical name mapping
+        self._polynomials: dict[str, PolynomialInfo] = {}
+        self._aliases: dict[str, str] = {}  # Alias -> canonical name mapping
 
     def register(
         self,
@@ -158,7 +158,7 @@ class PolynomialRegistry:
         feature_count: int,
         paper_reference: Optional[str] = None,
         year: Optional[int] = None,
-        aliases: Optional[List[str]] = None,
+        aliases: Optional[list[str]] = None,
     ) -> None:
         """Register a polynomial function.
 
@@ -225,15 +225,15 @@ class PolynomialRegistry:
         canonical_name = self._aliases.get(name, name)
         return self._polynomials.get(canonical_name)
 
-    def list_polynomials(self) -> List[str]:
+    def list_polynomials(self) -> list[str]:
         """Get list of all registered polynomial names."""
         return list(self._polynomials.keys())
 
-    def list_polynomials_with_info(self) -> List[PolynomialInfo]:
+    def list_polynomials_with_info(self) -> list[PolynomialInfo]:
         """Get list of all polynomial information."""
         return list(self._polynomials.values())
 
-    def filter_polynomials(self, model_type: Optional[str] = None) -> List[PolynomialInfo]:
+    def filter_polynomials(self, model_type: Optional[str] = None) -> list[PolynomialInfo]:
         """Filter polynomials by criteria.
 
         Args:
@@ -321,6 +321,6 @@ def get_polynomial_info(name: str) -> Optional[PolynomialInfo]:
     return _polynomial_registry.get_polynomial_info(name)
 
 
-def list_available_polynomials() -> List[str]:
+def list_available_polynomials() -> list[str]:
     """List all available polynomials in the global registry."""
     return _polynomial_registry.list_polynomials()

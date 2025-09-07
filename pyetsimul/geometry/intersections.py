@@ -5,13 +5,13 @@ Provides functions for intersecting rays with spheres, circles, planes, and coni
 
 import numpy as np
 import warnings
-from typing import Optional, Tuple
+from typing import Optional
 from ..types import Point3D, Vector3D, Ray, IntersectionResult, Position3D, Direction3D
 
 
 def intersect_ray_sphere(
     ray: Ray, sphere_center: Position3D, sphere_radius: float
-) -> Tuple[Optional[IntersectionResult], Optional[IntersectionResult]]:
+) -> tuple[Optional[IntersectionResult], Optional[IntersectionResult]]:
     """Find intersection points between ray and sphere.
 
     Uses quadratic equation to find intersection points. Returns both intersection
@@ -145,7 +145,7 @@ def intersect_ray_plane(ray: Ray, plane_point: Position3D, plane_normal: Directi
 
 def intersect_ray_conic(
     ray: Ray, conic_center: Position3D, radius: float, conic_constant: float
-) -> Tuple[Optional[IntersectionResult], Optional[IntersectionResult]]:
+) -> tuple[Optional[IntersectionResult], Optional[IntersectionResult]]:
     """Find intersection between ray and conic section.
 
     Uses quadratic equation derived from conic surface equation.

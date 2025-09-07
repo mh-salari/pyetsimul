@@ -1,6 +1,6 @@
 """Centralized keyboard controls for interactive plots."""
 
-from typing import Dict, Any, Optional, Callable
+from typing import Any, Optional, Callable
 import matplotlib.pyplot as plt
 from pyetsimul.types import Position3D, Point3D
 
@@ -15,7 +15,7 @@ class InteractiveControls:
         step_size: float = 2.5e-3,
         initial_eye_position: Optional[Position3D] = None,
         initial_target_position: Optional[Point3D] = None,
-        custom_handlers: Optional[Dict[str, Callable]] = None,
+        custom_handlers: Optional[dict[str, Callable]] = None,
     ):
         self.eye = eye
         self.target_point = target_point
@@ -108,7 +108,7 @@ class InteractiveControls:
             self._update_callback()
 
     @staticmethod
-    def print_controls(include_reset: bool = True, additional_controls: Optional[Dict[str, str]] = None):
+    def print_controls(include_reset: bool = True, additional_controls: Optional[dict[str, str]] = None):
         """Print standardized control instructions."""
         print("CONTROLS:")
         print("Target Movement (Arrow keys):")

@@ -1,7 +1,7 @@
 """Target 3D position variations."""
 
 import math
-from typing import List, Iterable
+from typing import Iterable
 from ..types import Position3D
 from .core import TargetVariation
 from .grid_base import RegularGrid
@@ -11,7 +11,7 @@ class TargetPositionVariation(TargetVariation):
     """Varies gaze target positions in space using grid generation."""
 
     def __init__(
-        self, grid_center: Position3D, dx: List[float], dy: List[float], dz: List[float], grid_size: List[int]
+        self, grid_center: Position3D, dx: list[float], dy: list[float], dz: list[float], grid_size: list[int]
     ):
         super().__init__("target_position")
         self.grid = RegularGrid(center=grid_center, dx=dx, dy=dy, dz=dz, grid_size=grid_size)

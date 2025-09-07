@@ -1,7 +1,7 @@
 """Generic parameter variation for any eye model parameter."""
 
 import numpy as np
-from typing import List, Iterable, Optional
+from typing import Iterable, Optional
 from ..core import Eye
 from .core import EyeParameterVariation
 
@@ -13,7 +13,7 @@ class GenericEyeVariation(EyeParameterVariation):
     through string-based parameter paths.
     """
 
-    def __init__(self, parameter_name: str, value_range: List[float], num_steps: int, description: Optional[str] = None):
+    def __init__(self, parameter_name: str, value_range: list[float], num_steps: int, description: Optional[str] = None):
         """Initialize generic parameter variation.
 
         Args:

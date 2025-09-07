@@ -2,7 +2,7 @@
 
 import numpy as np
 from dataclasses import dataclass
-from typing import Optional, List
+from typing import Optional
 
 from ..types import Point2D
 
@@ -32,8 +32,8 @@ class GlintNoiseConfig:
     offset_y: Optional[float] = None
 
     # Advanced interface
-    mean: Optional[List[float]] = None
-    covariance: Optional[List[List[float]]] = None
+    mean: Optional[list[float]] = None
+    covariance: Optional[list[list[float]]] = None
 
     # Common
     seed: Optional[int] = None

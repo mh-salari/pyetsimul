@@ -6,7 +6,7 @@ system with cameras, lights, calibration points, and algorithm functions.
 
 import numpy as np
 from dataclasses import dataclass, field
-from typing import Optional, List, Dict, Any, Tuple
+from typing import Optional, Any
 from abc import ABC, abstractmethod
 from tabulate import tabulate
 
@@ -26,14 +26,14 @@ class EyeTracker(ABC):
     """
 
     # Physical components
-    cameras: List[Camera] = field(default_factory=list)
-    lights: List[Light] = field(default_factory=list)
+    cameras: list[Camera] = field(default_factory=list)
+    lights: list[Light] = field(default_factory=list)
 
     # Calibration points for gaze tracking
-    calib_points: List[Position3D] = field(default_factory=list)
+    calib_points: list[Position3D] = field(default_factory=list)
 
     # Algorithm state/parameters
-    state: Dict[str, Any] = field(default_factory=dict)
+    state: dict[str, Any] = field(default_factory=dict)
 
     # Refraction setting
     use_refraction: bool = True
@@ -68,7 +68,7 @@ class EyeTracker(ABC):
         """
         self.calib_points.append(point)
 
-    def set_calibration_points(self, points: List[Position3D]) -> None:
+    def set_calibration_points(self, points: list[Position3D]) -> None:
         """Set all calibration points at once.
 
         Replaces entire calibration grid with new point collection.
@@ -91,7 +91,7 @@ class EyeTracker(ABC):
         self.calibrate(calibration_measurements)
         return self
 
-    def _collect_calibration_measurements(self, eye: Eye) -> List[EyeMeasurement]:
+    def _collect_calibration_measurements(self, eye: Eye) -> list[EyeMeasurement]:
         """Helper to collect measurements for each calibration point.
 
         Gathers calibration data and reports detection failures.
@@ -173,7 +173,7 @@ class EyeTracker(ABC):
         # Get gaze prediction - returns None if prediction fails
         return self.predict_gaze(measurement)
 
-    def calculate_gaze_error(self, eye: Eye, look_at_pos: Point3D) -> Tuple[float, float]:
+    def calculate_gaze_error(self, eye: Eye, look_at_pos: Point3D) -> tuple[float, float]:
         """Calculate gaze estimation error.
 
         Evaluates gaze tracking accuracy by comparing prediction to known target.
@@ -196,7 +196,7 @@ class EyeTracker(ABC):
             return np.nan, np.nan
 
     @abstractmethod
-    def calibrate(self, calibration_measurements: List[EyeMeasurement]) -> None:
+    def calibrate(self, calibration_measurements: list[EyeMeasurement]) -> None:
         """Calibrate the eye tracker using collected data.
 
         Abstract interface for algorithm-specific calibration implementation.
@@ -207,7 +207,7 @@ class EyeTracker(ABC):
         """
         pass
 
-    def test_calibration_fit(self, eye: Eye) -> List[Tuple[Position3D, Optional[GazePrediction]]]:
+    def test_calibration_fit(self, eye: Eye) -> list[tuple[Position3D, Optional[GazePrediction]]]:
         """Test calibrated polynomial by predicting each calibration point.
 
         Validates calibration quality by testing full pipeline on known targets.

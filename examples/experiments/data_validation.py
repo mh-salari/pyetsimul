@@ -2,11 +2,11 @@
 
 import json
 from pathlib import Path
-from typing import Dict, Any, List
+from typing import Any
 from tqdm import tqdm
 
 
-def find_data_files(outputs_dir: Path) -> List[Path]:
+def find_data_files(outputs_dir: Path) -> list[Path]:
     """Find all JSON data files in the outputs directory."""
     if not outputs_dir.exists():
         print(f"Outputs directory not found: {outputs_dir}")
@@ -20,7 +20,7 @@ def find_data_files(outputs_dir: Path) -> List[Path]:
     return json_files
 
 
-def validate_experiment_metadata(data: Dict[str, Any]) -> bool:
+def validate_experiment_metadata(data: dict[str, Any]) -> bool:
     """Validate experiment metadata structure."""
     metadata = data.get("experiment_metadata", {})
 
@@ -33,7 +33,7 @@ def validate_experiment_metadata(data: Dict[str, Any]) -> bool:
     return True
 
 
-def validate_measurements(data: Dict[str, Any]) -> bool:
+def validate_measurements(data: dict[str, Any]) -> bool:
     """Validate measurement data by recreating simulator and comparing results."""
     from pyetsimul.core import Eye, Camera, Light
 
@@ -150,7 +150,7 @@ def compare_values(actual, expected, field_name, tolerance=1e-10):
     return True
 
 
-def validate_parameter_values(data: Dict[str, Any]) -> bool:
+def validate_parameter_values(data: dict[str, Any]) -> bool:
     """Validate parameter values match expected types."""
     experiment_name = data["experiment_metadata"]["experiment_name"]
     cameras = data.get("cameras", [])
@@ -200,7 +200,7 @@ def validate_parameter_values(data: Dict[str, Any]) -> bool:
     return True
 
 
-def validate_coordinate_consistency(data: Dict[str, Any]) -> bool:
+def validate_coordinate_consistency(data: dict[str, Any]) -> bool:
     """Validate coordinate system consistency."""
     cameras = data.get("cameras", [])
 

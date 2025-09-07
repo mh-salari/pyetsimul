@@ -4,7 +4,6 @@ Defaults for anatomical and hardware parameters.
 """
 
 from dataclasses import dataclass
-from typing import Tuple
 
 
 @dataclass
@@ -50,7 +49,7 @@ class PupilDefaults:
     NONCIRCULARITY: float = 0.0166
     ELLIPSE_CONTRIBUTION: float = 0.5
     MAJOR_AXIS_ANGLE: float = 0.0  # rad
-    OFFSET_FROM_LIMBUS: Tuple[float, float] = (0.27e-3, 0.20e-3)  # m
+    OFFSET_FROM_LIMBUS: tuple[float, float] = (0.27e-3, 0.20e-3)  # m
     N_HARMONICS: int = 6
     REFERENCE_AGE: float = 35.8  # years
 

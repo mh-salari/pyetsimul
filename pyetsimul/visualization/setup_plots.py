@@ -5,9 +5,8 @@ Handles coordinate transformations and anatomical structure plotting.
 """
 
 import numpy as np
-import matplotlib.pyplot as plt
 from matplotlib import ticker
-from typing import Optional, List, Dict, Tuple
+from typing import Optional
 
 from ..types import Point2D, Point3D, Vector3D, TransformationMatrix
 from .plot_config import create_plot_config
@@ -20,9 +19,9 @@ def plot_setup(
     lights=None,
     cameras=None,
     cr_3d_lists=None,
-    ref_bounds: Optional[Dict[str, Tuple[float, float]]] = None,
+    ref_bounds: Optional[dict[str, tuple[float, float]]] = None,
     calib_points: Optional[list[Point2D]] = None,
-) -> Tuple[List[str], List[str]]:
+) -> tuple[list[str], list[str]]:
     """Plot 3D eye tracking setup visualization.
 
     Shows eye anatomy, cameras, lights, and corneal reflections in world coordinates.
@@ -293,7 +292,7 @@ def plot_setup(
 
 def transform_surface(
     x_local: Vector3D, y_local: Vector3D, z_local: Vector3D, trans_matrix: TransformationMatrix
-) -> Tuple[Vector3D, Vector3D, Vector3D]:
+) -> tuple[Vector3D, Vector3D, Vector3D]:
     """Transform surface coordinates to world coordinates"""
     ones = np.ones_like(x_local)
     local_coords = np.stack([x_local, y_local, z_local, ones], axis=0)

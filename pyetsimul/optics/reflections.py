@@ -5,7 +5,7 @@ Implements geometric and optimization-based methods for finding glint positions 
 
 import numpy as np
 import warnings
-from typing import Optional, Tuple, TYPE_CHECKING, cast
+from typing import Optional, TYPE_CHECKING, cast
 from scipy.optimize import brentq
 from ..types import Point3D, Ray, IntersectionResult, Position3D, Direction3D
 from ..geometry.intersections import (
@@ -24,7 +24,7 @@ if TYPE_CHECKING:
 
 def _reflection_objective_sphere(
     a: float, light_pos: Position3D, camera_pos: Position3D, sphere_center: Position3D, sphere_radius: float
-) -> Tuple[float, Point3D]:
+) -> tuple[float, Point3D]:
     """Objective function for reflection finding on sphere.
 
     Uses interpolation between light and camera directions to find reflection point.
@@ -103,7 +103,7 @@ def _reflection_objective_conic(
     conic_center: Position3D,
     radius: float,
     conic_constant: float,
-) -> Tuple[float, Optional[Point3D]]:
+) -> tuple[float, Optional[Point3D]]:
     """Objective function for reflection finding on conic surface.
 
     Uses interpolation between light and camera directions to find reflection point.
@@ -190,7 +190,7 @@ def find_reflection_conic(
 
 def reflect_ray_circle(
     ray: Ray, circle_center: Point3D, circle_radius: float
-) -> Tuple[Optional[IntersectionResult], Optional[Ray]]:
+) -> tuple[Optional[IntersectionResult], Optional[Ray]]:
     """Reflect ray off circle surface.
 
     Finds intersection point and computes reflected ray direction using reflection law.
@@ -233,7 +233,7 @@ def reflect_ray_circle(
 
 def reflect_ray_sphere(
     ray: Ray, sphere_center: Position3D, sphere_radius: float
-) -> Tuple[Optional[IntersectionResult], Optional[Ray]]:
+) -> tuple[Optional[IntersectionResult], Optional[Ray]]:
     """Reflect ray off sphere surface.
 
     Finds intersection point and computes reflected ray direction using reflection law.
@@ -272,7 +272,7 @@ def reflect_ray_sphere(
 
 def reflect_ray_conic(
     ray: Ray, conic_center: Position3D, radius: float, conic_constant: float
-) -> Tuple[Optional[IntersectionResult], Optional[Ray]]:
+) -> tuple[Optional[IntersectionResult], Optional[Ray]]:
     """Reflect ray off conic surface.
 
     Finds intersection point and computes reflected ray direction using reflection law.

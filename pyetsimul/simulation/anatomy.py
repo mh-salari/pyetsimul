@@ -1,6 +1,5 @@
 """Anatomical parameter variations for eye tracking simulation."""
 
-from typing import List
 from .generic import GenericEyeVariation
 from .composed_variation import ComposedVariation
 from ..core.cornea import ConicCornea
@@ -10,7 +9,7 @@ from ..core.default_configs import CorneaDefaults
 class PupilSizeVariation(GenericEyeVariation):
     """Pupil diameter variation with proper unit display."""
 
-    def __init__(self, diameter_range: List[float], num_steps: int = 10):
+    def __init__(self, diameter_range: list[float], num_steps: int = 10):
         super().__init__("pupil_diameter", diameter_range, num_steps)
 
     def describe(self) -> str:
@@ -22,7 +21,7 @@ class PupilSizeVariation(GenericEyeVariation):
 class AngleKappaAlphaVariation(GenericEyeVariation):
     """Angle kappa alpha (horizontal) variation with proper unit display."""
 
-    def __init__(self, alpha_range_deg: List[float], num_steps: int):
+    def __init__(self, alpha_range_deg: list[float], num_steps: int):
         super().__init__("fovea_alpha_deg", alpha_range_deg, num_steps)
 
     def describe(self) -> str:
@@ -32,7 +31,7 @@ class AngleKappaAlphaVariation(GenericEyeVariation):
 class AngleKappaBetaVariation(GenericEyeVariation):
     """Angle kappa beta (vertical) variation with proper unit display."""
 
-    def __init__(self, beta_range_deg: List[float], num_steps: int):
+    def __init__(self, beta_range_deg: list[float], num_steps: int):
         super().__init__("fovea_beta_deg", beta_range_deg, num_steps)
 
     def describe(self) -> str:
@@ -40,7 +39,7 @@ class AngleKappaBetaVariation(GenericEyeVariation):
 
 
 def AngleKappaVariation(
-    alpha_range_deg: List[float], beta_range_deg: List[float], num_steps: int
+    alpha_range_deg: list[float], beta_range_deg: list[float], num_steps: int
 ) -> ComposedVariation:
     """Angle kappa variation affecting both horizontal (alpha) and vertical (beta) components."""
     variations = [
@@ -53,7 +52,7 @@ def AngleKappaVariation(
 class CorneaRadiusVariation(GenericEyeVariation):
     """Corneal anterior radius variation with proper unit display."""
 
-    def __init__(self, radius_range_m: List[float], num_steps: int):
+    def __init__(self, radius_range_m: list[float], num_steps: int):
         super().__init__("cornea.anterior_radius", radius_range_m, num_steps)
 
     def describe(self) -> str:
@@ -65,7 +64,7 @@ class CorneaRadiusVariation(GenericEyeVariation):
 class CorneaThicknessVariation(GenericEyeVariation):
     """Corneal thickness variation that works with both SphericalCornea and ConicCornea."""
 
-    def __init__(self, thickness_range_m: List[float], num_steps: int):
+    def __init__(self, thickness_range_m: list[float], num_steps: int):
         """Initialize corneal thickness variation.
 
         Args:

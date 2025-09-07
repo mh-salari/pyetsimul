@@ -5,7 +5,6 @@ at the original calibration points to assess calibration quality.
 """
 
 import numpy as np
-from typing import Dict
 from tabulate import tabulate
 
 from ..core import Eye, EyeTracker
@@ -19,7 +18,7 @@ from ..visualization.interactive_calibration import create_interactive_calibrati
 class CalibrationResults:
     """Calibration accuracy results with printing method."""
 
-    def __init__(self, errors: Dict[str, Dict[str, float]]):
+    def __init__(self, errors: dict[str, dict[str, float]]):
         self.errors = errors
 
     def __str__(self) -> str:
@@ -64,7 +63,7 @@ def accuracy_at_calibration_points(et: EyeTracker, eye: Eye, interactive_plot: b
         )
 
     # Get calibration points and plane info
-    calib_points = et.calib_points  # List[Position3D]
+    calib_points = et.calib_points
     n_points = len(calib_points)
 
     # Get the eye tracker's plane info for coordinate system

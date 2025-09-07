@@ -1,14 +1,14 @@
 """Composed parameter variations for complex experiment designs."""
 
 import math
-from typing import List, Any, Dict, Iterable
+from typing import Any, Iterable
 from .core import ParameterVariation
 
 
 class ComposedVariation(ParameterVariation):
     """Combines multiple parameter variations into a single experiment."""
 
-    def __init__(self, variations: List[ParameterVariation], param_name: str = "composed"):
+    def __init__(self, variations: list[ParameterVariation], param_name: str = "composed"):
         """Initialize composed variation.
 
         Args:
@@ -32,7 +32,7 @@ class ComposedVariation(ParameterVariation):
             return 0
         return math.prod(len(v) for v in self.variations)
 
-    def generate_values(self) -> Iterable[Dict[str, Any]]:
+    def generate_values(self) -> Iterable[dict[str, Any]]:
         """Generate Cartesian product of all variation values using a generator."""
         if not self.variations:
             return
@@ -61,7 +61,7 @@ class ComposedVariation(ParameterVariation):
 class SequentialVariation(ParameterVariation):
     """Applies variations sequentially rather than in combination."""
 
-    def __init__(self, variations: List[ParameterVariation], param_name: str = "sequential"):
+    def __init__(self, variations: list[ParameterVariation], param_name: str = "sequential"):
         """Initialize sequential variation.
 
         Args:
@@ -83,7 +83,7 @@ class SequentialVariation(ParameterVariation):
         """Return the total number of values (sum of lengths)."""
         return sum(len(v) for v in self.variations)
 
-    def generate_values(self) -> Iterable[Dict[str, Any]]:
+    def generate_values(self) -> Iterable[dict[str, Any]]:
         """Generate sequential values from all variations."""
         for i, variation in enumerate(self.variations):
             for value in variation.generate_values():

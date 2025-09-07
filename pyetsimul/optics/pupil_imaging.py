@@ -6,7 +6,7 @@ part of the Eye class, extracted for better modularity and testability.
 """
 
 import numpy as np
-from typing import Optional, List
+from typing import Optional
 
 from skimage.measure import EllipseModel
 from skimage.draw import polygon
@@ -94,7 +94,7 @@ def get_pupil_center_mass_image(eye, camera: Camera, use_refraction: bool = True
 
 
 def calculate_pupil_center_from_boundary(
-    boundary_points: List[Point2D], camera_resolution: Point2D, center_method: str = "ellipse"
+    boundary_points: list[Point2D], camera_resolution: Point2D, center_method: str = "ellipse"
 ) -> Optional[Point2D]:
     """Calculate pupil center from boundary points using specified method.
 

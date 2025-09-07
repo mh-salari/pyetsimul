@@ -4,7 +4,7 @@ Implements Snell's law, ray-surface intersection, and optimization for refractio
 """
 
 import numpy as np
-from typing import Optional, Tuple, cast
+from typing import Optional, cast
 from scipy.optimize import brentq
 from ..types import Point3D, Ray, IntersectionResult, Position3D, Vector3D, Direction3D
 from ..geometry.intersections import intersect_ray_sphere, intersect_ray_conic, conic_surface_normal
@@ -19,7 +19,7 @@ def _refraction_objective_sphere(
     sphere_radius: float,
     n_outside: float,
     n_sphere: float,
-) -> Tuple[float, Point3D]:
+) -> tuple[float, Point3D]:
     """Objective function for refraction finding on sphere.
 
     Uses interpolation between camera and object directions to find refraction point.
@@ -113,7 +113,7 @@ def _refraction_objective_conic(
     conic_constant: float,
     n_outside: float,
     n_conic: float,
-) -> Tuple[float, Optional[Point3D]]:
+) -> tuple[float, Optional[Point3D]]:
     """Objective function for refraction finding on conic surface.
 
     Uses interpolation between camera and object directions to find refraction point.
@@ -237,7 +237,7 @@ def find_refraction_conic(
 
 def refract_ray_sphere(
     ray: Ray, sphere_center: Position3D, sphere_radius: float, n_outside: float, n_sphere: float
-) -> Tuple[Optional[IntersectionResult], Optional[Ray]]:
+) -> tuple[Optional[IntersectionResult], Optional[Ray]]:
     """Refract ray through sphere surface.
 
     Finds intersection point and computes refracted ray direction using Snell's law.
@@ -287,7 +287,7 @@ def refract_ray_sphere(
 
 def refract_ray_conic(
     ray: Ray, conic_center: Position3D, radius: float, conic_constant: float, n_outside: float, n_conic: float
-) -> Tuple[Optional[IntersectionResult], Optional[Ray]]:
+) -> tuple[Optional[IntersectionResult], Optional[Ray]]:
     """Refract ray through conic surface.
 
     Finds intersection point and computes refracted ray direction using Snell's law.
@@ -345,7 +345,7 @@ def refract_ray_conic(
 
 def refract_ray_dual_surface(
     eye, ray_origin: Point3D, ray_direction: Direction3D
-) -> Tuple[Optional[Point3D], Optional[Point3D], Optional[Direction3D]]:
+) -> tuple[Optional[Point3D], Optional[Point3D], Optional[Direction3D]]:
     """Computes refraction through both anterior and posterior corneal surfaces.
 
     Models complete corneal optical path by calculating refraction at both:

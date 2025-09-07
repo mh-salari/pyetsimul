@@ -1,7 +1,7 @@
 """Generic gaze accuracy evaluation that works with any pre-generated dataset."""
 
 import numpy as np
-from typing import Dict, Any, List, Optional, cast
+from typing import Any, Optional, cast
 from dataclasses import dataclass
 from tqdm import tqdm
 
@@ -15,14 +15,14 @@ from .analysis_utils import _compute_stats
 class GazeAccuracyResult:
     """Results from gaze accuracy evaluation."""
 
-    errors_3d: List[float]  # 3D distances in meters
-    errors_angular: List[float]  # Angular errors in degrees
-    predicted_points: List[Optional[Position3D]]  # Predicted gaze points
-    ground_truth_points: List[Position3D]  # Ground truth gaze points
-    observer_positions: List[Position3D]  # Observer eye positions
+    errors_3d: list[float]  # 3D distances in meters
+    errors_angular: list[float]  # Angular errors in degrees
+    predicted_points: list[Optional[Position3D]]  # Predicted gaze points
+    ground_truth_points: list[Position3D]  # Ground truth gaze points
+    observer_positions: list[Position3D]  # Observer eye positions
 
     # Statistics
-    error_stats: Dict[str, Dict[str, float]]  # Mean, max, std, median for mtr and deg
+    error_stats: dict[str, dict[str, float]]  # Mean, max, std, median for mtr and deg
     total_measurements: int
     successful_predictions: int
 
@@ -55,7 +55,7 @@ class GazeAccuracyResult:
 
 def evaluate_gaze_accuracy(
     eye_tracker: EyeTracker,
-    dataset: Dict[str, Any],
+    dataset: dict[str, Any],
     description: str = "Evaluating gaze accuracy",
     camera_id: int = 0,
     eye_id: int = 0,
@@ -105,7 +105,7 @@ def evaluate_gaze_accuracy(
     )
 
 
-def _extract_dataset_components(dataset: Dict[str, Any], camera_id: int, eye_id: int):
+def _extract_dataset_components(dataset: dict[str, Any], camera_id: int, eye_id: int):
     """Extract camera data, measurements, and variation from dataset."""
     camera_data = dataset["data"]["cameras"][camera_id]
     eye_data = camera_data["eyes"][eye_id]
@@ -122,7 +122,7 @@ def _extract_dataset_components(dataset: Dict[str, Any], camera_id: int, eye_id:
 
 
 def _process_measurements(
-    eye_tracker: EyeTracker, measurements: List[Dict], camera_resolution: Point2D, description: str
+    eye_tracker: EyeTracker, measurements: list[dict], camera_resolution: Point2D, description: str
 ):
     """Process all measurements and calculate errors."""
     errors_3d = []
@@ -157,7 +157,7 @@ def _process_measurements(
     return errors_3d, errors_angular, predicted_points, ground_truth_points, observer_positions, successful_predictions
 
 
-def _extract_ground_truth_data(measurement: Dict):
+def _extract_ground_truth_data(measurement: dict):
     """Extract ground truth gaze target and eye position from measurement."""
     if measurement["gaze_target"] is None:
         return None, None
@@ -174,7 +174,7 @@ def _extract_ground_truth_data(measurement: Dict):
     return ground_truth, eye_position
 
 
-def _process_single_measurement(measurement: Dict, camera_resolution: Point2D, eye_tracker: EyeTracker):
+def _process_single_measurement(measurement: dict, camera_resolution: Point2D, eye_tracker: EyeTracker):
     """Process a single measurement and return gaze prediction."""
     # Extract measurement data
     pupil_center = measurement["pupil_center"]
@@ -211,9 +211,9 @@ def _update_results_with_prediction(
     prediction,
     ground_truth: Point3D,
     eye_position: Position3D,
-    predicted_points: List,
-    errors_3d: List,
-    errors_angular: List,
+    predicted_points: list,
+    errors_3d: list,
+    errors_angular: list,
 ):
     """Update result lists with prediction outcome."""
     if prediction is not None and prediction.gaze_point is not None:
@@ -237,7 +237,7 @@ def _update_results_with_prediction(
         errors_angular.append(np.nan)
 
 
-def _calculate_error_statistics(errors_3d: List[float], errors_angular: List[float]) -> Dict[str, Dict[str, float]]:
+def _calculate_error_statistics(errors_3d: list[float], errors_angular: list[float]) -> dict[str, dict[str, float]]:
     """Calculate error statistics from 3D and angular errors."""
     valid_errors_3d = [e for e in errors_3d if not np.isnan(e)]
     valid_errors_angular = [e for e in errors_angular if not np.isnan(e)]

@@ -4,7 +4,6 @@ Provides line-line closest point, 2D line intersection, and other basic geometri
 """
 
 import numpy as np
-from typing import Tuple
 from ..types import Point2D, Point3D, Vector3D
 
 
@@ -13,7 +12,7 @@ def lines_closest_point(
     d1: Vector3D,
     p2: Point3D,
     d2: Vector3D,
-) -> Tuple[Point3D, Point3D]:
+) -> tuple[Point3D, Point3D]:
     """Find the closest points between two lines in 3D space.
 
     Uses the minimum distance approach to find points on each line that are closest

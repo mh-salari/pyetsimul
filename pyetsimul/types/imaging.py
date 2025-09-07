@@ -4,7 +4,7 @@ imaging results to replace the Dict[str, Any] pattern.
 """
 
 from dataclasses import dataclass
-from typing import Optional, List, Union
+from typing import Optional
 import numpy as np
 from .geometry import Point2D, Point3D
 from ..core.default_configs import CameraDefaults
@@ -14,8 +14,8 @@ from ..core.default_configs import CameraDefaults
 class CameraImage:
     """Result of camera.take_image() operation."""
 
-    corneal_reflections: List[Optional[Point2D]]  # CR positions for each light
-    pupil_boundary: Optional[List[Point2D]]  # Pupil boundary points as structured types
+    corneal_reflections: list[Optional[Point2D]]  # CR positions for each light
+    pupil_boundary: Optional[list[Point2D]]  # Pupil boundary points as structured types
     pupil_center: Optional[Point2D]  # Pupil center position
     resolution: Point2D  # Camera resolution
 
@@ -104,7 +104,7 @@ class CameraMatrix:
         return float(self._matrix[0, 0])
 
     @focal_length.setter
-    def focal_length(self, value: Union[float, List[float]]) -> None:
+    def focal_length(self, value: float | list[float]) -> None:
         if isinstance(value, (int, float)):
             self._matrix[0, 0] = float(value)
             self._matrix[1, 1] = float(value)

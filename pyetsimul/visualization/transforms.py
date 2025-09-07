@@ -4,7 +4,6 @@ Provides functions for transforming local surface coordinates to world coordinat
 """
 
 import numpy as np
-from typing import Tuple
 from ..types import TransformationMatrix
 
 def _assert_shape(x, shape:list):
@@ -16,7 +15,7 @@ def _assert_shape(x, shape:list):
 
 def transform_surface(
     x_local: np.ndarray, y_local: np.ndarray, z_local: np.ndarray, trans_matrix: TransformationMatrix
-) -> Tuple[np.ndarray, np.ndarray, np.ndarray]:
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
     """Transform surface coordinates to world coordinates for 3D visualization.
 
     Applies homogeneous transformation to local surface coordinates for plotting.

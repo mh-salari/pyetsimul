@@ -1,7 +1,6 @@
 """Eyelid model as a spherical eyelid with an elliptical opening."""
 
 from dataclasses import dataclass
-from typing import Tuple
 
 import numpy as np
 
@@ -29,7 +28,7 @@ class Eyelid:
     lower_cap_fraction: float
     ellipse_width_to_height: float
 
-    def compute_opening_band(self) -> Tuple[float, float]:
+    def compute_opening_band(self) -> tuple[float, float]:
         """Compute spherical band [phi1, phi2] using area relations for reference.
 
         Returns:
@@ -94,7 +93,7 @@ class Eyelid:
 
         return float(self.sphere_radius) * float(np.sin(self.phi_max))
 
-    def ellipse_axes(self) -> Tuple[float, float]:
+    def ellipse_axes(self) -> tuple[float, float]:
         """Compute ellipse width and height with fixed width and variable height.
 
         - Width is fixed by the footprint to keep left/right edges stationary
