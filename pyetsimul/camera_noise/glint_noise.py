@@ -98,8 +98,8 @@ def apply_glint_noise(glint_position: Point2D, config: Optional[GlintNoiseConfig
         return Point2D(x=glint_position.x + noise[0], y=glint_position.y + noise[1])
 
     elif config.noise_type == "gaussian":
-        noise_x = np.random.normal(0., config.std)
-        noise_y = np.random.normal(0., config.std)
+        noise_x = np.random.normal(0.0, config.std)
+        noise_y = np.random.normal(0.0, config.std)
         return Point2D(x=glint_position.x + noise_x, y=glint_position.y + noise_y)
 
     elif config.noise_type == "uniform":

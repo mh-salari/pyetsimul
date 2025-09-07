@@ -13,11 +13,7 @@ from ..types import Position3D
 
 
 def prepare_eye_data_for_plots(
-    eyes,
-    look_at_targets,
-    lights=None,
-    cameras=None,
-    use_legacy_lookat=False
+    eyes, look_at_targets, lights=None, cameras=None, use_legacy_lookat=False
 ) -> dict[str, Any]:
     """Prepare eye visualization data for plotting.
 

@@ -13,14 +13,14 @@ class ColorPalettes:
     """Color definitions organized by element type for consistent visual coding."""
 
     # Eye identification colors - one per eye in multi-eye setups
-    eyes: list[str]|None = None
-    eyes_light: list[str]|None = None  # Lighter variants for surface rendering
+    eyes: list[str] | None = None
+    eyes_light: list[str] | None = None  # Lighter variants for surface rendering
 
     # Camera identification colors
-    cameras: list[str]|None = None
+    cameras: list[str] | None = None
 
     # Light source colors
-    lights: list[str]|None = None
+    lights: list[str] | None = None
 
     # Anatomical structure colors
     eye_globe: str = "lightgray"
@@ -41,10 +41,10 @@ class ColorPalettes:
     visual_axis: str = "red"
 
     # Corneal reflection hex codes for different light sources
-    corneal_reflections_detailed: list[str]|None = None
+    corneal_reflections_detailed: list[str] | None = None
 
     # Interactive comparison colors
-    camera_comparison: list[str]|None = None
+    camera_comparison: list[str] | None = None
 
     def __post_init__(self):
         """Initialize default color arrays if not provided."""
@@ -86,7 +86,7 @@ class MarkerConfig:
     cornea_center_inner: int = 20  # Inner cornea center marker
 
     # Marker styles for different comparison contexts
-    camera_comparison: list[str]|None = None
+    camera_comparison: list[str] | None = None
 
     def __post_init__(self):
         """Initialize default marker style arrays."""
@@ -139,8 +139,8 @@ class LayoutConfig:
     anatomy_detail: tuple[int, int] = (14, 10)
 
     # Legend positioning
-    legend_outside_right: dict[str, str|tuple[float, float]]|None = None
-    legend_upper_left: dict[str, str]|None = None
+    legend_outside_right: dict[str, str | tuple[float, float]] | None = None
+    legend_upper_left: dict[str, str] | None = None
 
     def __post_init__(self):
         """Initialize legend positioning dictionaries."""

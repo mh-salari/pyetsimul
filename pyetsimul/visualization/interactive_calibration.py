@@ -57,7 +57,9 @@ def create_interactive_calibration_plot(
             calib_points_list.append(Point2D(*plane_info.extract_2d_coords(pt)))
 
         # Prepare eye data
-        prepared_data = prepare_eye_data_for_plots([interactive_eye], [target_3d], et.lights, et.cameras, et.use_legacy_look_at)
+        prepared_data = prepare_eye_data_for_plots(
+            [interactive_eye], [target_3d], et.lights, et.cameras, et.use_legacy_look_at
+        )
 
         # Plot 3D setup
         plot_setup(

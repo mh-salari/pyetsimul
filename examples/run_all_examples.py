@@ -50,16 +50,10 @@ for example_file in example_files:
     print(f"\n🔄 Running: {relative_path}")
     print("-" * 40)
 
-    cmd = (
-            ["uv", "run", "python", str(example_file)]
-            if use_uv
-            else [sys.executable, str(example_file)]
-        )
+    cmd = ["uv", "run", "python", str(example_file)] if use_uv else [sys.executable, str(example_file)]
 
     try:
-        result = subprocess.run(
-            cmd, cwd=project_root, capture_output=False, timeout=60
-        )
+        result = subprocess.run(cmd, cwd=project_root, capture_output=False, timeout=60)
 
         if result.returncode == 0:
             print(f"✅ {relative_path} completed successfully")

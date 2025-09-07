@@ -13,7 +13,9 @@ class GenericEyeVariation(EyeParameterVariation):
     through string-based parameter paths.
     """
 
-    def __init__(self, parameter_name: str, value_range: list[float], num_steps: int, description: Optional[str] = None):
+    def __init__(
+        self, parameter_name: str, value_range: list[float], num_steps: int, description: Optional[str] = None
+    ):
         """Initialize generic parameter variation.
 
         Args:

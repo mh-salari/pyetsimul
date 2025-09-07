@@ -104,7 +104,7 @@ class Camera:
         """
         return self._pointing_at
 
-    def project(self, pos: Position3D|list[Position3D]) -> ProjectionResult:
+    def project(self, pos: Position3D | list[Position3D]) -> ProjectionResult:
         """Projects points in space onto the camera's image plane.
 
         Transforms 3D positions to camera coordinates and projects to image plane.
@@ -179,8 +179,8 @@ class Camera:
         return ProjectionResult(image_points=x, distances=dist, valid_mask=condition)
 
     def unproject(
-        self, image_points: Point2D|list[Point2D], distance: float|np.ndarray
-    ) -> Position3D|list[Position3D]:
+        self, image_points: Point2D | list[Point2D], distance: float | np.ndarray
+    ) -> Position3D | list[Position3D]:
         """Unprojects points on the image plane back into 3D space.
 
         Reconstructs 3D positions from 2D image points at specified distance.

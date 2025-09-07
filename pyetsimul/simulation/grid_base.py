@@ -78,7 +78,13 @@ class RandomGrid(GridGenerator):
     """Random 3D positions within bounds."""
 
     def __init__(
-        self, center: Position3D, dx: list[float], dy: list[float], dz: list[float], num_points: int, seed: Optional[int] = None
+        self,
+        center: Position3D,
+        dx: list[float],
+        dy: list[float],
+        dz: list[float],
+        num_points: int,
+        seed: Optional[int] = None,
     ):
         """Initialize random grid.
 

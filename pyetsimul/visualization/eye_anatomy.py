@@ -8,7 +8,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 from ..core import Eye
-from ..types import Position3D, Direction3D, Vector3D
+from ..types import Position3D, Direction3D
 from ..utils.eye_surface_points import generate_corneal_surface_points, get_transformed_corneal_landmarks
 from ..utils.eyelid_surface_points import generate_eyelid_opening_edge_local, transform_eyelid_points_to_world
 from ..geometry.intersections import intersect_ray_sphere, intersect_ray_conic

@@ -244,7 +244,9 @@ class DataGenerationStrategy(VariationStrategy):
 
         return [str(json_file)]
 
-    def _apply_parameter_variation(self, eye_copy: Eye, variation: ParameterVariation, value: Any) -> Optional[Position3D]:
+    def _apply_parameter_variation(
+        self, eye_copy: Eye, variation: ParameterVariation, value: Any
+    ) -> Optional[Position3D]:
         """Apply parameter variation to eye copy and return gaze target.
 
         Args:
@@ -270,7 +272,9 @@ class DataGenerationStrategy(VariationStrategy):
 
         return current_gaze_target
 
-    def _handle_composed_variation(self, eye_copy: Eye, variation: ComposedVariation, value: dict) -> Optional[Position3D]:
+    def _handle_composed_variation(
+        self, eye_copy: Eye, variation: ComposedVariation, value: dict
+    ) -> Optional[Position3D]:
         """Handle ComposedVariation by applying each inner variation."""
         current_gaze_target = self.gaze_target
 
@@ -290,7 +294,9 @@ class DataGenerationStrategy(VariationStrategy):
 
         return current_gaze_target
 
-    def _handle_sequential_variation(self, eye_copy: Eye, variation: SequentialVariation, value: dict) -> Optional[Position3D]:
+    def _handle_sequential_variation(
+        self, eye_copy: Eye, variation: SequentialVariation, value: dict
+    ) -> Optional[Position3D]:
         """Handle SequentialVariation by applying one variation from the sequence."""
         current_gaze_target = self.gaze_target
 

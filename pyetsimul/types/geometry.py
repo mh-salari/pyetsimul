@@ -395,14 +395,14 @@ class Position3D:
                 error_msg = f"{msg}: {error_msg}"
             raise AssertionError(error_msg)
 
-    def __matmul__(self, other) -> 'Position3D':
+    def __matmul__(self, other) -> "Position3D":
         """Enable matrix multiplication: position @ matrix."""
         if isinstance(other, np.ndarray):
             result = np.array(self) @ other
             return Position3D.from_array(result)
         return NotImplemented
 
-    def __rmatmul__(self, other) -> 'Position3D':
+    def __rmatmul__(self, other) -> "Position3D":
         """Enable matrix multiplication: matrix @ position (most common case)."""
         if isinstance(other, np.ndarray):
             result = other @ np.array(self)
