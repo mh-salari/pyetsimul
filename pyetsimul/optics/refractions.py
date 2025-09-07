@@ -97,7 +97,7 @@ def find_refraction_sphere(
             1,
         )
         _, result = _refraction_objective_sphere(
-            cast(float,alpha), camera_pos, object_pos, sphere_center, sphere_radius, n_outside, n_sphere
+            cast(float, alpha), camera_pos, object_pos, sphere_center, sphere_radius, n_outside, n_sphere
         )
         return result
     except (ValueError, RuntimeError):
@@ -228,7 +228,7 @@ def find_refraction_conic(
             upper_bound,
         )
         _, intersection = _refraction_objective_conic(
-            cast(float,alpha), camera_pos, object_pos, conic_center, radius, conic_constant, n_outside, n_conic
+            cast(float, alpha), camera_pos, object_pos, conic_center, radius, conic_constant, n_outside, n_conic
         )
         return intersection
     except (ValueError, RuntimeError):
@@ -261,7 +261,7 @@ def refract_ray_sphere(
     if intersection_result is None or not intersection_result.intersects:
         return None, None
 
-    intersection_point = cast(Point3D,intersection_result.point)
+    intersection_point = cast(Point3D, intersection_result.point)
 
     # Find surface normal at point of intersection (pointing inwards)
     normal_vec = (sphere_center.to_point3d() - intersection_point).to_direction3d().normalize()
@@ -314,7 +314,7 @@ def refract_ray_conic(
     if intersection_result is None or not intersection_result.intersects:
         return None, None
 
-    intersection_point = cast(Point3D,intersection_result.point)
+    intersection_point = cast(Point3D, intersection_result.point)
 
     # Calculate surface normal at intersection point
     surface_normal = conic_surface_normal(intersection_point, conic_center, radius, conic_constant)

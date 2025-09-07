@@ -1,7 +1,7 @@
 """Unit tests for intersect_ray_conic function."""
 
 from pyetsimul.geometry.intersections import intersect_ray_sphere, intersect_ray_conic
-from pyetsimul.types import Ray, Position3D, Point3D, Direction3D, IntersectionResult
+from pyetsimul.types import Ray, Position3D, Point3D, Direction3D
 
 
 def test_conic_equals_sphere_on_axis():

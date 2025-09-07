@@ -7,7 +7,7 @@ import numpy as np
 import warnings
 from typing import Optional, Tuple, TYPE_CHECKING, cast
 from scipy.optimize import brentq
-from ..types import Point3D, Vector3D, Ray, IntersectionResult, Position3D, Direction3D
+from ..types import Point3D, Ray, IntersectionResult, Position3D, Direction3D
 from ..geometry.intersections import (
     intersect_ray_circle,
     intersect_ray_sphere,
@@ -84,7 +84,9 @@ def find_reflection_sphere(
         alpha = brentq(
             lambda a: _reflection_objective_sphere(a, light_pos, camera_pos, sphere_center, sphere_radius)[0], 0, 1
         )
-        _, glint_pos = _reflection_objective_sphere(cast(float,alpha), light_pos, camera_pos, sphere_center, sphere_radius)
+        _, glint_pos = _reflection_objective_sphere(
+            cast(float, alpha), light_pos, camera_pos, sphere_center, sphere_radius
+        )
         return glint_pos
     except ValueError:
         warnings.warn(
@@ -174,7 +176,9 @@ def find_reflection_conic(
             0,
             1,
         )
-        _, glint_pos = _reflection_objective_conic(cast(float,alpha), light_pos, camera_pos, conic_center, radius, conic_constant)
+        _, glint_pos = _reflection_objective_conic(
+            cast(float, alpha), light_pos, camera_pos, conic_center, radius, conic_constant
+        )
         return glint_pos
     except (ValueError, TypeError):
         warnings.warn(
@@ -208,7 +212,7 @@ def reflect_ray_circle(
     if intersection_result is None or not intersection_result.intersects:
         return None, None
 
-    intersection_point = cast(Point3D,intersection_result.point)
+    intersection_point = cast(Point3D, intersection_result.point)
 
     # Calculate surface normal at intersection (2D normal in x,y plane)
     normal_vec = Direction3D(
@@ -251,7 +255,7 @@ def reflect_ray_sphere(
     if intersection_result is None or not intersection_result.intersects:
         return None, None
 
-    intersection_point = cast(Point3D,intersection_result.point)
+    intersection_point = cast(Point3D, intersection_result.point)
 
     # Calculate surface normal at intersection (outward pointing)
     normal_vec = (intersection_point - sphere_center.to_point3d()).to_direction3d().normalize()
@@ -292,7 +296,7 @@ def reflect_ray_conic(
     if intersection_result is None or not intersection_result.intersects:
         return None, None
 
-    intersection_point = cast(Point3D,intersection_result.point)
+    intersection_point = cast(Point3D, intersection_result.point)
 
     # Calculate surface normal at intersection point
     surface_normal = conic_surface_normal(intersection_point, conic_center, radius, conic_constant)

@@ -79,4 +79,4 @@ def test_output_properties():
     O = Position3D(0.5, 0.2, -4.0)
 
     I = e.find_refracted_position(C, O)
-    assert isinstance(I,Position3D), "I should not be None for these inputs"
+    assert isinstance(I, Position3D), "I should not be None for these inputs"

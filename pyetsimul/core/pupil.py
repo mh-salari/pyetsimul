@@ -483,10 +483,7 @@ class RealisticPupil(Pupil):
             "params": asdict(self.params),
             "N": self.N,
             "harmonics": {
-                str(n): {
-                    "amplitude": h["amplitude"],
-                    "phase": h["phase"]
-                } for n, h in self.harmonics.items()
+                str(n): {"amplitude": h["amplitude"], "phase": h["phase"]} for n, h in self.harmonics.items()
             },
             "r2": self.r2,
         }
@@ -505,14 +502,10 @@ class RealisticPupil(Pupil):
         # Restore harmonics and r2
         pupil.r2 = data.get("r2")
         pupil.harmonics = {
-            int(n): {
-                "amplitude": h["amplitude"],
-                "phase": h["phase"]
-            } for n, h in data.get("harmonics", {}).items()
+            int(n): {"amplitude": h["amplitude"], "phase": h["phase"]} for n, h in data.get("harmonics", {}).items()
         }
 
         return pupil
-
 
 
 def create_pupil(

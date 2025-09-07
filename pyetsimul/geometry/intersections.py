@@ -206,7 +206,9 @@ def intersect_ray_conic(
         return result1, result2
 
 
-def conic_surface_normal(point: Point3D, conic_center: Position3D, radius: float, conic_constant: float) -> Direction3D:
+def conic_surface_normal(
+    point: Point3D, conic_center: Position3D, radius: float, conic_constant: float
+) -> Direction3D:
     """Calculate surface normal at a point on conic section surface.
 
     Uses gradient of conic equation to compute normal vector.

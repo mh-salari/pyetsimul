@@ -24,6 +24,7 @@ class Cornea(ABC):
     Defines common interface for corneal models to ensure interchangeability.
     Provides unified interface for intersection, reflection, and refraction calculations.
     """
+
     center_init: InitVar[Optional[Position3D]] = None
     _center: Optional[Position3D] = field(default=None, init=False)
 
@@ -39,6 +40,7 @@ class Cornea(ABC):
         if self._center is None:
             raise ValueError("Center has not been initialized.")
         return self._center
+
     @center.setter
     def center(self, value: Position3D):
         self._center = value
