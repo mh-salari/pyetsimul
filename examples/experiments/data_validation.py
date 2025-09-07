@@ -163,25 +163,37 @@ def validate_parameter_values(data: Dict[str, Any]) -> bool:
             for measurement in measurements:
                 param_value = measurement.get("parameter_value")
 
+                # Handle both single and combined parameter experiments
                 if "eye_position" in experiment_name:
-                    # Should be Position3D dict with x, y, z
-                    if not isinstance(param_value, dict) or not all(k in param_value for k in ["x", "y", "z"]):
+                    # Extract eye position data (handle both direct and nested formats)
+                    eye_pos_data = (
+                        param_value.get("eye_position", param_value) if isinstance(param_value, dict) else param_value
+                    )
+                    if not isinstance(eye_pos_data, dict) or not all(k in eye_pos_data for k in ["x", "y", "z"]):
                         print(f"Invalid eye position parameter: {param_value}")
                         return False
 
                 elif "gaze_movement" in experiment_name:
-                    # Should be Position3D dict with x, y, z
-                    if not isinstance(param_value, dict) or not all(k in param_value for k in ["x", "y", "z"]):
+                    # Extract gaze movement data (handle both direct and nested formats)
+                    gaze_data = (
+                        param_value.get("target_position", param_value)
+                        if isinstance(param_value, dict)
+                        else param_value
+                    )
+                    if not isinstance(gaze_data, dict) or not all(k in gaze_data for k in ["x", "y", "z"]):
                         print(f"Invalid gaze movement parameter: {param_value}")
                         return False
 
                 elif "pupil_size" in experiment_name:
-                    # Should be float (diameter in meters)
-                    if not isinstance(param_value, (int, float)):
+                    # Extract pupil size data (handle both direct and nested formats)
+                    pupil_data = (
+                        param_value.get("pupil_size", param_value) if isinstance(param_value, dict) else param_value
+                    )
+                    if not isinstance(pupil_data, (int, float)):
                         print(f"Invalid pupil size parameter: {param_value}")
                         return False
                     # Check reasonable range (1mm to 10mm)
-                    if not (0.001 <= param_value <= 0.010):
+                    if not (0.001 <= pupil_data <= 0.010):
                         print(f"Pupil size out of range: {param_value}")
                         return False
 
