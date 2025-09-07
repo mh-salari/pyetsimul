@@ -182,9 +182,7 @@ def plot_error_vectors_2d(
 
     ax.set_title(title, pad=20)
 
-    # Improve layout
     plt.tight_layout()
-    plt.show()
 
 
 def plot_error_vectors_3d(
@@ -308,6 +306,5 @@ def plot_error_vectors_3d(
 
     ax.set_title(title, pad=20)
 
-    # Improve layout and show
+    # Improve layout
     plt.tight_layout()
-    plt.show()

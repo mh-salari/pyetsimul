@@ -67,9 +67,6 @@ def main():
     plotter = GazeAccuracyPlotter()
     plotter.plot(screen_results, et, "Screen Test - Gaze Accuracy")
 
-    plt.show(block=False)
-    plt.close("all")
-
     print("\n3. Testing over observer (eye position movement):")
     print("-" * 60)
 
@@ -82,9 +79,6 @@ def main():
 
     # Plot observer test results
     plotter.plot(observer_results, et, "Observer Test - Eye Movement Analysis")
-
-    plt.show(block=False)
-    plt.close("all")
 
     print("\n4. Testing multiple anatomical variations:")
     print("-" * 60)
@@ -106,6 +100,10 @@ def main():
             eye_tracker=et, dataset=test_dataset, description=f"Evaluating {test_name.lower()} variation data"
         )
         test_results.pprint(f"{test_name} Test Summary")
+
+    # Show all plots at once for interactive review
+    print("\nAll tests complete. Displaying all plots...")
+    plt.show()  # This will show all figures and block until all are closed
 
 
 if __name__ == "__main__":
