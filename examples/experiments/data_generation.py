@@ -45,6 +45,7 @@ def main():
             gaze_target=base_config.gaze_target,
             output_dir=str(base_config.output_dir),
             experiment_name=name,
+            use_legacy_look_at=True
         )
         strategy.execute(variation)
         print(f"  Completed: {name}\n")
