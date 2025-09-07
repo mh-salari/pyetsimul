@@ -5,22 +5,21 @@ to ensure consistency and reduce code duplication.
 """
 
 import numpy as np
-from typing import Dict
 
 
-def _compute_stats(values: np.ndarray) -> Dict[str, float]:
+def _compute_stats(values: np.ndarray) -> dict[str, float]:
     """Compute basic statistics for error values."""
     return {
-        "mean": np.mean(values),
-        "max": np.max(values),
-        "std": np.std(values),
-        "median": np.median(values),
+        "mean": float(np.mean(values)),
+        "max": float(np.max(values)),
+        "std": float(np.std(values)),
+        "median": float(np.median(values)),
     }
 
 
 def calculate_error_statistics(
     U: np.ndarray, V: np.ndarray, angular_errors: np.ndarray
-) -> Dict[str, Dict[str, float]]:
+) -> dict[str, dict[str, float]]:
     """Calculate gaze tracking error statistics.
 
     Args:

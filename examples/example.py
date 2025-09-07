@@ -7,7 +7,7 @@ Shows pupil and glint detection with and without corneal refraction.
 
 import numpy as np
 from pyetsimul.core import Eye, Camera, Light
-from pyetsimul.types import Position3D
+from pyetsimul.types import Position3D, RotationMatrix
 import matplotlib.pyplot as plt
 from tabulate import tabulate
 
@@ -20,7 +20,7 @@ def main():
     # matrix that rotates the coordinate system, we make the optical axis of the eye
     # point along the negative y-axis of the world coordinate system.)
     # For custom corneal radius, use: Eye(cornea=SphericalCornea(radius=desired_radius))
-    rotation_matrix = np.array([[1, 0, 0], [0, 0, 1], [0, -1, 0]])
+    rotation_matrix = RotationMatrix(np.array([[1, 0, 0], [0, 0, 1], [0, -1, 0]]))
     e = Eye(fovea_displacement=False)
     e.set_rest_orientation(rotation_matrix)
 

@@ -6,9 +6,10 @@ Handles coordinate transformations and anatomical structure plotting.
 
 import numpy as np
 import matplotlib.pyplot as plt
+from matplotlib import ticker
 from typing import Optional, List, Dict, Tuple
 
-from ..types import Position3D, Point3D, Vector3D, TransformationMatrix
+from ..types import Point2D, Point3D, Vector3D, TransformationMatrix
 from .plot_config import create_plot_config
 
 
@@ -20,7 +21,7 @@ def plot_setup(
     cameras=None,
     cr_3d_lists=None,
     ref_bounds: Optional[Dict[str, Tuple[float, float]]] = None,
-    calib_points: Optional[Position3D] = None,
+    calib_points: Optional[list[Point2D]] = None,
 ) -> Tuple[List[str], List[str]]:
     """Plot 3D eye tracking setup visualization.
 
@@ -221,9 +222,9 @@ def plot_setup(
     ax1.legend(**config.layout.legend_upper_left, fontsize=config.fonts.annotation)
 
     # Convert axes to mm for better readability
-    ax1.xaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f"{x * 1000:.0f}"))
-    ax1.yaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f"{x * 1000:.0f}"))
-    ax1.zaxis.set_major_formatter(plt.FuncFormatter(lambda x, _: f"{x * 1000:.0f}"))
+    ax1.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x, _: f"{x * 1000:.0f}"))
+    ax1.yaxis.set_major_formatter(ticker.FuncFormatter(lambda x, _: f"{x * 1000:.0f}"))
+    ax1.zaxis.set_major_formatter(ticker.FuncFormatter(lambda x, _: f"{x * 1000:.0f}"))
 
     # Calculate bounds that include all eyes, cameras, and targets
     all_points = []
@@ -240,7 +241,7 @@ def plot_setup(
 
     # Include calibration points in bounds calculation if provided
     if calib_points is not None:
-        calib_array = np.array(calib_points)
+        calib_array = np.array([[cp.x, cp.y] for cp in calib_points])
         if calib_array.ndim == 2 and calib_array.shape[1] == 3:
             all_points.extend(calib_array.tolist())
 
@@ -271,10 +272,10 @@ def plot_setup(
 
     # Plot calibration points if provided
     if calib_points is not None:
-        calib_points = np.array(calib_points).T
-        calib_x = calib_points[0, :]
-        calib_y = np.zeros_like(calib_points[0, :])
-        calib_z = calib_points[1, :]
+        cps = np.array([[cp.x, cp.y] for cp in calib_points]).T
+        calib_x = cps[0, :]
+        calib_y = np.zeros_like(cps[0, :])
+        calib_z = cps[1, :]
 
         ax1.scatter(
             calib_x,
@@ -318,9 +319,9 @@ def plot_axis(
     axis_end = center + length * axis_world[:3]
 
     ax.quiver(
-        center[0],
-        center[1],
-        center[2],
+        center.x,
+        center.y,
+        center.z,
         axis_world[0] * length,
         axis_world[1] * length,
         axis_world[2] * length,
@@ -330,9 +331,9 @@ def plot_axis(
         alpha=config.lines.secondary_alpha,
     )
     ax.text(
-        axis_end[0],
-        axis_end[1],
-        axis_end[2],
+        axis_end.x,
+        axis_end.y,
+        axis_end.z,
         label,
         fontsize=config.fonts.legend,
         color=color,

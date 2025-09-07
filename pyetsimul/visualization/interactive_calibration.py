@@ -10,8 +10,9 @@ import copy
 from typing import List
 
 from pyetsimul.core import Eye, EyeTracker
-from ..types import Point3D
+from ..types import Point3D, Point2D
 from ..geometry.conversions import calculate_angular_error_degrees
+from ..geometry.plane_detection import PlaneInfo
 from ..visualization import prepare_eye_data_for_plots, plot_setup
 from ..visualization.interactive_controls import InteractiveControls
 
@@ -26,7 +27,7 @@ def create_interactive_calibration_plot(
     predicted_points: List,
     valid_mask: np.ndarray,
     errs_deg: np.ndarray,
-    plane_info,
+    plane_info: PlaneInfo,
 ) -> None:
     """Create interactive calibration plot with keyboard controls.
 
@@ -52,10 +53,9 @@ def create_interactive_calibration_plot(
         target_3d = Point3D(controls.target_point.x, 0, controls.target_point.z)
 
         # Convert calibration points to list format using plane mapping
-        calib_points_list = []
+        calib_points_list: list[Point2D] = []
         for pt in et.calib_points:
-            coord1, coord2 = plane_info.extract_2d_coords(pt)
-            calib_points_list.append([coord1, coord2])
+            calib_points_list.append(Point2D(*plane_info.extract_2d_coords(pt)))
 
         # Prepare eye data
         prepared_data = prepare_eye_data_for_plots([interactive_eye], [target_3d], et.lights, et.cameras)

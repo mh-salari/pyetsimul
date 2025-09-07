@@ -1,7 +1,6 @@
 """Algorithm comparison for ranking multiple eye tracking algorithms."""
 
 import numpy as np
-from typing import Dict, List
 from dataclasses import dataclass
 from tabulate import tabulate
 from tqdm import tqdm
@@ -16,12 +15,12 @@ from ..geometry.conversions import calculate_angular_error_degrees
 class AlgorithmRanking:
     """Algorithm ranking results."""
 
-    rankings: Dict[str, int]
-    error_stats: Dict[str, Dict[str, float]]  # Full error statistics per algorithm
-    success_rates: Dict[str, float]
-    pairwise_angular_diff: Dict[str, Dict[str, float]]  # Algorithm vs algorithm angular differences
-    pairwise_cosine_sim: Dict[str, Dict[str, float]]  # Algorithm vs algorithm cosine similarities
-    pairwise_amplitude: Dict[str, Dict[str, Dict[str, float]]]  # Algorithm vs algorithm amplitude differences
+    rankings: dict[str, int]
+    error_stats: dict[str, dict[str, dict[str, float]]]  # Full error statistics per algorithm
+    success_rates: dict[str, float]
+    pairwise_angular_diff: dict[str, dict[str, float]]  # Algorithm vs algorithm angular differences
+    pairwise_cosine_sim: dict[str, dict[str, float]]  # Algorithm vs algorithm cosine similarities
+    pairwise_amplitude: dict[str, dict[str, dict[str, float]]]  # Algorithm vs algorithm amplitude differences
 
     def pprint(self, title: str = "Algorithm Ranking"):
         """Print comprehensive ranking and comparison analysis."""
@@ -61,7 +60,7 @@ class AlgorithmRanking:
         """Return best algorithm name."""
         return min(self.rankings.keys(), key=lambda x: self.rankings[x])
 
-    def get_top_n(self, n: int) -> List[str]:
+    def get_top_n(self, n: int) -> list[str]:
         """Return top N algorithm names."""
         sorted_algos = sorted(self.rankings.keys(), key=lambda x: self.rankings[x])
         return sorted_algos[:n]
@@ -97,7 +96,7 @@ class AlgorithmRanking:
                     pbar.update(1)
         self._print_symmetric_matrix(amplitude_means, algorithms, "6f", "°")
 
-    def _print_symmetric_matrix(self, matrix: Dict, algorithms: List[str], fmt: str, unit: str):
+    def _print_symmetric_matrix(self, matrix: dict, algorithms: list[str], fmt: str, unit: str):
         """Print a symmetric comparison matrix."""
         # Create header with abbreviated algorithm names for readability
         abbrev_names = [name[:12] + "..." if len(name) > 15 else name for name in algorithms]
@@ -121,8 +120,8 @@ class AlgorithmRanking:
 
 
 def compare_algorithms(
-    algorithms: Dict[str, EyeTracker],
-    dataset: Dict,
+    algorithms: dict[str, EyeTracker],
+    dataset: dict,
     description: str = "Comparing algorithms",
     calculate_pairwise: bool = False,
 ) -> AlgorithmRanking:
@@ -168,7 +167,7 @@ def compare_algorithms(
     )
 
 
-def _calculate_pairwise_angular_differences(results: Dict) -> Dict[str, Dict[str, float]]:
+def _calculate_pairwise_angular_differences(results: dict) -> dict[str, dict[str, float]]:
     """Calculate angular differences between all algorithm pairs."""
     algorithms = list(results.keys())
     pairwise_diffs = {}
@@ -191,7 +190,7 @@ def _calculate_pairwise_angular_differences(results: Dict) -> Dict[str, Dict[str
     return pairwise_diffs
 
 
-def _calculate_pairwise_cosine_similarities(results: Dict) -> Dict[str, Dict[str, float]]:
+def _calculate_pairwise_cosine_similarities(results: dict) -> dict[str, dict[str, float]]:
     """Calculate cosine similarities between all algorithm pairs."""
     algorithms = list(results.keys())
     pairwise_sims = {}
@@ -210,7 +209,7 @@ def _calculate_pairwise_cosine_similarities(results: Dict) -> Dict[str, Dict[str
     return pairwise_sims
 
 
-def _calculate_pairwise_amplitude_differences(results: Dict) -> Dict[str, Dict[str, Dict[str, float]]]:
+def _calculate_pairwise_amplitude_differences(results: dict) -> dict[str, dict[str, dict[str, float]]]:
     """Calculate amplitude differences between all algorithm pairs."""
     algorithms = list(results.keys())
     pairwise_amps = {}
@@ -230,7 +229,7 @@ def _calculate_pairwise_amplitude_differences(results: Dict) -> Dict[str, Dict[s
 
 
 def point_wise_angular_difference(
-    predictions1: List[Position3D], predictions2: List[Position3D], eye_positions: List[Position3D]
+    predictions1: list[Position3D], predictions2: list[Position3D], eye_positions: list[Position3D]
 ) -> float:
     """Point-wise mean angular error between two algorithms."""
     if len(predictions1) != len(predictions2) or len(predictions1) != len(eye_positions):
@@ -246,10 +245,10 @@ def point_wise_angular_difference(
         diff = calculate_angular_error_degrees(point1, point2, eye_pos)
         differences.append(diff)
 
-    return np.mean(differences) if differences else np.nan
+    return float(np.mean(differences) if differences else np.nan)
 
 
-def cosine_similarity_average(predictions1: List[Position3D], predictions2: List[Position3D]) -> float:
+def cosine_similarity_average(predictions1: list[Position3D], predictions2: list[Position3D]) -> float:
     """Average cosine similarity between prediction vectors."""
     if len(predictions1) != len(predictions2):
         return np.nan
@@ -271,10 +270,10 @@ def cosine_similarity_average(predictions1: List[Position3D], predictions2: List
         similarity = np.dot(vec1, vec2) / (norm1 * norm2)
         similarities.append(similarity)
 
-    return np.mean(similarities) if similarities else np.nan
+    return float(np.mean(similarities) if similarities else np.nan)
 
 
-def amplitude_agreement(predictions1: List[Position3D], predictions2: List[Position3D]) -> Dict[str, float]:
+def amplitude_agreement(predictions1: list[Position3D], predictions2: list[Position3D]) -> dict[str, float]:
     """Compare prediction magnitudes."""
     if len(predictions1) != len(predictions2):
         return {"mean": np.nan, "std": np.nan, "max": np.nan}
@@ -292,4 +291,4 @@ def amplitude_agreement(predictions1: List[Position3D], predictions2: List[Posit
         return {"mean": np.nan, "std": np.nan, "max": np.nan}
 
     amp_array = np.array(amp_differences)
-    return {"mean": np.mean(amp_array), "std": np.std(amp_array), "max": np.max(amp_array)}
+    return {"mean": float(np.mean(amp_array)), "std": float(np.std(amp_array)), "max": float(np.max(amp_array))}

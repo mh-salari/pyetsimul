@@ -7,7 +7,7 @@ to simulate realistic eye tracking measurement errors. Based on the basic exampl
 
 import numpy as np
 from pyetsimul.core import Eye, Camera, Light
-from pyetsimul.types import Position3D
+from pyetsimul.types import Position3D, RotationMatrix
 from pyetsimul.camera_noise import GlintNoiseConfig
 import matplotlib.pyplot as plt
 from tabulate import tabulate
@@ -16,7 +16,7 @@ from tabulate import tabulate
 def main():
     """Run glint noise demonstration: simulate eye, camera, and light with different noise levels."""
     # Create an eye
-    rotation_matrix = np.array([[1, 0, 0], [0, 0, 1], [0, -1, 0]])
+    rotation_matrix = RotationMatrix(np.array([[1, 0, 0], [0, 0, 1], [0, -1, 0]]))
     e = Eye(fovea_displacement=False, pupil_boundary_points=100)
     e.set_rest_orientation(rotation_matrix)
     e.position = Position3D(0, 500e-3, 200e-3)

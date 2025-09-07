@@ -188,7 +188,7 @@ class GazeAccuracyPlotter:
             U=U,
             V=V,
             errors=gaze_result.error_stats,
-            angular_errors=angular_errors,
+            angular_errors=np.array(angular_errors),
             title_prefix=title_prefix,
             convert_to_mm=True,
             xlabel=f"{primary_label} (mm)",

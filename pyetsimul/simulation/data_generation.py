@@ -4,7 +4,7 @@ import copy
 import json
 import multiprocessing
 from pathlib import Path
-from typing import Dict, List, Any
+from typing import Any, Optional
 
 from ..core import Eye
 from ..types import Position3D
@@ -80,7 +80,7 @@ class DataGenerationStrategy(VariationStrategy):
         cameras: list,
         lights: list,
         experiment_name: str,
-        gaze_target: Position3D = None,
+        gaze_target: Optional[Position3D] = None,
         output_dir: str = "output",
         save_to_file: bool = True,
         use_legacy_look_at: bool = False,
@@ -122,7 +122,7 @@ class DataGenerationStrategy(VariationStrategy):
         self.experiment_name = experiment_name
         self.safe_experiment_name = sanitize_filename(experiment_name)
 
-    def execute(self, variation: ParameterVariation) -> Dict[str, Any]:
+    def execute(self, variation: ParameterVariation) -> dict[str, Any]:
         """Generate eye tracking data using the configured setup and given variation.
 
         Args:
@@ -198,8 +198,8 @@ class DataGenerationStrategy(VariationStrategy):
         }
 
     def _generate_single_measurement(
-        self, eye: Eye, camera, param_value: Any, index: int, gaze_target: Position3D = None
-    ) -> Dict[str, Any]:
+        self, eye: Eye, camera, param_value: Any, index: int, gaze_target: Optional[Position3D] = None
+    ) -> dict[str, Any]:
         """Generate measurement data for single camera-eye-parameter combination."""
 
         # Take image with this specific camera using same parameters as estimate_gaze_at
@@ -231,7 +231,7 @@ class DataGenerationStrategy(VariationStrategy):
             "gaze_target": gaze_target.serialize() if gaze_target else None,
         }
 
-    def _save_data(self, data: Dict, param_name: str, experiment_name: str) -> List[str]:
+    def _save_data(self, data: dict, param_name: str, experiment_name: str) -> list[str]:
         """Save dataset to JSON file."""
         # Ensure output directory exists
         Path(self.output_dir).mkdir(parents=True, exist_ok=True)
@@ -244,7 +244,7 @@ class DataGenerationStrategy(VariationStrategy):
 
         return [str(json_file)]
 
-    def _apply_parameter_variation(self, eye_copy: Eye, variation: ParameterVariation, value: Any) -> Position3D:
+    def _apply_parameter_variation(self, eye_copy: Eye, variation: ParameterVariation, value: Any) -> Optional[Position3D]:
         """Apply parameter variation to eye copy and return gaze target.
 
         Args:
@@ -270,7 +270,7 @@ class DataGenerationStrategy(VariationStrategy):
 
         return current_gaze_target
 
-    def _handle_composed_variation(self, eye_copy: Eye, variation: ComposedVariation, value: dict) -> Position3D:
+    def _handle_composed_variation(self, eye_copy: Eye, variation: ComposedVariation, value: dict) -> Optional[Position3D]:
         """Handle ComposedVariation by applying each inner variation."""
         current_gaze_target = self.gaze_target
 
@@ -290,7 +290,7 @@ class DataGenerationStrategy(VariationStrategy):
 
         return current_gaze_target
 
-    def _handle_sequential_variation(self, eye_copy: Eye, variation: SequentialVariation, value: dict) -> Position3D:
+    def _handle_sequential_variation(self, eye_copy: Eye, variation: SequentialVariation, value: dict) -> Optional[Position3D]:
         """Handle SequentialVariation by applying one variation from the sequence."""
         current_gaze_target = self.gaze_target
 
@@ -309,7 +309,7 @@ class DataGenerationStrategy(VariationStrategy):
 
     def _handle_eye_parameter_variation(
         self, eye_copy: Eye, variation: EyeParameterVariation, value: Any
-    ) -> Position3D:
+    ) -> Optional[Position3D]:
         """Handle simple EyeParameterVariation."""
         # For a simple eye parameter variation, apply it and use the default gaze target.
         variation.apply_to_eye(eye_copy, value)
@@ -343,7 +343,7 @@ class DataGenerationStrategy(VariationStrategy):
         # Handle our structured types (all have serialize method)
         return param_value.serialize()
 
-    def _get_experiment_metadata(self, variation: ParameterVariation) -> Dict[str, Any]:
+    def _get_experiment_metadata(self, variation: ParameterVariation) -> dict[str, Any]:
         """Get experiment metadata and context."""
         return {
             "experiment_name": self.experiment_name,
@@ -354,6 +354,6 @@ class DataGenerationStrategy(VariationStrategy):
             "num_lights": len(self.lights),
         }
 
-    def _get_setup_configuration(self, eyes: list) -> Dict[str, Any]:
+    def _get_setup_configuration(self, eyes: list) -> dict[str, Any]:
         """Get complete setup configuration."""
         return {"num_eyes": len(eyes), "lights": [light.serialize() for light in self.lights]}

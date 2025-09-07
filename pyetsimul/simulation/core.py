@@ -1,7 +1,7 @@
 """Core parameter variation architecture for pure data generation."""
 
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, List
+from typing import Any, Iterable
 from ..core import Eye
 
 
@@ -39,15 +39,15 @@ class EyeParameterVariation(ParameterVariation):
 class TargetVariation(ParameterVariation):
     """Base class for variations that provide gaze targets."""
 
-    def get_targets(self) -> List[Any]:
+    def get_targets(self) -> list[Any]:
         """Get all target values for this variation."""
-        return self.generate_values()
+        return list(self.generate_values())
 
 
 class VariationStrategy(ABC):
     """Base strategy for using parameter variations."""
 
     @abstractmethod
-    def execute(self, eyes: List[Eye], variation: ParameterVariation) -> Any:
+    def execute(self, variation: ParameterVariation) -> Any:
         """Execute strategy over all variation values."""
         pass

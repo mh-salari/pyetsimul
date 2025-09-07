@@ -4,7 +4,7 @@ Provides functions for visualizing the camera's view of the eye.
 Shows pupil detection, corneal reflections, and camera image coordinates.
 """
 
-from typing import Optional, List
+from typing import Optional
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -17,8 +17,8 @@ def plot_camera_view_of_eye(
     cameras,
     cr_3d_lists=None,
     ax=None,
-    eye_colors: Optional[List[str]] = None,
-    camera_colors: Optional[List[str]] = None,
+    eye_colors: Optional[list[str]] = None,
+    camera_colors: Optional[list[str]] = None,
 ) -> None:
     """Plot camera views of eyes.
 
@@ -27,7 +27,7 @@ def plot_camera_view_of_eye(
     Args:
         camera_images: CameraImage object or list of CameraImage objects (each contains all eyes seen by that camera)
         cameras: Camera object or list of Camera objects
-        cr_3d_lists: List of lists of corneal reflection 3D positions for each eye, or single list
+        cr_3d_lists: list of lists of corneal reflection 3D positions for each eye, or single list
         ax: Optional matplotlib axis
         eye_colors: Optional list of colors for the eyes.
         camera_colors: Optional list of colors for the cameras.

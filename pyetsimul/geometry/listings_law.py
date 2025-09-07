@@ -7,10 +7,10 @@ modularity and testability.
 """
 
 import numpy as np
-from ..types import Vector3D
+from ..types import Vector3D, RotationMatrix
 
 
-def calculate_eye_rotation(out_rest: Vector3D, out_new: Vector3D) -> np.ndarray:
+def calculate_eye_rotation(out_rest: Vector3D, out_new: Vector3D) -> RotationMatrix:
     """Calculate eye rotation matrix using Listing's law.
 
     Computes rotation matrix for eye movement from rest position to new position
@@ -45,4 +45,4 @@ def calculate_eye_rotation(out_rest: Vector3D, out_new: Vector3D) -> np.ndarray:
     left_matrix = np.column_stack([np.array(axis), np.array(out_new_norm), np.array(third_new)])
     right_matrix = np.vstack([np.array(axis), np.array(out_rest_norm), np.array(third_rest)])
 
-    return left_matrix @ right_matrix
+    return RotationMatrix(left_matrix @ right_matrix)

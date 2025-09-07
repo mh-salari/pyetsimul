@@ -7,7 +7,7 @@ Supports both simple pinhole cameras and realistic cameras with distortion from 
 import numpy as np
 import cv2
 from dataclasses import dataclass, field
-from typing import Union, List, TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING, Optional
 from tabulate import tabulate
 
 from .light import Light
@@ -52,7 +52,7 @@ class Camera:
     err_type: str = "gaussian"
     glint_noise_config: Optional[GlintNoiseConfig] = None
     name: Optional[str] = None
-    trans: TransformationMatrix = field(default_factory=lambda: np.eye(4))
+    trans: TransformationMatrix = field(default_factory=lambda: TransformationMatrix.identity())
     rest_trans: TransformationMatrix = field(init=False)
 
     # Internal field to track where camera is pointing (set by point_at method)
@@ -71,7 +71,7 @@ class Camera:
     @property
     def orientation(self) -> RotationMatrix:
         """Get/set the camera's orientation (3x3 rotation matrix)."""
-        return self.trans[:3, :3]
+        return self.trans.get_rotation()
 
     @orientation.setter
     def orientation(self, value: RotationMatrix) -> None:
@@ -104,7 +104,7 @@ class Camera:
         """
         return self._pointing_at
 
-    def project(self, pos: Union[Position3D, List[Position3D]]) -> ProjectionResult:
+    def project(self, pos: Position3D|list[Position3D]) -> ProjectionResult:
         """Projects points in space onto the camera's image plane.
 
         Transforms 3D positions to camera coordinates and projects to image plane.
@@ -114,7 +114,7 @@ class Camera:
         Args:
             pos: 3D positions to project. Can be:
                 - Single Position3D object
-                - List of Position3D objects
+                - list of Position3D objects
 
         Returns:
             ProjectionResult containing:
@@ -127,7 +127,7 @@ class Camera:
             # Single position
             pos_homogeneous = np.array(pos).reshape(-1, 1)
         elif isinstance(pos, list) and all(isinstance(p, Position3D) for p in pos):
-            # List of positions
+            # list of positions
             pos_homogeneous = np.column_stack([np.array(p) for p in pos])
         else:
             raise ValueError(f"Position must be Position3D or list of Position3D objects, got: {type(pos)}")
@@ -179,8 +179,8 @@ class Camera:
         return ProjectionResult(image_points=x, distances=dist, valid_mask=condition)
 
     def unproject(
-        self, image_points: Union[Point2D, List[Point2D]], distance: Union[float, np.ndarray]
-    ) -> Union[Position3D, List[Position3D]]:
+        self, image_points: Point2D|list[Point2D], distance: float|np.ndarray
+    ) -> Position3D|list[Position3D]:
         """Unprojects points on the image plane back into 3D space.
 
         Reconstructs 3D positions from 2D image points at specified distance.
@@ -190,7 +190,7 @@ class Camera:
         Args:
             image_points: 2D image points. Can be:
                 - Single Point2D object
-                - List of Point2D objects
+                - list of Point2D objects
             distance: Distance from camera along optical axis
 
         Returns:
@@ -202,7 +202,7 @@ class Camera:
             X = np.array([[image_points.x], [image_points.y]])
             single_point = True
         elif isinstance(image_points, list) and all(isinstance(p, Point2D) for p in image_points):
-            # List of points
+            # list of points
             X = np.array([[p.x for p in image_points], [p.y for p in image_points]])
             single_point = False
         else:
@@ -296,7 +296,7 @@ class Camera:
         )
 
         # Apply pan and tilt transformations
-        self.trans = self.rest_trans @ pan_matrix @ tilt_matrix
+        self.trans = TransformationMatrix(self.rest_trans @ pan_matrix @ tilt_matrix)
 
         # If world_frame is specified, align camera with world coordinate frame
         if world_frame is not None:
@@ -357,7 +357,7 @@ class Camera:
     def take_image(
         self,
         eye: "Eye",
-        lights: Optional[List[Light]] = None,
+        lights: Optional[list[Light]] = None,
         use_refraction: bool = True,
         center_method: str = "ellipse",
     ) -> CameraImage:
@@ -368,7 +368,7 @@ class Camera:
 
         Args:
             eye: Eye object
-            lights: List of light source objects (optional, if None no CRs are computed)
+            lights: list of light source objects (optional, if None no CRs are computed)
             use_refraction: Whether to use refraction model for pupil (default True)
             center_method: Method to use for pupil center detection (default "ellipse")
                           Options: "ellipse", "center_of_mass"
@@ -460,7 +460,7 @@ class Camera:
             "focal_length": float(self.camera_matrix.focal_length),
             "resolution": self.camera_matrix.resolution.serialize(),
             "camera_matrix": self.camera_matrix.matrix.tolist(),
-            "distortion_coefficients": self.dist_coeffs.tolist(),
+            "distortion_coefficients": self.dist_coeffs.tolist() if self.dist_coeffs is not None else None,
             "measurement_error": float(self.err),
             "error_type": self.err_type,
             "name": self.name,
@@ -478,7 +478,7 @@ class Camera:
 
         # Restore position and orientation
         camera.position = Position3D.deserialize(data["position"])
-        camera.orientation = np.array(data["orientation"])
+        camera.orientation = RotationMatrix(np.array(data["orientation"]))
 
         # Restore camera matrix
         camera.camera_matrix = CameraMatrix(np.array(data["camera_matrix"]))
@@ -487,7 +487,7 @@ class Camera:
         camera.dist_coeffs = np.array(data["distortion_coefficients"])
 
         # Restore rest transformation
-        camera.rest_trans = np.array(data["rest_transformation"])
+        camera.rest_trans = TransformationMatrix(np.array(data["rest_transformation"]))
 
         # Restore pointing direction
         if data["pointing_at"]:

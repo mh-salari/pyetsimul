@@ -208,11 +208,11 @@ def main():
             f"({c_pinhole.camera_matrix.matrix[0, 2]:.1f}, {c_pinhole.camera_matrix.matrix[1, 2]:.1f})",
             f"({c_camera.camera_matrix.matrix[0, 2]:.1f}, {c_camera.camera_matrix.matrix[1, 2]:.1f})",
         ],
-        ["k1", "0.000", f"{padded_coeffs[0]:.3f}"],
-        ["k2", "0.000", f"{padded_coeffs[1]:.3f}"],
-        ["k3", "0.000", f"{padded_coeffs[2]:.3f}"],
-        ["p1", "0.000", f"{padded_coeffs[3]:.3f}"],
-        ["p2", "0.000", f"{padded_coeffs[4]:.3f}"],
+        ["k1", "0.000000", f"{padded_coeffs[0]:.6f}"],
+        ["k2", "0.000000", f"{padded_coeffs[1]:.6f}"],
+        ["k3", "0.000000", f"{padded_coeffs[2]:.6f}"],
+        ["p1", "0.000000", f"{padded_coeffs[3]:.6f}"],
+        ["p2", "0.000000", f"{padded_coeffs[4]:.6f}"],
     ]
 
     print(tabulate(data, headers=headers, tablefmt="grid"))

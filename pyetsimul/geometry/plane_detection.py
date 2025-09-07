@@ -114,7 +114,7 @@ def detect_calibration_plane(calib_points: List[Position3D], tolerance: float = 
 
     # Get the constant value (mean of the constant axis)
     constant_idx = axis_names.index(constant_axis)
-    constant_value = np.mean(points[:, constant_idx])
+    constant_value = float(np.mean(points[:, constant_idx]))
 
     # Create plane type string (alphabetically sorted for consistency)
     plane_type = "".join(sorted(varying_axes))

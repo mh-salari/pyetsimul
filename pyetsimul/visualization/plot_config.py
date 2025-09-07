@@ -6,7 +6,6 @@ functional visual distinctions while eliminating code duplication.
 """
 
 from dataclasses import dataclass
-from typing import List, Dict, Union, Tuple
 
 
 @dataclass
@@ -14,14 +13,14 @@ class ColorPalettes:
     """Color definitions organized by element type for consistent visual coding."""
 
     # Eye identification colors - one per eye in multi-eye setups
-    eyes: List[str] = None
-    eyes_light: List[str] = None  # Lighter variants for surface rendering
+    eyes: list[str]|None = None
+    eyes_light: list[str]|None = None  # Lighter variants for surface rendering
 
     # Camera identification colors
-    cameras: List[str] = None
+    cameras: list[str]|None = None
 
     # Light source colors
-    lights: List[str] = None
+    lights: list[str]|None = None
 
     # Anatomical structure colors
     eye_globe: str = "lightgray"
@@ -42,10 +41,10 @@ class ColorPalettes:
     visual_axis: str = "red"
 
     # Corneal reflection hex codes for different light sources
-    corneal_reflections_detailed: List[str] = None
+    corneal_reflections_detailed: list[str]|None = None
 
     # Interactive comparison colors
-    camera_comparison: List[str] = None
+    camera_comparison: list[str]|None = None
 
     def __post_init__(self):
         """Initialize default color arrays if not provided."""
@@ -87,7 +86,7 @@ class MarkerConfig:
     cornea_center_inner: int = 20  # Inner cornea center marker
 
     # Marker styles for different comparison contexts
-    camera_comparison: List[str] = None
+    camera_comparison: list[str]|None = None
 
     def __post_init__(self):
         """Initialize default marker style arrays."""
@@ -133,15 +132,15 @@ class LayoutConfig:
     """Layout parameters for consistent plot structure."""
 
     # Standard figure sizes by plot type
-    single_plot: Tuple[int, int] = (10, 8)
-    wide_comparison: Tuple[int, int] = (16, 8)
-    extra_wide: Tuple[int, int] = (18, 8)
-    integrated_view: Tuple[int, int] = (20, 8)
-    anatomy_detail: Tuple[int, int] = (14, 10)
+    single_plot: tuple[int, int] = (10, 8)
+    wide_comparison: tuple[int, int] = (16, 8)
+    extra_wide: tuple[int, int] = (18, 8)
+    integrated_view: tuple[int, int] = (20, 8)
+    anatomy_detail: tuple[int, int] = (14, 10)
 
     # Legend positioning
-    legend_outside_right: Dict[str, Union[str, Tuple[float, float]]] = None
-    legend_upper_left: Dict[str, str] = None
+    legend_outside_right: dict[str, str|tuple[float, float]]|None = None
+    legend_upper_left: dict[str, str]|None = None
 
     def __post_init__(self):
         """Initialize legend positioning dictionaries."""

@@ -5,10 +5,9 @@ This module provides plotting functions for gaze tracking analysis results.
 
 import numpy as np
 import matplotlib.pyplot as plt
-from typing import Dict, Tuple
 
 
-def _format_error_statistics(errors: Dict[str, Dict[str, float]], unit_str: str) -> str:
+def _format_error_statistics(errors: dict[str, dict[str, float]], unit_str: str) -> str:
     """Format error statistics for plot titles."""
     return (
         f"Max: {errors['mtr']['max'] * 1e3:.2f} {unit_str} ({errors['deg']['max']:.3f}°), "
@@ -22,7 +21,7 @@ def plot_error_vectors_2d(
     Y: np.ndarray,
     U: np.ndarray,
     V: np.ndarray,
-    errors: Dict[str, Dict[str, float]],
+    errors: dict[str, dict[str, float]],
     angular_errors: np.ndarray,
     title_prefix: str = "",
     convert_to_mm: bool = True,
@@ -32,7 +31,7 @@ def plot_error_vectors_2d(
     mark_predicted_positions: bool = False,
     show_grid: bool = True,
     auto_adjust_limits: bool = True,
-    figure_size: Tuple[int, int] = (10, 8),
+    figure_size: tuple[int, int] = (10, 8),
     xlabel: str = "Observer X position (mm)",
     ylabel: str = "Observer Y position (mm)",
 ) -> None:
@@ -43,7 +42,7 @@ def plot_error_vectors_2d(
     Args:
         X, Y: Grid coordinates for vector positions
         U, V: Error components in X and Y directions
-        errors: Dictionary with error statistics (from calculate_error_statistics)
+        errors: dictionary with error statistics (from calculate_error_statistics)
         angular_errors: Angular errors (degrees) - used in error statistics
         title_prefix: Prefix text for plot title
         convert_to_mm: Convert coordinates and vectors to mm
@@ -192,13 +191,13 @@ def plot_error_vectors_3d(
     positions: np.ndarray,
     error_vectors: np.ndarray,
     angular_errors: np.ndarray,
-    errors: Dict[str, Dict[str, float]],
+    errors: dict[str, dict[str, float]],
     title_prefix: str = "",
     convert_to_mm: bool = True,
     max_arrow_ratio: float = 0.2,
     show_grid: bool = True,
-    figure_size: Tuple[int, int] = (12, 10),
-    position_labels: Tuple[str, str, str] = ("X position", "Y position", "Z position"),
+    figure_size: tuple[int, int] = (12, 10),
+    position_labels: tuple[str, str, str] = ("X position", "Y position", "Z position"),
 ) -> None:
     """Plot 3D gaze tracking error vectors with adaptive scaling.
 
@@ -208,7 +207,7 @@ def plot_error_vectors_3d(
         positions: Array of shape (N, 3) with [x, y, z] positions
         error_vectors: Array of shape (N, 3) with [dx, dy, dz] error vectors
         angular_errors: Array of shape (N,) with angular errors in degrees
-        errors: Dictionary with error statistics (from calculate_error_statistics)
+        errors: dictionary with error statistics (from calculate_error_statistics)
         title_prefix: Prefix text for plot title
         convert_to_mm: Convert coordinates and vectors to mm
         max_arrow_ratio: Maximum arrow length as fraction of plot range

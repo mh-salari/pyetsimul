@@ -1,7 +1,7 @@
 """Generic gaze accuracy evaluation that works with any pre-generated dataset."""
 
 import numpy as np
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, cast
 from dataclasses import dataclass
 from tqdm import tqdm
 
@@ -137,6 +137,8 @@ def _process_measurements(
         ground_truth, eye_position = _extract_ground_truth_data(measurement)
         if ground_truth is None:
             continue
+        ground_truth = cast(Point3D, ground_truth)
+        eye_position = cast(Position3D, eye_position)
 
         ground_truth_points.append(ground_truth)
         observer_positions.append(eye_position)

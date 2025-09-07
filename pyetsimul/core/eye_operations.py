@@ -7,7 +7,7 @@ part of the Eye class, extracted for better modularity and testability.
 
 import numpy as np
 from typing import TYPE_CHECKING
-from ..types import Position3D, Vector3D
+from ..types import Position3D, Vector3D, RotationMatrix
 from ..geometry.listings_law import calculate_eye_rotation
 
 if TYPE_CHECKING:
@@ -65,9 +65,8 @@ def look_at_target(eye: "Eye", target_position: Position3D) -> None:
         rest_axis = Vector3D.from_array(eye._rest_orientation @ np.array([0.0, 0.0, -1.0]))
 
     # Use Listing's law to compute eye rotation that aligns chosen axis with the target direction
-
     new_orientation = calculate_eye_rotation(rest_axis, direction_vec) @ eye._rest_orientation
-    eye.orientation = new_orientation
+    eye.orientation = RotationMatrix(new_orientation)
 
 
 def look_at_target_optical_then_kappa(eye: "Eye", target_position: Position3D) -> None:
@@ -131,4 +130,4 @@ def look_at_target_optical_then_kappa(eye: "Eye", target_position: Position3D) -
 
         orientation = orientation @ B @ A
 
-    eye.orientation = orientation
+    eye.orientation = RotationMatrix(orientation)

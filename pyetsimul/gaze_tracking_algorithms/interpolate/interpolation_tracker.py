@@ -11,7 +11,7 @@ from .polynomials import get_polynomial
 from ...geometry.plane_detection import detect_calibration_plane, summarize_plane_detection, PlaneInfo
 import time
 import numpy as np
-from typing import List
+from typing import Optional
 
 
 class InterpolationTracker(EyeTracker):
@@ -21,7 +21,7 @@ class InterpolationTracker(EyeTracker):
     Supports various polynomial types from eye tracking literature.
     """
 
-    def __init__(self, polynomial: str, config: InterpolationConfig = None, **kwargs):
+    def __init__(self, polynomial: str, config: Optional[InterpolationConfig] = None, **kwargs):
         """Initialize interpolation tracker with structured configuration.
 
         Sets up polynomial function and algorithm state for gaze tracking.
@@ -46,11 +46,11 @@ class InterpolationTracker(EyeTracker):
     @classmethod
     def create(
         cls,
-        cameras: List,
-        lights: List,
-        calib_points: List[Position3D],
+        cameras: list,
+        lights: list,
+        calib_points: list[Position3D],
         polynomial: str,
-        config: InterpolationConfig = None,
+        config: Optional[InterpolationConfig] = None,
         use_refraction: bool = True,
     ) -> "InterpolationTracker":
         """Create interpolation eye tracker setup.
@@ -77,14 +77,14 @@ class InterpolationTracker(EyeTracker):
             use_refraction=use_refraction,
         )
 
-    def calibrate(self, calib_data: List[EyeMeasurement]) -> None:
+    def calibrate(self, calibration_measurements: list[EyeMeasurement]) -> None:
         """Calibration function for pupil-CR interpolation.
 
         Detects calibration plane and performs polynomial least squares calibration.
         Automatically handles 1D and 2D polynomial types.
 
         Args:
-            calib_data: List of EyeMeasurement objects from calibration
+            calibration_measurements: List of EyeMeasurement objects from calibration
         """
         # Detect calibration plane for coordinate system
         self.plane_info = detect_calibration_plane(self.calib_points)
@@ -94,18 +94,18 @@ class InterpolationTracker(EyeTracker):
         test_features = self.polynomial_func(0.0, 0.0)
 
         if test_features.is_2d:
-            self._calibrate_2d(calib_data)
+            self._calibrate_2d(calibration_measurements)
         else:
-            self._calibrate_1d(calib_data)
+            self._calibrate_1d(calibration_measurements)
 
-    def _calibrate_1d(self, calib_data: List[EyeMeasurement]) -> None:
+    def _calibrate_1d(self, calibration_measurements: list[EyeMeasurement]) -> None:
         """Calibrate with 1D polynomial (shared features for both coordinates).
 
         Uses single polynomial for both X and Y gaze components.
         """
         # Determine feature vector size from first valid measurement
         feature_size = None
-        for i, measurement in enumerate(calib_data):
+        for i, measurement in enumerate(calibration_measurements):
             pc = measurement.pupil_data.center
             cr = (
                 measurement.camera_image.corneal_reflections[0]
@@ -124,7 +124,7 @@ class InterpolationTracker(EyeTracker):
         # Build feature matrix for all calibration points
         X = np.zeros((feature_size, len(self.calib_points)))
 
-        for i, measurement in enumerate(calib_data):
+        for i, measurement in enumerate(calibration_measurements):
             pc = measurement.pupil_data.center
             cr = (
                 measurement.camera_image.corneal_reflections[0]
@@ -149,14 +149,14 @@ class InterpolationTracker(EyeTracker):
         self.algorithm_state.y_coefficients = calibration_matrix[1:2, :].flatten()
         self.algorithm_state.is_calibrated = True
 
-    def _calibrate_2d(self, calib_data: List[EyeMeasurement]) -> None:
+    def _calibrate_2d(self, calibration_measurements: list[EyeMeasurement]) -> None:
         """Calibrate with 2D polynomial (separate features for each coordinate).
 
         Uses independent polynomials for X and Y gaze components.
         """
         # Determine polynomial structure from first valid measurement
         poly_features = None
-        for i, measurement in enumerate(calib_data):
+        for i, measurement in enumerate(calibration_measurements):
             pc = measurement.pupil_data.center
             cr = (
                 measurement.camera_image.corneal_reflections[0]
@@ -176,7 +176,7 @@ class InterpolationTracker(EyeTracker):
         X_x = np.zeros((feature_size, len(self.calib_points)))
         X_y = np.zeros((feature_size, len(self.calib_points)))
 
-        for i, measurement in enumerate(calib_data):
+        for i, measurement in enumerate(calibration_measurements):
             pc = measurement.pupil_data.center
             cr = (
                 measurement.camera_image.corneal_reflections[0]

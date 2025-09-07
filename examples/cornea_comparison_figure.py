@@ -72,7 +72,7 @@ def main():
             closed_points[1, :],
             color="blue",
             linewidth=1,
-            label="Spherical Cornea",
+            label="Pupil (Spherical Cornea)",
         )
 
     # Plot conic cornea pupil boundary
@@ -85,7 +85,7 @@ def main():
             closed_points_conic[1, :],
             color="red",
             linewidth=1,
-            label="Conic Cornea",
+            label="Pupil Center (Conic Cornea)",
         )
 
     # Plot pupil centers
@@ -97,7 +97,7 @@ def main():
         s=50,
         marker="+",
         linewidth=1,
-        label="Spherical Center",
+        label="Pupil Center (Spherical Cornea)",
     )
 
     center = image_conic.pupil_center.to_array()
@@ -108,7 +108,7 @@ def main():
         s=50,
         marker="+",
         linewidth=1,
-        label="Conic Center",
+        label="Pupil Center (Conic Cornea)",
     )
 
     # Set camera image limits and formatting

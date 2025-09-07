@@ -6,7 +6,7 @@ Support for multiple eyes, cameras, and lights.
 """
 
 import numpy as np
-from typing import Dict, Any
+from typing import Any
 
 from pyetsimul.core import Eye
 from ..types import Position3D
@@ -17,7 +17,7 @@ def prepare_eye_data_for_plots(
     look_at_targets,
     lights=None,
     cameras=None,
-) -> Dict[str, Any]:
+) -> dict[str, Any]:
     """Prepare eye visualization data for plotting.
 
     Transforms eye anatomies to world coordinates and generates camera images.
@@ -87,12 +87,13 @@ def prepare_eye_data_for_plots(
     return {"eyes_data": eyes_data, "camera_images": camera_images, "cr_3d_lists": cr_3d_lists}
 
 
-def _prepare_single_eye_data(eye: Eye, look_at_target: Position3D) -> Dict[str, Any]:
+def _prepare_single_eye_data(eye: Eye, look_at_target: Position3D) -> dict[str, Any]:
     """Helper function to prepare single eye data for visualization."""
 
     # Calculate all values once
-    def transform_point(point):
-        return eye.trans @ point
+    def transform_point(point) -> Position3D:
+        p = eye.trans @ point
+        return Position3D.from_array(p) if not isinstance(p, Position3D) else p
 
     # Rotate the eye toward the target
     eye.look_at(look_at_target)
@@ -126,19 +127,18 @@ def _prepare_single_eye_data(eye: Eye, look_at_target: Position3D) -> Dict[str, 
                 point = np.array([cornea_center.x, cornea_center.y, cornea_center.z]) + np.array(
                     [X_cornea[i, j], Y_cornea[i, j], Z_cornea[i, j]]
                 )
-                point_homogeneous = np.array([point[0], point[1], point[2], 1.0])
-                point_world = transform_point(point_homogeneous)
-                X_cornea[i, j] = point_world[0]
-                Y_cornea[i, j] = point_world[1]
-                Z_cornea[i, j] = point_world[2]
+                point_world = transform_point(Position3D.from_array(point))
+                X_cornea[i, j] = point_world.x
+                Y_cornea[i, j] = point_world.y
+                Z_cornea[i, j] = point_world.z
 
     # Calculate optical axis
     optical_axis_direction_local = np.array([0, 0, -1, 0])  # negative z in homogeneous coordinates
     optical_axis_direction_world = transform_point(optical_axis_direction_local)
     optical_axis_end = Position3D(
-        cornea_center_world.x + optical_axis_direction_world[0] * 0.02,
-        cornea_center_world.y + optical_axis_direction_world[1] * 0.02,
-        cornea_center_world.z + optical_axis_direction_world[2] * 0.02,
+        cornea_center_world.x + optical_axis_direction_world.x * 0.02,
+        cornea_center_world.y + optical_axis_direction_world.y * 0.02,
+        cornea_center_world.z + optical_axis_direction_world.z * 0.02,
     )
 
     return {
