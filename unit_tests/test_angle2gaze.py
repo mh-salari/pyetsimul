@@ -15,14 +15,14 @@ def test_zero_angles():
 def test_positive_angles():
     """Test with positive angles."""
     result = angle2gaze(Point2D(0.1, 0.2))
-    expected = Direction3D(0.0978433950072557, -0.9751703272018158, 0.1986693307950612)
+    expected = Direction3D(-0.0978433950072557, -0.9751703272018158, 0.1986693307950612)
     result.assert_close(expected, rtol=1e-10)
 
 
 def test_negative_angles():
     """Test with negative angles."""
     result = angle2gaze(Point2D(-0.15, -0.25))
-    expected = Direction3D(-0.1447924628309112, -0.9580325796404553, -0.2474039592545229)
+    expected = Direction3D(0.1447924628309112, -0.9580325796404553, -0.2474039592545229)
     result.assert_close(expected, rtol=1e-10)
 
 

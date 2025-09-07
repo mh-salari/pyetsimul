@@ -5,7 +5,7 @@ Implements conversions between gaze direction, rotation angles, and observer/scr
 
 import numpy as np
 from typing import Optional
-from ..types import Point2D, Point3D, Direction3D, Position3D, RotationMatrix
+from ..types import Point2D, Point3D, Direction3D, Position3D, RotationMatrix, TransformationMatrix
 
 
 def gaze2angle(gaze: Direction3D, rest_pos: Optional[RotationMatrix] = None) -> Point2D:
@@ -17,7 +17,7 @@ def gaze2angle(gaze: Direction3D, rest_pos: Optional[RotationMatrix] = None) -> 
     Args:
         gaze: 3D gaze direction vector
         rest_pos: Optional 3x3 rotation matrix for eye rest position.
-                 Defaults to [[1,0,0], [0,0,1], [0,1,0]]
+                 Defaults to [[-1,0,0], [0,0,1], [0,1,0]]
 
     Returns:
         Point2D containing [horizontal_angle, vertical_angle] in radians
@@ -27,7 +27,7 @@ def gaze2angle(gaze: Direction3D, rest_pos: Optional[RotationMatrix] = None) -> 
 
     # Default rest position if not provided
     if rest_pos is None:
-        rest_pos = np.array([[1, 0, 0], [0, 0, 1], [0, 1, 0]])
+        rest_pos = RotationMatrix(np.array([[-1, 0, 0], [0, 0, 1], [0, 1, 0]]))
 
     # Transform gaze to rest position coordinate system
     gaze_transformed = np.linalg.solve(rest_pos, np.array(gaze)[:3])
@@ -48,7 +48,7 @@ def angle2gaze(angles: Point2D, rest_pos: Optional[RotationMatrix] = None) -> Di
     Args:
         angles: 2D point containing rotation angles [horizontal, vertical] in radians
         rest_pos: Optional 3x3 rotation matrix for eye rest position.
-                 Defaults to [[1,0,0], [0,0,1], [0,1,0]]
+                 Defaults to [[-1,0,0], [0,0,1], [0,1,0]]
 
     Returns:
         Direction3D representing the gaze direction vector
@@ -58,7 +58,7 @@ def angle2gaze(angles: Point2D, rest_pos: Optional[RotationMatrix] = None) -> Di
 
     # Default rest position if not provided
     if rest_pos is None:
-        rest_pos = np.array([[1, 0, 0], [0, 0, 1], [0, 1, 0]])
+        rest_pos = RotationMatrix(np.array([[-1, 0, 0], [0, 0, 1], [0, 1, 0]]))
 
     # Create rotation matrices for horizontal and vertical rotations
     angles_arr = np.array(angles)
@@ -71,8 +71,7 @@ def angle2gaze(angles: Point2D, rest_pos: Optional[RotationMatrix] = None) -> Di
     rot_v = np.array([[1, 0, 0, 0], [0, cos_v, -sin_v, 0], [0, sin_v, cos_v, 0], [0, 0, 0, 1]])
 
     # Convert rest position to 4x4 homogeneous matrix
-    rest_pos_4x4 = np.eye(4)
-    rest_pos_4x4[:3, :3] = rest_pos
+    rest_pos_4x4 = TransformationMatrix.from_rotation(rest_pos)
 
     # Apply transformations: rest_pos * rot_h * rot_v * default_gaze
     default_gaze = np.array([0, 0, -1, 0])
