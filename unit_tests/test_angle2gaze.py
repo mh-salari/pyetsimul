@@ -2,7 +2,7 @@
 
 import numpy as np
 from pyetsimul.geometry.conversions import angle2gaze
-from pyetsimul.types import Direction3D, Point2D
+from pyetsimul.types import Direction3D, Point2D, RotationMatrix
 
 
 def test_zero_angles():
@@ -29,7 +29,7 @@ def test_negative_angles():
 def test_custom_rest_position():
     """Test with custom rest position matrix."""
     angles = Point2D(0.1, 0.1)
-    rest_pos = np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]])
+    rest_pos = RotationMatrix(np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]]))
     result = angle2gaze(angles, rest_pos)
     expected = Direction3D(0.0998334166468282, -0.9900332889206207, 0.0993346653975306)
     result.assert_close(expected, rtol=1e-10)
