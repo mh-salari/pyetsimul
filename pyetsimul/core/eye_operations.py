@@ -130,4 +130,4 @@ def look_at_target_optical_then_kappa(eye: "Eye", target_position: Position3D) -
 
         orientation = orientation @ B @ A
 
-    eye.orientation = RotationMatrix(orientation)
+    eye.orientation = RotationMatrix(orientation, validate_handedness=False)
