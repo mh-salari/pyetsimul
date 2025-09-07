@@ -17,6 +17,7 @@ def prepare_eye_data_for_plots(
     look_at_targets,
     lights=None,
     cameras=None,
+    use_legacy_lookat=False
 ) -> dict[str, Any]:
     """Prepare eye visualization data for plotting.
 
@@ -53,7 +54,7 @@ def prepare_eye_data_for_plots(
     cr_3d_lists = []
 
     for i, (eye, target) in enumerate(zip(eyes, look_at_targets)):
-        eye_data = _prepare_single_eye_data(eye, target)
+        eye_data = _prepare_single_eye_data(eye, target, use_legacy_lookat)
         eyes_data.append(eye_data)
 
         # Find corneal reflections for this eye (only if cameras available)
@@ -87,7 +88,7 @@ def prepare_eye_data_for_plots(
     return {"eyes_data": eyes_data, "camera_images": camera_images, "cr_3d_lists": cr_3d_lists}
 
 
-def _prepare_single_eye_data(eye: Eye, look_at_target: Position3D) -> dict[str, Any]:
+def _prepare_single_eye_data(eye: Eye, look_at_target: Position3D, use_legacy_lookat) -> dict[str, Any]:
     """Helper function to prepare single eye data for visualization."""
 
     # Calculate all values once
@@ -96,7 +97,7 @@ def _prepare_single_eye_data(eye: Eye, look_at_target: Position3D) -> dict[str, 
         return Position3D.from_array(p) if not isinstance(p, Position3D) else p
 
     # Rotate the eye toward the target
-    eye.look_at(look_at_target)
+    eye.look_at(look_at_target, legacy=use_legacy_lookat)
     # Get eye anatomy points
     cornea_center = eye.cornea.center
     pupil_center = eye.pupil.pos_pupil
