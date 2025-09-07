@@ -468,7 +468,7 @@ class ConicCornea(Cornea):
         """
         # Set default center if not already set (no scaling applied)
         # For conic: position center at origin for mathematical consistency
-        if self.center is None:
+        if self._center is None:
             # Use anatomical offset if desired, otherwise origin
             self.center = self.calculate_center_position(axial_length, self._cornea_center_to_rotation_center_default)
 
