@@ -76,7 +76,7 @@ def test_grid_conversion_accuracy():
             # Convert Direction3D back to homogeneous array for comparison
             gaze_new_array = np.array(gaze_new)
             error = np.linalg.norm(gaze - gaze_new_array)
-            max_error = max(max_error, error)
+            max_error = max(max_error, float(error))
 
             assert error < tolerance, f"Error {error:.2e} exceeds tolerance at ({x}, {y})"
 
