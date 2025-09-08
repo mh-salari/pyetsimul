@@ -1,6 +1,6 @@
 """Polynomial feature functions for interpolation eye tracking.
 
-Based on various eye tracking calibration papers with different polynomial formulations.
+Extensible registry system supporting user-defined polynomials.
 """
 
 import numpy as np
@@ -135,19 +135,16 @@ class PolynomialInfo:
     name: str
     function: Callable[[float, float], PolynomialFeatures]
     description: str
-    model_type: str  # "1D" or "2D"
+    model_type: str
     feature_count: int
-    paper_reference: Optional[str] = None
-    year: Optional[int] = None
 
 
 class PolynomialRegistry:
-    """Registry for polynomial functions."""
+    """Registry for polynomial functions with user registration support."""
 
     def __init__(self):
         """Initialize empty registry."""
         self._polynomials: dict[str, PolynomialInfo] = {}
-        self._aliases: dict[str, str] = {}  # Alias -> canonical name mapping
 
     def register(
         self,
@@ -156,24 +153,30 @@ class PolynomialRegistry:
         description: str,
         model_type: str,
         feature_count: int,
-        paper_reference: Optional[str] = None,
-        year: Optional[int] = None,
-        aliases: Optional[list[str]] = None,
     ) -> None:
         """Register a polynomial function.
 
         Args:
             name: Unique polynomial name
-            function: Polynomial function
+            function: Polynomial function returning PolynomialFeatures
             description: Human-readable description
             model_type: "1D" or "2D" model type
             feature_count: Number of features per coordinate
-            paper_reference: Academic paper reference
-            year: Year of publication
-            aliases: Alternative names for the polynomial
+
+        Raises:
+            ValueError: If polynomial name already exists
         """
         if name in self._polynomials:
             raise ValueError(f"Polynomial '{name}' already registered")
+
+        if model_type not in ["1D", "2D"]:
+            raise ValueError(
+                f"Model type must be '1D' or '2D', got '{model_type}'. "
+                f"Use '1D' for shared features (e.g., Hennessey 2008: [x*y, x, y, 1]) "
+                f"or '2D' for separate X/Y features (e.g., Hoorman 2008: [[x, 1], [y, 1]])"
+            )
+
+        self._validate_polynomial_function(function, name)
 
         info = PolynomialInfo(
             name=name,
@@ -181,24 +184,15 @@ class PolynomialRegistry:
             description=description,
             model_type=model_type,
             feature_count=feature_count,
-            paper_reference=paper_reference,
-            year=year,
         )
 
         self._polynomials[name] = info
-
-        # Register aliases
-        if aliases:
-            for alias in aliases:
-                if alias in self._aliases:
-                    raise ValueError(f"Alias '{alias}' already registered")
-                self._aliases[alias] = name
 
     def get_polynomial(self, name: str) -> Callable[[float, float], PolynomialFeatures]:
         """Get polynomial function by name.
 
         Args:
-            name: Polynomial name or alias
+            name: Polynomial name
 
         Returns:
             Polynomial function
@@ -206,24 +200,21 @@ class PolynomialRegistry:
         Raises:
             ValueError: If polynomial name is not recognized
         """
-        info = self.get_polynomial_info(name)
-        if info is None:
+        if name not in self._polynomials:
             available = ", ".join(self.list_polynomials())
             raise ValueError(f"Unknown polynomial '{name}'. Available: {available}")
-        return info.function
+        return self._polynomials[name].function
 
     def get_polynomial_info(self, name: str) -> Optional[PolynomialInfo]:
         """Get information about a registered polynomial.
 
         Args:
-            name: Polynomial name or alias
+            name: Polynomial name
 
         Returns:
             PolynomialInfo if found, None otherwise
         """
-        # Check if it's an alias first
-        canonical_name = self._aliases.get(name, name)
-        return self._polynomials.get(canonical_name)
+        return self._polynomials.get(name)
 
     def list_polynomials(self) -> list[str]:
         """Get list of all registered polynomial names."""
@@ -249,56 +240,107 @@ class PolynomialRegistry:
             matches.append(info)
         return matches
 
+    def _validate_polynomial_function(self, function: Callable[[float, float], PolynomialFeatures], name: str) -> None:
+        """Validate polynomial function signature and return type."""
+        test_points = [(0.0, 0.0), (1.0, 1.0), (-1.0, -1.0), (0.5, -0.5)]
 
-# Global polynomial registry
+        for x, y in test_points:
+            try:
+                result = function(x, y)
+                if not isinstance(result, PolynomialFeatures):
+                    raise ValueError(f"Polynomial '{name}' must return PolynomialFeatures, got {type(result)}")
+
+                # Validate feature count consistency
+                actual_count = result.feature_count
+                if hasattr(result, "features") and result.features is not None:
+                    if result.is_2d:
+                        expected_shape = (2, actual_count)
+                    else:
+                        expected_shape = (actual_count,)
+
+                    if result.features.shape != expected_shape:
+                        raise ValueError(
+                            f"Polynomial '{name}' features shape {result.features.shape} doesn't match expected {expected_shape}"
+                        )
+
+            except Exception as e:
+                raise ValueError(f"Polynomial '{name}' function validation failed at ({x}, {y}): {e}") from e
+
+    def unregister(self, name: str) -> bool:
+        """Remove a polynomial from the registry."""
+        if name not in self._polynomials:
+            return False
+
+        del self._polynomials[name]
+        return True
+
+    def validate_polynomial_count(self, name: str, expected_count: int) -> bool:
+        """Validate that a polynomial produces the expected feature count.
+
+        Args:
+            name: Polynomial name
+            expected_count: Expected number of features
+
+        Returns:
+            True if feature count matches, False otherwise
+        """
+        try:
+            poly_func = self.get_polynomial(name)
+            result = poly_func(0.0, 0.0)
+            return result.feature_count == expected_count
+        except Exception:
+            return False
+
+
+def _register_builtin_polynomials() -> None:
+    """Register built-in polynomial functions."""
+    builtin_polynomials = [
+        ("hennessey_2008", hennessey_2008, "Hennessey et al. (2008) polynomial with cross-terms", "1D", 4),
+        ("hoorman_2008", hoorman_2008, "Hoorman et al. (2008) linear polynomial", "2D", 2),
+        ("cerrolaza_2008", cerrolaza_2008, "Cerrolaza et al. (2008) second-order polynomial", "1D", 6),
+        ("second_order", second_order, "Second-order polynomial with all cross-terms", "1D", 7),
+        ("zhu_ji_2005", zhu_ji_2005, "Zhu and Ji (2005) asymmetric polynomial", "2D", 4),
+        (
+            "cerrolaza_villanueva_2008",
+            cerrolaza_villanueva_2008,
+            "Cerrolaza and Villanueva (2008) asymmetric polynomial",
+            "2D",
+            5,
+        ),
+        ("blignaut_wium_2013", blignaut_wium_2013, "Blignaut and Wium (2013) high-order polynomial", "2D", 7),
+    ]
+
+    for name, func, desc, model_type, feature_count in builtin_polynomials:
+        _polynomial_registry.register(name, func, desc, model_type, feature_count)
+
+
 _polynomial_registry = PolynomialRegistry()
+_register_builtin_polynomials()
 
-# Register all polynomial functions
-_polynomial_registry.register(
-    "hennessey_2008",
-    hennessey_2008,
-    "Hennessey et al. (2008) polynomial with cross-terms",
-    "1D",
-    4,
-    "Craig Hennessey et al. (2008)",
-    2008,
-)
-_polynomial_registry.register(
-    "hoorman_2008", hoorman_2008, "Hoorman et al. (2008) linear polynomial", "2D", 2, "Hoorman et al. (2008)", 2008
-)
-_polynomial_registry.register(
-    "cerrolaza_2008",
-    cerrolaza_2008,
-    "Cerrolaza et al. (2008) second-order polynomial",
-    "1D",
-    6,
-    "Cerrolaza et al. (2008)",
-    2008,
-)
-_polynomial_registry.register(
-    "second_order", second_order, "Second-order polynomial with all cross-terms", "1D", 7, None, None
-)
-_polynomial_registry.register(
-    "zhu_ji_2005", zhu_ji_2005, "Zhu and Ji (2005) asymmetric polynomial", "2D", 4, "Zhu and Ji (2005)", 2005
-)
-_polynomial_registry.register(
-    "cerrolaza_villanueva_2008",
-    cerrolaza_villanueva_2008,
-    "Cerrolaza and Villanueva (2008) asymmetric polynomial",
-    "2D",
-    5,
-    "Cerrolaza and Villanueva (2008)",
-    2008,
-)
-_polynomial_registry.register(
-    "blignaut_wium_2013",
-    blignaut_wium_2013,
-    "Blignaut and Wium (2013) high-order polynomial",
-    "2D",
-    7,
-    "Blignaut and Wium (2013)",
-    2013,
-)
+
+def register_polynomial(
+    name: str,
+    function: Callable[[float, float], PolynomialFeatures],
+    description: str,
+    model_type: str,
+    feature_count: int,
+) -> None:
+    """Register a user-defined polynomial in the global registry.
+
+    Args:
+        name: Unique polynomial name
+        function: Polynomial function returning PolynomialFeatures
+        description: Human-readable description
+        model_type: "1D" or "2D" model type
+        feature_count: Number of features per coordinate
+    """
+    _polynomial_registry.register(
+        name=name,
+        function=function,
+        description=description,
+        model_type=model_type,
+        feature_count=feature_count,
+    )
 
 
 def get_polynomial(name: str = "cerrolaza_2008") -> Callable[[float, float], PolynomialFeatures]:
@@ -324,3 +366,8 @@ def get_polynomial_info(name: str) -> Optional[PolynomialInfo]:
 def list_available_polynomials() -> list[str]:
     """List all available polynomials in the global registry."""
     return _polynomial_registry.list_polynomials()
+
+
+def get_polynomial_registry() -> PolynomialRegistry:
+    """Access the global polynomial registry for advanced operations."""
+    return _polynomial_registry

@@ -1,0 +1,90 @@
+"""Example of registering and using a custom polynomial with PyEtSimul.
+
+Demonstrates how users can define their own polynomial function
+and use it for eye tracking calibration.
+"""
+
+import numpy as np
+from pyetsimul.gaze_tracking_algorithms.interpolate.polynomials import register_polynomial
+from pyetsimul.gaze_tracking_algorithms.interpolate import InterpolationTracker
+from pyetsimul.types.algorithms import PolynomialFeatures
+from pyetsimul.evaluation import accuracy_at_calibration_points
+from pyetsimul.core import Eye, Camera, Light
+from pyetsimul.types import Position3D, RotationMatrix
+
+
+def my_custom_polynomial(x: float, y: float) -> PolynomialFeatures:
+    """Custom third-order polynomial with comprehensive cross-terms: [x³, y³, x²y, xy², x², y², xy, x, y, 1]
+
+    Mathematical model (1D - shared features):
+    gaze_x = a₀*x³ + a₁*y³ + a₂*x²*y + a₃*x*y² + a₄*x² + a₅*y² + a₆*x*y + a₇*x + a₈*y + a₉
+    gaze_y = b₀*x³ + b₁*y³ + b₂*x²*y + b₃*x*y² + b₄*x² + b₅*y² + b₆*x*y + b₇*x + b₈*y + b₉
+
+    This higher-order polynomial can model complex non-linearities in eye tracking:
+    - Cubic terms (x³, y³) capture strong peripheral distortions
+    - Cross-cubic terms (x²y, xy²) model asymmetric distortions
+    - Maintains all lower-order terms for robustness
+    """
+    features = np.array([x**3, y**3, x**2 * y, x * y**2, x**2, y**2, x * y, x, y, 1])
+    return PolynomialFeatures(features=features, polynomial_name="my_custom")
+
+
+def main():
+    """Register custom polynomial and run eye tracking demo."""
+
+    # Register the custom polynomial
+    register_polynomial(
+        name="my_custom",
+        function=my_custom_polynomial,
+        description="Custom third-order polynomial with comprehensive cross-terms",
+        model_type="1D",
+        feature_count=10,
+    )
+
+    print("Custom Polynomial Eye Tracking Demo\n")
+
+    # Create 3x3 calibration grid on XZ plane (from experiments config)
+    calibration_points = [
+        Position3D(-200e-3, 0.0, 50e-3),
+        Position3D(0, 0.0, 50e-3),
+        Position3D(200e-3, 0.0, 50e-3),
+        Position3D(-200e-3, 0.0, 200e-3),
+        Position3D(0, 0.0, 200e-3),
+        Position3D(200e-3, 0.0, 200e-3),
+        Position3D(-200e-3, 0.0, 350e-3),
+        Position3D(0, 0.0, 350e-3),
+        Position3D(200e-3, 0.0, 350e-3),
+    ]
+
+    # Standard eye configuration
+    eye = Eye()
+    eye.set_rest_orientation(RotationMatrix([[1, 0, 0], [0, 0, -1], [0, 1, 0]]))
+    eye.position = Position3D(0.0, 550e-3, 350e-3)
+
+    # Standard camera configuration
+    camera = Camera(err=0.0, err_type="gaussian")
+    camera.orientation = RotationMatrix([[1, 0, 0], [0, 0, 1], [0, -1, 0]])
+    camera.point_at(eye.position)
+
+    # Standard light configuration
+    light = Light(position=Position3D(200e-3, 0, 350e-3))
+
+    # Setup tracker using custom polynomial
+    method = "my_custom"
+    et = InterpolationTracker.create([camera], [light], calibration_points, method)
+
+    # Display configuration summary
+    et.pprint(eye)
+
+    # Calibrate the eye tracker
+    print("Calibrating eye tracker with custom polynomial...")
+    et.run_calibration(eye)
+
+    print("\n1. Testing calibration accuracy:")
+    print("-" * 60)
+    calib_results = accuracy_at_calibration_points(et, eye=eye)
+    calib_results.pprint("Custom Polynomial Calibration Test")
+
+
+if __name__ == "__main__":
+    main()
