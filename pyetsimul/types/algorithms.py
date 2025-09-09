@@ -38,6 +38,7 @@ class PolynomialDescriptor:
 
     def _normalize_orders(self):
         """Convert simplified orders format to standard [x_order, y_order] format."""
+
         def _normalize_orders_impl(orders, terms):
             normalized = []
             for order, term in zip(orders, terms):
@@ -47,17 +48,19 @@ class PolynomialDescriptor:
                     elif term == "y":
                         normalized.append([0, order])
                     elif term == "1":
-                        if order!=0:
+                        if order != 0:
                             raise ValueError(f"If term is '1', order should be 0. Was: {order}")
                         normalized.append([0, 0])
                     else:
-                        raise ValueError(f"If term is not 'x' or 'y' (term was '{term}'), order must be specified as a list.")
+                        raise ValueError(
+                            f"If term is not 'x' or 'y' (term was '{term}'), order must be specified as a list."
+                        )
                 else:
                     normalized.append(order)
             return normalized
 
         if self.is_separable:
-            return [_normalize_orders_impl(o,t) for o,t in zip(self.orders, self.terms)]
+            return [_normalize_orders_impl(o, t) for o, t in zip(self.orders, self.terms)]
         else:
             return _normalize_orders_impl(self.orders, self.terms)
 
@@ -69,10 +72,10 @@ class PolynomialDescriptor:
 
     @property
     def feature_count(self) -> int:
-        """Number of features per coordinate."""
+        """Total number of features."""
         if self.is_separable:
-            # For separable: return number of features in first coordinate (should match second)
-            return len(self.terms[0])
+            # For separable: return total number of features across all coordinates
+            return sum(len(coord_terms) for coord_terms in self.terms)
         else:
             # For non-separable: return total number of shared features
             return len(self.terms)
@@ -80,10 +83,7 @@ class PolynomialDescriptor:
     def get_term_descriptions(self) -> list[str] | list[list[str]]:
         """Get human-readable term descriptions for display."""
         if self.is_separable:
-            return [
-                [self._format_term(order) for order in coord_orders]
-                for coord_orders in self.orders
-            ]
+            return [[self._format_term(order) for order in coord_orders] for coord_orders in self.orders]
         else:
             return [self._format_term(order) for order in self.orders]
 
@@ -151,7 +151,12 @@ class PolynomialDescriptor:
                     [self._evaluate_term(term, order, x, y) for term, order in zip(coord_terms, coord_orders)]
                 )
                 coord_features.append(coord_vals)
-            features = np.array(coord_features)
+            # Handle case where coordinates have different numbers of features
+            if all(len(coord_features[0]) == len(cf) for cf in coord_features):
+                features = np.array(coord_features)
+            else:
+                # Use object array for mixed-length coordinates
+                features = np.array(coord_features, dtype=object)
             return PolynomialFeatures(features=features, polynomial_name=self.name)
 
         return polynomial_func
@@ -215,20 +220,24 @@ class PolynomialFeatures:
     @property
     def is_non_separable(self) -> bool:
         """Check if polynomial is non-separable (same features shared for x and y coordinates)."""
-        return self.features.ndim == 1
+        return self.features.ndim == 1 and self.features.dtype != object
 
     @property
     def is_separable(self) -> bool:
         """Check if polynomial is separable (different features for x and y coordinates)."""
-        return self.features.ndim == 2
+        return not self.is_non_separable
 
     @property
     def feature_count(self) -> int:
-        """Number of features per coordinate."""
+        """Total number of features."""
         if self.is_non_separable:
             return len(self.features)
+        elif self.features.dtype == object:
+            # For object arrays (mixed-length coordinates), return total features
+            return sum(len(coord_features) for coord_features in self.features)
         else:
-            return self.features.shape[1]
+            # For regular separable arrays, return total features (sum across coordinates)
+            return self.features.shape[0] * self.features.shape[1]
 
     def predict(self, x_coefficients: np.ndarray, y_coefficients: np.ndarray, plane_info=None) -> "Point3D":
         """Predict gaze coordinates using this polynomial's features.
@@ -247,16 +256,20 @@ class PolynomialFeatures:
             gaze_2d = A @ self.features
         else:
             # Separable: different features for each coordinate
-            coord1_features = self.features[0, :]
-            coord2_features = self.features[1, :]
+            coord1_features, coord2_features = self._extract_coordinate_features()
             gaze_2d = np.array([x_coefficients @ coord1_features, y_coefficients @ coord2_features])
 
         # Reconstruct 3D point using plane information
-        if plane_info is not None:
-            return plane_info.reconstruct_3d_point(gaze_2d[0], gaze_2d[1])
+        if plane_info is None:
+            raise ValueError("plane_info is required for gaze prediction")
+        return plane_info.reconstruct_3d_point(gaze_2d[0], gaze_2d[1])
+
+    def _extract_coordinate_features(self) -> tuple[np.ndarray, np.ndarray]:
+        """Extract features for each coordinate, handling both array types."""
+        if self.features.dtype == object:
+            return self.features[0], self.features[1]
         else:
-            # Default to XZ plane for backward compatibility
-            return Point3D(gaze_2d[0], 0.0, gaze_2d[1])
+            return self.features[0, :], self.features[1, :]
 
 
 @dataclass

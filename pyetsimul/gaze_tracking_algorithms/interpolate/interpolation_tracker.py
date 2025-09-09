@@ -166,9 +166,17 @@ class InterpolationTracker(EyeTracker):
             raise ValueError("No valid calibration data found")
 
         # Build separate feature matrices for X and Y coordinates
-        num_coords, feature_size = poly_features.features.shape
-        X_x = np.zeros((feature_size, len(self.calib_points)))
-        X_y = np.zeros((feature_size, len(self.calib_points)))
+        if poly_features.features.dtype == object:
+            # Handle object arrays (mixed-length coordinates)
+            coord_x_size = len(poly_features.features[0])
+            coord_y_size = len(poly_features.features[1])
+            X_x = np.zeros((coord_x_size, len(self.calib_points)))
+            X_y = np.zeros((coord_y_size, len(self.calib_points)))
+        else:
+            # Handle regular 2D arrays
+            num_coords, feature_size = poly_features.features.shape
+            X_x = np.zeros((feature_size, len(self.calib_points)))
+            X_y = np.zeros((feature_size, len(self.calib_points)))
 
         for i, measurement in enumerate(calibration_measurements):
             pc = measurement.pupil_data.center
@@ -181,8 +189,14 @@ class InterpolationTracker(EyeTracker):
             if pc is not None and cr is not None:
                 pcr = pc - cr
                 poly_features = self.polynomial_func(pcr.x, pcr.y)
-                X_x[:, i] = poly_features.features[0, :]  # X coordinate features
-                X_y[:, i] = poly_features.features[1, :]  # Y coordinate features
+                if poly_features.features.dtype == object:
+                    # Handle object arrays (mixed-length coordinates)
+                    X_x[:, i] = poly_features.features[0]  # X coordinate features
+                    X_y[:, i] = poly_features.features[1]  # Y coordinate features
+                else:
+                    # Handle regular 2D arrays
+                    X_x[:, i] = poly_features.features[0, :]  # X coordinate features
+                    X_y[:, i] = poly_features.features[1, :]  # Y coordinate features
 
         # Map 3D calibration points to 2D plane coordinates
         calib_coords_2d = [self.plane_info.extract_2d_coords(pt) for pt in self.calib_points]
