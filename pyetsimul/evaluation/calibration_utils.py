@@ -5,6 +5,7 @@ including parameter printing and data formatting functions.
 """
 
 from pyetsimul.core import EyeTracker
+from pyetsimul.gaze_tracking_algorithms.interpolate.polynomials import get_polynomial_info
 from tabulate import tabulate
 
 
@@ -46,17 +47,38 @@ def pprint_polynomial_parameters(et: EyeTracker) -> None:
 
     print(tabulate(general_data, headers=headers, tablefmt="simple"))
 
-    # Coefficients table if available
+    # Coefficients table with term descriptions
     if et.algorithm_state.is_calibrated:
         state = et.algorithm_state
-        if state.x_coefficients is not None and state.y_coefficients is not None:
-            print("\nCoefficients Values:")
-            coeff_headers = ["Index", "X Coefficient", "Y Coefficient"]
-            coeff_data = []
-            for i, (x_val, y_val) in enumerate(zip(state.x_coefficients, state.y_coefficients)):
-                coeff_data.append([i, f"{x_val:8.4f}", f"{y_val:8.4f}"])
-            print(tabulate(coeff_data, headers=coeff_headers, tablefmt="grid"))
+        print("\nCoefficients Values:")
+
+        # Get polynomial term descriptions
+        poly_info = get_polynomial_info(et.polynomial_name)
+        term_descriptions = poly_info.descriptor.get_term_descriptions()
+
+        if poly_info.descriptor.is_separable:
+            # Separable: show separate tables for X and Y coordinates
+            coeff_headers = ["Term", "Coefficient"]
+
+            print("\nX Coordinate Terms:")
+            x_coeff_data = []
+            x_terms = term_descriptions[0]
+            for term, coeff in zip(x_terms, state.x_coefficients):
+                x_coeff_data.append([term, f"{coeff:8.4f}"])
+            print(tabulate(x_coeff_data, headers=coeff_headers, tablefmt="grid"))
+
+            print("\nY Coordinate Terms:")
+            y_coeff_data = []
+            y_terms = term_descriptions[1]
+            for term, coeff in zip(y_terms, state.y_coefficients):
+                y_coeff_data.append([term, f"{coeff:8.4f}"])
+            print(tabulate(y_coeff_data, headers=coeff_headers, tablefmt="grid"))
         else:
-            print("Coefficients are None")
+            # Non-separable: show combined table with shared terms
+            coeff_headers = ["Term", "X Coefficient", "Y Coefficient"]
+            coeff_data = []
+            for term, x_val, y_val in zip(term_descriptions, state.x_coefficients, state.y_coefficients):
+                coeff_data.append([term, f"{x_val:8.4f}", f"{y_val:8.4f}"])
+            print(tabulate(coeff_data, headers=coeff_headers, tablefmt="grid"))
     else:
         print("No calibration parameters found (tracker not calibrated)")

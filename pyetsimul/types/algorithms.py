@@ -4,9 +4,172 @@ to replace dictionary-based state management.
 """
 
 from dataclasses import dataclass
-from typing import Optional, Any
+from typing import Optional, Any, Union
 import numpy as np
 from .geometry import Point3D
+
+
+@dataclass
+class PolynomialDescriptor:
+    """Descriptor for polynomial terms with automatic function generation.
+
+    Describes polynomial terms mathematically using variables and their orders,
+    enabling automatic function generation and separable/non-separable detection.
+
+    Examples:
+        Non-separable (shared terms):
+            terms=["x*y", "x", "y", "1"]
+            orders=[[1,1], [1,0], [0,1], [0,0]]
+
+        Separable (independent terms):
+            terms=[["x", "1"], ["y", "1"]]
+            orders=[[[1,0], [0,0]], [[0,1], [0,0]]]
+    """
+
+    name: str  # Polynomial name (e.g., "hennessey_2008")
+    description: str  # Human-readable description
+    terms: Union[list[str], list[list[str]]]  # Term expressions
+    orders: Union[list[list[int]], list[list[list[int]]]]  # Variable orders
+
+    def __post_init__(self):
+        """Validate descriptor structure consistency."""
+        if self.is_separable:
+            if not (isinstance(self.terms, list) and all(isinstance(t, list) for t in self.terms)):
+                raise ValueError("Separable polynomial must have terms as list[list[str]]")
+            if not (
+                isinstance(self.orders, list)
+                and all(isinstance(o, list) and all(isinstance(oo, list) for oo in o) for o in self.orders)
+            ):
+                raise ValueError("Separable polynomial must have orders as list[list[list[int]]]")
+            if len(self.terms) != len(self.orders):
+                raise ValueError("Separable polynomial: terms and orders must have same length")
+            if len(self.terms) != 2:
+                raise ValueError("Separable polynomial must have exactly 2 coordinate sets")
+        else:
+            if not (isinstance(self.terms, list) and all(isinstance(t, str) for t in self.terms)):
+                raise ValueError("Non-separable polynomial must have terms as list[str]")
+            if not (
+                isinstance(self.orders, list)
+                and all(isinstance(o, list) and all(isinstance(oo, int) for oo in o) for o in self.orders)
+            ):
+                raise ValueError("Non-separable polynomial must have orders as list[list[int]]")
+            if len(self.terms) != len(self.orders):
+                raise ValueError("Non-separable polynomial: terms and orders must have same length")
+
+    @property
+    def is_separable(self) -> bool:
+        """Auto-determine if polynomial is separable from structure."""
+        # Check if terms is list[list[str]] (separable) vs list[str] (non-separable)
+        return isinstance(self.terms, list) and len(self.terms) > 0 and isinstance(self.terms[0], list)
+
+    @property
+    def feature_count(self) -> int:
+        """Number of features per coordinate."""
+        if self.is_separable:
+            # For separable: return number of features in first coordinate (should match second)
+            return len(self.terms[0])
+        else:
+            # For non-separable: return total number of shared features
+            return len(self.terms)
+
+    def get_term_descriptions(self) -> Union[list[str], list[list[str]]]:
+        """Get human-readable term descriptions for display."""
+        if self.is_separable:
+            return [
+                [self._format_term(term, order) for term, order in zip(coord_terms, coord_orders)]
+                for coord_terms, coord_orders in zip(self.terms, self.orders)
+            ]
+        else:
+            return [self._format_term(term, order) for term, order in zip(self.terms, self.orders)]
+
+    def _format_term(self, term: str, order: list[int]) -> str:
+        """Format a single term with mathematical notation."""
+        if term == "1":
+            return "1"
+
+        # Handle common cases with clean mathematical notation
+        if len(order) == 2:  # [x_order, y_order]
+            x_ord, y_ord = order
+            if x_ord == 0 and y_ord == 0:
+                return "1"
+            elif x_ord == 1 and y_ord == 0:
+                return "x"
+            elif x_ord == 0 and y_ord == 1:
+                return "y"
+            elif x_ord == 1 and y_ord == 1:
+                return "x*y"
+            else:
+                # Build mathematical notation with Unicode superscripts
+                parts = []
+                if x_ord > 0:
+                    parts.append(f"x{self._superscript(x_ord)}" if x_ord > 1 else "x")
+                if y_ord > 0:
+                    parts.append(f"y{self._superscript(y_ord)}" if y_ord > 1 else "y")
+                return "*".join(parts) if parts else "1"
+        else:
+            raise ValueError(f"Invalid order format for term '{term}': {order}. Expected [x_order, y_order] format.")
+
+    def _superscript(self, n: int) -> str:
+        """Convert number to Unicode superscript."""
+        superscripts = {
+            "0": "⁰",
+            "1": "¹",
+            "2": "²",
+            "3": "³",
+            "4": "⁴",
+            "5": "⁵",
+            "6": "⁶",
+            "7": "⁷",
+            "8": "⁸",
+            "9": "⁹",
+        }
+        return "".join(superscripts[digit] for digit in str(n))
+
+    def generate_function(self) -> callable:
+        """Generate polynomial function from descriptor."""
+        if self.is_separable:
+            return self._generate_separable_function()
+        else:
+            return self._generate_non_separable_function()
+
+    def _generate_non_separable_function(self) -> callable:
+        """Generate function for non-separable polynomial."""
+
+        def polynomial_func(x: float, y: float) -> "PolynomialFeatures":
+            features = np.array(
+                [self._evaluate_term(term, order, x, y) for term, order in zip(self.terms, self.orders)]
+            )
+            return PolynomialFeatures(features=features, polynomial_name=self.name)
+
+        return polynomial_func
+
+    def _generate_separable_function(self) -> callable:
+        """Generate function for separable polynomial."""
+
+        def polynomial_func(x: float, y: float) -> "PolynomialFeatures":
+            coord_features = []
+            for coord_terms, coord_orders in zip(self.terms, self.orders):
+                coord_vals = np.array(
+                    [self._evaluate_term(term, order, x, y) for term, order in zip(coord_terms, coord_orders)]
+                )
+                coord_features.append(coord_vals)
+            features = np.array(coord_features)
+            return PolynomialFeatures(features=features, polynomial_name=self.name)
+
+        return polynomial_func
+
+    def _evaluate_term(self, term: str, order: list[int], x: float, y: float) -> float:
+        """Evaluate a single polynomial term."""
+        if term == "1":
+            return 1.0
+
+        # For standard x,y terms, use orders directly
+        if len(order) == 2:  # [x_order, y_order]
+            x_ord, y_ord = order
+            return (x**x_ord) * (y**y_ord)
+
+        # This should never happen with valid polynomial descriptors
+        raise ValueError(f"Invalid term evaluation: term='{term}', order={order}. Expected [x_order, y_order] format.")
 
 
 @dataclass

@@ -4,37 +4,31 @@ Demonstrates how users can define their own polynomial function
 and use it for eye tracking calibration.
 """
 
-import numpy as np
 from pyetsimul.gaze_tracking_algorithms.interpolate.polynomials import register_polynomial
 from pyetsimul.gaze_tracking_algorithms.interpolate import InterpolationTracker
-from pyetsimul.types.algorithms import PolynomialFeatures
+from pyetsimul.types.algorithms import PolynomialDescriptor
 from pyetsimul.evaluation import accuracy_at_calibration_points
 from pyetsimul.core import Eye, Camera, Light
 from pyetsimul.types import Position3D, RotationMatrix
 
 
-def my_custom_polynomial(x: float, y: float) -> PolynomialFeatures:
-    """Custom second-order polynomial with cross-term: [x², y², xy, x, y, 1]
-
-    Mathematical model (1D - shared features):
-    gaze_x = a₄*x² + a₅*y² + a₆*x*y + a₇*x + a₈*y + a₉
-    gaze_y = b₄*x² + b₅*y² + b₆*x*y + b₇*x + b₈*y + b₉
-    """
-    features = np.array([x**2, y**2, x * y, x, y, 1])
-    return PolynomialFeatures(features=features, polynomial_name="my_custom")
+# Custom second-order polynomial: [x², y², x*y, x, y, 1]
+# Mathematical model (non-separable - shared features):
+# gaze_x = a₀*x² + a₁*y² + a₂*x*y + a₃*x + a₄*y + a₅
+# gaze_y = b₀*x² + b₁*y² + b₂*x*y + b₃*x + b₄*y + b₅
+MY_CUSTOM_POLYNOMIAL = PolynomialDescriptor(
+    name="my_custom",
+    description="Custom second-order polynomial with cross-term",
+    terms=["x*x", "y*y", "x*y", "x", "y", "1"],
+    orders=[[2, 0], [0, 2], [1, 1], [1, 0], [0, 1], [0, 0]],
+)
 
 
 def main():
     """Register custom polynomial and run eye tracking demo."""
 
     # Register the custom polynomial
-    register_polynomial(
-        name="my_custom",
-        function=my_custom_polynomial,
-        description="Custom second-order polynomial with cross-term",
-        model_type="non-separable",
-        feature_count=6,
-    )
+    register_polynomial(MY_CUSTOM_POLYNOMIAL)
 
     print("Custom Polynomial Eye Tracking Demo\n")
 
