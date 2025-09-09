@@ -63,7 +63,7 @@ SECOND_ORDER = PolynomialDescriptor(
 ZHU_JI_2005 = PolynomialDescriptor(
     name="zhu_ji_2005",
     description="Zhu and Ji (2005) asymmetric polynomial",
-    terms=[["x*y", "x", "y", "1"], ["y*y", "x", "y", "1"]],
+    terms=[["x*y", "x", "y", "1"], ["y", "x", "y", "1"]],
     orders=[[[1, 1], 1, 1, 0], [2, 1, 1, 0]],
 )
 
