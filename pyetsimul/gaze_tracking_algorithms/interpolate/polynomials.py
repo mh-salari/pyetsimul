@@ -12,7 +12,7 @@ from ...types.algorithms import PolynomialFeatures
 def hennessey_2008(x: float, y: float) -> PolynomialFeatures:
     """Hennessey et al. (2008) polynomial: [x*y, x, y, 1]
 
-    Mathematical model (1D - shared features):
+    Mathematical model (non-separable - shared features):
     gaze_x = a₀*x*y + a₁*x + a₂*y + a₃
     gaze_y = b₀*x*y + b₁*x + b₂*y + b₃
 
@@ -29,7 +29,7 @@ def hennessey_2008(x: float, y: float) -> PolynomialFeatures:
 def hoorman_2008(x: float, y: float) -> PolynomialFeatures:
     """Hoorman et al. (2008) polynomial: [[x, 1], [y, 1]]
 
-    Mathematical model (2D - separate features):
+    Mathematical model (separable - independent features):
     gaze_x = a₀*x + a₁
     gaze_y = b₀*y + b₁
 
@@ -46,7 +46,7 @@ def hoorman_2008(x: float, y: float) -> PolynomialFeatures:
 def cerrolaza_2008(x: float, y: float) -> PolynomialFeatures:
     """Cerrolaza et al. (2008) polynomial: [x², y², x*y, x, y, 1]
 
-    Mathematical model (1D - shared features):
+    Mathematical model (non-separable - shared features):
     gaze_x = a₀*x² + a₁*y² + a₂*x*y + a₃*x + a₄*y + a₅
     gaze_y = b₀*x² + b₁*y² + b₂*x*y + b₃*x + b₄*y + b₅
 
@@ -63,7 +63,7 @@ def cerrolaza_2008(x: float, y: float) -> PolynomialFeatures:
 def second_order(x: float, y: float) -> PolynomialFeatures:
     """Second-order polynomial: [x²*y², x², y², x*y, x, y, 1]
 
-    Mathematical model (1D - shared features):
+    Mathematical model (non-separable - shared features):
     gaze_x = a₀*x²*y² + a₁*x² + a₂*y² + a₃*x*y + a₄*x + a₅*y + a₆
     gaze_y = b₀*x²*y² + b₁*x² + b₂*y² + b₃*x*y + b₄*x + b₅*y + b₆
 
@@ -80,7 +80,7 @@ def second_order(x: float, y: float) -> PolynomialFeatures:
 def zhu_ji_2005(x: float, y: float) -> PolynomialFeatures:
     """Zhu and Ji (2005) polynomial: [[x*y, x, y, 1], [y², x, y, 1]]
 
-    Mathematical model (2D - separate features):
+    Mathematical model (separable - independent features):
     gaze_x = a₀*x*y + a₁*x + a₂*y + a₃
     gaze_y = b₀*y² + b₁*x + b₂*y + b₃
 
@@ -97,7 +97,7 @@ def zhu_ji_2005(x: float, y: float) -> PolynomialFeatures:
 def cerrolaza_villanueva_2008(x: float, y: float) -> PolynomialFeatures:
     """Cerrolaza and Villanueva (2008) polynomial: [[x², x, y, 1, 0], [x²*y, x², x*y, y, 1]]
 
-    Mathematical model (2D - separate features):
+    Mathematical model (separable - independent features):
     gaze_x = a₀*x² + a₁*x + a₂*y + a₃
     gaze_y = b₀*x²*y + b₁*x² + b₂*x*y + b₃*y + b₄
 
@@ -114,7 +114,7 @@ def cerrolaza_villanueva_2008(x: float, y: float) -> PolynomialFeatures:
 def blignaut_wium_2013(x: float, y: float) -> PolynomialFeatures:
     """Blignaut and Wium (2013) polynomial: [[1, x, x³, y², x*y, 0, 0], [1, x, x², y, y², x*y, x²*y]]
 
-    Mathematical model (2D - separate features):
+    Mathematical model (separable - independent features):
     gaze_x = a₀ + a₁*x + a₂*x³ + a₃*y² + a₄*x*y
     gaze_y = b₀ + b₁*x + b₂*x² + b₃*y + b₄*y² + b₅*x*y + b₆*x²*y
 
@@ -160,7 +160,7 @@ class PolynomialRegistry:
             name: Unique polynomial name
             function: Polynomial function returning PolynomialFeatures
             description: Human-readable description
-            model_type: "1D" or "2D" model type
+            model_type: "non-separable" or "separable" model type
             feature_count: Number of features per coordinate
 
         Raises:
@@ -169,11 +169,11 @@ class PolynomialRegistry:
         if name in self._polynomials:
             raise ValueError(f"Polynomial '{name}' already registered")
 
-        if model_type not in ["1D", "2D"]:
+        if model_type not in ["non-separable", "separable"]:
             raise ValueError(
-                f"Model type must be '1D' or '2D', got '{model_type}'. "
-                f"Use '1D' for shared features (e.g., Hennessey 2008: [x*y, x, y, 1]) "
-                f"or '2D' for separate X/Y features (e.g., Hoorman 2008: [[x, 1], [y, 1]])"
+                f"Model type must be 'non-separable' or 'separable', got '{model_type}'. "
+                f"Use 'non-separable' for shared features (e.g., Hennessey 2008: [x*y, x, y, 1]) "
+                f"or 'separable' for independent X/Y features (e.g., Hoorman 2008: [[x, 1], [y, 1]])"
             )
 
         self._validate_polynomial_function(function, name, feature_count)
@@ -228,7 +228,7 @@ class PolynomialRegistry:
         """Filter polynomials by criteria.
 
         Args:
-            model_type: Filter by "1D" or "2D" model type
+            model_type: Filter by "non-separable" or "separable" model type
 
         Returns:
             List of polynomials meeting criteria
@@ -240,7 +240,9 @@ class PolynomialRegistry:
             matches.append(info)
         return matches
 
-    def _validate_polynomial_function(self, function: Callable[[float, float], PolynomialFeatures], name: str, expected_count: int) -> None:
+    def _validate_polynomial_function(
+        self, function: Callable[[float, float], PolynomialFeatures], name: str, expected_count: int
+    ) -> None:
         """Validate polynomial function signature and return type."""
         test_points = [(0.0, 0.0), (1.0, 1.0), (-1.0, -1.0), (0.5, -0.5)]
 
@@ -265,7 +267,7 @@ class PolynomialRegistry:
 
                 # Validate feature count consistency
                 if hasattr(result, "features") and result.features is not None:
-                    if result.is_2d:
+                    if result.is_separable:
                         expected_shape = (2, actual_count)
                     else:
                         expected_shape = (actual_count,)
@@ -290,19 +292,19 @@ class PolynomialRegistry:
 def _register_builtin_polynomials() -> None:
     """Register built-in polynomial functions."""
     builtin_polynomials = [
-        ("hennessey_2008", hennessey_2008, "Hennessey et al. (2008) polynomial with cross-terms", "1D", 4),
-        ("hoorman_2008", hoorman_2008, "Hoorman et al. (2008) linear polynomial", "2D", 2),
-        ("cerrolaza_2008", cerrolaza_2008, "Cerrolaza et al. (2008) second-order polynomial", "1D", 6),
-        ("second_order", second_order, "Second-order polynomial with all cross-terms", "1D", 7),
-        ("zhu_ji_2005", zhu_ji_2005, "Zhu and Ji (2005) asymmetric polynomial", "2D", 4),
+        ("hennessey_2008", hennessey_2008, "Hennessey et al. (2008) polynomial with cross-terms", "non-separable", 4),
+        ("hoorman_2008", hoorman_2008, "Hoorman et al. (2008) linear polynomial", "separable", 2),
+        ("cerrolaza_2008", cerrolaza_2008, "Cerrolaza et al. (2008) second-order polynomial", "non-separable", 6),
+        ("second_order", second_order, "Second-order polynomial with all cross-terms", "non-separable", 7),
+        ("zhu_ji_2005", zhu_ji_2005, "Zhu and Ji (2005) asymmetric polynomial", "separable", 4),
         (
             "cerrolaza_villanueva_2008",
             cerrolaza_villanueva_2008,
             "Cerrolaza and Villanueva (2008) asymmetric polynomial",
-            "2D",
+            "separable",
             5,
         ),
-        ("blignaut_wium_2013", blignaut_wium_2013, "Blignaut and Wium (2013) high-order polynomial", "2D", 7),
+        ("blignaut_wium_2013", blignaut_wium_2013, "Blignaut and Wium (2013) high-order polynomial", "separable", 7),
     ]
 
     for name, func, desc, model_type, feature_count in builtin_polynomials:
@@ -326,7 +328,7 @@ def register_polynomial(
         name: Unique polynomial name
         function: Polynomial function returning PolynomialFeatures
         description: Human-readable description
-        model_type: "1D" or "2D" model type
+        model_type: "non-separable" or "separable" model type
         feature_count: Number of features per coordinate
     """
     _polynomial_registry.register(

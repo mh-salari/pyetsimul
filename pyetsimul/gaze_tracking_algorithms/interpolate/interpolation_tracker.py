@@ -81,7 +81,7 @@ class InterpolationTracker(EyeTracker):
         """Calibration function for pupil-CR interpolation.
 
         Detects calibration plane and performs polynomial least squares calibration.
-        Automatically handles 1D and 2D polynomial types.
+        Automatically handles separable and non-separable polynomial types.
 
         Args:
             calibration_measurements: List of EyeMeasurement objects from calibration
@@ -90,16 +90,16 @@ class InterpolationTracker(EyeTracker):
         self.plane_info = detect_calibration_plane(self.calib_points)
         print(summarize_plane_detection(self.calib_points, self.plane_info))
 
-        # Determine polynomial type (1D vs 2D) for appropriate calibration
+        # Determine polynomial type (separable vs non-separable) for appropriate calibration
         test_features = self.polynomial_func(0.0, 0.0)
 
-        if test_features.is_2d:
-            self._calibrate_2d(calibration_measurements)
+        if test_features.is_separable:
+            self._calibrate_separable(calibration_measurements)
         else:
-            self._calibrate_1d(calibration_measurements)
+            self._calibrate_non_separable(calibration_measurements)
 
-    def _calibrate_1d(self, calibration_measurements: list[EyeMeasurement]) -> None:
-        """Calibrate with 1D polynomial (shared features for both coordinates).
+    def _calibrate_non_separable(self, calibration_measurements: list[EyeMeasurement]) -> None:
+        """Calibrate with non-separable polynomial (shared features for both coordinates).
 
         Uses single polynomial for both X and Y gaze components.
         """
@@ -149,8 +149,8 @@ class InterpolationTracker(EyeTracker):
         self.algorithm_state.y_coefficients = calibration_matrix[1:2, :].flatten()
         self.algorithm_state.is_calibrated = True
 
-    def _calibrate_2d(self, calibration_measurements: list[EyeMeasurement]) -> None:
-        """Calibrate with 2D polynomial (separate features for each coordinate).
+    def _calibrate_separable(self, calibration_measurements: list[EyeMeasurement]) -> None:
+        """Calibrate with separable polynomial (separate features for each coordinate).
 
         Uses independent polynomials for X and Y gaze components.
         """

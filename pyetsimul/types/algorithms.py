@@ -76,27 +76,27 @@ class AlgorithmState:
 class PolynomialFeatures:
     """Structured polynomial feature representation.
 
-    Handles both 1D feature vectors and 2D feature matrices
-    used in interpolation algorithms. Encapsulates prediction logic.
+    Handles both non-separable (coupled x,y) and separable (independent x,y)
+    polynomial features used in interpolation algorithms. Encapsulates prediction logic.
     """
 
     features: np.ndarray  # Feature array (1D or 2D)
     polynomial_name: str  # Name of polynomial that generated these features
 
     @property
-    def is_1d(self) -> bool:
-        """Check if features are 1D (shared for x and y)."""
+    def is_non_separable(self) -> bool:
+        """Check if polynomial is non-separable (same features shared for x and y coordinates)."""
         return self.features.ndim == 1
 
     @property
-    def is_2d(self) -> bool:
-        """Check if features are 2D (separate for x and y)."""
+    def is_separable(self) -> bool:
+        """Check if polynomial is separable (different features for x and y coordinates)."""
         return self.features.ndim == 2
 
     @property
     def feature_count(self) -> int:
         """Number of features per coordinate."""
-        if self.is_1d:
+        if self.is_non_separable:
             return len(self.features)
         else:
             return self.features.shape[1]
@@ -112,12 +112,12 @@ class PolynomialFeatures:
         Returns:
             Point3D: Predicted gaze point in 3D coordinates
         """
-        if self.is_1d:
-            # Shared features: reconstruct calibration matrix
+        if self.is_non_separable:
+            # Non-separable: same features used for both coordinates with different coefficients
             A = np.vstack([x_coefficients, y_coefficients])
             gaze_2d = A @ self.features
         else:
-            # Separate features for each coordinate
+            # Separable: different features for each coordinate
             coord1_features = self.features[0, :]
             coord2_features = self.features[1, :]
             gaze_2d = np.array([x_coefficients @ coord1_features, y_coefficients @ coord2_features])

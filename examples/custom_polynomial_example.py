@@ -32,7 +32,7 @@ def main():
         name="my_custom",
         function=my_custom_polynomial,
         description="Custom second-order polynomial with cross-term",
-        model_type="1D",
+        model_type="non-separable",
         feature_count=6,
     )
 
