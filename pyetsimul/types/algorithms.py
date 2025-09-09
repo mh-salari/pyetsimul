@@ -82,10 +82,10 @@ class PolynomialDescriptor:
         if self.is_separable:
             return [
                 [self._format_term(order) for order in coord_orders]
-                for coord_orders in zip(self.terms, self.orders)
+                for coord_orders in self.orders
             ]
         else:
-            return [self._format_term(order) for term, order in self.orders]
+            return [self._format_term(order) for order in self.orders]
 
     def _format_term(self, order: list[int]) -> str:
         """Format a single term with mathematical notation."""
