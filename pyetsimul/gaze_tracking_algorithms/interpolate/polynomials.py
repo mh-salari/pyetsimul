@@ -9,7 +9,7 @@ from ...types.algorithms import PolynomialFeatures, PolynomialDescriptor
 
 
 # Hennessey et al. (2008) polynomial: [xy, x, y, 1]
-# Mathematical model (non-separable - shared features):
+# Mathematical model (same features for both X,Y):
 # gaze_x = a₀*x*y + a₁*x + a₂*y + a₃
 # gaze_y = b₀*x*y + b₁*x + b₂*y + b₃
 HENNESSEY_2008 = PolynomialDescriptor(
@@ -21,7 +21,7 @@ HENNESSEY_2008 = PolynomialDescriptor(
 
 
 # Hoorman et al. (2008) polynomial: [[x, 1], [y, 1]]
-# Mathematical model (separable - independent features):
+# Mathematical model (different features for X,Y):
 # gaze_x = a₀*x + a₁
 # gaze_y = b₀*y + b₁
 HOORMAN_2008 = PolynomialDescriptor(
@@ -33,7 +33,7 @@ HOORMAN_2008 = PolynomialDescriptor(
 
 
 # Cerrolaza et al. (2008) polynomial: [x², y², xy, x, y, 1]
-# Mathematical model (non-separable - shared features):
+# Mathematical model (same features for both X,Y):
 # gaze_x = a₀*x² + a₁*y² + a₂*x*y + a₃*x + a₄*y + a₅
 # gaze_y = b₀*x² + b₁*y² + b₂*x*y + b₃*x + b₄*y + b₅
 CERROLAZA_2008 = PolynomialDescriptor(
@@ -45,7 +45,7 @@ CERROLAZA_2008 = PolynomialDescriptor(
 
 
 # Second-order polynomial: [x²y², x², y², xy, x, y, 1]
-# Mathematical model (non-separable - shared features):
+# Mathematical model (same features for both X,Y):
 # gaze_x = a₀*x²*y² + a₁*x² + a₂*y² + a₃*x*y + a₄*x + a₅*y + a₆
 # gaze_y = b₀*x²*y² + b₁*x² + b₂*y² + b₃*x*y + b₄*x + b₅*y + b₆
 SECOND_ORDER = PolynomialDescriptor(
@@ -57,7 +57,7 @@ SECOND_ORDER = PolynomialDescriptor(
 
 
 # Zhu and Ji (2005) polynomial: [[x*y, x, y, 1], [y², x, y, 1]]
-# Mathematical model (separable - independent features):
+# Mathematical model (different features for X,Y):
 # gaze_x = a₀*x*y + a₁*x + a₂*y + a₃
 # gaze_y = b₀*y² + b₁*x + b₂*y + b₃
 ZHU_JI_2005 = PolynomialDescriptor(
@@ -69,7 +69,7 @@ ZHU_JI_2005 = PolynomialDescriptor(
 
 
 # Cerrolaza and Villanueva (2008) polynomial: [[x², x, y, 1, 0], [x²*y, x², x*y, y, 1]]
-# Mathematical model (separable - independent features):
+# Mathematical model (different features for X,Y):
 # gaze_x = a₀*x² + a₁*x + a₂*y + a₃
 # gaze_y = b₀*x²*y + b₁*x² + b₂*x*y + b₃*y + b₄
 CERROLAZA_VILLANUEVA_2008 = PolynomialDescriptor(
@@ -81,7 +81,7 @@ CERROLAZA_VILLANUEVA_2008 = PolynomialDescriptor(
 
 
 # Blignaut and Wium (2013) polynomial: [[1, x, x³, y², x*y, 0, 0], [1, x, x², y, y², x*y, x²*y]]
-# Mathematical model (separable - independent features):
+# Mathematical model (different features for X,Y):
 # gaze_x = a₀ + a₁*x + a₂*x³ + a₃*y² + a₄*x*y
 # gaze_y = b₀ + b₁*x + b₂*x² + b₃*y + b₄*y² + b₅*x*y + b₆*x²*y
 BLIGNAUT_WIUM_2013 = PolynomialDescriptor(
@@ -114,7 +114,7 @@ class PolynomialInfo:
     @property
     def model_type(self) -> str:
         """Get model type from descriptor (auto-determined)."""
-        return "separable" if self.descriptor.is_separable else "non-separable"
+        return "different_xy_features" if self.descriptor.uses_different_xy_features else "same_xy_features"
 
     @property
     def feature_count(self) -> int:
@@ -214,7 +214,7 @@ class PolynomialRegistry:
         """Filter polynomials by criteria.
 
         Args:
-            model_type: Filter by "non-separable" or "separable" model type
+            model_type: Filter by "same_xy_features" or "different_xy_features" model type
 
         Returns:
             List of polynomials meeting criteria

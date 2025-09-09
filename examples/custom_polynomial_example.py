@@ -13,7 +13,7 @@ from pyetsimul.types import Position3D, RotationMatrix
 
 
 # Custom second-order polynomial: [x², y², x*y, x, y, 1]
-# Mathematical model (non-separable - shared features):
+# Mathematical model (same features for both X,Y):
 # gaze_x = a₀*x² + a₁*y² + a₂*x*y + a₃*x + a₄*y + a₅
 # gaze_y = b₀*x² + b₁*y² + b₂*x*y + b₃*x + b₄*y + b₅
 MY_CUSTOM_POLYNOMIAL = PolynomialDescriptor(

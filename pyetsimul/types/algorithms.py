@@ -14,14 +14,14 @@ class PolynomialDescriptor:
     """Descriptor for polynomial terms with automatic function generation.
 
     Describes polynomial terms mathematically using variables and their orders,
-    enabling automatic function generation and separable/non-separable detection.
+    enabling automatic function generation and feature type detection.
 
     Examples:
-        Non-separable:
+        Same features for X,Y:
             terms=["x", "y", "x*y", "x", "y", "1"]
             orders=[2, 2, [1,1], 1, 1, 0]
 
-        Separable:
+        Different features for X,Y:
             terms=[["x*y", "x", "1"], ["y", "1"]]
             orders=[[[1,1], 1, 0], [1, 0]]
     """
@@ -59,30 +59,35 @@ class PolynomialDescriptor:
                     normalized.append(order)
             return normalized
 
-        if self.is_separable:
+        if self.uses_different_xy_features:
             return [_normalize_orders_impl(o, t) for o, t in zip(self.orders, self.terms)]
         else:
             return _normalize_orders_impl(self.orders, self.terms)
 
     @property
-    def is_separable(self) -> bool:
-        """Auto-determine if polynomial is separable from structure."""
-        # Check if terms is list[list[str]] (separable) vs list[str] (non-separable)
+    def uses_different_xy_features(self) -> bool:
+        """Check if polynomial uses different features for X and Y coordinates."""
+        # Check if terms is list[list[str]] (different features) vs list[str] (same features)
         return isinstance(self.terms, list) and len(self.terms) > 0 and isinstance(self.terms[0], list)
+
+    @property
+    def uses_same_xy_features(self) -> bool:
+        """Check if polynomial uses same features for both X and Y coordinates."""
+        return not self.uses_different_xy_features
 
     @property
     def feature_count(self) -> int:
         """Total number of features."""
-        if self.is_separable:
-            # For separable: return total number of features across all coordinates
+        if self.uses_different_xy_features:
+            # For different features: return total number of features across all coordinates
             return sum(len(coord_terms) for coord_terms in self.terms)
         else:
-            # For non-separable: return total number of shared features
+            # For same features: return total number of shared features
             return len(self.terms)
 
     def get_term_descriptions(self) -> list[str] | list[list[str]]:
         """Get human-readable term descriptions for display."""
-        if self.is_separable:
+        if self.uses_different_xy_features:
             return [[self._format_term(order) for order in coord_orders] for coord_orders in self.orders]
         else:
             return [self._format_term(order) for order in self.orders]
@@ -125,13 +130,13 @@ class PolynomialDescriptor:
 
     def generate_function(self) -> Callable:
         """Generate polynomial function from descriptor."""
-        if self.is_separable:
-            return self._generate_separable_function()
+        if self.uses_different_xy_features:
+            return self._generate_different_xy_function()
         else:
-            return self._generate_non_separable_function()
+            return self._generate_same_xy_function()
 
-    def _generate_non_separable_function(self) -> Callable:
-        """Generate function for non-separable polynomial."""
+    def _generate_same_xy_function(self) -> Callable:
+        """Generate function for polynomials using same features for X and Y."""
 
         def polynomial_func(x: float, y: float) -> "PolynomialFeatures":
             features = np.array(
@@ -141,8 +146,8 @@ class PolynomialDescriptor:
 
         return polynomial_func
 
-    def _generate_separable_function(self) -> Callable:
-        """Generate function for separable polynomial."""
+    def _generate_different_xy_function(self) -> Callable:
+        """Generate function for polynomials using different features for X and Y."""
 
         def polynomial_func(x: float, y: float) -> "PolynomialFeatures":
             coord_features = []
@@ -210,7 +215,7 @@ class AlgorithmState:
 class PolynomialFeatures:
     """Structured polynomial feature representation.
 
-    Handles both non-separable (coupled x,y) and separable (independent x,y)
+    Handles both same features (shared x,y) and different features (independent x,y)
     polynomial features used in interpolation algorithms. Encapsulates prediction logic.
     """
 
@@ -218,25 +223,23 @@ class PolynomialFeatures:
     polynomial_name: str  # Name of polynomial that generated these features
 
     @property
-    def is_non_separable(self) -> bool:
-        """Check if polynomial is non-separable (same features shared for x and y coordinates)."""
+    def uses_same_xy_features(self) -> bool:
+        """Check if polynomial uses same features for both X and Y coordinates."""
         return self.features.ndim == 1 and self.features.dtype != object
 
     @property
-    def is_separable(self) -> bool:
-        """Check if polynomial is separable (different features for x and y coordinates)."""
-        return not self.is_non_separable
+    def uses_different_xy_features(self) -> bool:
+        """Check if polynomial uses different features for X and Y coordinates."""
+        return not self.uses_same_xy_features
 
     @property
     def feature_count(self) -> int:
         """Total number of features."""
-        if self.is_non_separable:
+        if self.uses_same_xy_features:
             return len(self.features)
         elif self.features.dtype == object:
-            # For object arrays (mixed-length coordinates), return total features
             return sum(len(coord_features) for coord_features in self.features)
         else:
-            # For regular separable arrays, return total features (sum across coordinates)
             return self.features.shape[0] * self.features.shape[1]
 
     def predict(self, x_coefficients: np.ndarray, y_coefficients: np.ndarray, plane_info=None) -> "Point3D":
@@ -250,12 +253,10 @@ class PolynomialFeatures:
         Returns:
             Point3D: Predicted gaze point in 3D coordinates
         """
-        if self.is_non_separable:
-            # Non-separable: same features used for both coordinates with different coefficients
+        if self.uses_same_xy_features:
             A = np.vstack([x_coefficients, y_coefficients])
             gaze_2d = A @ self.features
         else:
-            # Separable: different features for each coordinate
             coord1_features, coord2_features = self._extract_coordinate_features()
             gaze_2d = np.array([x_coefficients @ coord1_features, y_coefficients @ coord2_features])
 
