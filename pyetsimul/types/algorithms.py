@@ -4,7 +4,7 @@ to replace dictionary-based state management.
 """
 
 from dataclasses import dataclass
-from typing import Optional, Any, Union
+from typing import Optional, Any
 import numpy as np
 from .geometry import Point3D
 
@@ -28,8 +28,8 @@ class PolynomialDescriptor:
 
     name: str
     description: str
-    terms: Union[list[str], list[list[str]]]
-    orders: Union[list[Union[int, list[int]]], list[list[list[int]]]]
+    terms: list[str] | list[list[str]]
+    orders: list[int | list[int]] | list[list[list[int]]]
 
     def __post_init__(self):
         self.orders = self._normalize_orders()
@@ -71,7 +71,7 @@ class PolynomialDescriptor:
             # For non-separable: return total number of shared features
             return len(self.terms)
 
-    def get_term_descriptions(self) -> Union[list[str], list[list[str]]]:
+    def get_term_descriptions(self) -> list[str]| list[list[str]]:
         """Get human-readable term descriptions for display."""
         if self.is_separable:
             return [
