@@ -45,12 +45,16 @@ class PolynomialDescriptor:
         for i, order in enumerate(self.orders):
             if isinstance(order, int):
                 term = self.terms[i]
-                if term == "x" or term.startswith("x"):
+                if term == "x":
                     normalized.append([order, 0])
-                elif term == "y" or term.startswith("y"):
+                elif term == "y":
                     normalized.append([0, order])
+                elif term == "1":
+                    if order!=0:
+                        raise ValueError(f"If term is '1', order should be 0. Was: {order}")
+                    normalized.append([0, 0])
                 else:
-                    normalized.append([order, 0])
+                    raise ValueError(f"If term is not 'x' or 'y' (term was '{term}'), order must be specified as a list.")
             else:
                 normalized.append(order)
         return normalized
