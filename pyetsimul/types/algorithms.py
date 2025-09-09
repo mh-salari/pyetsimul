@@ -38,26 +38,28 @@ class PolynomialDescriptor:
 
     def _normalize_orders(self):
         """Convert simplified orders format to standard [x_order, y_order] format."""
-        if self.is_separable:
-            return self.orders
-
-        normalized = []
-        for i, order in enumerate(self.orders):
-            if isinstance(order, int):
-                term = self.terms[i]
-                if term == "x":
-                    normalized.append([order, 0])
-                elif term == "y":
-                    normalized.append([0, order])
-                elif term == "1":
-                    if order!=0:
-                        raise ValueError(f"If term is '1', order should be 0. Was: {order}")
-                    normalized.append([0, 0])
+        def _normalize_orders_impl(orders, terms):
+            normalized = []
+            for order, term in zip(orders, terms):
+                if isinstance(order, int):
+                    if term == "x":
+                        normalized.append([order, 0])
+                    elif term == "y":
+                        normalized.append([0, order])
+                    elif term == "1":
+                        if order!=0:
+                            raise ValueError(f"If term is '1', order should be 0. Was: {order}")
+                        normalized.append([0, 0])
+                    else:
+                        raise ValueError(f"If term is not 'x' or 'y' (term was '{term}'), order must be specified as a list.")
                 else:
-                    raise ValueError(f"If term is not 'x' or 'y' (term was '{term}'), order must be specified as a list.")
-            else:
-                normalized.append(order)
-        return normalized
+                    normalized.append(order)
+            return normalized
+
+        if self.is_separable:
+            return [_normalize_orders_impl(o,t) for o,t in zip(self.orders, self.terms)]
+        else:
+            return _normalize_orders_impl(self.orders, self.terms)
 
     @property
     def is_separable(self) -> bool:
