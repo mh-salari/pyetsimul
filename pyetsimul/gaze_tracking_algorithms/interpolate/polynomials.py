@@ -250,6 +250,12 @@ class PolynomialRegistry:
                 if not isinstance(result, PolynomialFeatures):
                     raise ValueError(f"Polynomial '{name}' must return PolynomialFeatures, got {type(result)}")
 
+                # Validate that a polynomial's output is tagged with the expected name.
+                if result.polynomial_name != name:
+                    raise ValueError(
+                        f"The output of polynomial '{name}' is tagged with the name '{result.polynomial_name}', which doesn't match the expected name ('{name}')"
+                    )
+
                 # Validate that a polynomial produces the expected feature count.
                 actual_count = result.feature_count
                 if actual_count != expected_count:
