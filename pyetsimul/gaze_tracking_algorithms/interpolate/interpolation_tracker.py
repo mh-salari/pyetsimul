@@ -4,14 +4,13 @@ Pupil-CR tracker with polynomial interpolation.
 """
 
 from pyetsimul.core import EyeTracker, Camera, Light
-from pyetsimul.types.algorithms import InterpolationConfig, InterpolationState, GazePrediction
+from pyetsimul.types.algorithms import InterpolationState, GazePrediction
 from pyetsimul.types.imaging import EyeMeasurement
 from pyetsimul.types.geometry import Point3D, Position3D
 from .polynomials import get_polynomial
 from ...geometry.plane_detection import detect_calibration_plane, summarize_plane_detection, PlaneInfo
 import time
 import numpy as np
-from typing import Optional
 
 
 class InterpolationTracker(EyeTracker):
@@ -21,18 +20,16 @@ class InterpolationTracker(EyeTracker):
     Supports various polynomial types from eye tracking literature.
     """
 
-    def __init__(self, polynomial: str, config: Optional[InterpolationConfig] = None, **kwargs):
-        """Initialize interpolation tracker with structured configuration.
+    def __init__(self, polynomial: str, **kwargs):
+        """Initialize interpolation tracker with polynomial specification.
 
         Sets up polynomial function and algorithm state for gaze tracking.
 
         Args:
             polynomial: Polynomial type to use
-            config: InterpolationConfig instance
             **kwargs: Arguments passed to parent EyeTracker
         """
         super().__init__(**kwargs)
-        self.config = config or InterpolationConfig()
         self.algorithm_state = InterpolationState()
         self.polynomial_name = polynomial
         self.polynomial_func = get_polynomial(polynomial)
@@ -50,7 +47,6 @@ class InterpolationTracker(EyeTracker):
         lights: list,
         calib_points: list[Position3D],
         polynomial: str,
-        config: Optional[InterpolationConfig] = None,
         use_refraction: bool = True,
     ) -> "InterpolationTracker":
         """Create interpolation eye tracker setup.
@@ -62,7 +58,6 @@ class InterpolationTracker(EyeTracker):
             lights: List of Light objects
             calib_points: List of calibration target positions
             polynomial: Polynomial type to use
-            config: InterpolationConfig instance (optional)
             use_refraction: Whether to use refraction model (default True)
 
         Returns:
@@ -70,7 +65,6 @@ class InterpolationTracker(EyeTracker):
         """
         return cls(
             polynomial=polynomial,
-            config=config,
             cameras=cameras,
             lights=lights,
             calib_points=calib_points,
@@ -267,7 +261,6 @@ class InterpolationTracker(EyeTracker):
         """
         return {
             "polynomial_name": self.polynomial_name,
-            "config": self.config.serialize(),
             "algorithm_state": self.algorithm_state.serialize(),
             "plane_info": self.plane_info.serialize() if self.plane_info else None,
             "cameras": [camera.serialize() for camera in self.cameras],
@@ -300,7 +293,6 @@ class InterpolationTracker(EyeTracker):
         # Create tracker instance
         tracker = cls(
             polynomial=data["polynomial_name"],
-            config=InterpolationConfig.deserialize(data["config"]),
             cameras=cameras,
             lights=lights,
             calib_points=calib_points,

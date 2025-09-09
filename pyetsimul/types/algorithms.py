@@ -26,38 +26,6 @@ class GazePrediction:
 
 
 @dataclass
-class InterpolationConfig:
-    """Configuration for polynomial interpolation algorithm."""
-
-    polynomial_degree: int = 2  # Degree of polynomial fitting
-    cross_terms: bool = True  # Include cross terms (xy, x²y, etc.)
-    regularization: float = 1e-6  # L2 regularization strength
-    calibration_points: int = 9  # Number of calibration points required
-
-    @property
-    def num_coefficients(self) -> int:
-        """Calculate number of polynomial coefficients."""
-        if self.cross_terms:
-            return ((self.polynomial_degree + 1) * (self.polynomial_degree + 2)) // 2
-        else:
-            return self.polynomial_degree + 1
-
-    def serialize(self) -> dict:
-        """Serialize configuration to dictionary."""
-        return {
-            "polynomial_degree": self.polynomial_degree,
-            "cross_terms": self.cross_terms,
-            "regularization": self.regularization,
-            "calibration_points": self.calibration_points,
-        }
-
-    @classmethod
-    def deserialize(cls, data: dict) -> "InterpolationConfig":
-        """Deserialize from dictionary representation."""
-        return cls(**data)
-
-
-@dataclass
 class AlgorithmState:
     """Base class for algorithm state management."""
 

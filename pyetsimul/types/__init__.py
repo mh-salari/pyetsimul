@@ -6,7 +6,6 @@ and defines common type aliases for the project.
 from .algorithms import (
     AlgorithmState,
     GazePrediction,
-    InterpolationConfig,
     InterpolationState,
     PolynomialFeatures,
 )
@@ -26,7 +25,6 @@ from .imaging import CameraImage, CameraMatrix, EyeMeasurement, PupilData, Proje
 __all__ = [
     "AlgorithmState",
     "GazePrediction",
-    "InterpolationConfig",
     "InterpolationState",
     "PolynomialFeatures",
     "IntersectionResult",
