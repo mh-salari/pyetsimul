@@ -8,7 +8,7 @@ from dataclasses import dataclass
 from ...types.algorithms import PolynomialFeatures, PolynomialDescriptor
 
 
-# Hennessey et al. (2008) polynomial: [x*y, x, y, 1]
+# Hennessey et al. (2008) polynomial: [xy, x, y, 1]
 # Mathematical model (non-separable - shared features):
 # gaze_x = a₀*x*y + a₁*x + a₂*y + a₃
 # gaze_y = b₀*x*y + b₁*x + b₂*y + b₃
@@ -16,7 +16,7 @@ HENNESSEY_2008 = PolynomialDescriptor(
     name="hennessey_2008",
     description="Hennessey et al. (2008) polynomial with cross-terms",
     terms=["x*y", "x", "y", "1"],
-    orders=[[1, 1], [1, 0], [0, 1], [0, 0]],
+    orders=[[1, 1], 1, 1, 0],
 )
 
 
@@ -32,27 +32,27 @@ HOORMAN_2008 = PolynomialDescriptor(
 )
 
 
-# Cerrolaza et al. (2008) polynomial: [x², y², x*y, x, y, 1]
+# Cerrolaza et al. (2008) polynomial: [x², y², xy, x, y, 1]
 # Mathematical model (non-separable - shared features):
 # gaze_x = a₀*x² + a₁*y² + a₂*x*y + a₃*x + a₄*y + a₅
 # gaze_y = b₀*x² + b₁*y² + b₂*x*y + b₃*x + b₄*y + b₅
 CERROLAZA_2008 = PolynomialDescriptor(
     name="cerrolaza_2008",
     description="Cerrolaza et al. (2008) second-order polynomial",
-    terms=["x*x", "y*y", "x*y", "x", "y", "1"],
-    orders=[[2, 0], [0, 2], [1, 1], [1, 0], [0, 1], [0, 0]],
+    terms=["x", "y", "x*y", "x", "y", "1"],
+    orders=[2, 2, [1, 1], 1, 1, 0],
 )
 
 
-# Second-order polynomial: [x²*y², x², y², x*y, x, y, 1]
+# Second-order polynomial: [x²y², x², y², xy, x, y, 1]
 # Mathematical model (non-separable - shared features):
 # gaze_x = a₀*x²*y² + a₁*x² + a₂*y² + a₃*x*y + a₄*x + a₅*y + a₆
 # gaze_y = b₀*x²*y² + b₁*x² + b₂*y² + b₃*x*y + b₄*x + b₅*y + b₆
 SECOND_ORDER = PolynomialDescriptor(
     name="second_order",
     description="Second-order polynomial with all cross-terms",
-    terms=["x*x*y*y", "x*x", "y*y", "x*y", "x", "y", "1"],
-    orders=[[2, 2], [2, 0], [0, 2], [1, 1], [1, 0], [0, 1], [0, 0]],
+    terms=["x*y", "x", "y", "x*y", "x", "y", "1"],
+    orders=[[2, 2], 2, 2, [1, 1], 1, 1, 0],
 )
 
 
@@ -141,13 +141,38 @@ class PolynomialRegistry:
             descriptor: PolynomialDescriptor defining the polynomial
 
         Raises:
-            ValueError: If polynomial name already exists
+            ValueError: If polynomial name already exists or function is invalid
         """
         if descriptor.name in self._polynomials:
             raise ValueError(f"Polynomial '{descriptor.name}' already registered")
 
+        # Validate generated function works correctly
+        function = descriptor.generate_function()
+        self._validate_polynomial_function(function, descriptor.name, descriptor.feature_count)
+
         info = PolynomialInfo(descriptor=descriptor)
         self._polynomials[descriptor.name] = info
+
+    def _validate_polynomial_function(self, function: callable, name: str, expected_count: int) -> None:
+        """Validate polynomial function works correctly."""
+        test_points = [(0.0, 0.0), (1.0, 1.0), (-1.0, -1.0), (0.5, -0.5)]
+
+        for x, y in test_points:
+            try:
+                result = function(x, y)
+                if not isinstance(result, PolynomialFeatures):
+                    raise ValueError(f"Polynomial '{name}' must return PolynomialFeatures, got {type(result)}")
+
+                if result.polynomial_name != name:
+                    raise ValueError(f"Polynomial '{name}' returned wrong name: '{result.polynomial_name}'")
+
+                if result.feature_count != expected_count:
+                    raise ValueError(
+                        f"Polynomial '{name}' returned {result.feature_count} features, expected {expected_count}"
+                    )
+
+            except Exception as e:
+                raise ValueError(f"Polynomial '{name}' validation failed at ({x}, {y}): {e}") from e
 
     def get_polynomial(self, name: str) -> Callable[[float, float], PolynomialFeatures]:
         """Get polynomial function by name.

@@ -17,44 +17,43 @@ class PolynomialDescriptor:
     enabling automatic function generation and separable/non-separable detection.
 
     Examples:
-        Non-separable (shared terms):
-            terms=["x*y", "x", "y", "1"]
-            orders=[[1,1], [1,0], [0,1], [0,0]]
+        Non-separable:
+            terms=["x", "y", "x*y", "x", "y", "1"]
+            orders=[2, 2, [1,1], 1, 1, 0]
 
-        Separable (independent terms):
+        Separable:
             terms=[["x", "1"], ["y", "1"]]
             orders=[[[1,0], [0,0]], [[0,1], [0,0]]]
     """
 
-    name: str  # Polynomial name (e.g., "hennessey_2008")
-    description: str  # Human-readable description
-    terms: Union[list[str], list[list[str]]]  # Term expressions
-    orders: Union[list[list[int]], list[list[list[int]]]]  # Variable orders
+    name: str
+    description: str
+    terms: Union[list[str], list[list[str]]]
+    orders: Union[list[Union[int, list[int]]], list[list[list[int]]]]
 
     def __post_init__(self):
-        """Validate descriptor structure consistency."""
+        self.orders = self._normalize_orders()
+        if len(self.terms) != len(self.orders):
+            raise ValueError("terms and orders must have same length")
+
+    def _normalize_orders(self):
+        """Convert simplified orders format to standard [x_order, y_order] format."""
         if self.is_separable:
-            if not (isinstance(self.terms, list) and all(isinstance(t, list) for t in self.terms)):
-                raise ValueError("Separable polynomial must have terms as list[list[str]]")
-            if not (
-                isinstance(self.orders, list)
-                and all(isinstance(o, list) and all(isinstance(oo, list) for oo in o) for o in self.orders)
-            ):
-                raise ValueError("Separable polynomial must have orders as list[list[list[int]]]")
-            if len(self.terms) != len(self.orders):
-                raise ValueError("Separable polynomial: terms and orders must have same length")
-            if len(self.terms) != 2:
-                raise ValueError("Separable polynomial must have exactly 2 coordinate sets")
-        else:
-            if not (isinstance(self.terms, list) and all(isinstance(t, str) for t in self.terms)):
-                raise ValueError("Non-separable polynomial must have terms as list[str]")
-            if not (
-                isinstance(self.orders, list)
-                and all(isinstance(o, list) and all(isinstance(oo, int) for oo in o) for o in self.orders)
-            ):
-                raise ValueError("Non-separable polynomial must have orders as list[list[int]]")
-            if len(self.terms) != len(self.orders):
-                raise ValueError("Non-separable polynomial: terms and orders must have same length")
+            return self.orders
+
+        normalized = []
+        for i, order in enumerate(self.orders):
+            if isinstance(order, int):
+                term = self.terms[i]
+                if term == "x" or term.startswith("x"):
+                    normalized.append([order, 0])
+                elif term == "y" or term.startswith("y"):
+                    normalized.append([0, order])
+                else:
+                    normalized.append([order, 0])
+            else:
+                normalized.append(order)
+        return normalized
 
     @property
     def is_separable(self) -> bool:
@@ -84,30 +83,23 @@ class PolynomialDescriptor:
 
     def _format_term(self, term: str, order: list[int]) -> str:
         """Format a single term with mathematical notation."""
-        if term == "1":
+        if len(order) != 2:
+            raise ValueError(f"Invalid order format: {order}. Expected [x_order, y_order].")
+
+        x_ord, y_ord = order
+
+        # Handle constant term
+        if x_ord == 0 and y_ord == 0:
             return "1"
 
-        # Handle common cases with clean mathematical notation
-        if len(order) == 2:  # [x_order, y_order]
-            x_ord, y_ord = order
-            if x_ord == 0 and y_ord == 0:
-                return "1"
-            elif x_ord == 1 and y_ord == 0:
-                return "x"
-            elif x_ord == 0 and y_ord == 1:
-                return "y"
-            elif x_ord == 1 and y_ord == 1:
-                return "x*y"
-            else:
-                # Build mathematical notation with Unicode superscripts
-                parts = []
-                if x_ord > 0:
-                    parts.append(f"x{self._superscript(x_ord)}" if x_ord > 1 else "x")
-                if y_ord > 0:
-                    parts.append(f"y{self._superscript(y_ord)}" if y_ord > 1 else "y")
-                return "*".join(parts) if parts else "1"
-        else:
-            raise ValueError(f"Invalid order format for term '{term}': {order}. Expected [x_order, y_order] format.")
+        # Build mathematical notation with Unicode superscripts
+        parts = []
+        if x_ord > 0:
+            parts.append(f"x{self._superscript(x_ord)}" if x_ord > 1 else "x")
+        if y_ord > 0:
+            parts.append(f"y{self._superscript(y_ord)}" if y_ord > 1 else "y")
+
+        return "".join(parts) if parts else "1"
 
     def _superscript(self, n: int) -> str:
         """Convert number to Unicode superscript."""

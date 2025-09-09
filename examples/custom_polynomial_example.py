@@ -19,8 +19,8 @@ from pyetsimul.types import Position3D, RotationMatrix
 MY_CUSTOM_POLYNOMIAL = PolynomialDescriptor(
     name="my_custom",
     description="Custom second-order polynomial with cross-term",
-    terms=["x*x", "y*y", "x*y", "x", "y", "1"],
-    orders=[[2, 0], [0, 2], [1, 1], [1, 0], [0, 1], [0, 0]],
+    terms=["x", "y", "x*y", "x", "y", "1"],
+    orders=[2, 2, [1, 1], 1, 1, 0],
 )
 
 
