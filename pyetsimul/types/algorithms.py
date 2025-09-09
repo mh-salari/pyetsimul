@@ -75,17 +75,17 @@ class PolynomialDescriptor:
             # For non-separable: return total number of shared features
             return len(self.terms)
 
-    def get_term_descriptions(self) -> list[str]| list[list[str]]:
+    def get_term_descriptions(self) -> list[str] | list[list[str]]:
         """Get human-readable term descriptions for display."""
         if self.is_separable:
             return [
-                [self._format_term(term, order) for term, order in zip(coord_terms, coord_orders)]
-                for coord_terms, coord_orders in zip(self.terms, self.orders)
+                [self._format_term(order) for order in coord_orders]
+                for coord_orders in zip(self.terms, self.orders)
             ]
         else:
-            return [self._format_term(term, order) for term, order in zip(self.terms, self.orders)]
+            return [self._format_term(order) for term, order in self.orders]
 
-    def _format_term(self, term: str, order: list[int]) -> str:
+    def _format_term(self, order: list[int]) -> str:
         """Format a single term with mathematical notation."""
         if len(order) != 2:
             raise ValueError(f"Invalid order format: {order}. Expected [x_order, y_order].")
