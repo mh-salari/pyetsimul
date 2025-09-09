@@ -176,7 +176,7 @@ class PolynomialRegistry:
                 f"or '2D' for separate X/Y features (e.g., Hoorman 2008: [[x, 1], [y, 1]])"
             )
 
-        self._validate_polynomial_function(function, name)
+        self._validate_polynomial_function(function, name, feature_count)
 
         info = PolynomialInfo(
             name=name,
@@ -240,7 +240,7 @@ class PolynomialRegistry:
             matches.append(info)
         return matches
 
-    def _validate_polynomial_function(self, function: Callable[[float, float], PolynomialFeatures], name: str) -> None:
+    def _validate_polynomial_function(self, function: Callable[[float, float], PolynomialFeatures], name: str, expected_count: int) -> None:
         """Validate polynomial function signature and return type."""
         test_points = [(0.0, 0.0), (1.0, 1.0), (-1.0, -1.0), (0.5, -0.5)]
 
@@ -250,8 +250,14 @@ class PolynomialRegistry:
                 if not isinstance(result, PolynomialFeatures):
                     raise ValueError(f"Polynomial '{name}' must return PolynomialFeatures, got {type(result)}")
 
-                # Validate feature count consistency
+                # Validate that a polynomial produces the expected feature count.
                 actual_count = result.feature_count
+                if actual_count != expected_count:
+                    raise ValueError(
+                        f"Polynomial '{name}' returns {result.feature_count} features, which doesn't match the expected number of features ({expected_count})"
+                    )
+
+                # Validate feature count consistency
                 if hasattr(result, "features") and result.features is not None:
                     if result.is_2d:
                         expected_shape = (2, actual_count)
@@ -273,23 +279,6 @@ class PolynomialRegistry:
 
         del self._polynomials[name]
         return True
-
-    def validate_polynomial_count(self, name: str, expected_count: int) -> bool:
-        """Validate that a polynomial produces the expected feature count.
-
-        Args:
-            name: Polynomial name
-            expected_count: Expected number of features
-
-        Returns:
-            True if feature count matches, False otherwise
-        """
-        try:
-            poly_func = self.get_polynomial(name)
-            result = poly_func(0.0, 0.0)
-            return result.feature_count == expected_count
-        except Exception:
-            return False
 
 
 def _register_builtin_polynomials() -> None:
