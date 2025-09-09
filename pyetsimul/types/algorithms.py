@@ -4,7 +4,7 @@ to replace dictionary-based state management.
 """
 
 from dataclasses import dataclass
-from typing import Optional, Any
+from typing import Optional, Any, Callable
 import numpy as np
 from .geometry import Point3D
 
@@ -121,14 +121,14 @@ class PolynomialDescriptor:
         }
         return "".join(superscripts[digit] for digit in str(n))
 
-    def generate_function(self) -> callable:
+    def generate_function(self) -> Callable:
         """Generate polynomial function from descriptor."""
         if self.is_separable:
             return self._generate_separable_function()
         else:
             return self._generate_non_separable_function()
 
-    def _generate_non_separable_function(self) -> callable:
+    def _generate_non_separable_function(self) -> Callable:
         """Generate function for non-separable polynomial."""
 
         def polynomial_func(x: float, y: float) -> "PolynomialFeatures":
@@ -139,7 +139,7 @@ class PolynomialDescriptor:
 
         return polynomial_func
 
-    def _generate_separable_function(self) -> callable:
+    def _generate_separable_function(self) -> Callable:
         """Generate function for separable polynomial."""
 
         def polynomial_func(x: float, y: float) -> "PolynomialFeatures":
