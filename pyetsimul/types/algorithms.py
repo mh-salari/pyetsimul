@@ -32,9 +32,9 @@ class PolynomialDescriptor:
     orders: list[int | list[int]] | list[list[int | list[int]]]
 
     def __post_init__(self):
-        self.orders = self._normalize_orders()
         if len(self.terms) != len(self.orders):
             raise ValueError("terms and orders must have same length")
+        self.orders = self._normalize_orders()
 
     def _normalize_orders(self):
         """Convert simplified orders format to standard [x_order, y_order] format."""
