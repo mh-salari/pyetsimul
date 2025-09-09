@@ -56,10 +56,29 @@ def pprint_polynomial_parameters(et: EyeTracker) -> None:
         poly_info = get_polynomial_info(et.polynomial_name)
         term_descriptions = poly_info.descriptor.get_term_descriptions()
 
-        coeff_headers = ["Term", "X Coefficient", "Y Coefficient"]
-        coeff_data = []
-        for term, x_val, y_val in zip(term_descriptions, state.x_coefficients, state.y_coefficients):
-            coeff_data.append([term, f"{x_val:8.6f}", f"{y_val:8.6f}"])
-        print(tabulate(coeff_data, headers=coeff_headers, tablefmt="grid"))
+        if poly_info.descriptor.uses_different_xy_features:
+            # Different features for x and y: show separate tables for X and Y coordinates
+            coeff_headers = ["Term", "Coefficient"]
+
+            print("\nX Coordinate Terms:")
+            x_coeff_data = []
+            x_terms = term_descriptions[0]
+            for term, coeff in zip(x_terms, state.x_coefficients):
+                x_coeff_data.append([term, f"{coeff:8.6f}"])
+            print(tabulate(x_coeff_data, headers=coeff_headers, tablefmt="grid"))
+
+            print("\nY Coordinate Terms:")
+            y_coeff_data = []
+            y_terms = term_descriptions[1]
+            for term, coeff in zip(y_terms, state.y_coefficients):
+                y_coeff_data.append([term, f"{coeff:8.6f}"])
+            print(tabulate(y_coeff_data, headers=coeff_headers, tablefmt="grid"))
+        else:
+            # same features for x and y: show combined table with shared terms
+            coeff_headers = ["Term", "X Coefficient", "Y Coefficient"]
+            coeff_data = []
+            for term, x_val, y_val in zip(term_descriptions, state.x_coefficients, state.y_coefficients):
+                coeff_data.append([term, f"{x_val:8.6f}", f"{y_val:8.6f}"])
+            print(tabulate(coeff_data, headers=coeff_headers, tablefmt="grid"))
     else:
         print("No calibration parameters found (tracker not calibrated)")
