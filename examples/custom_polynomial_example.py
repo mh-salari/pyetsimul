@@ -14,18 +14,13 @@ from pyetsimul.types import Position3D, RotationMatrix
 
 
 def my_custom_polynomial(x: float, y: float) -> PolynomialFeatures:
-    """Custom third-order polynomial with comprehensive cross-terms: [x³, y³, x²y, xy², x², y², xy, x, y, 1]
+    """Custom second-order polynomial with cross-term: [x², y², xy, x, y, 1]
 
     Mathematical model (1D - shared features):
-    gaze_x = a₀*x³ + a₁*y³ + a₂*x²*y + a₃*x*y² + a₄*x² + a₅*y² + a₆*x*y + a₇*x + a₈*y + a₉
-    gaze_y = b₀*x³ + b₁*y³ + b₂*x²*y + b₃*x*y² + b₄*x² + b₅*y² + b₆*x*y + b₇*x + b₈*y + b₉
-
-    This higher-order polynomial can model complex non-linearities in eye tracking:
-    - Cubic terms (x³, y³) capture strong peripheral distortions
-    - Cross-cubic terms (x²y, xy²) model asymmetric distortions
-    - Maintains all lower-order terms for robustness
+    gaze_x = a₄*x² + a₅*y² + a₆*x*y + a₇*x + a₈*y + a₉
+    gaze_y = b₄*x² + b₅*y² + b₆*x*y + b₇*x + b₈*y + b₉
     """
-    features = np.array([x**3, y**3, x**2 * y, x * y**2, x**2, y**2, x * y, x, y, 1])
+    features = np.array([x**2, y**2, x * y, x, y, 1])
     return PolynomialFeatures(features=features, polynomial_name="my_custom")
 
 
@@ -36,9 +31,9 @@ def main():
     register_polynomial(
         name="my_custom",
         function=my_custom_polynomial,
-        description="Custom third-order polynomial with comprehensive cross-terms",
+        description="Custom second-order polynomial with cross-term",
         model_type="1D",
-        feature_count=10,
+        feature_count=6,
     )
 
     print("Custom Polynomial Eye Tracking Demo\n")
