@@ -28,7 +28,7 @@ HOORMAN_2008 = PolynomialDescriptor(
     name="hoorman_2008",
     description="Hoorman et al. (2008) linear polynomial",
     terms=[["x", "1"], ["y", "1"]],
-    orders=[[[1, 0], [0, 0]], [[0, 1], [0, 0]]],
+    orders=[[1, 0], [1, 0]],
 )
 
 
@@ -64,7 +64,7 @@ ZHU_JI_2005 = PolynomialDescriptor(
     name="zhu_ji_2005",
     description="Zhu and Ji (2005) asymmetric polynomial",
     terms=[["x*y", "x", "y", "1"], ["y*y", "x", "y", "1"]],
-    orders=[[[1, 1], [1, 0], [0, 1], [0, 0]], [[0, 2], [1, 0], [0, 1], [0, 0]]],
+    orders=[[[1, 1], 1, 1, 0], [2, 1, 1, 0]],
 )
 
 
@@ -75,8 +75,8 @@ ZHU_JI_2005 = PolynomialDescriptor(
 CERROLAZA_VILLANUEVA_2008 = PolynomialDescriptor(
     name="cerrolaza_villanueva_2008",
     description="Cerrolaza and Villanueva (2008) asymmetric polynomial",
-    terms=[["x*x", "x", "y", "1", "1"], ["x*x*y", "x*x", "x*y", "y", "1"]],
-    orders=[[[2, 0], [1, 0], [0, 1], [0, 0], [0, 0]], [[2, 1], [2, 0], [1, 1], [0, 1], [0, 0]]],
+    terms=[["x", "x", "y", "1", "1"], ["x*y", "x", "x*y", "y", "1"]],
+    orders=[[2, 1, 1, 0, 0], [[2, 1], 2, [1, 1], 1, 0]],
 )
 
 
@@ -87,10 +87,10 @@ CERROLAZA_VILLANUEVA_2008 = PolynomialDescriptor(
 BLIGNAUT_WIUM_2013 = PolynomialDescriptor(
     name="blignaut_wium_2013",
     description="Blignaut and Wium (2013) high-order polynomial",
-    terms=[["1", "x", "x*x*x", "y*y", "x*y", "1", "1"], ["1", "x", "x*x", "y", "y*y", "x*y", "x*x*y"]],
+    terms=[["1", "x", "x", "y", "x*y"], ["1", "x", "x", "y", "y", "x*y", "x*y"]],
     orders=[
-        [[0, 0], [1, 0], [3, 0], [0, 2], [1, 1], [0, 0], [0, 0]],
-        [[0, 0], [1, 0], [2, 0], [0, 1], [0, 2], [1, 1], [2, 1]],
+        [0, 1, 3, 2, [1, 1]],
+        [0, 1, 2, 1, 2, [1, 1], [2, 1]],
     ],
 )
 
@@ -153,7 +153,7 @@ class PolynomialRegistry:
         info = PolynomialInfo(descriptor=descriptor)
         self._polynomials[descriptor.name] = info
 
-    def _validate_polynomial_function(self, function: callable, name: str, expected_count: int) -> None:
+    def _validate_polynomial_function(self, function: Callable, name: str, expected_count: int) -> None:
         """Validate polynomial function works correctly."""
         test_points = [(0.0, 0.0), (1.0, 1.0), (-1.0, -1.0), (0.5, -0.5)]
 

@@ -22,14 +22,14 @@ class PolynomialDescriptor:
             orders=[2, 2, [1,1], 1, 1, 0]
 
         Separable:
-            terms=[["x", "1"], ["y", "1"]]
-            orders=[[[1,0], [0,0]], [[0,1], [0,0]]]
+            terms=[["x*y", "x", "1"], ["y", "1"]]
+            orders=[[[1,1], 1, 0], [1, 0]]
     """
 
     name: str
     description: str
     terms: list[str] | list[list[str]]
-    orders: list[int | list[int]] | list[list[list[int]]]
+    orders: list[int | list[int]] | list[list[int | list[int]]]
 
     def __post_init__(self):
         self.orders = self._normalize_orders()
