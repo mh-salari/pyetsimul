@@ -12,7 +12,7 @@ from . import core
 from . import geometry
 from . import optics
 from . import types
-from . import gaze_tracking_algorithms
+from . import gaze_models
 from . import simulation
 
 # Also import commonly used structured types for convenience
@@ -33,7 +33,7 @@ __all__ = [
     "geometry",
     "optics",
     "types",
-    "gaze_tracking_algorithms",
+    "gaze_models",
     "simulation",
     # Common structured types for convenience
     "Position3D",

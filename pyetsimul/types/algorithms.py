@@ -216,7 +216,7 @@ class PolynomialFeatures:
     """Structured polynomial feature representation.
 
     Handles both same features (shared x,y) and different features (independent x,y)
-    polynomial features used in interpolation algorithms. Encapsulates prediction logic.
+    polynomial features used in polynomial gaze model algorithms. Encapsulates prediction logic.
     """
 
     features: np.ndarray  # Feature array (1D or 2D)
@@ -274,15 +274,15 @@ class PolynomialFeatures:
 
 
 @dataclass
-class InterpolationState(AlgorithmState):
-    """State for interpolation algorithm."""
+class PolynomialGazeModelState(AlgorithmState):
+    """State for polynomial gaze model algorithm."""
 
     x_coefficients: Optional[np.ndarray] = None  # Polynomial coefficients for x
     y_coefficients: Optional[np.ndarray] = None  # Polynomial coefficients for y
     input_normalization: Optional[dict[str, float]] = None  # Input scaling parameters
 
     def serialize(self) -> dict:
-        """Serialize interpolation state to dictionary."""
+        """Serialize polynomial gaze model state to dictionary."""
         return {
             "is_calibrated": self.is_calibrated,
             "calibration_error": self.calibration_error,
@@ -293,7 +293,7 @@ class InterpolationState(AlgorithmState):
         }
 
     @classmethod
-    def deserialize(cls, data: dict) -> "InterpolationState":
+    def deserialize(cls, data: dict) -> "PolynomialGazeModelState":
         """Deserialize from dictionary representation."""
         state = cls(
             is_calibrated=data["is_calibrated"],

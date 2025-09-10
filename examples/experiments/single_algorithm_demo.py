@@ -1,8 +1,8 @@
-"""Polynomial interpolation eye tracking example using shared configuration."""
+"""Polynomial gaze model eye tracking example using shared configuration."""
 
 import matplotlib.pyplot as plt
 
-from pyetsimul.gaze_tracking_algorithms.interpolate import InterpolationTracker
+from pyetsimul.gaze_models.polynomial import PolynomialGazeModel
 from pyetsimul.simulation import DataGenerationStrategy
 from pyetsimul.evaluation.calibration_analysis import accuracy_at_calibration_points
 from pyetsimul.evaluation.gaze_accuracy import evaluate_gaze_accuracy
@@ -19,14 +19,14 @@ from config import (
 
 
 def main():
-    """Run polynomial interpolation eye tracking using shared configuration."""
+    """Run polynomial gaze model eye tracking using shared configuration."""
     base_config = create_experiment_config("base")
 
-    print("Python Interpolate Test - Using Shared Configuration\n")
+    print("Python Polynomial Gaze Model Test - Using Shared Configuration\n")
 
     # Setup tracker using shared config
     method = "cerrolaza_2008"
-    et = InterpolationTracker.create(base_config.cameras, base_config.lights, calibration_points, method)
+    et = PolynomialGazeModel.create(base_config.cameras, base_config.lights, calibration_points, method)
     et.use_legacy_look_at = True
 
     # Display configuration summary

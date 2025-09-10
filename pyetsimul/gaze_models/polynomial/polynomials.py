@@ -1,4 +1,4 @@
-"""Polynomial feature functions for interpolation eye tracking.
+"""Polynomial feature functions for polynomial gaze model eye tracking.
 
 Extensible registry system supporting user-defined polynomials.
 """

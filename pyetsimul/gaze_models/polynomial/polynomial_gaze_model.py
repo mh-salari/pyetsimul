@@ -1,10 +1,10 @@
-"""Interpolation eye tracker.
+"""Polynomial gaze model eye tracker.
 
-Pupil-CR tracker with polynomial interpolation.
+Pupil-CR tracker with polynomial gaze model.
 """
 
 from pyetsimul.core import EyeTracker, Camera, Light
-from pyetsimul.types.algorithms import InterpolationState, GazePrediction
+from pyetsimul.types.algorithms import PolynomialGazeModelState, GazePrediction
 from pyetsimul.types.imaging import EyeMeasurement
 from pyetsimul.types.geometry import Point3D, Position3D
 from .polynomials import get_polynomial
@@ -13,15 +13,15 @@ import time
 import numpy as np
 
 
-class InterpolationTracker(EyeTracker):
-    """Polynomial interpolation Pupil-CR eye tracker.
+class PolynomialGazeModel(EyeTracker):
+    """Polynomial gaze model Pupil-CR eye tracker.
 
     Maps pupil-corneal reflection vectors to screen coordinates using polynomial functions.
     Supports various polynomial types from eye tracking literature.
     """
 
     def __init__(self, polynomial: str, **kwargs):
-        """Initialize interpolation tracker with polynomial specification.
+        """Initialize polynomial gaze model tracker with polynomial specification.
 
         Sets up polynomial function and algorithm state for gaze tracking.
 
@@ -30,7 +30,7 @@ class InterpolationTracker(EyeTracker):
             **kwargs: Arguments passed to parent EyeTracker
         """
         super().__init__(**kwargs)
-        self.algorithm_state = InterpolationState()
+        self.algorithm_state = PolynomialGazeModelState()
         self.polynomial_name = polynomial
         self.polynomial_func = get_polynomial(polynomial)
         self.plane_info = None
@@ -38,7 +38,7 @@ class InterpolationTracker(EyeTracker):
     @property
     def algorithm_name(self) -> str:
         """Algorithm name identifier."""
-        return "interpolation"
+        return "polynomial"
 
     @classmethod
     def create(
@@ -48,10 +48,10 @@ class InterpolationTracker(EyeTracker):
         calib_points: list[Position3D],
         polynomial: str,
         use_refraction: bool = True,
-    ) -> "InterpolationTracker":
-        """Create interpolation eye tracker setup.
+    ) -> "PolynomialGazeModel":
+        """Create polynomial gaze model eye tracker setup.
 
-        Factory method for configuring complete interpolation tracker with all components.
+        Factory method for configuring complete polynomial gaze model tracker with all components.
 
         Args:
             cameras: List of Camera objects
@@ -61,7 +61,7 @@ class InterpolationTracker(EyeTracker):
             use_refraction: Whether to use refraction model (default True)
 
         Returns:
-            InterpolationTracker: Configured interpolation eye tracker
+            PolynomialGazeModel: Configured polynomial gaze model eye tracker
         """
         return cls(
             polynomial=polynomial,
@@ -72,7 +72,7 @@ class InterpolationTracker(EyeTracker):
         )
 
     def calibrate(self, calibration_measurements: list[EyeMeasurement]) -> None:
-        """Calibration function for pupil-CR interpolation.
+        """Calibration function for pupil-CR polynomial gaze model.
 
         Detects calibration plane and performs polynomial least squares calibration.
         Automatically handles different polynomial feature types.
@@ -259,7 +259,7 @@ class InterpolationTracker(EyeTracker):
         return GazePrediction(
             gaze_point=gaze_point,
             confidence=confidence,
-            algorithm_name=f"interpolation_{polynomial_name}",
+            algorithm_name=f"polynomial_{polynomial_name}",
             processing_time=processing_time,
             intermediate_results=intermediate_results,
         )
@@ -286,7 +286,7 @@ class InterpolationTracker(EyeTracker):
         }
 
     @classmethod
-    def deserialize(cls, data: dict) -> "InterpolationTracker":
+    def deserialize(cls, data: dict) -> "PolynomialGazeModel":
         """Deserialize eye tracker from dictionary.
 
         Restores complete eye tracker state including calibration and hardware configuration.
@@ -296,7 +296,7 @@ class InterpolationTracker(EyeTracker):
             data: Dictionary from serialize() method
 
         Returns:
-            InterpolationTracker: Fully configured and calibrated eye tracker
+            PolynomialGazeModel: Fully configured and calibrated eye tracker
         """
 
         # Deserialize hardware components
@@ -314,7 +314,7 @@ class InterpolationTracker(EyeTracker):
         )
 
         # Restore algorithm state and plane info
-        tracker.algorithm_state = InterpolationState.deserialize(data["algorithm_state"])
+        tracker.algorithm_state = PolynomialGazeModelState.deserialize(data["algorithm_state"])
         if data["plane_info"]:
             tracker.plane_info = PlaneInfo.deserialize(data["plane_info"])
 

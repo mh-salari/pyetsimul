@@ -5,7 +5,7 @@ including parameter printing and data formatting functions.
 """
 
 from pyetsimul.core import EyeTracker
-from pyetsimul.gaze_tracking_algorithms.interpolate.polynomials import get_polynomial_info
+from pyetsimul.gaze_models.polynomial.polynomials import get_polynomial_info
 from tabulate import tabulate
 
 
@@ -15,8 +15,8 @@ def pprint_polynomial_parameters(et: EyeTracker) -> None:
     Displays calibration coefficients and polynomial type for analysis.
     Shows calibration status and coefficient values for debugging.
     """
-    # Only print polynomial parameters for interpolation trackers
-    if et.algorithm_name != "interpolation":
+    # Only print polynomial parameters for polynomial gaze model trackers
+    if et.algorithm_name != "polynomial":
         print(f"\nCalibration Parameters ({et.algorithm_name}):")
         print("-" * 40)
         if et.algorithm_state.is_calibrated:

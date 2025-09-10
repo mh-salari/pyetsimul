@@ -4,8 +4,8 @@ Demonstrates how users can define their own polynomial function
 and use it for eye tracking calibration.
 """
 
-from pyetsimul.gaze_tracking_algorithms.interpolate.polynomials import register_polynomial
-from pyetsimul.gaze_tracking_algorithms.interpolate import InterpolationTracker
+from pyetsimul.gaze_models.polynomial.polynomials import register_polynomial
+from pyetsimul.gaze_models.polynomial import PolynomialGazeModel
 from pyetsimul.types.algorithms import PolynomialDescriptor
 from pyetsimul.evaluation import accuracy_at_calibration_points
 from pyetsimul.core import Eye, Camera, Light
@@ -63,7 +63,7 @@ def main():
 
     # Setup tracker using custom polynomial
     method = "my_custom"
-    et = InterpolationTracker.create([camera], [light], calibration_points, method)
+    et = PolynomialGazeModel.create([camera], [light], calibration_points, method)
 
     # Display configuration summary
     et.pprint(eye)

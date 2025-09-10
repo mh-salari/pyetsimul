@@ -63,7 +63,7 @@ def detect_calibration_plane(calib_points: list[Position3D], tolerance: float = 
     """Automatically detect which 2D plane the calibration points lie in.
 
     Uses variance analysis to determine which axis is constant and which two axes vary.
-    Supports standard orthogonal planes (xy, xz, yz) for polynomial interpolation.
+    Supports standard orthogonal planes (xy, xz, yz) for polynomial gaze models.
 
     Args:
         calib_points: List of calibration target positions
@@ -98,13 +98,13 @@ def detect_calibration_plane(calib_points: list[Position3D], tolerance: float = 
         raise ValueError(
             f"Calibration points don't lie in a 2D plane. "
             f"All axes vary significantly: x_var={x_var:.2e}, y_var={y_var:.2e}, z_var={z_var:.2e}. "
-            f"Points must lie in xy, xz, or yz plane for polynomial interpolation."
+            f"Points must lie in xy, xz, or yz plane for polynomial gaze models."
         )
     elif len(constant_axes) > 1:
         raise ValueError(
             f"Calibration points are too constrained. "
             f"Multiple axes are constant: {constant_axes}. "
-            f"Points must vary in exactly 2 dimensions for polynomial interpolation."
+            f"Points must vary in exactly 2 dimensions for polynomial gaze models."
         )
 
     # Determine plane type and coordinate mapping

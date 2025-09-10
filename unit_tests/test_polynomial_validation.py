@@ -2,7 +2,7 @@
 
 import pytest
 from pyetsimul.types.algorithms import PolynomialDescriptor
-from pyetsimul.gaze_tracking_algorithms.interpolate.polynomials import register_polynomial
+from pyetsimul.gaze_models.polynomial.polynomials import register_polynomial
 
 
 def test_invalid_order_format():

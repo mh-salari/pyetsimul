@@ -30,7 +30,7 @@ uv sync
 3. Run examples:
 ```bash
 uv run python examples/example.py
-uv run python examples/interpolate.py
+uv run python examples/custom_polynomial_example.py
 uv run python examples/eye_anatomy.py
 uv run python examples/setup_visualization.py
 uv run python examples/camera_distortion.py

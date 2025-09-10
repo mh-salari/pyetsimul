@@ -1,7 +1,7 @@
 """Algorithm comparison experiment using shared configuration."""
 
-from pyetsimul.gaze_tracking_algorithms.interpolate import InterpolationTracker
-from pyetsimul.gaze_tracking_algorithms.interpolate.polynomials import list_available_polynomials
+from pyetsimul.gaze_models.polynomial import PolynomialGazeModel
+from pyetsimul.gaze_models.polynomial.polynomials import list_available_polynomials
 from pyetsimul.evaluation.algorithm_comparison import compare_algorithms
 from pyetsimul.evaluation.calibration_analysis import accuracy_at_calibration_points
 from pyetsimul.simulation import DataGenerationStrategy
@@ -27,7 +27,7 @@ def setup_algorithms():
     print(f"\nCalibrating {len(available_methods)} algorithms:")
 
     for method in available_methods:
-        algorithm = InterpolationTracker.create(
+        algorithm = PolynomialGazeModel.create(
             cameras=base_config.cameras, lights=base_config.lights, calib_points=calibration_points, polynomial=method
         )
         algorithm.use_legacy_look_at = True
