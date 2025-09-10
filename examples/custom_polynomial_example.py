@@ -12,15 +12,16 @@ from pyetsimul.core import Eye, Camera, Light
 from pyetsimul.types import Position3D, RotationMatrix
 
 
-# Custom second-order polynomial: [x², y², x*y, x, y, 1]
+# Custom third-order polynomial with cross-terms: [x³, y³, x²y, xy², x², y², xy, x, y, 1]
 # Mathematical model (same features for both X,Y):
-# gaze_x = a₀*x² + a₁*y² + a₂*x*y + a₃*x + a₄*y + a₅
-# gaze_y = b₀*x² + b₁*y² + b₂*x*y + b₃*x + b₄*y + b₅
+# gaze_x = a₀*x³ + a₁*y³ + a₂*x²*y + a₃*x*y² + a₄*x² + a₅*y² + a₆*x*y + a₇*x + a₈*y + a₉
+# gaze_y = b₀*x³ + b₁*y³ + b₂*x²*y + b₃*x*y² + b₄*x² + b₅*y² + b₆*x*y + b₇*x + b₈*y + b₉
+
 MY_CUSTOM_POLYNOMIAL = PolynomialDescriptor(
     name="my_custom",
-    description="Custom second-order polynomial with cross-term",
-    terms=["x", "y", "x*y", "x", "y", "1"],
-    orders=[2, 2, [1, 1], 1, 1, 0],
+    description="Custom third-order polynomial with cross-terms",
+    terms=["x", "y", "x*y", "x*y", "x", "y", "x*y", "x", "y", "1"],
+    orders=[3, 3, [2, 1], [1, 2], 2, 2, [1, 1], 1, 1, 0],
 )
 
 
