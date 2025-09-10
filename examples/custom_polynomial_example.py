@@ -45,14 +45,16 @@ def main():
         Position3D(200e-3, 0.0, 350e-3),
     ]
 
-    # Standard eye configuration
+    # Eye configuration
     eye = Eye()
-    eye.set_rest_orientation(RotationMatrix([[1, 0, 0], [0, 0, -1], [0, 1, 0]]))
+    # Looking along -Y axis (towards camera)
+    eye.set_rest_orientation(RotationMatrix([[1, 0, 0], [0, 0, 1], [0, -1, 0]]))
     eye.position = Position3D(0.0, 550e-3, 350e-3)
 
-    # Standard camera configuration
+    # Camera configuration
     camera = Camera(err=0.0, err_type="gaussian")
-    camera.orientation = RotationMatrix([[1, 0, 0], [0, 0, 1], [0, -1, 0]])
+    # Facing along +Y axis (towards eye)
+    camera.orientation = RotationMatrix([[1, 0, 0], [0, 0, -1], [0, 1, 0]])
     camera.point_at(eye.position)
 
     # Standard light configuration

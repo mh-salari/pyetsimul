@@ -14,6 +14,7 @@ from .camera import Camera
 from .light import Light
 from .eye import Eye
 from ..types import Position3D, Point3D, GazePrediction, EyeMeasurement, PupilData
+from ..utils import validate_eye_camera_setup
 
 
 @dataclass
@@ -87,6 +88,11 @@ class EyeTracker(ABC):
         Returns:
             Self for method chaining
         """
+        # Validate eye-camera setup if cameras are present
+        if self.cameras:
+            for camera in self.cameras:
+                validate_eye_camera_setup(eye.rest_orientation, camera.trans.get_rotation())
+
         calibration_measurements = self._collect_calibration_measurements(eye)
         self.calibrate(calibration_measurements)
         return self
