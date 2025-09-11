@@ -77,6 +77,15 @@ class Pupil(ABC):
         pass
 
     @abstractmethod
+    def get_diameter(self) -> float:
+        """Get pupil diameter.
+
+        Returns:
+            Pupil diameter in meters
+        """
+        pass
+
+    @abstractmethod
     def serialize(self) -> dict:
         """Serialize to dictionary representation."""
         pass
@@ -204,6 +213,17 @@ class EllipticalPupil(Pupil):
         """
         radius = diameter / 2
         self.set_radii(x_radius=radius, y_radius=radius)
+
+    def get_diameter(self) -> float:
+        """Get pupil diameter.
+
+        For elliptical pupils, returns average diameter.
+
+        Returns:
+            Pupil diameter in meters
+        """
+        x_radius, y_radius = self.get_radii()
+        return x_radius + y_radius
 
     def serialize(self) -> dict:
         """Serialize to dictionary representation."""
@@ -451,6 +471,14 @@ class RealisticPupil(Pupil):
         avg_radius = (x_radius + y_radius) / 2
         diameter = avg_radius * 2
         self.set_diameter(diameter)
+
+    def get_diameter(self) -> float:
+        """Get pupil diameter.
+
+        Returns:
+            Pupil diameter in meters (2 * base_radius)
+        """
+        return self.params.base_radius * 2
 
     def get_noncircularity(self) -> float:
         """Calculate actual noncircularity using Wyatt (1995) exact formula.

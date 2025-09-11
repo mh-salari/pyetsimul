@@ -347,6 +347,16 @@ class Eye:
         """
         return self.pupil.get_radii()
 
+    def get_pupil_diameter(self) -> float:
+        """Get current pupil diameter.
+
+        Delegates to pupil object for diameter information.
+
+        Returns:
+            Pupil diameter in meters
+        """
+        return self.pupil.get_diameter()
+
     def set_pupil_radii(self, x_radius: float, y_radius: float) -> None:
         """Set pupil radii.
 
