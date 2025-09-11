@@ -18,6 +18,7 @@ from ..optics.refractions import find_refraction_point
 from ..optics.pupil_imaging import calculate_pupil_center_from_boundary
 from .eyelid import Eyelid, create_eyelid
 from .default_configs import EyeAnatomyDefaults
+from .pupil_decentration import PupilDecentrationConfig, PupilDecentrationRegistry
 
 if TYPE_CHECKING:
     from .camera import Camera
@@ -52,6 +53,9 @@ class Eye:
 
     # Eyelid configuration (enabled off by default to avoid behavior changes)
     eyelid_enabled: bool = False
+
+    # Pupil decentration configuration
+    decentration_config: PupilDecentrationConfig = field(default_factory=PupilDecentrationConfig)
 
     # These fields are calculated in __post_init__
     trans: TransformationMatrix = field(init=False)
@@ -136,6 +140,14 @@ class Eye:
             )
             # Keep eyelid orientation locked to rest orientation (fixed to face)
             self.eyelid_trans[:3, :3] = self._rest_orientation
+
+        # Initialize pupil decentration if enabled
+        if self.decentration_config.enabled:
+            # Set baseline diameter to current pupil diameter
+            if self.decentration_config.baseline_diameter is None:
+                self.decentration_config.baseline_diameter = self.get_pupil_diameter()
+            # Apply initial decentration
+            self._update_pupil_position_with_decentration()
 
     @property
     def orientation(self) -> RotationMatrix:
@@ -358,25 +370,29 @@ class Eye:
         return self.pupil.get_diameter()
 
     def set_pupil_radii(self, x_radius: float, y_radius: float) -> None:
-        """Set pupil radii.
+        """Set pupil radii and update decentration if enabled.
 
-        Delegates to pupil object for radius modification.
+        Delegates to pupil object for radius modification, then applies
+        decentration based on the new average diameter if decentration is enabled.
 
         Args:
             x_radius: Pupil radius in X direction (meters)
             y_radius: Pupil radius in Y direction (meters)
         """
         self.pupil.set_radii(x_radius, y_radius)
+        self._update_pupil_position_with_decentration()
 
     def set_pupil_diameter(self, diameter: float) -> None:
-        """Set pupil diameter.
+        """Set pupil diameter and update decentration if enabled.
 
-        Delegates to pupil object for diameter modification.
+        Delegates to pupil object for diameter modification, then applies
+        decentration based on the new diameter if decentration is enabled.
 
         Args:
             diameter: Pupil diameter in meters
         """
         self.pupil.set_diameter(diameter)
+        self._update_pupil_position_with_decentration()
 
     def move_pupil_position(self, dx: float, dy: float, dz: float) -> None:
         """Move pupil position by given offset.
@@ -409,6 +425,49 @@ class Eye:
             Pupil center position in world coordinates
         """
         return self.pupil.get_center_world_coords(self.trans)
+
+    def _calculate_decentration_offset(self, current_diameter: float) -> Position3D:
+        """Calculate pupil decentration offset based on current diameter.
+
+        Args:
+            current_diameter: Current pupil diameter in meters
+
+        Returns:
+            Position3D offset for pupil decentration
+        """
+        if not self.decentration_config.enabled:
+            return Position3D(0.0, 0.0, 0.0)
+
+        # Auto-set baseline diameter if not specified
+        if self.decentration_config.baseline_diameter is None:
+            self.decentration_config.baseline_diameter = current_diameter
+
+        # Get the decentration model
+        model = PupilDecentrationRegistry.get_model(self.decentration_config.model_name)
+
+        # Calculate offset using the model
+        return model.calculate_offset(
+            current_diameter=current_diameter,
+            baseline_diameter=self.decentration_config.baseline_diameter,
+            **self.decentration_config.get_model_params(),
+        )
+
+    def _update_pupil_position_with_decentration(self) -> None:
+        """Update pupil position based on current size and decentration config."""
+        if not self.decentration_config.enabled:
+            return
+
+        # Get base position from corneal geometry
+        base_position = self.get_pupil_position()
+
+        # Calculate decentration offset
+        current_diameter = self.get_pupil_diameter()
+        offset = self._calculate_decentration_offset(current_diameter)
+
+        # Apply offset to base position
+        new_position = Position3D(base_position.x + offset.x, base_position.y + offset.y, base_position.z + offset.z)
+
+        self.pupil.pos_pupil = new_position
 
     def find_refracted_position(
         self, camera_position: Position3D, object_position: Position3D
