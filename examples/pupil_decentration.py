@@ -79,30 +79,30 @@ def main():
             eye = Eye(pupil_type="elliptical", pupil_boundary_points=100, decentration_config=config)
 
             # Create reference eye without decentration for comparison
-            eye_centered = Eye(pupil_type="elliptical", pupil_boundary_points=100)
+            ref_eye = Eye(pupil_type="elliptical", pupil_boundary_points=100)
 
             # Set pupil diameter (this will trigger decentration if enabled)
             eye.set_pupil_diameter(diameter)
-            eye_centered.set_pupil_diameter(diameter)
+            ref_eye.set_pupil_diameter(diameter)
 
             # Set same orientation for both eyes
             rest_orientation = RotationMatrix([[1, 0, 0], [0, 0, 1], [0, -1, 0]], validate_handedness=False)
             eye.set_rest_orientation(rest_orientation)
-            eye_centered.set_rest_orientation(rest_orientation)
+            ref_eye.set_rest_orientation(rest_orientation)
 
             # Position eyes and look at target
             target_point = Position3D(0, 0, 0)
             eye_position = Position3D(0, 50e-3, 0)
 
             eye.position = eye_position
-            eye_centered.position = eye_position
+            ref_eye.position = eye_position
 
             eye.look_at(target_point)
-            eye_centered.look_at(target_point)
+            ref_eye.look_at(target_point)
 
             # Get pupil boundary points
             eye_boundary = eye.pupil.get_boundary_points()
-            centered_boundary = eye_centered.pupil.get_boundary_points()
+            centered_boundary = ref_eye.pupil.get_boundary_points()
 
             # Convert to mm for plotting (4×N matrix, take x and y rows)
             eye_x = eye_boundary[0, :] * 1000  # X coordinates
@@ -118,7 +118,7 @@ def main():
 
             # Get pupil centers for comparison
             eye_center = eye.pupil.pos_pupil
-            centered_center = eye_centered.pupil.pos_pupil
+            centered_center = ref_eye.pupil.pos_pupil
 
             # Plot both pupil positions
             ax.plot(
