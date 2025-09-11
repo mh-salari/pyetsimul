@@ -378,6 +378,28 @@ class Eye:
         """
         self.pupil.set_diameter(diameter)
 
+    def move_pupil_position(self, dx: float, dy: float, dz: float) -> None:
+        """Move pupil position by given offset.
+
+        Args:
+            dx: X offset in meters
+            dy: Y offset in meters
+            dz: Z offset in meters
+        """
+        current_pos = self.pupil.pos_pupil
+        new_pos = Position3D(current_pos.x + dx, current_pos.y + dy, current_pos.z + dz)
+        self.pupil.pos_pupil = new_pos
+
+    def set_pupil_position(self, x: float, y: float, z: float) -> None:
+        """Set pupil position to absolute coordinates.
+
+        Args:
+            x: Absolute X position in meters
+            y: Absolute Y position in meters
+            z: Absolute Z position in meters
+        """
+        self.pupil.pos_pupil = Position3D(x, y, z)
+
     def get_pupil_center_in_world(self) -> Position3D:
         """Get pupil center in world coordinates.
 
