@@ -39,20 +39,30 @@ uv run python examples/realistic_pupil.py
 
 ### Using pip (Alternative)
 
-1. Clone the repository:
+**Note:** Create a virtual environment first:
+```bash
+python3 -m venv pyetsimul_env
+source pyetsimul_env/bin/activate      # On Linux/macOS
+# or: pyetsimul_env\Scripts\activate   # On Windows
+```
+
+**Direct from GitHub (easiest):**
+```bash
+python3 -m pip install git+https://github.com/mh-salari/pyetsimul.git
+```
+
+**From local clone:**
 ```bash
 git clone https://github.com/mh-salari/pyetsimul.git
 cd pyetsimul
+python3 -m pip install .
 ```
 
-2. Install in development mode:
+**For development:**
 ```bash
-pip install -e .
-```
-
-Or install from PyPI (when published):
-```bash
-pip install pyetsimul
+git clone https://github.com/mh-salari/pyetsimul.git
+cd pyetsimul
+python3 -m pip install -e .
 ```
 
 ## Citation
