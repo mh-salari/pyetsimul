@@ -1,13 +1,14 @@
 """Unit tests for Camera.take_image method."""
 
 import numpy as np
-from pyetsimul.core.eye import Eye
+
 from pyetsimul.core.camera import Camera
+from pyetsimul.core.eye import Eye
 from pyetsimul.core.light import Light
 from pyetsimul.types import CameraImage, Point2D, Position3D
 
 
-def test_camera_take_image_with_refraction():
+def test_camera_take_image_with_refraction() -> None:
     """Test camera take_image with refraction using actual MATLAB reference values."""
     # Create eye and camera setup (matching MATLAB test)
     e = Eye(fovea_displacement=False)
@@ -44,22 +45,20 @@ def test_camera_take_image_with_refraction():
         Point2D(8.5048679096, 11.8448574197),  # Light 2 CR
     ]
     expected_pc = Point2D(0.0, 0.0)  # MATLAB: [-0.0000, 0.0000]
-    expected_pupil_points = np.array(
-        [
-            [18.2201323223, 0.0000],
-            [17.3283755729, -5.6303305273],
-            [14.7403966885, -10.7095250739],
-            [10.7095250739, -14.7403966885],
-            [5.6303305273, -17.3283755729],
-        ]
-    ).T  # Transpose to match 2xM format
+    expected_pupil_points = np.array([
+        [18.2201323223, 0.0000],
+        [17.3283755729, -5.6303305273],
+        [14.7403966885, -10.7095250739],
+        [10.7095250739, -14.7403966885],
+        [5.6303305273, -17.3283755729],
+    ]).T  # Transpose to match 2xM format
 
     # Using a slightly larger tolerance for cross-language floating point comparisons
     tolerance = 1e-5
 
     # Test corneal reflexes
     assert len(camimg.corneal_reflections) == 2, "Should have 2 corneal reflexes"
-    for i, (expected, actual) in enumerate(zip(expected_cr, camimg.corneal_reflections)):
+    for i, (expected, actual) in enumerate(zip(expected_cr, camimg.corneal_reflections, strict=False)):
         assert actual is not None, f"Light {i + 1} CR should be visible"
         actual.assert_close(expected, atol=tolerance, msg=f"Light {i + 1} CR mismatch")
 
@@ -85,7 +84,7 @@ def test_camera_take_image_with_refraction():
         )
 
 
-def test_camera_take_image_without_refraction():
+def test_camera_take_image_without_refraction() -> None:
     """Test camera take_image without refraction using actual MATLAB reference values."""
     # Same setup as refraction test
     e = Eye(fovea_displacement=False)
@@ -114,21 +113,19 @@ def test_camera_take_image_without_refraction():
     # Correct MATLAB reference values from the provided script output
     expected_cr = [Point2D(8.0091797595, 1.8590841799), Point2D(8.5048679096, 11.8448574197)]
     expected_pc_simple = Point2D(0.0, 0.0)
-    expected_pupil_points_simple = np.array(
-        [
-            [16.3103041184, 0.0000],
-            [15.5120210145, -5.0401611560],
-            [13.1953132152, -9.5869562212],
-            [9.5869562212, -13.1953132152],
-            [5.0401611560, -15.5120210145],
-        ]
-    ).T  # Transpose to match 2xM format
+    expected_pupil_points_simple = np.array([
+        [16.3103041184, 0.0000],
+        [15.5120210145, -5.0401611560],
+        [13.1953132152, -9.5869562212],
+        [9.5869562212, -13.1953132152],
+        [5.0401611560, -15.5120210145],
+    ]).T  # Transpose to match 2xM format
 
     tolerance = 1e-5
 
     # Test that corneal reflexes are the same
     assert len(camimg.corneal_reflections) == 2
-    for i, (expected, actual) in enumerate(zip(expected_cr, camimg.corneal_reflections)):
+    for i, (expected, actual) in enumerate(zip(expected_cr, camimg.corneal_reflections, strict=False)):
         assert actual is not None, f"Light {i + 1} CR should be visible"
         actual.assert_close(expected, atol=tolerance, msg=f"Light {i + 1} CR mismatch in non-refraction test")
 
@@ -155,7 +152,7 @@ def test_camera_take_image_without_refraction():
         )
 
 
-def test_camera_take_image_output_structure():
+def test_camera_take_image_output_structure() -> None:
     """Test that camera take_image returns correct output structure."""
     # Minimal setup
     e = Eye(fovea_displacement=False)

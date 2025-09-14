@@ -1,11 +1,12 @@
 """Unit tests for find_refraction_conic function."""
 
 import numpy as np
-from pyetsimul.optics.refractions import find_refraction_sphere, find_refraction_conic
-from pyetsimul.types import Position3D, Point3D
+
+from pyetsimul.optics.refractions import find_refraction_conic, find_refraction_sphere
+from pyetsimul.types import Point3D, Position3D
 
 
-def test_conic_equals_sphere_refraction():
+def test_conic_equals_sphere_refraction() -> None:
     """Test conic refraction with k=0 gives sphere behavior."""
     # Realistic eye tracking geometry based on example.py
     radius = 7.98e-3  # Realistic corneal radius
@@ -34,7 +35,7 @@ def test_conic_equals_sphere_refraction():
     sphere_result.assert_close(conic_result, rtol=1e-12, atol=1e-14)
 
 
-def test_conic_refraction_basic():
+def test_conic_refraction_basic() -> None:
     """Test basic conic refraction scenario."""
     # Realistic conic parameters
     conic_center = Position3D(0.0, 0.0, 0.0)  # Conic center at origin
@@ -60,7 +61,7 @@ def test_conic_refraction_basic():
     assert np.all(np.isfinite(intersection_array))
 
 
-def test_different_k_values():
+def test_different_k_values() -> None:
     """Test that different k values give different refraction results."""
     conic_center = Position3D(0.0, 0.0, 0.0)  # Conic center at origin
     r_param = 7.98e-3  # Radius parameter
@@ -94,7 +95,7 @@ def test_different_k_values():
     assert not np.allclose(np.array(result_oblate), np.array(result_sphere), rtol=1e-10)
 
 
-def test_conic_output_properties():
+def test_conic_output_properties() -> None:
     """Test that conic refraction output has correct properties."""
     conic_center = Position3D(0.0, 0.0, 0.0)  # Conic center at origin
     r_param = 7.98e-3  # Radius parameter
@@ -117,7 +118,7 @@ def test_conic_output_properties():
     assert np.all(np.isfinite(intersection_array))
 
 
-def test_realistic_corneal_parameters():
+def test_realistic_corneal_parameters() -> None:
     """Test with realistic corneal parameters."""
     # Realistic corneal geometry
     conic_center = Position3D(0.0, 0.0, 0.0)  # Conic center at origin

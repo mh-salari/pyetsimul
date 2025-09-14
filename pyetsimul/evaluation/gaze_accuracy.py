@@ -1,13 +1,14 @@
 """Generic gaze accuracy evaluation that works with any pre-generated dataset."""
 
-import numpy as np
-from typing import Any, Optional, cast
 from dataclasses import dataclass
+from typing import Any, cast
+
+import numpy as np
 from tqdm import tqdm
 
 from ..core import EyeTracker
-from ..types import Position3D, Point2D, Point3D, EyeMeasurement, PupilData, CameraImage
 from ..geometry.conversions import calculate_angular_error_degrees
+from ..types import CameraImage, EyeMeasurement, Point2D, Point3D, Position3D, PupilData
 from .analysis_utils import _compute_stats
 
 
@@ -17,7 +18,7 @@ class GazeAccuracyResult:
 
     errors_3d: list[float]  # 3D distances in meters
     errors_angular: list[float]  # Angular errors in degrees
-    predicted_points: list[Optional[Position3D]]  # Predicted gaze points
+    predicted_points: list[Position3D | None]  # Predicted gaze points
     ground_truth_points: list[Position3D]  # Ground truth gaze points
     observer_positions: list[Position3D]  # Observer eye positions
 
@@ -27,9 +28,9 @@ class GazeAccuracyResult:
     successful_predictions: int
 
     # For plotting
-    variation: Optional[Any] = None  # Store the parameter variation for plotting
+    variation: Any | None = None  # Store the parameter variation for plotting
 
-    def pprint(self, title: str = "Gaze Accuracy Results"):
+    def pprint(self, title: str = "Gaze Accuracy Results") -> None:
         """Print formatted results matching existing style."""
         print(f"\n{title}")
         print("-" * len(title))
@@ -77,12 +78,13 @@ def evaluate_gaze_accuracy(
 
     Returns:
         GazeAccuracyResult with errors and statistics
+
     """
     if not eye_tracker.algorithm_state.is_calibrated:
         raise ValueError("Eye tracker must be calibrated before evaluation")
 
     # Extract dataset components
-    camera_data, measurements, variation, camera_resolution = _extract_dataset_components(dataset, camera_id, eye_id)
+    _, measurements, variation, camera_resolution = _extract_dataset_components(dataset, camera_id, eye_id)
 
     # Process all measurements
     (errors_3d, errors_angular, predicted_points, ground_truth_points, observer_positions, successful_predictions) = (
@@ -105,14 +107,16 @@ def evaluate_gaze_accuracy(
     )
 
 
-def _extract_dataset_components(dataset: dict[str, Any], camera_id: int, eye_id: int):
+def _extract_dataset_components(
+    dataset: dict[str, Any], camera_id: int, eye_id: int
+) -> tuple[dict, list[dict], dict | None, Point2D]:
     """Extract camera data, measurements, and variation from dataset."""
     camera_data = dataset["data"]["cameras"][camera_id]
     eye_data = camera_data["eyes"][eye_id]
     measurements = eye_data["measurements"]
 
     # Extract variation information for plotting (if available)
-    variation = dataset.get("parameter_variation", None)
+    variation = dataset.get("parameter_variation")
 
     # Extract camera resolution from dataset
     camera_params = dataset["data"]["cameras"][camera_id]["camera_parameters"]
@@ -123,7 +127,7 @@ def _extract_dataset_components(dataset: dict[str, Any], camera_id: int, eye_id:
 
 def _process_measurements(
     eye_tracker: EyeTracker, measurements: list[dict], camera_resolution: Point2D, description: str
-):
+) -> tuple[list[float], list[float], list[Position3D | None], list[Point3D], list[Position3D], int]:
     """Process all measurements and calculate errors."""
     errors_3d = []
     errors_angular = []
@@ -137,8 +141,8 @@ def _process_measurements(
         ground_truth, eye_position = _extract_ground_truth_data(measurement)
         if ground_truth is None:
             continue
-        ground_truth = cast(Point3D, ground_truth)
-        eye_position = cast(Position3D, eye_position)
+        ground_truth = cast("Point3D", ground_truth)
+        eye_position = cast("Position3D", eye_position)
 
         ground_truth_points.append(ground_truth)
         observer_positions.append(eye_position)
@@ -157,7 +161,7 @@ def _process_measurements(
     return errors_3d, errors_angular, predicted_points, ground_truth_points, observer_positions, successful_predictions
 
 
-def _extract_ground_truth_data(measurement: dict):
+def _extract_ground_truth_data(measurement: dict) -> tuple[Point3D | None, Position3D | None]:
     """Extract ground truth gaze target and eye position from measurement."""
     if measurement["gaze_target"] is None:
         return None, None
@@ -174,7 +178,9 @@ def _extract_ground_truth_data(measurement: dict):
     return ground_truth, eye_position
 
 
-def _process_single_measurement(measurement: dict, camera_resolution: Point2D, eye_tracker: EyeTracker):
+def _process_single_measurement(
+    measurement: dict, camera_resolution: Point2D, eye_tracker: EyeTracker
+) -> Position3D | None:
     """Process a single measurement and return gaze prediction."""
     # Extract measurement data
     pupil_center = measurement["pupil_center"]
@@ -188,7 +194,7 @@ def _process_single_measurement(measurement: dict, camera_resolution: Point2D, e
     boundary_points = None
     if pupil_boundary:
         # Convert to numpy array format expected by PupilData
-        boundary_points = np.array([[p[0], p[1]] for p in pupil_boundary]).T  # 2×M matrix
+        boundary_points = np.array([[p[0], p[1]] for p in pupil_boundary]).T  # 2xM matrix
 
     pupil_data = PupilData(center=Point2D(pupil_center[0], pupil_center[1]), boundary_points=boundary_points)
 
@@ -208,13 +214,13 @@ def _process_single_measurement(measurement: dict, camera_resolution: Point2D, e
 
 
 def _update_results_with_prediction(
-    prediction,
+    prediction: Position3D | None,
     ground_truth: Point3D,
     eye_position: Position3D,
     predicted_points: list,
     errors_3d: list,
     errors_angular: list,
-):
+) -> None:
     """Update result lists with prediction outcome."""
     if prediction is not None and prediction.gaze_point is not None:
         predicted_point = prediction.gaze_point

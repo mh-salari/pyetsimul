@@ -99,7 +99,7 @@ def pprint_hardware_defaults() -> None:
     """Print hardware default values in formatted table."""
     print("Camera:")
     print(f"  Focal Length: {CameraDefaults.FOCAL_LENGTH:.0f} pixels")
-    print(f"  Resolution: {CameraDefaults.RESOLUTION_WIDTH}×{CameraDefaults.RESOLUTION_HEIGHT}")
+    print(f"  Resolution: {CameraDefaults.RESOLUTION_WIDTH}x{CameraDefaults.RESOLUTION_HEIGHT}")
     print(f"  Principal Point: ({CameraDefaults.PRINCIPAL_POINT_X:.0f}, {CameraDefaults.PRINCIPAL_POINT_Y:.0f})")
 
     print("Pupil:")

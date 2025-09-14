@@ -7,21 +7,22 @@ This module defines:
 """
 
 from pathlib import Path
-from pyetsimul.core import Eye, Camera, Light
-from pyetsimul.types import Position3D, RotationMatrix
+
+from pyetsimul.core import Camera, Eye, Light
 from pyetsimul.simulation import (
+    AngleKappaVariation,
+    ComposedVariation,
+    CorneaRadiusVariation,
+    CorneaThicknessVariation,
     ExperimentConfig,
     EyePositionVariation,
     PupilSizeVariation,
     TargetPositionVariation,
-    AngleKappaVariation,
-    CorneaRadiusVariation,
-    CorneaThicknessVariation,
-    ComposedVariation,
 )
+from pyetsimul.types import Position3D, RotationMatrix
 
 
-def create_experiment_config(name):
+def create_experiment_config(name: str) -> ExperimentConfig:
     """Create experiment config with standard hardware setup."""
     # Standard eye configuration
     eye = Eye()

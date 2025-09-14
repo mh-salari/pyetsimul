@@ -3,12 +3,12 @@
 Demonstrates eye parameter comparison and 3D anatomical visualization for different corneal radii.
 """
 
-from pyetsimul.core import Eye
-from pyetsimul.core.cornea import SphericalCornea, ConicCornea
-from pyetsimul.visualization import plot_eye_anatomy
-from pyetsimul.types import Position3D
 import matplotlib.pyplot as plt
 
+from pyetsimul.core import Eye
+from pyetsimul.core.cornea import ConicCornea, SphericalCornea
+from pyetsimul.types import Position3D
+from pyetsimul.visualization import plot_eye_anatomy
 
 # Define target point for consistent gaze direction
 # Use Z-forward target to keep eyelid properly oriented in the plot view

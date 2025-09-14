@@ -1,12 +1,20 @@
-"""
-This module provides dataclasses for algorithm configurations and results
-to replace dictionary-based state management.
+"""Dataclasses for algorithm configurations and results.
+
+Provides structured dataclasses to replace dictionary-based state management
+for eye tracking algorithms and their results.
 """
 
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Optional, Any, Callable
+from itertools import starmap
+from typing import TYPE_CHECKING, Any
+
 import numpy as np
+
 from .geometry import Point3D
+
+if TYPE_CHECKING:
+    from ..geometry.plane_detection import PlaneInfo
 
 
 @dataclass
@@ -24,6 +32,7 @@ class PolynomialDescriptor:
         Different features for X,Y:
             terms=[["x*y", "x", "1"], ["y", "1"]]
             orders=[[[1,1], 1, 0], [1, 0]]
+
     """
 
     name: str
@@ -31,17 +40,18 @@ class PolynomialDescriptor:
     terms: list[str] | list[list[str]]
     orders: list[int | list[int]] | list[list[int | list[int]]]
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
+        """Validate polynomial descriptor after initialization."""
         if len(self.terms) != len(self.orders):
             raise ValueError("terms and orders must have same length")
         self.orders = self._normalize_orders()
 
-    def _normalize_orders(self):
+    def _normalize_orders(self) -> list[list[int]]:
         """Convert simplified orders format to standard [x_order, y_order] format."""
 
-        def _normalize_orders_impl(orders, terms):
+        def _normalize_orders_impl(orders: list[Any], terms: list[str]) -> list[list[int]]:
             normalized = []
-            for order, term in zip(orders, terms):
+            for order, term in zip(orders, terms, strict=False):
                 if isinstance(order, int):
                     if term == "x":
                         normalized.append([order, 0])
@@ -60,9 +70,8 @@ class PolynomialDescriptor:
             return normalized
 
         if self.uses_different_xy_features:
-            return [_normalize_orders_impl(o, t) for o, t in zip(self.orders, self.terms)]
-        else:
-            return _normalize_orders_impl(self.orders, self.terms)
+            return list(starmap(_normalize_orders_impl, zip(self.orders, self.terms, strict=False)))
+        return _normalize_orders_impl(self.orders, self.terms)
 
     @property
     def uses_different_xy_features(self) -> bool:
@@ -81,18 +90,19 @@ class PolynomialDescriptor:
         if self.uses_different_xy_features:
             # For different features: return total number of features across all coordinates
             return sum(len(coord_terms) for coord_terms in self.terms)
-        else:
-            # For same features: return total number of shared features
-            return len(self.terms)
+        # For same features: return total number of shared features
+        return len(self.terms)
 
     def get_term_descriptions(self) -> list[str] | list[list[str]]:
         """Get human-readable term descriptions for display."""
         if self.uses_different_xy_features:
-            return [[self._format_term(order) for order in coord_orders] for coord_orders in self.orders]
-        else:
-            return [self._format_term(order) for order in self.orders]
+            return [
+                [PolynomialDescriptor._format_term(order) for order in coord_orders] for coord_orders in self.orders
+            ]
+        return [PolynomialDescriptor._format_term(order) for order in self.orders]
 
-    def _format_term(self, order: list[int]) -> str:
+    @staticmethod
+    def _format_term(order: list[int]) -> str:
         """Format a single term with mathematical notation."""
         if len(order) != 2:
             raise ValueError(f"Invalid order format: {order}. Expected [x_order, y_order].")
@@ -106,13 +116,14 @@ class PolynomialDescriptor:
         # Build mathematical notation with Unicode superscripts
         parts = []
         if x_ord > 0:
-            parts.append(f"x{self._superscript(x_ord)}" if x_ord > 1 else "x")
+            parts.append(f"x{PolynomialDescriptor._superscript(x_ord)}" if x_ord > 1 else "x")
         if y_ord > 0:
-            parts.append(f"y{self._superscript(y_ord)}" if y_ord > 1 else "y")
+            parts.append(f"y{PolynomialDescriptor._superscript(y_ord)}" if y_ord > 1 else "y")
 
         return "".join(parts) if parts else "1"
 
-    def _superscript(self, n: int) -> str:
+    @staticmethod
+    def _superscript(n: int) -> str:
         """Convert number to Unicode superscript."""
         superscripts = {
             "0": "⁰",
@@ -132,16 +143,16 @@ class PolynomialDescriptor:
         """Generate polynomial function from descriptor."""
         if self.uses_different_xy_features:
             return self._generate_different_xy_function()
-        else:
-            return self._generate_same_xy_function()
+        return self._generate_same_xy_function()
 
     def _generate_same_xy_function(self) -> Callable:
         """Generate function for polynomials using same features for X and Y."""
 
         def polynomial_func(x: float, y: float) -> "PolynomialFeatures":
-            features = np.array(
-                [self._evaluate_term(term, order, x, y) for term, order in zip(self.terms, self.orders)]
-            )
+            features = np.array([
+                PolynomialDescriptor._evaluate_term(term, order, x, y)
+                for term, order in zip(self.terms, self.orders, strict=False)
+            ])
             return PolynomialFeatures(features=features, polynomial_name=self.name)
 
         return polynomial_func
@@ -151,10 +162,11 @@ class PolynomialDescriptor:
 
         def polynomial_func(x: float, y: float) -> "PolynomialFeatures":
             coord_features = []
-            for coord_terms, coord_orders in zip(self.terms, self.orders):
-                coord_vals = np.array(
-                    [self._evaluate_term(term, order, x, y) for term, order in zip(coord_terms, coord_orders)]
-                )
+            for coord_terms, coord_orders in zip(self.terms, self.orders, strict=False):
+                coord_vals = np.array([
+                    PolynomialDescriptor._evaluate_term(term, order, x, y)
+                    for term, order in zip(coord_terms, coord_orders, strict=False)
+                ])
                 coord_features.append(coord_vals)
             # Handle case where coordinates have different numbers of features
             if all(len(coord_features[0]) == len(cf) for cf in coord_features):
@@ -166,7 +178,8 @@ class PolynomialDescriptor:
 
         return polynomial_func
 
-    def _evaluate_term(self, term: str, order: list[int], x: float, y: float) -> float:
+    @staticmethod
+    def _evaluate_term(term: str, order: list[int], x: float, y: float) -> float:
         """Evaluate a single polynomial term."""
         if term == "1":
             return 1.0
@@ -187,8 +200,8 @@ class GazePrediction:
     gaze_point: Point3D  # Predicted gaze point in world coordinates
     confidence: float  # Confidence score [0, 1]
     algorithm_name: str  # Name of algorithm used
-    processing_time: Optional[float] = None  # Processing time in seconds
-    intermediate_results: Optional[dict[str, Any]] = None  # Algorithm-specific data
+    processing_time: float | None = None  # Processing time in seconds
+    intermediate_results: dict[str, Any] | None = None  # Algorithm-specific data
 
     @property
     def is_reliable(self) -> bool:
@@ -201,8 +214,8 @@ class AlgorithmState:
     """Base class for algorithm state management."""
 
     is_calibrated: bool = False
-    calibration_error: Optional[float] = None  # RMS calibration error
-    last_update: Optional[float] = None  # Timestamp of last state update
+    calibration_error: float | None = None  # RMS calibration error
+    last_update: float | None = None  # Timestamp of last state update
 
     def reset(self) -> None:
         """Reset algorithm to uncalibrated state."""
@@ -237,12 +250,13 @@ class PolynomialFeatures:
         """Total number of features."""
         if self.uses_same_xy_features:
             return len(self.features)
-        elif self.features.dtype == object:
+        if self.features.dtype == object:
             return sum(len(coord_features) for coord_features in self.features)
-        else:
-            return self.features.shape[0] * self.features.shape[1]
+        return self.features.shape[0] * self.features.shape[1]
 
-    def predict(self, x_coefficients: np.ndarray, y_coefficients: np.ndarray, plane_info=None) -> "Point3D":
+    def predict(
+        self, x_coefficients: np.ndarray, y_coefficients: np.ndarray, plane_info: "PlaneInfo | None" = None
+    ) -> "Point3D":
         """Predict gaze coordinates using this polynomial's features.
 
         Args:
@@ -252,10 +266,11 @@ class PolynomialFeatures:
 
         Returns:
             Point3D: Predicted gaze point in 3D coordinates
+
         """
         if self.uses_same_xy_features:
-            A = np.vstack([x_coefficients, y_coefficients])
-            gaze_2d = A @ self.features
+            coefficient_matrix = np.vstack([x_coefficients, y_coefficients])
+            gaze_2d = coefficient_matrix @ self.features
         else:
             coord1_features, coord2_features = self._extract_coordinate_features()
             gaze_2d = np.array([x_coefficients @ coord1_features, y_coefficients @ coord2_features])
@@ -269,17 +284,16 @@ class PolynomialFeatures:
         """Extract features for each coordinate, handling both array types."""
         if self.features.dtype == object:
             return self.features[0], self.features[1]
-        else:
-            return self.features[0, :], self.features[1, :]
+        return self.features[0, :], self.features[1, :]
 
 
 @dataclass
 class PolynomialGazeModelState(AlgorithmState):
     """State for polynomial gaze model algorithm."""
 
-    x_coefficients: Optional[np.ndarray] = None  # Polynomial coefficients for x
-    y_coefficients: Optional[np.ndarray] = None  # Polynomial coefficients for y
-    input_normalization: Optional[dict[str, float]] = None  # Input scaling parameters
+    x_coefficients: np.ndarray | None = None  # Polynomial coefficients for x
+    y_coefficients: np.ndarray | None = None  # Polynomial coefficients for y
+    input_normalization: dict[str, float] | None = None  # Input scaling parameters
 
     def serialize(self) -> dict:
         """Serialize polynomial gaze model state to dictionary."""

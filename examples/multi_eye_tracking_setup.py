@@ -1,13 +1,13 @@
-#!/usr/bin/env python3
-"""
-Realistic eye tracking setup example.
+"""Realistic eye tracking setup example.
+
 - Both eyes looking at the same point
 - Two cameras 5cm apart horizontally (left-right)
 - Eyes positioned above cameras (realistic screen-based setup)
 """
 
 import matplotlib.pyplot as plt
-from pyetsimul.core import Eye, Camera, Light
+
+from pyetsimul.core import Camera, Eye, Light
 from pyetsimul.types import Position3D, RotationMatrix
 from pyetsimul.visualization import plot_setup_and_camera_view
 
@@ -49,13 +49,11 @@ eye_center2 = Position3D(
 
 
 # Define world coordinate frame (right-handed system)
-world_frame = RotationMatrix(
-    [
-        [1, 0, 0],  # World +X axis
-        [0, 1, 0],  # World +Y axis
-        [0, 0, 1],  # World +Z axis
-    ]
-)
+world_frame = RotationMatrix([
+    [1, 0, 0],  # World +X axis
+    [0, 1, 0],  # World +Y axis
+    [0, 0, 1],  # World +Z axis
+])
 
 focal_length = 1500
 # Create two cameras 5cm apart horizontally, positioned at screen level

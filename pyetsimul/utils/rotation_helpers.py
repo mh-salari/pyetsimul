@@ -1,7 +1,9 @@
 """Helper utilities for working with rotation matrices."""
 
-import numpy as np
 import warnings
+
+import numpy as np
+
 from ..types import RotationMatrix
 
 
@@ -15,6 +17,7 @@ def _calculate_optical_axis_direction(rotation_matrix: RotationMatrix) -> np.nda
 
     Returns:
         3D direction vector in world coordinates
+
     """
     optical_axis_local = np.array([0, 0, -1])
     return rotation_matrix @ optical_axis_local
@@ -38,6 +41,7 @@ def get_facing_direction(rotation_matrix: RotationMatrix) -> str:
         >>> desc = get_facing_direction(eye_matrix)
         >>> print(f"Eye is looking along {desc}")
         Eye is looking along -Y axis
+
     """
     # Transform optical axis to world coordinates
     direction = _calculate_optical_axis_direction(rotation_matrix)
@@ -112,6 +116,7 @@ def validate_eye_camera_setup(eye_rest_orientation: RotationMatrix, camera_orien
 
     Returns:
         True if setup is valid, False otherwise. Issues warnings for problems.
+
     """
     # Get facing directions
     eye_direction = _calculate_optical_axis_direction(eye_rest_orientation)
@@ -126,15 +131,17 @@ def validate_eye_camera_setup(eye_rest_orientation: RotationMatrix, camera_orien
             f"Eye:    {get_facing_direction(eye_rest_orientation)}\n"
             f"Camera: {get_facing_direction(camera_orientation)}",
             UserWarning,
+            stacklevel=2,
         )
         return False
-    elif abs(dot_product) < 0.1:  # Nearly perpendicular
+    if abs(dot_product) < 0.1:  # Nearly perpendicular
         warnings.warn(
             f"Eye and camera are facing perpendicular directions.\n"
             f"Eye:    {get_facing_direction(eye_rest_orientation)}\n"
             f"Camera: {get_facing_direction(camera_orientation)}\n"
             f"Consider adjusting the setup for better eye tracking.",
             UserWarning,
+            stacklevel=2,
         )
         return False
 

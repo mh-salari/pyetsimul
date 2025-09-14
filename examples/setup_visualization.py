@@ -4,12 +4,12 @@ Demonstrates real-time eye tracking setup visualization.
 Shows 3D view of eye, camera, lights, and target with camera view of corneal reflections.
 """
 
-from pyetsimul.core import Eye, Camera, Light
-from pyetsimul.types import Position3D, Point3D, RotationMatrix
+from pyetsimul.core import Camera, Eye, Light
+from pyetsimul.types import Point3D, Position3D, RotationMatrix
 from pyetsimul.visualization import plot_interactive_setup
 
 
-def run_setup_demo():
+def run_setup_demo() -> None:
     """Run setup visualization"""
     # Setup eye
     e_base = Eye(eyelid_enabled=True)

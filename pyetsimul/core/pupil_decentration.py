@@ -5,9 +5,11 @@ allowing users to register custom decentration profiles.
 """
 
 from abc import ABC, abstractmethod
-from typing import Dict, Optional, Callable
+from collections.abc import Callable
 from dataclasses import dataclass
+
 import numpy as np
+
 from ..types import Position3D
 
 
@@ -18,10 +20,9 @@ class PupilDecentrationModel(ABC):
     @abstractmethod
     def name(self) -> str:
         """Model name for registry."""
-        pass
 
     @abstractmethod
-    def calculate_offset(self, current_diameter: float, baseline_diameter: float, **kwargs) -> Position3D:
+    def calculate_offset(self, current_diameter: float, baseline_diameter: float, **kwargs: float) -> Position3D:
         """Calculate decentration offset based on pupil diameter change.
 
         Args:
@@ -31,14 +32,14 @@ class PupilDecentrationModel(ABC):
 
         Returns:
             Position3D offset for pupil decentration
+
         """
-        pass
 
 
 class PupilDecentrationRegistry:
     """Registry for pupil decentration models."""
 
-    _models: Dict[str, PupilDecentrationModel] = None
+    _models: dict[str, PupilDecentrationModel] = None
 
     @classmethod
     def _ensure_models_dict(cls) -> None:
@@ -52,6 +53,7 @@ class PupilDecentrationRegistry:
 
         Args:
             model: PupilDecentrationModel instance to register
+
         """
         cls._ensure_models_dict()
         cls._models[model.name] = model
@@ -68,6 +70,7 @@ class PupilDecentrationRegistry:
 
         Raises:
             ValueError: If model name not found
+
         """
         cls._ensure_models_dict()
         if name not in cls._models:
@@ -80,6 +83,7 @@ class PupilDecentrationRegistry:
 
         Returns:
             List of registered model names
+
         """
         cls._ensure_models_dict()
         return list(cls._models.keys())
@@ -107,9 +111,10 @@ class WildenmannModel(PupilDecentrationModel):
 
     @property
     def name(self) -> str:
+        """Get the decentration model name."""
         return "wildenmann_2013"
 
-    def calculate_offset(
+    def calculate_offset(  # noqa: PLR6301
         self, current_diameter: float, baseline_diameter: float, x_coeff: float, y_coeff: float
     ) -> Position3D:
         """Calculate Wildenmann linear decentration offset.
@@ -122,6 +127,7 @@ class WildenmannModel(PupilDecentrationModel):
 
         Returns:
             Position3D offset for pupil decentration
+
         """
         if current_diameter <= 0:
             raise ValueError(f"Current pupil diameter must be positive, got {current_diameter}")
@@ -144,21 +150,22 @@ class PupilDecentrationConfig:
         model_name: Name of registered decentration model to use
         baseline_diameter: Diameter at which decentration is zero (auto-set if None)
         **model_params: Model-specific parameters passed to calculate_offset()
+
     """
 
     enabled: bool = False
     model_name: str = "wildenmann_2013"
-    baseline_diameter: Optional[float] = None  # Auto-set to current diameter if None
+    baseline_diameter: float | None = None  # Auto-set to current diameter if None
 
     # Common parameters for built-in models
-    x_coeff: Optional[float] = None
-    y_coeff: Optional[float] = None
+    x_coeff: float | None = None
+    y_coeff: float | None = None
 
     # Individual variation from Wildenmann & Schaeffel (2013): 0.044-0.179 mm per mm
     use_individual_variation: bool = False
-    individual_seed: Optional[int] = None  # Seed for generating individual profile
+    individual_seed: int | None = None  # Seed for generating individual profile
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Set coefficients: individual variation or standard model defaults."""
         if self.use_individual_variation and self.x_coeff is None and self.y_coeff is None:
             # Generate individual coefficients ONCE when config is created
@@ -191,6 +198,7 @@ def register_custom_decentration(name: str, calculation_func: Callable) -> None:
             return Position3D(x_offset, y_offset, 0.0)
 
         register_custom_decentration("my_lab_model", my_custom_model)
+
     """
 
     class CustomModel(PupilDecentrationModel):
@@ -198,7 +206,7 @@ def register_custom_decentration(name: str, calculation_func: Callable) -> None:
         def name(self) -> str:
             return name
 
-        def calculate_offset(self, current_diameter: float, baseline_diameter: float, **kwargs) -> Position3D:
+        def calculate_offset(self, current_diameter: float, baseline_diameter: float, **kwargs: float) -> Position3D:  # noqa: PLR6301
             return calculation_func(current_diameter, baseline_diameter, **kwargs)
 
     PupilDecentrationRegistry.register(CustomModel())

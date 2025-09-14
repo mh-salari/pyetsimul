@@ -1,12 +1,13 @@
 """Unit tests for Eye.point_within_cornea method."""
 
 import numpy as np
-from pyetsimul.core.eye import Eye
+
 from pyetsimul.core.cornea import SphericalCornea
+from pyetsimul.core.eye import Eye
 from pyetsimul.types.geometry import Position3D, Vector3D
 
 
-def test_basic_cases():
+def test_basic_cases() -> None:
     """Test basic cases with MATLAB reference values."""
     e = Eye()
 
@@ -36,7 +37,7 @@ def test_basic_cases():
     assert not e.point_within_cornea(p3)
 
 
-def test_boundary_cases():
+def test_boundary_cases() -> None:
     """Test boundary and edge cases with MATLAB reference values."""
     e = Eye()
 
@@ -77,7 +78,7 @@ def test_boundary_cases():
     assert e.point_within_cornea(p7)
 
 
-def test_custom_eye():
+def test_custom_eye() -> None:
     """Test with custom eye parameters and MATLAB reference values."""
     # Case 5: Custom eye with different cornea radius
     r_cornea_custom = 9e-3
@@ -93,7 +94,7 @@ def test_custom_eye():
     assert np.isclose(e5.cornea.anterior_radius, r_cornea_custom)
 
 
-def test_output_properties():
+def test_output_properties() -> None:
     """Test that output has correct properties."""
     e = Eye()
     result = e.point_within_cornea(e.cornea.get_apex_position())

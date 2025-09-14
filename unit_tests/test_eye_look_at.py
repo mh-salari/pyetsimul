@@ -2,11 +2,12 @@
 
 import numpy as np
 import numpy.testing as npt
+
 from pyetsimul.core.eye import Eye
 from pyetsimul.types import Position3D, RotationMatrix
 
 
-def test_look_at_with_foveal_displacement():
+def test_look_at_with_foveal_displacement() -> None:
     """Test look_at with foveal displacement enabled (default)."""
     e = Eye()
     target = Position3D(x=12.0, y=-7.0, z=-30.0)
@@ -31,7 +32,7 @@ def test_look_at_with_foveal_displacement():
     npt.assert_allclose(e.orientation, expected_matrix, rtol=1e-12)
 
 
-def test_look_at_with_no_foveal_displacement():
+def test_look_at_with_no_foveal_displacement() -> None:
     """Test look_at with foveal displacement disabled."""
     e = Eye(fovea_displacement=False)  # Disable foveal displacement
     target = Position3D(x=12.0, y=-7.0, z=-30.0)
@@ -56,7 +57,7 @@ def test_look_at_with_no_foveal_displacement():
     npt.assert_allclose(e.orientation, expected_matrix, rtol=1e-12)
 
 
-def test_output_properties():
+def test_output_properties() -> None:
     """Test that look_at output has correct properties."""
     e = Eye()
     target = Position3D(x=10.0, y=5.0, z=-30.0)

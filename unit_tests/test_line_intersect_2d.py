@@ -1,11 +1,12 @@
 """Unit tests for line_intersect_2d function."""
 
 import numpy as np
+
 from pyetsimul.geometry.utils import line_intersect_2d
 from pyetsimul.types import Point2D
 
 
-def test_horizontal_vertical_lines():
+def test_horizontal_vertical_lines() -> None:
     """Test intersection of horizontal and vertical lines with MATLAB reference values."""
     # Horizontal line: y = 0.5, points (0, 0.5) and (1, 0.5)
     p1 = Point2D(0.0, 0.5)
@@ -23,7 +24,7 @@ def test_horizontal_vertical_lines():
     intersection.assert_close(expected_intersection, rtol=1e-14, atol=1e-15)
 
 
-def test_non_integer_coordinates():
+def test_non_integer_coordinates() -> None:
     """Test intersection with non-integer coordinates and MATLAB reference values."""
     # Line 1: from (0.1, 0.2) to (0.9, 0.8)
     p1 = Point2D(0.1, 0.2)
@@ -41,7 +42,7 @@ def test_non_integer_coordinates():
     intersection.assert_close(expected_intersection, rtol=1e-14, atol=1e-15)
 
 
-def test_output_properties():
+def test_output_properties() -> None:
     """Test that output has correct properties."""
     # Simple intersecting lines
     p1 = Point2D(0.0, 0.0)

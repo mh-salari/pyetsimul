@@ -1,24 +1,24 @@
 """Polynomial gaze model eye tracking example using shared configuration."""
 
 import matplotlib.pyplot as plt
-
-from pyetsimul.gaze_models.polynomial import PolynomialGazeModel
-from pyetsimul.simulation import DataGenerationStrategy
-from pyetsimul.evaluation.calibration_analysis import accuracy_at_calibration_points
-from pyetsimul.evaluation.gaze_accuracy import evaluate_gaze_accuracy
-from pyetsimul.visualization.gaze_accuracy_plots import GazeAccuracyPlotter
 from config import (
-    create_experiment_config,
-    calibration_points,
-    eye_position_variation,
-    target_position_variation,
-    pupil_size_variation,
     angle_kappa_variation,
+    calibration_points,
     corneal_radius_variation,
+    create_experiment_config,
+    eye_position_variation,
+    pupil_size_variation,
+    target_position_variation,
 )
 
+from pyetsimul.evaluation.calibration_analysis import accuracy_at_calibration_points
+from pyetsimul.evaluation.gaze_accuracy import evaluate_gaze_accuracy
+from pyetsimul.gaze_models.polynomial import PolynomialGazeModel
+from pyetsimul.simulation import DataGenerationStrategy
+from pyetsimul.visualization.gaze_accuracy_plots import GazeAccuracyPlotter
 
-def main():
+
+def main() -> None:
     """Run polynomial gaze model eye tracking using shared configuration."""
     base_config = create_experiment_config("base")
 

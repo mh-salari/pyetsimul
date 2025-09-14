@@ -1,11 +1,12 @@
 """Unit tests for gaze2angle function."""
 
 import numpy as np
-from pyetsimul.geometry.conversions import gaze2angle, angle2gaze
-from pyetsimul.types import Point2D, Direction3D
+
+from pyetsimul.geometry.conversions import angle2gaze, gaze2angle
+from pyetsimul.types import Direction3D, Point2D
 
 
-def test_round_trip_conversion():
+def test_round_trip_conversion() -> None:
     """Test that gaze->angle->gaze conversion preserves the original 4D vector."""
     observer_pos = np.array([0, 0.5, 0.2, 1])
 
@@ -31,7 +32,7 @@ def test_round_trip_conversion():
         assert error < 1e-8, f"Round-trip error {error:.2e} exceeds tolerance at ({x}, {y})"
 
 
-def test_forward_gaze():
+def test_forward_gaze() -> None:
     """Test conversion of a forward-looking 4D homogeneous gaze vector."""
     forward_gaze = np.array([0, 0, -1, 0])
     angles = gaze2angle(Direction3D.from_array(forward_gaze))
@@ -42,7 +43,7 @@ def test_forward_gaze():
     np.testing.assert_allclose(forward_gaze, gaze_back_array, atol=1e-10)
 
 
-def test_side_gaze():
+def test_side_gaze() -> None:
     """Test conversion of a side-looking 4D homogeneous gaze vector."""
     right_gaze = np.array([1, 0, 0, 0])
     angles = gaze2angle(Direction3D.from_array(right_gaze))
@@ -53,7 +54,7 @@ def test_side_gaze():
     np.testing.assert_allclose(right_gaze, gaze_back_array, atol=1e-10)
 
 
-def test_grid_conversion_accuracy():
+def test_grid_conversion_accuracy() -> None:
     """Test conversion accuracy over a representative grid subset."""
     observer_pos = np.array([0, 0.5, 0.2, 1])
     tolerance = 1e-8
@@ -83,7 +84,7 @@ def test_grid_conversion_accuracy():
     assert max_error < tolerance
 
 
-def test_output_properties():
+def test_output_properties() -> None:
     """Test that outputs have correct properties."""
     gaze = np.array([0.1, 0.2, -0.9, 0])
     gaze /= np.linalg.norm(gaze)

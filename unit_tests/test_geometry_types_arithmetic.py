@@ -2,13 +2,15 @@
 
 import numpy as np
 import pytest
-from pyetsimul.types import Point2D, Point3D, Vector3D, Position3D, Direction3D
+
+from pyetsimul.types import Direction3D, Point2D, Point3D, Position3D, Vector3D
 
 
 class TestPoint2D:
     """Test Point2D arithmetic operations."""
 
-    def test_scalar_multiplication(self):
+    @staticmethod
+    def test_scalar_multiplication() -> None:
         """Test scalar multiplication with Point2D."""
         p = Point2D(2, 3)
 
@@ -26,7 +28,8 @@ class TestPoint2D:
         result4 = 2.5 * p
         assert result4 == Point2D(5.0, 7.5)
 
-    def test_numpy_scalar_multiplication(self):
+    @staticmethod
+    def test_numpy_scalar_multiplication() -> None:
         """Test numpy scalar multiplication with Point2D."""
         p = Point2D(2, 3)
 
@@ -43,7 +46,8 @@ class TestPoint2D:
         assert isinstance(result3, Point2D)
         assert result3 == Point2D(3.0, 4.5)
 
-    def test_addition_subtraction(self):
+    @staticmethod
+    def test_addition_subtraction() -> None:
         """Test addition and subtraction with Point2D."""
         p1 = Point2D(1, 2)
         p2 = Point2D(3, 4)
@@ -60,7 +64,8 @@ class TestPoint2D:
 class TestPoint3D:
     """Test Point3D arithmetic operations."""
 
-    def test_scalar_multiplication(self):
+    @staticmethod
+    def test_scalar_multiplication() -> None:
         """Test scalar multiplication with Point3D."""
         p = Point3D(1, 2, 3)
 
@@ -78,7 +83,8 @@ class TestPoint3D:
         result4 = 2.5 * p
         assert result4 == Point3D(2.5, 5.0, 7.5)
 
-    def test_numpy_scalar_multiplication(self):
+    @staticmethod
+    def test_numpy_scalar_multiplication() -> None:
         """Test numpy scalar multiplication with Point3D."""
         p = Point3D(1, 2, 3)
 
@@ -91,7 +97,8 @@ class TestPoint3D:
         assert isinstance(result2, Point3D)
         assert result2 == Point3D(3, 6, 9)
 
-    def test_point_vector_operations(self):
+    @staticmethod
+    def test_point_vector_operations() -> None:
         """Test Point3D operations with Vector3D."""
         p = Point3D(1, 2, 3)
         v = Vector3D(4, 5, 6)
@@ -111,7 +118,8 @@ class TestPoint3D:
 class TestVector3D:
     """Test Vector3D arithmetic operations."""
 
-    def test_scalar_multiplication(self):
+    @staticmethod
+    def test_scalar_multiplication() -> None:
         """Test scalar multiplication with Vector3D."""
         v = Vector3D(1, 2, 3)
 
@@ -122,7 +130,8 @@ class TestVector3D:
         result2 = 5 * v
         assert result2 == Vector3D(5, 10, 15)
 
-    def test_numpy_scalar_multiplication(self):
+    @staticmethod
+    def test_numpy_scalar_multiplication() -> None:
         """Test numpy scalar multiplication with Vector3D."""
         v = Vector3D(1, 2, 3)
 
@@ -135,7 +144,8 @@ class TestVector3D:
         assert isinstance(result2, Vector3D)
         assert result2 == Vector3D(2, 4, 6)
 
-    def test_vector_arithmetic(self):
+    @staticmethod
+    def test_vector_arithmetic() -> None:
         """Test vector addition and subtraction."""
         v1 = Vector3D(1, 2, 3)
         v2 = Vector3D(4, 5, 6)
@@ -148,7 +158,8 @@ class TestVector3D:
         result_sub = v2 - v1
         assert result_sub == Vector3D(3, 3, 3)
 
-    def test_dot_product(self):
+    @staticmethod
+    def test_dot_product() -> None:
         """Test dot product."""
         v1 = Vector3D(1, 2, 3)
         v2 = Vector3D(4, 5, 6)
@@ -156,7 +167,8 @@ class TestVector3D:
         dot_result = v1.dot(v2)
         assert dot_result == 32  # 1*4 + 2*5 + 3*6 = 32
 
-    def test_cross_product(self):
+    @staticmethod
+    def test_cross_product() -> None:
         """Test cross product."""
         v1 = Vector3D(1, 0, 0)
         v2 = Vector3D(0, 1, 0)
@@ -164,7 +176,8 @@ class TestVector3D:
         cross_result = v1.cross(v2)
         assert cross_result == Vector3D(0, 0, 1)
 
-    def test_magnitude_and_normalize(self):
+    @staticmethod
+    def test_magnitude_and_normalize() -> None:
         """Test magnitude and normalization."""
         v = Vector3D(3, 4, 0)
 
@@ -181,7 +194,8 @@ class TestVector3D:
 class TestPosition3D:
     """Test Position3D arithmetic operations."""
 
-    def test_scalar_multiplication(self):
+    @staticmethod
+    def test_scalar_multiplication() -> None:
         """Test scalar multiplication with Position3D."""
         pos = Position3D(1, 2, 3)
 
@@ -192,7 +206,8 @@ class TestPosition3D:
         result2 = 5 * pos
         assert result2 == Position3D(5, 10, 15)
 
-    def test_numpy_scalar_multiplication(self):
+    @staticmethod
+    def test_numpy_scalar_multiplication() -> None:
         """Test numpy scalar multiplication with Position3D."""
         pos = Position3D(1, 2, 3)
 
@@ -205,7 +220,8 @@ class TestPosition3D:
         assert isinstance(result2, Position3D)
         assert result2 == Position3D(3, 6, 9)
 
-    def test_position_vector_operations(self):
+    @staticmethod
+    def test_position_vector_operations() -> None:
         """Test Position3D operations with Vector3D."""
         pos = Position3D(1, 2, 3)
         v = Vector3D(4, 5, 6)
@@ -221,7 +237,8 @@ class TestPosition3D:
         assert isinstance(result_sub, Vector3D)
         assert result_sub == Vector3D(9, 10, 12)
 
-    def test_homogeneous_array_conversion(self):
+    @staticmethod
+    def test_homogeneous_array_conversion() -> None:
         """Test that Position3D converts to 4D homogeneous arrays."""
         pos = Position3D(1, 2, 3)
         arr = np.array(pos)
@@ -229,7 +246,8 @@ class TestPosition3D:
         assert arr.shape == (4,)
         assert np.array_equal(arr, [1, 2, 3, 1])
 
-    def test_distance_calculation(self):
+    @staticmethod
+    def test_distance_calculation() -> None:
         """Test distance calculation between positions."""
         pos1 = Position3D(0, 0, 0)
         pos2 = Position3D(3, 4, 0)
@@ -241,31 +259,34 @@ class TestPosition3D:
 class TestDirection3D:
     """Test Direction3D arithmetic operations."""
 
-    def test_scalar_multiplication(self):
+    @staticmethod
+    def test_scalar_multiplication() -> None:
         """Test scalar multiplication with Direction3D."""
-        dir = Direction3D(1, 2, 3)
+        d = Direction3D(1, 2, 3)
 
         # Test regular scalar multiplication
-        result1 = dir * 5
+        result1 = d * 5
         assert result1 == Direction3D(5, 10, 15)
 
-        result2 = 5 * dir
+        result2 = 5 * d
         assert result2 == Direction3D(5, 10, 15)
 
-    def test_numpy_scalar_multiplication(self):
+    @staticmethod
+    def test_numpy_scalar_multiplication() -> None:
         """Test numpy scalar multiplication with Direction3D."""
-        dir = Direction3D(1, 2, 3)
+        d = Direction3D(1, 2, 3)
 
         # Test numpy scalars
-        result1 = np.float64(2.0) * dir
+        result1 = np.float64(2.0) * d
         assert isinstance(result1, Direction3D)
         assert result1 == Direction3D(2.0, 4.0, 6.0)
 
-        result2 = dir * np.int32(3)
+        result2 = d * np.int32(3)
         assert isinstance(result2, Direction3D)
         assert result2 == Direction3D(3, 6, 9)
 
-    def test_direction_arithmetic(self):
+    @staticmethod
+    def test_direction_arithmetic() -> None:
         """Test direction addition and subtraction."""
         d1 = Direction3D(1, 2, 3)
         d2 = Direction3D(4, 5, 6)
@@ -278,7 +299,8 @@ class TestDirection3D:
         result_sub = d2 - d1
         assert result_sub == Direction3D(3, 3, 3)
 
-    def test_dot_product(self):
+    @staticmethod
+    def test_dot_product() -> None:
         """Test dot product."""
         d1 = Direction3D(1, 2, 3)
         d2 = Direction3D(4, 5, 6)
@@ -286,10 +308,11 @@ class TestDirection3D:
         dot_result = d1.dot(d2)
         assert dot_result == 32  # 1*4 + 2*5 + 3*6 = 32
 
-    def test_homogeneous_array_conversion(self):
+    @staticmethod
+    def test_homogeneous_array_conversion() -> None:
         """Test that Direction3D converts to 4D homogeneous arrays."""
-        dir = Direction3D(1, 2, 3)
-        arr = np.array(dir)
+        d = Direction3D(1, 2, 3)
+        arr = np.array(d)
 
         assert arr.shape == (4,)
         assert np.array_equal(arr, [1, 2, 3, 0])
@@ -298,7 +321,8 @@ class TestDirection3D:
 class TestMatrixOperations:
     """Test matrix operations with all types."""
 
-    def test_matrix_multiplication(self):
+    @staticmethod
+    def test_matrix_multiplication() -> None:
         """Test matrix multiplication with structured types."""
         # Rotation matrix (90 degrees around Z axis)
         rotation = np.array([[0, -1, 0, 0], [1, 0, 0, 0], [0, 0, 1, 0], [0, 0, 0, 1]])
@@ -310,8 +334,8 @@ class TestMatrixOperations:
         rotated_pos.assert_close(Position3D(0, 1, 0), atol=1e-15)
 
         # Test Direction3D
-        dir = Direction3D(1, 0, 0)
-        rotated_dir = rotation @ dir
+        d = Direction3D(1, 0, 0)
+        rotated_dir = rotation @ d
         assert isinstance(rotated_dir, Direction3D)
         rotated_dir.assert_close(Direction3D(0, 1, 0), atol=1e-15)
 
@@ -319,21 +343,24 @@ class TestMatrixOperations:
 class TestTypeConversions:
     """Test conversions between types."""
 
-    def test_point3d_to_position3d(self):
+    @staticmethod
+    def test_point3d_to_position3d() -> None:
         """Test Point3D to Position3D conversion."""
         p = Point3D(1, 2, 3)
         pos = p.to_position3d()
         assert isinstance(pos, Position3D)
         assert pos == Position3D(1, 2, 3)
 
-    def test_position3d_from_point3d(self):
+    @staticmethod
+    def test_position3d_from_point3d() -> None:
         """Test Position3D from Point3D creation."""
         p = Point3D(1, 2, 3)
         pos = Position3D.from_point3d(p)
         assert isinstance(pos, Position3D)
         assert pos == Position3D(1, 2, 3)
 
-    def test_vector3d_direction3d_conversion(self):
+    @staticmethod
+    def test_vector3d_direction3d_conversion() -> None:
         """Test Vector3D and Direction3D conversions."""
         d = Vector3D(1, 2, 3).to_direction3d()
         assert isinstance(d, Direction3D)
@@ -347,7 +374,8 @@ class TestTypeConversions:
 class TestClosenessComparison:
     """Test closeness comparison methods."""
 
-    def test_isclose_methods(self):
+    @staticmethod
+    def test_isclose_methods() -> None:
         """Test isclose methods for all types."""
         # Point2D
         p1 = Point2D(1.0, 2.0)
@@ -375,7 +403,8 @@ class TestClosenessComparison:
         d2 = Direction3D(1.0000001, 2.0000001, 3.0000001)
         assert d1.isclose(d2, rtol=1e-6)
 
-    def test_assert_close_methods(self):
+    @staticmethod
+    def test_assert_close_methods() -> None:
         """Test assert_close methods for all types."""
         # Should not raise for close values
         p1 = Point2D(1.0, 2.0)
@@ -391,13 +420,15 @@ class TestClosenessComparison:
 class TestEdgeCases:
     """Test edge cases and error conditions."""
 
-    def test_zero_vector_normalization(self):
+    @staticmethod
+    def test_zero_vector_normalization() -> None:
         """Test that normalizing zero vector raises error."""
         zero_vector = Vector3D(0, 0, 0)
         with pytest.raises(ValueError, match="Cannot normalize zero vector"):
             zero_vector.normalize()
 
-    def test_array_conversion_consistency(self):
+    @staticmethod
+    def test_array_conversion_consistency() -> None:
         """Test that __array__ and to_array methods are consistent."""
         # Test Vector3D (3D)
         v = Vector3D(1, 2, 3)
@@ -411,7 +442,8 @@ class TestEdgeCases:
         arr4 = pos.to_array()
         assert np.array_equal(arr3, arr4)
 
-    def test_mixed_arithmetic_operations(self):
+    @staticmethod
+    def test_mixed_arithmetic_operations() -> None:
         """Test complex mixed arithmetic operations."""
         # Real-world scenario: point + scalar * vector
         p = Point3D(1, 2, 3)

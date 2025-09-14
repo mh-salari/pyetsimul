@@ -2,9 +2,8 @@
 
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Optional
 
-from ..core import Eye, Camera, Light
+from ..core import Camera, Eye, Light
 from ..types import Position3D
 
 
@@ -21,10 +20,10 @@ class ExperimentConfig:
     lights: list[Light]
 
     # Optional configuration
-    gaze_target: Optional[Position3D] = None
+    gaze_target: Position3D | None = None
     output_dir: Path = field(default_factory=lambda: Path("outputs"))
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Validate configuration."""
         if not self.experiment_name:
             raise ValueError("experiment_name cannot be empty")
@@ -35,7 +34,7 @@ class ExperimentConfig:
         if not self.lights:
             raise ValueError("Must specify at least one light")
 
-    def get_gaze_target(self) -> Optional[Position3D]:
+    def get_gaze_target(self) -> Position3D | None:
         """Get the gaze target if specified."""
         return self.gaze_target
 
@@ -46,7 +45,7 @@ def create_experiment_config(
     eyes: list[Eye],
     cameras: list[Camera],
     lights: list[Light],
-    gaze_target: Optional[Position3D] = None,
+    gaze_target: Position3D | None = None,
     output_dir: str | Path = "outputs",
 ) -> ExperimentConfig:
     """Create experiment configuration with validation."""

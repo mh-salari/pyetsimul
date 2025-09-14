@@ -19,6 +19,7 @@ class Eyelid:
         openness: Fraction of the spherical-cap area that is open (0..1). Used to size the ellipse.
         lower_cap_fraction: Fraction of the spherical-cap area allocated to the lower eyelid (for reference).
         ellipse_width_to_height: Ratio of ellipse width/height (horizontal almond look).
+
     """
 
     center: Position3D
@@ -33,19 +34,19 @@ class Eyelid:
 
         Returns:
             (phi1, phi2) in radians
-        """
 
-        S = self.sphere_radius
+        """
+        sphere_radius = self.sphere_radius
         phi_max = self.phi_max
 
         def cap_area(phi: float) -> float:
-            return 2.0 * np.pi * S * S * (1.0 - np.cos(phi))
+            return 2.0 * np.pi * sphere_radius * sphere_radius * (1.0 - np.cos(phi))
 
         def band_area(phi1: float, phi2: float) -> float:
-            return 2.0 * np.pi * S * S * (np.cos(phi1) - np.cos(phi2))
+            return 2.0 * np.pi * sphere_radius * sphere_radius * (np.cos(phi1) - np.cos(phi2))
 
-        A_max = cap_area(phi_max)
-        target_lower = self.lower_cap_fraction * A_max
+        max_area = cap_area(phi_max)
+        target_lower = self.lower_cap_fraction * max_area
 
         # Solve for fixed lower cap phi1_fixed
         lo, hi = 0.0, phi_max
@@ -58,7 +59,7 @@ class Eyelid:
         phi1_fixed = 0.5 * (lo + hi)
 
         # Solve for phi2 to match total openness area within cap
-        target_open_area = float(self.openness) * A_max
+        target_open_area = float(self.openness) * max_area
         max_area_with_fixed = band_area(phi1_fixed, phi_max)
 
         if target_open_area <= max_area_with_fixed:
@@ -90,7 +91,6 @@ class Eyelid:
         Uses sphere radius and `phi_max` to constrain the eyelid horizontal span to
         the limbus-like footprint so left/right edges remain fixed.
         """
-
         return float(self.sphere_radius) * float(np.sin(self.phi_max))
 
     def ellipse_axes(self) -> tuple[float, float]:
@@ -101,8 +101,8 @@ class Eyelid:
 
         Returns:
             (width, height) of the elliptical opening in the rotated ellipse frame.
-        """
 
+        """
         r_xy = self._max_xy_radius()
         # Fix width at the footprint chord (limbus). At full openness the opening matches the footprint circle.
         width = EyelidDefaults.ELLIPSE_WIDTH_MULTIPLIER * r_xy
@@ -120,8 +120,8 @@ class Eyelid:
 
         Returns:
             y_offset of the ellipse center in the rotated ellipse frame (meters).
-        """
 
+        """
         r_xy = self._max_xy_radius()
         height_max = EyelidDefaults.HEIGHT_MULTIPLIER * r_xy
         openness = float(np.clip(self.openness, 0.0, 1.0))
@@ -139,8 +139,8 @@ class Eyelid:
 
         Args:
             p: Point to test
-        """
 
+        """
         cx, cy, cz = self.center.x, self.center.y, self.center.z
         px, py, pz = p.x, p.y, p.z
 
@@ -162,10 +162,7 @@ class Eyelid:
         ellipse_test = (x_rot / (width / 2.0)) ** 2 + (y_rel / (height / 2.0)) ** 2
 
         # Inside ellipse is opening (not eyelid)
-        if ellipse_test <= 1.0:
-            return False
-
-        return True
+        return not ellipse_test <= 1.0
 
     def serialize(self) -> dict:
         """Serialize to dictionary representation."""

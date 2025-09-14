@@ -1,11 +1,12 @@
 """Unit tests for camera point_at function."""
 
 import numpy as np
+
 from pyetsimul.core.camera import Camera
 from pyetsimul.types import Position3D
 
 
-def test_point_at_basic():
+def test_point_at_basic() -> None:
     """Test basic point_at functionality."""
     c = Camera()
     original_trans = c.trans.copy()
@@ -25,7 +26,7 @@ def test_point_at_basic():
     assert np.allclose(rotation @ rotation.T, np.eye(3), rtol=1e-12)
 
 
-def test_point_at_vs_pan_tilt():
+def test_point_at_vs_pan_tilt() -> None:
     """Test difference between point_at and pan_tilt regarding rest_trans."""
     c1 = Camera()
     c2 = Camera()
@@ -44,7 +45,7 @@ def test_point_at_vs_pan_tilt():
     np.testing.assert_allclose(c1.trans, c2.trans, rtol=1e-15)
 
 
-def test_output_properties():
+def test_output_properties() -> None:
     """Test that point_at maintains proper camera properties."""
     c = Camera()
     original_focal_length = c.camera_matrix.focal_length

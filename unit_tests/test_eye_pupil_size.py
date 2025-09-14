@@ -1,11 +1,12 @@
 """Unit tests for Eye pupil radii methods."""
 
 import numpy as np
+
 from pyetsimul.core.eye import Eye
 from pyetsimul.types import Position3D
 
 
-def test_get_pupil_radii_default():
+def test_get_pupil_radii_default() -> None:
     """Test get_pupil_radii returns correct default radii."""
     e = Eye()
     x_radius, y_radius = e.get_pupil_radii()
@@ -16,7 +17,7 @@ def test_get_pupil_radii_default():
     assert np.isclose(y_radius, expected_radius, rtol=1e-12)
 
 
-def test_set_get_pupil_radii():
+def test_set_get_pupil_radii() -> None:
     """Test set_pupil_radii and get_pupil_radii work together correctly."""
     e = Eye()
 
@@ -33,7 +34,7 @@ def test_set_get_pupil_radii():
     assert np.isclose(y_radius, 1e-3, rtol=1e-12)
 
 
-def test_set_pupil_diameter():
+def test_set_pupil_diameter() -> None:
     """Test set_pupil_diameter method."""
     e = Eye()
 
@@ -44,7 +45,7 @@ def test_set_pupil_diameter():
     assert np.isclose(y_radius, 3e-3, rtol=1e-12)
 
 
-def test_set_pupil_radii_updates_vectors():
+def test_set_pupil_radii_updates_vectors() -> None:
     """Test that set_pupil_radii correctly updates x_pupil and y_pupil vectors."""
     e = Eye()
     x_radius = 3e-3  # 3mm

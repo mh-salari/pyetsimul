@@ -1,14 +1,15 @@
-"""
-Automatic 2D plane detection for calibration targets.
+"""Automatic 2D plane detection for calibration targets.
 
 This module provides utilities to automatically detect which 2D plane
 calibration points lie in and extract appropriate coordinate mappings
 for polynomial fitting.
 """
 
-import numpy as np
 from dataclasses import dataclass
-from ..types.geometry import Position3D, Point3D
+
+import numpy as np
+
+from ..types.geometry import Point3D, Position3D
 
 
 @dataclass
@@ -74,6 +75,7 @@ def detect_calibration_plane(calib_points: list[Position3D], tolerance: float = 
 
     Raises:
         ValueError: If points don't lie in exactly one of the standard 2D planes
+
     """
     if len(calib_points) < 3:
         raise ValueError("Need at least 3 calibration points to detect plane")
@@ -100,7 +102,7 @@ def detect_calibration_plane(calib_points: list[Position3D], tolerance: float = 
             f"All axes vary significantly: x_var={x_var:.2e}, y_var={y_var:.2e}, z_var={z_var:.2e}. "
             f"Points must lie in xy, xz, or yz plane for polynomial gaze models."
         )
-    elif len(constant_axes) > 1:
+    if len(constant_axes) > 1:
         raise ValueError(
             f"Calibration points are too constrained. "
             f"Multiple axes are constant: {constant_axes}. "
@@ -139,6 +141,7 @@ def summarize_plane_detection(calib_points: list[Position3D], plane_info: PlaneI
 
     Returns:
         str: Formatted summary for logging/display
+
     """
     axis_labels = {"x": "Horizontal (X)", "y": "Depth (Y)", "z": "Vertical (Z)"}
 
@@ -154,7 +157,7 @@ def summarize_plane_detection(calib_points: list[Position3D], plane_info: PlaneI
         f"Calibration plane: {plane_info.plane_type.upper()}",
         f"  Varying: {primary_label}, {secondary_label}",
         f"  Fixed: {constant_label} = {plane_info.constant_value * 1000:.1f}mm",
-        f"  Coverage: {ranges[0]:.1f}mm × {ranges[1]:.1f}mm",
+        f"  Coverage: {ranges[0]:.1f}mm x {ranges[1]:.1f}mm",
     ]
 
     return "\n".join(summary)

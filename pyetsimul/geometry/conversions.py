@@ -4,11 +4,11 @@ Implements conversions between gaze direction, rotation angles, and observer/scr
 """
 
 import numpy as np
-from typing import Optional
-from ..types import Point2D, Point3D, Direction3D, Position3D, RotationMatrix, TransformationMatrix
+
+from ..types import Direction3D, Point2D, Point3D, Position3D, RotationMatrix, TransformationMatrix
 
 
-def gaze2angle(gaze: Direction3D, rest_pos: Optional[RotationMatrix] = None) -> Point2D:
+def gaze2angle(gaze: Direction3D, rest_pos: RotationMatrix | None = None) -> Point2D:
     """Convert gaze direction to eye rotation angles.
 
     Calculates horizontal and vertical rotation angles from a 3D gaze direction
@@ -21,6 +21,7 @@ def gaze2angle(gaze: Direction3D, rest_pos: Optional[RotationMatrix] = None) -> 
 
     Returns:
         Point2D containing [horizontal_angle, vertical_angle] in radians
+
     """
     if not isinstance(gaze, Direction3D):
         raise TypeError(f"gaze must be Direction3D, got {type(gaze)}")
@@ -39,7 +40,7 @@ def gaze2angle(gaze: Direction3D, rest_pos: Optional[RotationMatrix] = None) -> 
     return Point2D(horizontal_angle, vertical_angle)
 
 
-def angle2gaze(angles: Point2D, rest_pos: Optional[RotationMatrix] = None) -> Direction3D:
+def angle2gaze(angles: Point2D, rest_pos: RotationMatrix | None = None) -> Direction3D:
     """Convert eye rotation angles to gaze direction.
 
     Calculates gaze direction from horizontal and vertical rotation angles
@@ -52,6 +53,7 @@ def angle2gaze(angles: Point2D, rest_pos: Optional[RotationMatrix] = None) -> Di
 
     Returns:
         Direction3D representing the gaze direction vector
+
     """
     if not isinstance(angles, Point2D):
         raise TypeError(f"angles must be Point2D, got {type(angles)}")
@@ -95,6 +97,7 @@ def calculate_angular_error_degrees(
 
     Returns:
         Angular error in degrees
+
     """
     if not isinstance(actual_point, Point3D):
         raise TypeError(f"actual_point must be Point3D, got {type(actual_point)}")

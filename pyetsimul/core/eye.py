@@ -3,21 +3,22 @@
 Defines the Eye class, integrating cornea, pupil, fovea displacement, and gaze mechanics for simulation and analysis.
 """
 
-import numpy as np
 import warnings
 from dataclasses import dataclass, field
-from typing import Optional, TYPE_CHECKING
+from typing import TYPE_CHECKING
+
+import numpy as np
 from tabulate import tabulate
 
-from ..types import Position3D, Direction3D, TransformationMatrix, RotationMatrix, PupilData, Point2D
-from .pupil import Pupil, create_pupil, RealisticPupilParams, EllipticalPupil
-from .cornea import SphericalCornea, ConicCornea
-from .eye_operations import look_at_target, look_at_target_optical_then_kappa
+from ..optics.pupil_imaging import calculate_pupil_center_from_boundary
 from ..optics.reflections import find_corneal_reflection
 from ..optics.refractions import find_refraction_point
-from ..optics.pupil_imaging import calculate_pupil_center_from_boundary
-from .eyelid import Eyelid, create_eyelid
+from ..types import Direction3D, Point2D, Position3D, PupilData, RotationMatrix, TransformationMatrix
+from .cornea import ConicCornea, SphericalCornea
 from .default_configs import EyeAnatomyDefaults
+from .eye_operations import look_at_target, look_at_target_optical_then_kappa
+from .eyelid import Eyelid, create_eyelid
+from .pupil import EllipticalPupil, Pupil, RealisticPupilParams, create_pupil
 from .pupil_decentration import PupilDecentrationConfig, PupilDecentrationRegistry
 
 if TYPE_CHECKING:
@@ -42,14 +43,14 @@ class Eye:
 
     # Instance parameters
     cornea: SphericalCornea | ConicCornea = field(
-        default_factory=lambda: SphericalCornea()
+        default_factory=SphericalCornea
     )  # Spherical cornea object by default
     fovea_displacement: bool = True
     fovea_alpha_deg: float = EyeAnatomyDefaults.FOVEA_ALPHA_DEG
     fovea_beta_deg: float = EyeAnatomyDefaults.FOVEA_BETA_DEG
     pupil_type: str = "elliptical"  # Pupil type: "elliptical" (default), "realistic"
-    pupil_boundary_points: Optional[int] = None  # Number of points for pupil boundary (uses pupil default if None)
-    pupil_random_seed: Optional[int] = None  # Random seed for realistic pupil (None = random, int = deterministic)
+    pupil_boundary_points: int | None = None  # Number of points for pupil boundary (uses pupil default if None)
+    pupil_random_seed: int | None = None  # Random seed for realistic pupil (None = random, int = deterministic)
 
     # Eyelid configuration (enabled off by default to avoid behavior changes)
     eyelid_enabled: bool = False
@@ -62,11 +63,11 @@ class Eye:
     # Eyelid transform (local→world): follows eye position but keeps a fixed orientation
     eyelid_trans: TransformationMatrix = field(init=False, repr=False)
     _rest_orientation: RotationMatrix = field(init=False)
-    _current_target_point: Optional[Position3D] = field(init=False, default=None)  # Updated by look_at()
+    _current_target_point: Position3D | None = field(init=False, default=None)  # Updated by look_at()
     axial_length: float = field(init=False)  # Total axial length of eye (m)
     n_aqueous_humor: float = field(init=False)
     pupil: Pupil = field(init=False)  # Pupil object that handles all pupil calculations
-    eyelid: Optional[Eyelid] = field(init=False, default=None)
+    eyelid: Eyelid | None = field(init=False, default=None)
 
     def __post_init__(self) -> None:
         """Initializes the eye's anatomical properties based on constructor parameters.
@@ -108,10 +109,10 @@ class Eye:
         x_pupil = Direction3D(scaled_pupil_radius, 0, 0)
         y_pupil = Direction3D(0, scaled_pupil_radius, 0)
 
-        # Create pupil with optional N parameter and random seed
+        # Create pupil with optional n parameter and random seed
         pupil_kwargs = {}
         if self.pupil_boundary_points is not None:
-            pupil_kwargs["N"] = self.pupil_boundary_points
+            pupil_kwargs["n"] = self.pupil_boundary_points
 
         # For realistic pupils, create params with random seed if specified
         if self.pupil_type == "realistic" and self.pupil_random_seed is not None:
@@ -125,16 +126,16 @@ class Eye:
         # Create eyelid if enabled: positioned at eye center, sphere radius = axial_length/2,
         # phi_max derived from limbus z position so that the footprint matches corneal boundary.
         if self.eyelid_enabled:
-            S = self.axial_length / 2.0
+            sphere_radius = self.axial_length / 2.0
             apex_pos = self.cornea.get_apex_position()
             limbus_z_local = apex_pos.z + self.cornea.get_corneal_depth()
-            # phi from apex normal (-Z): cos(phi) = n·(r̂) = -z/S  -> phi = arccos(-z/S)
-            ratio = np.clip(-limbus_z_local / S, -1.0, 1.0)
+            # phi from apex normal (-Z): cos(phi) = n·(r̂) = -z/sphere_radius  -> phi = arccos(-z/sphere_radius)
+            ratio = np.clip(-limbus_z_local / sphere_radius, -1.0, 1.0)
             phi_max = float(np.arccos(ratio))
 
             self.eyelid = create_eyelid(
                 center=Position3D(0.0, 0.0, 0.0),
-                sphere_radius=S,
+                sphere_radius=sphere_radius,
                 phi_max=phi_max,
                 openness=EyeAnatomyDefaults.EYELID_OPENNESS,
             )
@@ -170,6 +171,7 @@ class Eye:
 
         Raises:
             ValueError: If the matrix is not right-handed (det ≠ +1)
+
         """
         # RotationMatrix type already validates during construction
 
@@ -189,7 +191,7 @@ class Eye:
         return self._rest_orientation.copy()
 
     @property
-    def current_target_point(self) -> Optional[Position3D]:
+    def current_target_point(self) -> Position3D | None:
         """Get the current target point (read-only).
 
         Returns the target position that was last used with look_at(), or None if
@@ -233,12 +235,12 @@ class Eye:
         y_local = y_local_pref - np.dot(y_local_pref, v_local) * v_local
         if np.linalg.norm(y_local) < 1e-12:
             y_local = np.array([1.0, 0.0, 0.0], dtype=float)
-            y_local = y_local - np.dot(y_local, v_local) * v_local
-        y_local = y_local / np.linalg.norm(y_local)
+            y_local -= np.dot(y_local, v_local) * v_local
+        y_local /= np.linalg.norm(y_local)
         x_local = np.cross(y_local, v_local)
-        x_local = x_local / np.linalg.norm(x_local)
+        x_local /= np.linalg.norm(x_local)
 
-        R_local = np.column_stack([x_local, y_local, v_local])  # maps basis to canonical
+        local_rotation_matrix = np.column_stack([x_local, y_local, v_local])  # maps basis to canonical
 
         # Build world visual basis (target dir as z)
         world_up = np.array([0.0, 1.0, 0.0], dtype=float)
@@ -246,13 +248,13 @@ class Eye:
         if np.linalg.norm(y_world) < 1e-12:
             world_up = np.array([1.0, 0.0, 0.0], dtype=float)
             y_world = world_up - np.dot(world_up, z_world) * z_world
-        y_world = y_world / np.linalg.norm(y_world)
+        y_world /= np.linalg.norm(y_world)
         x_world = np.cross(y_world, z_world)
-        x_world = x_world / np.linalg.norm(x_world)
-        R_world = np.column_stack([x_world, y_world, z_world])
+        x_world /= np.linalg.norm(x_world)
+        world_rotation_matrix = np.column_stack([x_world, y_world, z_world])
 
         # Rotation mapping local visual basis to world visual basis
-        rest_orientation = R_world @ R_local.T
+        rest_orientation = world_rotation_matrix @ local_rotation_matrix.T
         self.set_rest_orientation(RotationMatrix(rest_orientation))
 
     @property
@@ -280,6 +282,7 @@ class Eye:
 
         Returns:
             True if point lies within cornea boundaries
+
         """
         # Transform point to local eye coordinates
         p_homogeneous = np.array(p)
@@ -289,7 +292,7 @@ class Eye:
         # Use cornea object's point_within_cornea method
         return self.cornea.point_within_cornea(p_local, self)
 
-    def find_cr(self, light: "Light", camera: "Camera") -> Optional[Position3D]:
+    def find_cr(self, light: "Light", camera: "Camera") -> Position3D | None:
         """Finds the position of a corneal reflex.
 
         Delegates to reflections module for corneal reflection calculation.
@@ -300,6 +303,7 @@ class Eye:
 
         Returns:
             Position of corneal reflex, or None if not within cornea
+
         """
         return find_corneal_reflection(self, light, camera)
 
@@ -312,6 +316,7 @@ class Eye:
         Args:
             target_position: Position in world coordinates to look at
             legacy: If True, uses optical-then-kappa method for backward compatibility
+
         """
         # Update current target point
         self._current_target_point = target_position
@@ -328,6 +333,7 @@ class Eye:
 
         Returns:
             PupilData object with boundary_points attribute set
+
         """
         # Get pupil boundary points from pupil object
         pupil_points = self.pupil.get_boundary_points()
@@ -344,6 +350,7 @@ class Eye:
 
         Returns:
             Pupil center position
+
         """
         apex = self.cornea.get_apex_position()
         corneal_depth = self.cornea.get_corneal_depth()
@@ -356,6 +363,7 @@ class Eye:
 
         Returns:
             Tuple of (x_radius, y_radius) in meters
+
         """
         return self.pupil.get_radii()
 
@@ -366,6 +374,7 @@ class Eye:
 
         Returns:
             Pupil diameter in meters
+
         """
         return self.pupil.get_diameter()
 
@@ -378,6 +387,7 @@ class Eye:
         Args:
             x_radius: Pupil radius in X direction (meters)
             y_radius: Pupil radius in Y direction (meters)
+
         """
         self.pupil.set_radii(x_radius, y_radius)
         self._update_pupil_position_with_decentration()
@@ -390,6 +400,7 @@ class Eye:
 
         Args:
             diameter: Pupil diameter in meters
+
         """
         self.pupil.set_diameter(diameter)
         self._update_pupil_position_with_decentration()
@@ -401,6 +412,7 @@ class Eye:
             dx: X offset in meters
             dy: Y offset in meters
             dz: Z offset in meters
+
         """
         current_pos = self.pupil.pos_pupil
         new_pos = Position3D(current_pos.x + dx, current_pos.y + dy, current_pos.z + dz)
@@ -413,6 +425,7 @@ class Eye:
             x: Absolute X position in meters
             y: Absolute Y position in meters
             z: Absolute Z position in meters
+
         """
         self.pupil.pos_pupil = Position3D(x, y, z)
 
@@ -423,6 +436,7 @@ class Eye:
 
         Returns:
             Pupil center position in world coordinates
+
         """
         return self.pupil.get_center_world_coords(self.trans)
 
@@ -434,6 +448,7 @@ class Eye:
 
         Returns:
             Position3D offset for pupil decentration
+
         """
         if not self.decentration_config.enabled:
             return Position3D(0.0, 0.0, 0.0)
@@ -469,9 +484,7 @@ class Eye:
 
         self.pupil.pos_pupil = new_position
 
-    def find_refracted_position(
-        self, camera_position: Position3D, object_position: Position3D
-    ) -> Optional[Position3D]:
+    def find_refracted_position(self, camera_position: Position3D, object_position: Position3D) -> Position3D | None:
         """Find where an intraocular object appears due to corneal refraction.
 
         Calculates where camera observes intraocular object through corneal refraction,
@@ -483,14 +496,14 @@ class Eye:
 
         Returns:
             Position3D on corneal surface where refraction occurs, or None if no valid solution
+
         """
         # Call pure refraction function
         refraction_point = find_refraction_point(self.cornea, self.trans, camera_position, object_position)
 
         # Check if point is on visible cornea (within boundaries and not occluded by eyelid)
-        if refraction_point is not None:
-            if not self.point_on_visible_cornea(refraction_point):
-                refraction_point = None
+        if refraction_point is not None and not self.point_on_visible_cornea(refraction_point):
+            refraction_point = None
 
         return refraction_point
 
@@ -531,6 +544,7 @@ class Eye:
 
         Returns:
             Fovea position in eye coordinate system
+
         """
         # Retina distance from rotation center (from our eye model)
         retina_distance = self.axial_length / 2
@@ -561,6 +575,7 @@ class Eye:
 
         Returns:
             Angle kappa in degrees
+
         """
         # Get fovea position
         fovea_pos = self.fovea_position
@@ -579,7 +594,9 @@ class Eye:
         # Convert to degrees
         return angle_kappa_rad * 180.0 / np.pi
 
-    def get_pupil_in_camera_image(self, camera: "Camera", use_refraction: bool = True, center_method: str = "ellipse"):
+    def get_pupil_in_camera_image(
+        self, camera: "Camera", use_refraction: bool = True, center_method: str = "ellipse"
+    ) -> tuple[np.ndarray | None, Point2D | None]:
         """Projects pupil boundary points to camera image coordinates.
 
         Handles corneal refraction effects and camera projection.
@@ -595,8 +612,8 @@ class Eye:
             Tuple of (pupil_boundary, pupil_center) where:
             - pupil_boundary: numpy array of boundary points (2xN)
             - pupil_center: Point2D object of pupil center, or None if invalid
-        """
 
+        """
         # Get pupil boundary points in world coordinates
         pupil_data = self.get_pupil()
         pupil_world = pupil_data.boundary_points
@@ -625,21 +642,24 @@ class Eye:
                         )
                         valid_pupil_points.append(point_2d)
 
-                pupil_boundary_points = valid_pupil_points if valid_pupil_points else None
+                pupil_boundary_points = valid_pupil_points or None
 
                 if not valid_pupil_points:
                     warnings.warn(
                         "No valid pupil points found in camera image (with refraction). Check camera-eye setup.",
                         UserWarning,
+                        stacklevel=2,
                     )
             else:
-                warnings.warn("No refracted pupil points could be computed. Check camera-eye setup.", UserWarning)
+                warnings.warn(
+                    "No refracted pupil points could be computed. Check camera-eye setup.", UserWarning, stacklevel=2
+                )
                 pupil_boundary_points = None
         else:
             # Direct projection without refraction
-            projection_result = camera.project(
-                [Position3D.from_array(pupil_world[:, i]) for i in range(pupil_world.shape[1])]
-            )
+            projection_result = camera.project([
+                Position3D.from_array(pupil_world[:, i]) for i in range(pupil_world.shape[1])
+            ])
 
             # Convert valid boundary points to structured Point2D list
             valid_pupil_points = []
@@ -650,12 +670,13 @@ class Eye:
                     )
                     valid_pupil_points.append(point_2d)
 
-            pupil_boundary_points = valid_pupil_points if valid_pupil_points else None
+            pupil_boundary_points = valid_pupil_points or None
 
             if not valid_pupil_points:
                 warnings.warn(
                     "No valid pupil points found in camera image (without refraction). Check camera-eye setup.",
                     UserWarning,
+                    stacklevel=2,
                 )
 
         # Calculate pupil center using specified method
@@ -685,7 +706,7 @@ class Eye:
             ["Axial length L (mm)", f"{self.axial_length * 1000:.3f}"],
             [
                 "Cornea center to rotation center (mm)",
-                f"{self.cornea._cornea_center_to_rotation_center_default * 1000:.3f}",
+                f"{self.cornea.cornea_center_to_rotation_center_default * 1000:.3f}",
             ],
             ["Thickness offset t_offset (mm)", f"{self.cornea.thickness_offset * 1000:.3f}"],
             ["Corneal depth d_c (mm)", f"{self.cornea.get_corneal_depth() * 1000:.3f}"],
@@ -721,8 +742,8 @@ class Eye:
 
         Returns:
             Dictionary containing all eye parameters and current state
-        """
 
+        """
         # Core anatomical parameters
         data = {
             # Position and orientation
@@ -771,8 +792,8 @@ class Eye:
 
         Returns:
             Eye instance in the exact state when serialized
-        """
 
+        """
         # Create new eye with basic configuration
         eye = cls(
             fovea_displacement=data["fovea_displacement"],
@@ -800,11 +821,11 @@ class Eye:
         eye.n_aqueous_humor = data["n_aqueous_humor"]
 
         # Restore cornea
-        if "cornea" in data and data["cornea"]:
+        if data.get("cornea"):
             eye.cornea = SphericalCornea.deserialize(data["cornea"])
 
         # Restore pupil
-        if "pupil" in data and data["pupil"]:
+        if data.get("pupil"):
             eye.pupil = EllipticalPupil.deserialize(data["pupil"])
 
         # Restore eyelid if enabled

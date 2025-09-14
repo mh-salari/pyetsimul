@@ -1,23 +1,25 @@
-"""
-Pupil imaging functions extracted from the Eye class.
+"""Pupil imaging functions extracted from the Eye class.
 
 This module contains pupil imaging operations that were previously
 part of the Eye class, extracted for better modularity and testability.
 """
 
+from typing import TYPE_CHECKING
+
 import numpy as np
-from typing import Optional
-
-from skimage.measure import EllipseModel
-from skimage.draw import polygon
 from scipy import ndimage
+from skimage.draw import polygon
+from skimage.measure import EllipseModel
 
+from ..core.camera import Camera
 from ..types.geometry import Point2D
 from ..types.imaging import PupilData
-from ..core.camera import Camera
+
+if TYPE_CHECKING:
+    from ..core.eye import Eye
 
 
-def get_pupil_boundary_image(eye, camera: Camera, use_refraction: bool = True) -> PupilData:
+def get_pupil_boundary_image(eye: "Eye", camera: Camera, use_refraction: bool = True) -> PupilData:
     """Computes image of pupil boundary.
 
     Projects pupil boundary to camera image with corneal refraction.
@@ -30,6 +32,7 @@ def get_pupil_boundary_image(eye, camera: Camera, use_refraction: bool = True) -
 
     Returns:
         PupilData object with boundary points in camera image
+
     """
     # Use the new eye method that already handles refraction and projection
     boundary_points, _ = eye.get_pupil_in_camera_image(camera, use_refraction=use_refraction)
@@ -37,7 +40,7 @@ def get_pupil_boundary_image(eye, camera: Camera, use_refraction: bool = True) -
     return PupilData(boundary_points=boundary_points)
 
 
-def get_pupil_ellipse_image(eye, camera: Camera, use_refraction: bool = True) -> PupilData:
+def get_pupil_ellipse_image(eye: "Eye", camera: Camera, use_refraction: bool = True) -> PupilData:
     """Determines pupil ellipse in camera image.
 
     Fits ellipse to pupil boundary points to find center.
@@ -50,6 +53,7 @@ def get_pupil_ellipse_image(eye, camera: Camera, use_refraction: bool = True) ->
 
     Returns:
         PupilData object containing boundary points and ellipse center
+
     """
     # Get pupil boundary points
     pupil_data = get_pupil_boundary_image(eye, camera, use_refraction=use_refraction)
@@ -67,7 +71,7 @@ def get_pupil_ellipse_image(eye, camera: Camera, use_refraction: bool = True) ->
     )
 
 
-def get_pupil_center_mass_image(eye, camera: Camera, use_refraction: bool = True) -> PupilData:
+def get_pupil_center_mass_image(eye: "Eye", camera: Camera, use_refraction: bool = True) -> PupilData:
     """Determines pupil center using center of mass calculation.
 
     Creates binary mask from boundary points and calculates centroid.
@@ -80,6 +84,7 @@ def get_pupil_center_mass_image(eye, camera: Camera, use_refraction: bool = True
 
     Returns:
         PupilData object containing boundary points and center of mass
+
     """
     # Get pupil boundary points
     pupil_data = get_pupil_boundary_image(eye, camera, use_refraction=use_refraction)
@@ -95,7 +100,7 @@ def get_pupil_center_mass_image(eye, camera: Camera, use_refraction: bool = True
 
 def calculate_pupil_center_from_boundary(
     boundary_points: list[Point2D], camera_resolution: Point2D, center_method: str = "ellipse"
-) -> Optional[Point2D]:
+) -> Point2D | None:
     """Calculate pupil center from boundary points using specified method.
 
     Args:
@@ -108,6 +113,7 @@ def calculate_pupil_center_from_boundary(
 
     Raises:
         ValueError: If center_method is not recognized
+
     """
     if boundary_points is None or len(boundary_points) < 3:
         return None
@@ -117,14 +123,13 @@ def calculate_pupil_center_from_boundary(
 
     if center_method == "ellipse":
         return _fit_ellipse_center(boundary_array)
-    elif center_method == "center_of_mass":
+    if center_method == "center_of_mass":
         return _calculate_center_of_mass(boundary_array, camera_resolution)
-    else:
-        raise ValueError(f"Unknown center_method '{center_method}'. Use 'ellipse' or 'center_of_mass'")
+    raise ValueError(f"Unknown center_method '{center_method}'. Use 'ellipse' or 'center_of_mass'")
 
 
 def calculate_pupil_center_methods(
-    eye, camera: Camera, use_refraction: bool = True, center_method: str = "ellipse"
+    eye: "Eye", camera: Camera, use_refraction: bool = True, center_method: str = "ellipse"
 ) -> PupilData:
     """Gets pupil boundary and center in camera image using specified method.
 
@@ -143,16 +148,16 @@ def calculate_pupil_center_methods(
 
     Raises:
         ValueError: If center_method is not recognized
+
     """
     if center_method == "ellipse":
         return get_pupil_ellipse_image(eye, camera, use_refraction)
-    elif center_method == "center_of_mass":
+    if center_method == "center_of_mass":
         return get_pupil_center_mass_image(eye, camera, use_refraction)
-    else:
-        raise ValueError(f"Unknown center_method '{center_method}'. Use 'ellipse' or 'center_of_mass'")
+    raise ValueError(f"Unknown center_method '{center_method}'. Use 'ellipse' or 'center_of_mass'")
 
 
-def _fit_ellipse_center(pupil_boundary) -> Optional[Point2D]:
+def _fit_ellipse_center(pupil_boundary: np.ndarray) -> Point2D | None:
     """Fit ellipse to pupil boundary points and return center.
 
     Uses least-squares ellipse fitting for robust center estimation.
@@ -163,6 +168,7 @@ def _fit_ellipse_center(pupil_boundary) -> Optional[Point2D]:
 
     Returns:
         Point2D with center coordinates, or None if fitting fails
+
     """
     if pupil_boundary.shape[1] < 5:
         return None
@@ -175,16 +181,15 @@ def _fit_ellipse_center(pupil_boundary) -> Optional[Point2D]:
         # Extract center coordinates
         center_x, center_y = ellipse.params[:2]
         return Point2D(x=float(center_x), y=float(center_y))
-    else:
-        # Fallback to simple centroid if ellipse fitting fails
-        center_x = np.mean(pupil_boundary[0, :])
-        center_y = np.mean(pupil_boundary[1, :])
-        return Point2D(x=float(center_x), y=float(center_y))
+    # Fallback to simple centroid if ellipse fitting fails
+    center_x = np.mean(pupil_boundary[0, :])
+    center_y = np.mean(pupil_boundary[1, :])
+    return Point2D(x=float(center_x), y=float(center_y))
 
     return None
 
 
-def _calculate_center_of_mass(pupil_boundary, camera_resolution: Point2D) -> Optional[Point2D]:
+def _calculate_center_of_mass(pupil_boundary: np.ndarray, camera_resolution: Point2D) -> Point2D | None:
     """Calculate center of mass from pupil boundary points using binary mask.
 
     Creates binary mask from boundary polygon and calculates centroid.
@@ -196,6 +201,7 @@ def _calculate_center_of_mass(pupil_boundary, camera_resolution: Point2D) -> Opt
 
     Returns:
         Point2D with center of mass coordinates, or None if calculation fails
+
     """
     if pupil_boundary.shape[1] < 3:
         return None

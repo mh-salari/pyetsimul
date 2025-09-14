@@ -1,10 +1,12 @@
-"""
-This module provides dataclasses to replace raw numpy arrays,
-improving type safety and code readability.
+"""Structured dataclasses to replace raw numpy arrays.
+
+Provides type-safe dataclasses that improve code readability and maintain
+semantic meaning while supporting arithmetic operations and numpy integration.
 """
 
 from dataclasses import dataclass
-from typing import Optional, overload, Union
+from typing import Union, overload
+
 import numpy as np
 
 
@@ -15,7 +17,7 @@ class Point2D:
     x: float
     y: float
 
-    def __array__(self, dtype=None, copy=None) -> np.ndarray:
+    def __array__(self, dtype: np.dtype | None = None, copy: bool | None = None) -> np.ndarray:
         """Enable numpy array operations."""
         arr = np.array([self.x, self.y])
         if dtype is not None:
@@ -33,13 +35,13 @@ class Point2D:
             raise ValueError(f"Expected array shape (2,), got {arr.shape}")
         return cls(x=float(arr[0]), y=float(arr[1]))
 
-    def isclose(self, other: "Point2D", rtol=1e-9, atol=1e-12) -> bool:
+    def isclose(self, other: "Point2D", rtol: float = 1e-9, atol: float = 1e-12) -> bool:
         """Compare with tolerance."""
         return bool(
             np.isclose(self.x, other.x, rtol=rtol, atol=atol) and np.isclose(self.y, other.y, rtol=rtol, atol=atol)
         )
 
-    def assert_close(self, other: "Point2D", rtol=1e-9, atol=1e-12, msg="") -> None:
+    def assert_close(self, other: "Point2D", rtol: float = 1e-9, atol: float = 1e-12, msg: str = "") -> None:
         """Assert close with custom error message."""
         if not self.isclose(other, rtol=rtol, atol=atol):
             error_msg = f"{self} != {other} (rtol={rtol}, atol={atol})"
@@ -47,23 +49,21 @@ class Point2D:
                 error_msg = f"{msg}: {error_msg}"
             raise AssertionError(error_msg)
 
-    def __sub__(self, other):
+    def __sub__(self, other: "Point2D | float | int") -> "Point2D":
         """Subtract point or scalar from point."""
         if isinstance(other, Point2D):
             return Point2D(self.x - other.x, self.y - other.y)
-        elif isinstance(other, (int, float)):
+        if isinstance(other, (int, float)):
             return Point2D(self.x - other, self.y - other)
-        else:
-            return NotImplemented
+        return NotImplemented
 
-    def __add__(self, other) -> "Point2D":
+    def __add__(self, other: "Point2D | float | int") -> "Point2D":
         """Add two points/vectors or add scalar to point."""
         if isinstance(other, Point2D):
             return Point2D(self.x + other.x, self.y + other.y)
-        elif isinstance(other, (int, float)):
+        if isinstance(other, (int, float)):
             return Point2D(self.x + other, self.y + other)
-        else:
-            return NotImplemented
+        return NotImplemented
 
     def __mul__(self, scalar: float) -> "Point2D":
         """Multiply point by a scalar."""
@@ -73,15 +73,14 @@ class Point2D:
         """Multiply point by a scalar (reverse order)."""
         return self.__mul__(scalar)
 
-    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+    def __array_ufunc__(self, ufunc: np.ufunc, method: str, *inputs: object, **kwargs: object) -> "Point2D | None":
         """Handle numpy universal functions to maintain Point2D type."""
-        if ufunc == np.multiply and method == "__call__":
+        if ufunc == np.multiply and method == "__call__" and len(inputs) == 2:
             # Handle scalar * point multiplication
-            if len(inputs) == 2:
-                if isinstance(inputs[0], (int, float, np.number)) and isinstance(inputs[1], Point2D):
-                    return inputs[1] * float(inputs[0])  # point * scalar
-                elif isinstance(inputs[0], Point2D) and isinstance(inputs[1], (int, float, np.number)):
-                    return inputs[0] * float(inputs[1])  # point * scalar
+            if isinstance(inputs[0], (int, float, np.number)) and isinstance(inputs[1], Point2D):
+                return inputs[1] * float(inputs[0])  # point * scalar
+            if isinstance(inputs[0], Point2D) and isinstance(inputs[1], (int, float, np.number)):
+                return inputs[0] * float(inputs[1])  # point * scalar
 
         # For other operations, defer to numpy
         return NotImplemented
@@ -104,7 +103,7 @@ class Point3D:
     y: float
     z: float
 
-    def __array__(self, dtype=None, copy=None) -> np.ndarray:
+    def __array__(self, dtype: np.dtype | None = None, copy: bool | None = None) -> np.ndarray:
         """Enable numpy array operations."""
         arr = np.array([self.x, self.y, self.z])
         if dtype is not None:
@@ -130,7 +129,7 @@ class Point3D:
         """Calculate Euclidean distance to another point."""
         return np.sqrt((self.x - other.x) ** 2 + (self.y - other.y) ** 2 + (self.z - other.z) ** 2)
 
-    def isclose(self, other: "Point3D", rtol=1e-9, atol=1e-12) -> bool:
+    def isclose(self, other: "Point3D", rtol: float = 1e-9, atol: float = 1e-12) -> bool:
         """Compare with tolerance."""
         return bool(
             np.isclose(self.x, other.x, rtol=rtol, atol=atol)
@@ -138,7 +137,7 @@ class Point3D:
             and np.isclose(self.z, other.z, rtol=rtol, atol=atol)
         )
 
-    def assert_close(self, other: "Point3D", rtol=1e-9, atol=1e-12, msg="") -> None:
+    def assert_close(self, other: "Point3D", rtol: float = 1e-9, atol: float = 1e-12, msg: str = "") -> None:
         """Assert close with custom error message."""
         if not self.isclose(other, rtol=rtol, atol=atol):
             error_msg = f"{self} != {other} (rtol={rtol}, atol={atol})"
@@ -151,26 +150,24 @@ class Point3D:
     @overload
     def __sub__(self, other: Union["Vector3D", "Direction3D"]) -> "Point3D": ...
     @overload
-    def __sub__(self, other: int | float) -> "Point3D": ...
+    def __sub__(self, other: float) -> "Point3D": ...
     def __sub__(self, other):
         """Subtract point, position, vector, or scalar from point."""
         if isinstance(other, (Point3D, Position3D)):
             return Vector3D(self.x - other.x, self.y - other.y, self.z - other.z)
-        elif isinstance(other, (Vector3D, Direction3D)):
+        if isinstance(other, (Vector3D, Direction3D)):
             return Point3D(self.x - other.x, self.y - other.y, self.z - other.z)
-        elif isinstance(other, (int, float)):
+        if isinstance(other, (int, float)):
             return Point3D(self.x - other, self.y - other, self.z - other)
-        else:
-            return NotImplemented
+        return NotImplemented
 
-    def __add__(self, other) -> "Point3D":
+    def __add__(self, other: "Vector3D | float | int") -> "Point3D":
         """Add a vector or scalar to a point to get a new point."""
         if isinstance(other, Vector3D):
             return Point3D(self.x + other.x, self.y + other.y, self.z + other.z)
-        elif isinstance(other, (int, float)):
+        if isinstance(other, (int, float)):
             return Point3D(self.x + other, self.y + other, self.z + other)
-        else:
-            return NotImplemented
+        return NotImplemented
 
     def __mul__(self, scalar: float) -> "Point3D":
         """Multiply point by a scalar."""
@@ -180,15 +177,14 @@ class Point3D:
         """Multiply point by a scalar (reverse order)."""
         return self.__mul__(scalar)
 
-    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+    def __array_ufunc__(self, ufunc: np.ufunc, method: str, *inputs: object, **kwargs: object) -> "Point3D | None":
         """Handle numpy universal functions to maintain Point3D type."""
-        if ufunc == np.multiply and method == "__call__":
+        if ufunc == np.multiply and method == "__call__" and len(inputs) == 2:
             # Handle scalar * point multiplication
-            if len(inputs) == 2:
-                if isinstance(inputs[0], (int, float, np.number)) and isinstance(inputs[1], Point3D):
-                    return inputs[1] * float(inputs[0])  # point * scalar
-                elif isinstance(inputs[0], Point3D) and isinstance(inputs[1], (int, float, np.number)):
-                    return inputs[0] * float(inputs[1])  # point * scalar
+            if isinstance(inputs[0], (int, float, np.number)) and isinstance(inputs[1], Point3D):
+                return inputs[1] * float(inputs[0])  # point * scalar
+            if isinstance(inputs[0], Point3D) and isinstance(inputs[1], (int, float, np.number)):
+                return inputs[0] * float(inputs[1])  # point * scalar
 
         # For other operations, defer to numpy
         return NotImplemented
@@ -206,7 +202,7 @@ class Vector3D:
     y: float
     z: float
 
-    def __array__(self, dtype=None, copy=None) -> np.ndarray:
+    def __array__(self, dtype: np.dtype | None = None, copy: bool | None = None) -> np.ndarray:
         """Enable numpy array operations."""
         arr = np.array([self.x, self.y, self.z])
         if dtype is not None:
@@ -259,7 +255,7 @@ class Vector3D:
         """Convert to Direction3D."""
         return Direction3D(self.x, self.y, self.z)
 
-    def isclose(self, other: "Vector3D", rtol=1e-9, atol=1e-12) -> bool:
+    def isclose(self, other: "Vector3D", rtol: float = 1e-9, atol: float = 1e-12) -> bool:
         """Compare with tolerance."""
         return bool(
             np.isclose(self.x, other.x, rtol=rtol, atol=atol)
@@ -267,7 +263,7 @@ class Vector3D:
             and np.isclose(self.z, other.z, rtol=rtol, atol=atol)
         )
 
-    def assert_close(self, other: "Vector3D", rtol=1e-9, atol=1e-12, msg="") -> None:
+    def assert_close(self, other: "Vector3D", rtol: float = 1e-9, atol: float = 1e-12, msg: str = "") -> None:
         """Assert close with custom error message."""
         if not self.isclose(other, rtol=rtol, atol=atol):
             error_msg = f"{self} != {other} (rtol={rtol}, atol={atol})"
@@ -275,30 +271,28 @@ class Vector3D:
                 error_msg = f"{msg}: {error_msg}"
             raise AssertionError(error_msg)
 
-    def __rmatmul__(self, other):
+    def __rmatmul__(self, other: np.ndarray) -> "Vector3D":
         """Enable matrix multiplication: matrix @ vector."""
         if isinstance(other, np.ndarray):
             result = other @ np.array(self)
             return Vector3D.from_array(result)
         return NotImplemented
 
-    def __add__(self, other) -> "Vector3D":
+    def __add__(self, other: "Vector3D | float | int") -> "Vector3D":
         """Add two vectors or add scalar to vector."""
         if isinstance(other, Vector3D):
             return Vector3D(self.x + other.x, self.y + other.y, self.z + other.z)
-        elif isinstance(other, (int, float)):
+        if isinstance(other, (int, float)):
             return Vector3D(self.x + other, self.y + other, self.z + other)
-        else:
-            return NotImplemented
+        return NotImplemented
 
-    def __sub__(self, other):
+    def __sub__(self, other: "Vector3D | float | int") -> "Vector3D":
         """Subtract vector or scalar from vector."""
         if isinstance(other, Vector3D):
             return Vector3D(self.x - other.x, self.y - other.y, self.z - other.z)
-        elif isinstance(other, (int, float)):
+        if isinstance(other, (int, float)):
             return Vector3D(self.x - other, self.y - other, self.z - other)
-        else:
-            return NotImplemented
+        return NotImplemented
 
     def __mul__(self, scalar: float) -> "Vector3D":
         """Multiply vector by a scalar."""
@@ -314,21 +308,25 @@ class Vector3D:
             raise ZeroDivisionError("Cannot divide vector by zero")
         return Vector3D(self.x / scalar, self.y / scalar, self.z / scalar)
 
-    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+    def __array_ufunc__(self, ufunc: np.ufunc, method: str, *inputs: object, **kwargs: object) -> "Vector3D | None":
         """Handle numpy universal functions to maintain Vector3D type."""
         if ufunc == np.multiply and method == "__call__":
             # Handle scalar * vector multiplication
             if len(inputs) == 2:
                 if isinstance(inputs[0], (int, float, np.number)) and isinstance(inputs[1], Vector3D):
                     return inputs[1] * float(inputs[0])  # vector * scalar
-                elif isinstance(inputs[0], Vector3D) and isinstance(inputs[1], (int, float, np.number)):
+                if isinstance(inputs[0], Vector3D) and isinstance(inputs[1], (int, float, np.number)):
                     return inputs[0] * float(inputs[1])  # vector * scalar
-        elif ufunc == np.matmul and method == "__call__":
+        elif (
+            ufunc == np.matmul
+            and method == "__call__"
+            and len(inputs) == 2
+            and isinstance(inputs[0], np.ndarray)
+            and isinstance(inputs[1], Vector3D)
+        ):
             # Handle matrix @ vector multiplication
-            if len(inputs) == 2:
-                if isinstance(inputs[0], np.ndarray) and isinstance(inputs[1], Vector3D):
-                    # Call the __rmatmul__ method directly
-                    return inputs[1].__rmatmul__(inputs[0])
+            # Call the __rmatmul__ method directly
+            return inputs[1].__rmatmul__(inputs[0])
 
         # For other operations, defer to numpy
         return NotImplemented
@@ -351,7 +349,7 @@ class Position3D:
     y: float
     z: float
 
-    def __array__(self, dtype=None, copy=None) -> np.ndarray:
+    def __array__(self, dtype: np.dtype | None = None, copy: bool | None = None) -> np.ndarray:
         """Enable numpy array operations."""
         arr = np.array([self.x, self.y, self.z, 1.0])
         if dtype is not None:
@@ -370,16 +368,15 @@ class Position3D:
                 # De-homogenize if needed
                 return cls(arr[0] / arr[3], arr[1] / arr[3], arr[2] / arr[3])
             return cls(arr[0], arr[1], arr[2])
-        elif arr.shape == (3,):
+        if arr.shape == (3,):
             return cls(arr[0], arr[1], arr[2])
-        else:
-            raise ValueError(f"Expected array shape (3,) or (4,), got {arr.shape}")
+        raise ValueError(f"Expected array shape (3,) or (4,), got {arr.shape}")
 
     def to_point3d(self) -> Point3D:
         """Convert to Point3D."""
         return Point3D(self.x, self.y, self.z)
 
-    def isclose(self, other: "Position3D", rtol=1e-9, atol=1e-12) -> bool:
+    def isclose(self, other: "Position3D", rtol: float = 1e-9, atol: float = 1e-12) -> bool:
         """Compare with tolerance."""
         return bool(
             np.isclose(self.x, other.x, rtol=rtol, atol=atol)
@@ -387,7 +384,7 @@ class Position3D:
             and np.isclose(self.z, other.z, rtol=rtol, atol=atol)
         )
 
-    def assert_close(self, other: "Position3D", rtol=1e-9, atol=1e-12, msg="") -> None:
+    def assert_close(self, other: "Position3D", rtol: float = 1e-9, atol: float = 1e-12, msg: str = "") -> None:
         """Assert close with custom error message."""
         if not self.isclose(other, rtol=rtol, atol=atol):
             error_msg = f"{self} != {other} (rtol={rtol}, atol={atol})"
@@ -395,14 +392,14 @@ class Position3D:
                 error_msg = f"{msg}: {error_msg}"
             raise AssertionError(error_msg)
 
-    def __matmul__(self, other) -> "Position3D":
+    def __matmul__(self, other: np.ndarray) -> "Position3D":
         """Enable matrix multiplication: position @ matrix."""
         if isinstance(other, np.ndarray):
             result = np.array(self) @ other
             return Position3D.from_array(result)
         return NotImplemented
 
-    def __rmatmul__(self, other) -> "Position3D":
+    def __rmatmul__(self, other: np.ndarray) -> "Position3D":
         """Enable matrix multiplication: matrix @ position (most common case)."""
         if isinstance(other, np.ndarray):
             result = other @ np.array(self)
@@ -414,26 +411,24 @@ class Position3D:
     @overload
     def __sub__(self, other: Union[Vector3D, "Direction3D"]) -> "Position3D": ...
     @overload
-    def __sub__(self, other: int | float) -> "Position3D": ...
+    def __sub__(self, other: float) -> "Position3D": ...
     def __sub__(self, other):
         """Subtract position, point, vector, direction, or scalar from position."""
         if isinstance(other, (Position3D, Point3D)):
             return Vector3D(self.x - other.x, self.y - other.y, self.z - other.z)
-        elif isinstance(other, (Vector3D, Direction3D)):
+        if isinstance(other, (Vector3D, Direction3D)):
             return Position3D(self.x - other.x, self.y - other.y, self.z - other.z)
-        elif isinstance(other, (int, float)):
+        if isinstance(other, (int, float)):
             return Position3D(self.x - other, self.y - other, self.z - other)
-        else:
-            return NotImplemented
+        return NotImplemented
 
-    def __add__(self, other) -> "Position3D":
+    def __add__(self, other: "Vector3D | Direction3D | Point3D | float | int") -> "Position3D":
         """Add a vector, direction, point, or scalar to a position to get a new position."""
         if isinstance(other, (Vector3D, Direction3D, Point3D)):
             return Position3D(self.x + other.x, self.y + other.y, self.z + other.z)
-        elif isinstance(other, (int, float)):
+        if isinstance(other, (int, float)):
             return Position3D(self.x + other, self.y + other, self.z + other)
-        else:
-            return NotImplemented
+        return NotImplemented
 
     def __mul__(self, scalar: float) -> "Position3D":
         """Multiply position by a scalar."""
@@ -443,25 +438,29 @@ class Position3D:
         """Multiply position by a scalar (reverse order)."""
         return self.__mul__(scalar)
 
-    def __radd__(self, other) -> "Position3D":
+    def __radd__(self, other: "Vector3D | Direction3D | Point3D | float | int") -> "Position3D":
         """Add position to a scalar (reverse order)."""
         return self.__add__(other)
 
-    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+    def __array_ufunc__(self, ufunc: np.ufunc, method: str, *inputs: object, **kwargs: object) -> "Position3D | None":
         """Handle numpy universal functions to maintain Position3D type."""
         if ufunc == np.multiply and method == "__call__":
             # Handle scalar * position multiplication
             if len(inputs) == 2:
                 if isinstance(inputs[0], (int, float, np.number)) and isinstance(inputs[1], Position3D):
                     return inputs[1] * float(inputs[0])  # position * scalar
-                elif isinstance(inputs[0], Position3D) and isinstance(inputs[1], (int, float, np.number)):
+                if isinstance(inputs[0], Position3D) and isinstance(inputs[1], (int, float, np.number)):
                     return inputs[0] * float(inputs[1])  # position * scalar
-        elif ufunc == np.matmul and method == "__call__":
+        elif (
+            ufunc == np.matmul
+            and method == "__call__"
+            and len(inputs) == 2
+            and isinstance(inputs[0], np.ndarray)
+            and isinstance(inputs[1], Position3D)
+        ):
             # Handle matrix @ position multiplication
-            if len(inputs) == 2:
-                if isinstance(inputs[0], np.ndarray) and isinstance(inputs[1], Position3D):
-                    # Call the __rmatmul__ method directly
-                    return inputs[1].__rmatmul__(inputs[0])
+            # Call the __rmatmul__ method directly
+            return inputs[1].__rmatmul__(inputs[0])
 
         # For other operations, defer to numpy
         return NotImplemented
@@ -493,7 +492,7 @@ class Direction3D:
     y: float
     z: float
 
-    def __array__(self, dtype=None, copy=None) -> np.ndarray:
+    def __array__(self, dtype: np.dtype | None = None, copy: bool | None = None) -> np.ndarray:
         """Enable numpy array operations."""
         arr = np.array([self.x, self.y, self.z, 0.0])
         if dtype is not None:
@@ -507,10 +506,9 @@ class Direction3D:
     @classmethod
     def from_array(cls, arr: np.ndarray) -> "Direction3D":
         """Create from 4D homogeneous array [x,y,z,0] or 3D array [x,y,z]."""
-        if arr.shape == (4,) or arr.shape == (3,):
+        if arr.shape in {(4,), (3,)}:
             return cls(arr[0], arr[1], arr[2])
-        else:
-            raise ValueError(f"Expected array shape (3,) or (4,), got {arr.shape}")
+        raise ValueError(f"Expected array shape (3,) or (4,), got {arr.shape}")
 
     def magnitude(self) -> float:
         """Calculate vector magnitude."""
@@ -543,7 +541,7 @@ class Direction3D:
         """Convert to Vector3D."""
         return Vector3D(self.x, self.y, self.z)
 
-    def isclose(self, other: "Direction3D", rtol=1e-9, atol=1e-12) -> bool:
+    def isclose(self, other: "Direction3D", rtol: float = 1e-9, atol: float = 1e-12) -> bool:
         """Compare with tolerance."""
         return bool(
             np.isclose(self.x, other.x, rtol=rtol, atol=atol)
@@ -551,7 +549,7 @@ class Direction3D:
             and np.isclose(self.z, other.z, rtol=rtol, atol=atol)
         )
 
-    def assert_close(self, other: "Direction3D", rtol=1e-9, atol=1e-12, msg="") -> None:
+    def assert_close(self, other: "Direction3D", rtol: float = 1e-9, atol: float = 1e-12, msg: str = "") -> None:
         """Assert close with custom error message."""
         if not self.isclose(other, rtol=rtol, atol=atol):
             error_msg = f"{self} != {other} (rtol={rtol}, atol={atol})"
@@ -559,7 +557,7 @@ class Direction3D:
                 error_msg = f"{msg}: {error_msg}"
             raise AssertionError(error_msg)
 
-    def __rmatmul__(self, other):
+    def __rmatmul__(self, other: np.ndarray) -> "Direction3D":
         """Enable matrix multiplication: matrix @ direction."""
         if isinstance(other, np.ndarray):
             result = other @ np.array(self)
@@ -580,42 +578,44 @@ class Direction3D:
             raise ZeroDivisionError("Cannot divide direction by zero")
         return Direction3D(self.x / scalar, self.y / scalar, self.z / scalar)
 
-    def __array_ufunc__(self, ufunc, method, *inputs, **kwargs):
+    def __array_ufunc__(self, ufunc: np.ufunc, method: str, *inputs: object, **kwargs: object) -> "Direction3D | None":
         """Handle numpy universal functions to maintain Direction3D type."""
         if ufunc == np.multiply and method == "__call__":
             # Handle scalar * direction multiplication
             if len(inputs) == 2:
                 if isinstance(inputs[0], (int, float, np.number)) and isinstance(inputs[1], Direction3D):
                     return inputs[1] * float(inputs[0])  # direction * scalar
-                elif isinstance(inputs[0], Direction3D) and isinstance(inputs[1], (int, float, np.number)):
+                if isinstance(inputs[0], Direction3D) and isinstance(inputs[1], (int, float, np.number)):
                     return inputs[0] * float(inputs[1])  # direction * scalar
-        elif ufunc == np.matmul and method == "__call__":
+        elif (
+            ufunc == np.matmul
+            and method == "__call__"
+            and len(inputs) == 2
+            and isinstance(inputs[0], np.ndarray)
+            and isinstance(inputs[1], Direction3D)
+        ):
             # Handle matrix @ direction multiplication
-            if len(inputs) == 2:
-                if isinstance(inputs[0], np.ndarray) and isinstance(inputs[1], Direction3D):
-                    # Call the __rmatmul__ method directly
-                    return inputs[1].__rmatmul__(inputs[0])
+            # Call the __rmatmul__ method directly
+            return inputs[1].__rmatmul__(inputs[0])
 
         # For other operations, defer to numpy
         return NotImplemented
 
-    def __add__(self, other) -> "Direction3D":
+    def __add__(self, other: "Direction3D | float | int") -> "Direction3D":
         """Add two directions or add scalar to direction."""
         if isinstance(other, Direction3D):
             return Direction3D(self.x + other.x, self.y + other.y, self.z + other.z)
-        elif isinstance(other, (int, float)):
+        if isinstance(other, (int, float)):
             return Direction3D(self.x + other, self.y + other, self.z + other)
-        else:
-            return NotImplemented
+        return NotImplemented
 
-    def __sub__(self, other):
+    def __sub__(self, other: "Direction3D | float | int") -> "Direction3D":
         """Subtract direction or scalar from direction."""
         if isinstance(other, Direction3D):
             return Direction3D(self.x - other.x, self.y - other.y, self.z - other.z)
-        elif isinstance(other, (int, float)):
+        if isinstance(other, (int, float)):
             return Direction3D(self.x - other, self.y - other, self.z - other)
-        else:
-            return NotImplemented
+        return NotImplemented
 
     def serialize(self) -> dict:
         """Serialize to dictionary representation."""
@@ -654,9 +654,9 @@ class IntersectionResult:
     """Result of ray-surface intersection calculation."""
 
     intersects: bool
-    point: Optional[Point3D] = None
-    distance: Optional[float] = None
-    surface_normal: Optional[Direction3D] = None
+    point: Point3D | None = None
+    distance: float | None = None
+    surface_normal: Direction3D | None = None
 
     @classmethod
     def no_intersection(cls) -> "IntersectionResult":
@@ -665,7 +665,7 @@ class IntersectionResult:
 
     @classmethod
     def intersection_at(
-        cls, point: Point3D, distance: float, normal: Optional[Direction3D] = None
+        cls, point: Point3D, distance: float, normal: Direction3D | None = None
     ) -> "IntersectionResult":
         """Create result indicating intersection at given point."""
         return cls(intersects=True, point=point, distance=distance, surface_normal=normal)
@@ -674,13 +674,14 @@ class IntersectionResult:
 class RotationMatrix(np.ndarray):
     """A 3x3 rotation matrix that validates its mathematical properties."""
 
-    def __new__(cls, input_array, validate_handedness: bool = True):
+    def __new__(cls, input_array: np.ndarray | list, validate_handedness: bool = True) -> "RotationMatrix":
         """Create a new rotation matrix from input array or list with validation.
 
         Args:
             input_array: 3x3 array or nested list representing the rotation matrix
             validate_handedness: If True, enforce right-handed coordinate system (det=+1)
                                 If False, allow left-handed systems (det=-1) for legacy compatibility
+
         """
         # Convert input to numpy array (handles both arrays and lists)
         obj = np.asarray(input_array, dtype=np.float64).view(cls)
@@ -698,6 +699,7 @@ class RotationMatrix(np.ndarray):
         Args:
             matrix: The matrix to validate
             validate_handedness: If True, enforce right-handed coordinate system
+
         """
         # Check if matrix is orthonormal (R^T * R = I)
         should_be_identity = matrix.T @ matrix
@@ -709,10 +711,9 @@ class RotationMatrix(np.ndarray):
         if validate_handedness:
             if not np.isclose(det, 1.0, atol=1e-6):
                 raise ValueError(f"Matrix determinant is {det:.6f}, expected +1.0 for right-handed rotation")
-        else:
-            # Allow both +1 and -1 determinants (right-handed and left-handed)
-            if not (np.isclose(det, 1.0, atol=1e-6) or np.isclose(det, -1.0, atol=1e-6)):
-                raise ValueError(f"Matrix determinant is {det:.6f}, expected ±1.0 for rotation matrix")
+        # Allow both +1 and -1 determinants (right-handed and left-handed)
+        elif not (np.isclose(det, 1.0, atol=1e-6) or np.isclose(det, -1.0, atol=1e-6)):
+            raise ValueError(f"Matrix determinant is {det:.6f}, expected ±1.0 for rotation matrix")
 
     @classmethod
     def identity(cls) -> "RotationMatrix":
@@ -720,7 +721,7 @@ class RotationMatrix(np.ndarray):
         return cls(np.eye(3))
 
     @classmethod
-    def deserialize(cls, data) -> "RotationMatrix":
+    def deserialize(cls, data: dict) -> "RotationMatrix":
         """Create RotationMatrix from serialized data with automatic handedness detection.
 
         Tries strict right-handed validation first, falls back to allowing left-handed
@@ -728,6 +729,7 @@ class RotationMatrix(np.ndarray):
 
         Args:
             data: Matrix data (list or array)
+
         """
         try:
             # Try with strict right-handed validation first
@@ -740,7 +742,7 @@ class RotationMatrix(np.ndarray):
 class TransformationMatrix(np.ndarray):
     """A 4x4 homogeneous transformation matrix with convenient factory methods."""
 
-    def __new__(cls, input_array):
+    def __new__(cls, input_array: np.ndarray | list) -> "TransformationMatrix":
         """Create a new transformation matrix from input array."""
         obj = np.asarray(input_array).view(cls)
         if obj.shape != (4, 4):

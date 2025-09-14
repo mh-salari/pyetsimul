@@ -3,14 +3,17 @@
 Pupil-CR tracker with polynomial gaze model.
 """
 
-from pyetsimul.core import EyeTracker, Camera, Light
-from pyetsimul.types.algorithms import PolynomialGazeModelState, GazePrediction
-from pyetsimul.types.imaging import EyeMeasurement
-from pyetsimul.types.geometry import Point3D, Position3D
-from .polynomials import get_polynomial
-from ...geometry.plane_detection import detect_calibration_plane, summarize_plane_detection, PlaneInfo
 import time
+
 import numpy as np
+
+from pyetsimul.core import Camera, EyeTracker, Light
+from pyetsimul.types.algorithms import GazePrediction, PolynomialGazeModelState
+from pyetsimul.types.geometry import Point3D, Position3D
+from pyetsimul.types.imaging import EyeMeasurement
+
+from ...geometry.plane_detection import PlaneInfo, detect_calibration_plane, summarize_plane_detection
+from .polynomials import get_polynomial
 
 
 class PolynomialGazeModel(EyeTracker):
@@ -20,7 +23,7 @@ class PolynomialGazeModel(EyeTracker):
     Supports various polynomial types from eye tracking literature.
     """
 
-    def __init__(self, polynomial: str, **kwargs):
+    def __init__(self, polynomial: str, **kwargs: object) -> None:
         """Initialize polynomial gaze model tracker with polynomial specification.
 
         Sets up polynomial function and algorithm state for gaze tracking.
@@ -28,6 +31,7 @@ class PolynomialGazeModel(EyeTracker):
         Args:
             polynomial: Polynomial type to use
             **kwargs: Arguments passed to parent EyeTracker
+
         """
         super().__init__(**kwargs)
         self.algorithm_state = PolynomialGazeModelState()
@@ -62,6 +66,7 @@ class PolynomialGazeModel(EyeTracker):
 
         Returns:
             PolynomialGazeModel: Configured polynomial gaze model eye tracker
+
         """
         return cls(
             polynomial=polynomial,
@@ -79,6 +84,7 @@ class PolynomialGazeModel(EyeTracker):
 
         Args:
             calibration_measurements: List of EyeMeasurement objects from calibration
+
         """
         # Detect calibration plane for coordinate system
         self.plane_info = detect_calibration_plane(self.calib_points)
@@ -99,7 +105,7 @@ class PolynomialGazeModel(EyeTracker):
         """
         # Determine feature vector size from first valid measurement
         feature_size = None
-        for i, measurement in enumerate(calibration_measurements):
+        for measurement in calibration_measurements:
             pc = measurement.pupil_data.center
             cr = (
                 measurement.camera_image.corneal_reflections[0]
@@ -116,7 +122,7 @@ class PolynomialGazeModel(EyeTracker):
             raise ValueError("No valid calibration data found")
 
         # Build feature matrix for all calibration points
-        X = np.zeros((feature_size, len(self.calib_points)))
+        feature_matrix = np.zeros((feature_size, len(self.calib_points)))
 
         for i, measurement in enumerate(calibration_measurements):
             pc = measurement.pupil_data.center
@@ -129,14 +135,14 @@ class PolynomialGazeModel(EyeTracker):
             if pc is not None and cr is not None:
                 pcr = pc - cr
                 poly_features = self.polynomial_func(pcr.x, pcr.y)
-                X[:, i] = poly_features.features
+                feature_matrix[:, i] = poly_features.features
 
         # Map 3D calibration points to 2D plane coordinates
         calib_coords_2d = [self.plane_info.extract_2d_coords(pt) for pt in self.calib_points]
         calib_points_array = np.array(calib_coords_2d).T
 
-        # Solve least squares: calib_points = A @ X → A = calib_points @ pinv(X)
-        calibration_matrix = calib_points_array @ np.linalg.pinv(X)
+        # Solve least squares: calib_points = A @ feature_matrix → A = calib_points @ pinv(feature_matrix)
+        calibration_matrix = calib_points_array @ np.linalg.pinv(feature_matrix)
 
         # Store coefficients for both X and Y gaze components
         self.algorithm_state.x_coefficients = calibration_matrix[0:1, :].flatten()
@@ -150,7 +156,7 @@ class PolynomialGazeModel(EyeTracker):
         """
         # Determine polynomial structure from first valid measurement
         poly_features = None
-        for i, measurement in enumerate(calibration_measurements):
+        for measurement in calibration_measurements:
             pc = measurement.pupil_data.center
             cr = (
                 measurement.camera_image.corneal_reflections[0]
@@ -170,13 +176,13 @@ class PolynomialGazeModel(EyeTracker):
             # Handle object arrays (mixed-length coordinates)
             coord_x_size = len(poly_features.features[0])
             coord_y_size = len(poly_features.features[1])
-            X_x = np.zeros((coord_x_size, len(self.calib_points)))
-            X_y = np.zeros((coord_y_size, len(self.calib_points)))
+            feature_matrix_x = np.zeros((coord_x_size, len(self.calib_points)))
+            feature_matrix_y = np.zeros((coord_y_size, len(self.calib_points)))
         else:
             # Handle regular 2D arrays
-            num_coords, feature_size = poly_features.features.shape
-            X_x = np.zeros((feature_size, len(self.calib_points)))
-            X_y = np.zeros((feature_size, len(self.calib_points)))
+            _, feature_size = poly_features.features.shape
+            feature_matrix_x = np.zeros((feature_size, len(self.calib_points)))
+            feature_matrix_y = np.zeros((feature_size, len(self.calib_points)))
 
         for i, measurement in enumerate(calibration_measurements):
             pc = measurement.pupil_data.center
@@ -191,24 +197,24 @@ class PolynomialGazeModel(EyeTracker):
                 poly_features = self.polynomial_func(pcr.x, pcr.y)
                 if poly_features.features.dtype == object:
                     # Handle object arrays (mixed-length coordinates)
-                    X_x[:, i] = poly_features.features[0]  # X coordinate features
-                    X_y[:, i] = poly_features.features[1]  # Y coordinate features
+                    feature_matrix_x[:, i] = poly_features.features[0]  # X coordinate features
+                    feature_matrix_y[:, i] = poly_features.features[1]  # Y coordinate features
                 else:
                     # Handle regular 2D arrays
-                    X_x[:, i] = poly_features.features[0, :]  # X coordinate features
-                    X_y[:, i] = poly_features.features[1, :]  # Y coordinate features
+                    feature_matrix_x[:, i] = poly_features.features[0, :]  # X coordinate features
+                    feature_matrix_y[:, i] = poly_features.features[1, :]  # Y coordinate features
 
         # Map 3D calibration points to 2D plane coordinates
         calib_coords_2d = [self.plane_info.extract_2d_coords(pt) for pt in self.calib_points]
         calib_points_array = np.array(calib_coords_2d).T
 
         # Solve separate least squares problems for X and Y coordinates
-        A_x = calib_points_array[0:1, :] @ np.linalg.pinv(X_x)  # X coordinate coefficients
-        A_y = calib_points_array[1:2, :] @ np.linalg.pinv(X_y)  # Y coordinate coefficients
+        coeff_x = calib_points_array[0:1, :] @ np.linalg.pinv(feature_matrix_x)  # X coordinate coefficients
+        coeff_y = calib_points_array[1:2, :] @ np.linalg.pinv(feature_matrix_y)  # Y coordinate coefficients
 
         # Store separate coefficients for X and Y gaze components
-        self.algorithm_state.x_coefficients = A_x.flatten()
-        self.algorithm_state.y_coefficients = A_y.flatten()
+        self.algorithm_state.x_coefficients = coeff_x.flatten()
+        self.algorithm_state.y_coefficients = coeff_y.flatten()
         self.algorithm_state.is_calibrated = True
 
     def predict_gaze(self, measurement: EyeMeasurement) -> GazePrediction:
@@ -222,6 +228,7 @@ class PolynomialGazeModel(EyeTracker):
 
         Returns:
             GazePrediction: Structured prediction result.
+
         """
         start_time = time.time()
 
@@ -272,6 +279,7 @@ class PolynomialGazeModel(EyeTracker):
 
         Returns:
             dict: Complete eye tracker state including hardware configuration
+
         """
         return {
             "polynomial_name": self.polynomial_name,
@@ -297,8 +305,8 @@ class PolynomialGazeModel(EyeTracker):
 
         Returns:
             PolynomialGazeModel: Fully configured and calibrated eye tracker
-        """
 
+        """
         # Deserialize hardware components
         cameras = [Camera.deserialize(cam_data) for cam_data in data["cameras"]]
         lights = [Light.deserialize(light_data) for light_data in data["lights"]]

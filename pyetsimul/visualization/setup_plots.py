@@ -4,23 +4,28 @@ Provides comprehensive 3D visualization functions for eye tracking setups.
 Handles coordinate transformations and anatomical structure plotting.
 """
 
+from typing import TYPE_CHECKING, Any
+
 import numpy as np
 from matplotlib import ticker
-from typing import Optional
 
-from ..types import Point2D, Point3D, Vector3D, TransformationMatrix
-from .plot_config import create_plot_config
+if TYPE_CHECKING:
+    from matplotlib.axes import Axes
+
+from ..core import Camera, Light
+from ..types import Point2D, Point3D, Position3D, TransformationMatrix, Vector3D
+from .plot_config import PlotConfig, create_plot_config
 
 
 def plot_setup(
-    ax1,
-    eyes_data,
-    look_at_targets,
-    lights=None,
-    cameras=None,
-    cr_3d_lists=None,
-    ref_bounds: Optional[dict[str, tuple[float, float]]] = None,
-    calib_points: Optional[list[Point2D]] = None,
+    ax1: "Axes",
+    eyes_data: list[dict[str, Any]] | dict[str, Any],
+    look_at_targets: list[Position3D] | Position3D,
+    lights: list[Light] | Light | None = None,
+    cameras: list[Camera] | Camera | None = None,
+    cr_3d_lists: list[list[Any]] | None = None,
+    ref_bounds: dict[str, tuple[float, float]] | None = None,
+    calib_points: list[Point2D] | None = None,
 ) -> tuple[list[str], list[str]]:
     """Plot 3D eye tracking setup visualization.
 
@@ -38,6 +43,7 @@ def plot_setup(
 
     Returns:
         Tuple[List[str], List[str]]: Lists of eye and camera colors used in the plot.
+
     """
     # Convert single objects to lists
     if not isinstance(eyes_data, list):
@@ -66,15 +72,15 @@ def plot_setup(
     camera_colors = config.colors.cameras
 
     # Plot all eyes
-    for eye_idx, (eye_data, target) in enumerate(zip(eyes_data, look_at_targets)):
+    for eye_idx, (eye_data, target) in enumerate(zip(eyes_data, look_at_targets, strict=False)):
         eye_color = eye_colors[eye_idx % len(eye_colors)]
         light_eye_color = light_eye_colors[eye_idx % len(light_eye_colors)]
 
         # Plot corneal surface
         ax1.plot_surface(
-            eye_data["X_cornea"],
-            eye_data["Y_cornea"],
-            eye_data["Z_cornea"],
+            eye_data["cornea_surface_x"],
+            eye_data["cornea_surface_y"],
+            eye_data["cornea_surface_z"],
             alpha=config.lines.secondary_alpha,
             color=light_eye_color,
             edgecolor=eye_color,
@@ -182,36 +188,7 @@ def plot_setup(
     if cr_3d_lists is not None:
         for eye_idx, cr_3d_list in enumerate(cr_3d_lists):
             if cr_3d_list is not None:
-                for cr_idx, cr_3d in enumerate(cr_3d_list):
-                    if cr_3d is not None:
-                        color = config.colors.corneal_reflections_detailed[
-                            cr_idx % len(config.colors.corneal_reflections_detailed)
-                        ]
-                        ax1.scatter(
-                            cr_3d.x,
-                            cr_3d.y,
-                            cr_3d.z,
-                            color=color,
-                            s=config.markers.detail_elements + 30,
-                            marker="o",
-                            edgecolor=config.colors.rotation_center,
-                            linewidth=config.lines.standard_lines,
-                            label=f"Eye {eye_idx + 1} CR {cr_idx + 1}",
-                        )
-
-                        # Draw light ray paths if lights provided
-                        if lights and cr_idx < len(lights):
-                            light = lights[cr_idx]
-                            light_pos = light.position
-                            ax1.plot(
-                                [light_pos.x, cr_3d.x],
-                                [light_pos.y, cr_3d.y],
-                                [light_pos.z, cr_3d.z],
-                                color=color,
-                                linestyle=config.lines.solid,
-                                linewidth=config.lines.thick_lines,
-                                alpha=config.lines.secondary_alpha,
-                            )
+                _plot_corneal_reflections_for_eye(ax1, config, cr_3d_list, eye_idx, lights)
 
     # 3D plot formatting
     ax1.set_xlabel("X (mm)")
@@ -229,9 +206,8 @@ def plot_setup(
     all_points = []
 
     # Add all eye centers and targets
-    for eye_data, target in zip(eyes_data, look_at_targets):
-        all_points.append(eye_data["cornea_center_world"])
-        all_points.append(target)
+    for eye_data, target in zip(eyes_data, look_at_targets, strict=False):
+        all_points.extend([eye_data["cornea_center_world"], target])
 
     # Add camera positions
     if cameras:
@@ -301,7 +277,7 @@ def transform_surface(
 
 
 def plot_axis(
-    ax,
+    ax: "Axes",
     center: Point3D,
     trans_matrix: TransformationMatrix,
     axis_idx: int,
@@ -338,3 +314,39 @@ def plot_axis(
         color=color,
         weight=config.fonts.bold_weight,
     )
+
+
+def _plot_corneal_reflections_for_eye(
+    ax: "Axes", config: PlotConfig, cr_3d_list: list[Position3D], eye_idx: int, lights: list[Light] | Light | None
+) -> None:
+    """Plot corneal reflections and light rays for a single eye."""
+    for cr_idx, cr_3d in enumerate(cr_3d_list):
+        if cr_3d is not None:
+            color = config.colors.corneal_reflections_detailed[
+                cr_idx % len(config.colors.corneal_reflections_detailed)
+            ]
+            ax.scatter(
+                cr_3d.x,
+                cr_3d.y,
+                cr_3d.z,
+                color=color,
+                s=config.markers.detail_elements + 30,
+                marker="o",
+                edgecolor=config.colors.rotation_center,
+                linewidth=config.lines.standard_lines,
+                label=f"Eye {eye_idx + 1} CR {cr_idx + 1}",
+            )
+
+            # Draw light ray paths if lights provided
+            if lights and cr_idx < len(lights):
+                light = lights[cr_idx]
+                light_pos = light.position
+                ax.plot(
+                    [light_pos.x, cr_3d.x],
+                    [light_pos.y, cr_3d.y],
+                    [light_pos.z, cr_3d.z],
+                    color=color,
+                    linestyle=config.lines.solid,
+                    linewidth=config.lines.thick_lines,
+                    alpha=config.lines.secondary_alpha,
+                )

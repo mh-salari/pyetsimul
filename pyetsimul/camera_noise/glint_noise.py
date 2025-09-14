@@ -1,8 +1,8 @@
 """Glint noise simulation for eye tracking cameras."""
 
-import numpy as np
 from dataclasses import dataclass
-from typing import Optional
+
+import numpy as np
 
 from ..types import Point2D
 
@@ -26,19 +26,19 @@ class GlintNoiseConfig:
     """
 
     # Simple interface
-    noise_type: Optional[str] = None
-    std: Optional[float] = None
-    offset_x: Optional[float] = None
-    offset_y: Optional[float] = None
+    noise_type: str | None = None
+    std: float | None = None
+    offset_x: float | None = None
+    offset_y: float | None = None
 
     # Advanced interface
-    mean: Optional[list[float]] = None
-    covariance: Optional[list[list[float]]] = None
+    mean: list[float] | None = None
+    covariance: list[list[float]] | None = None
 
     # Common
-    seed: Optional[int] = None
+    seed: int | None = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Validate noise configuration after initialization."""
         # Check if advanced mode is used
         if self.mean is not None or self.covariance is not None:
@@ -55,8 +55,8 @@ class GlintNoiseConfig:
                 raise ValueError("Covariance matrix must be positive semidefinite")
 
             # Store numpy arrays
-            self._mean_array = np.array(self.mean)
-            self._cov_matrix = cov_matrix
+            self.mean_array = np.array(self.mean)
+            self.cov_matrix = cov_matrix
 
             # Set advanced mode
             self.noise_type = "advanced"
@@ -66,7 +66,7 @@ class GlintNoiseConfig:
         if self.noise_type is None:
             return
 
-        if self.noise_type in ["gaussian", "uniform"]:
+        if self.noise_type in {"gaussian", "uniform"}:
             if self.std is None:
                 raise ValueError(f"'{self.noise_type}' noise type requires 'std' to be specified")
         elif self.noise_type == "constant_offset":
@@ -76,7 +76,7 @@ class GlintNoiseConfig:
             raise ValueError(f"Unknown noise type: {self.noise_type}")
 
 
-def apply_glint_noise(glint_position: Point2D, config: Optional[GlintNoiseConfig]) -> Point2D:
+def apply_glint_noise(glint_position: Point2D, config: GlintNoiseConfig | None) -> Point2D:
     """Add noise to glint position based on the provided configuration.
 
     Args:
@@ -85,30 +85,30 @@ def apply_glint_noise(glint_position: Point2D, config: Optional[GlintNoiseConfig
 
     Returns:
         Point2D with added noise in pixel coordinates
+
     """
     if config is None or config.noise_type is None:
         return glint_position
 
-    # Set random seed if specified for reproducible noise
-    if config.seed is not None:
-        np.random.seed(config.seed)
+    # Create random generator with seed for reproducible noise
+    rng = np.random.default_rng(config.seed)
 
     if config.noise_type == "advanced":
-        noise = np.random.multivariate_normal(config._mean_array, config._cov_matrix)
+        noise = rng.multivariate_normal(config.mean_array, config.cov_matrix)
         return Point2D(x=glint_position.x + noise[0], y=glint_position.y + noise[1])
 
-    elif config.noise_type == "gaussian":
-        noise_x = np.random.normal(0.0, config.std)
-        noise_y = np.random.normal(0.0, config.std)
+    if config.noise_type == "gaussian":
+        noise_x = rng.normal(0.0, config.std)
+        noise_y = rng.normal(0.0, config.std)
         return Point2D(x=glint_position.x + noise_x, y=glint_position.y + noise_y)
 
-    elif config.noise_type == "uniform":
+    if config.noise_type == "uniform":
         range_val = config.std * np.sqrt(3)
-        noise_x = np.random.uniform(-range_val, range_val)
-        noise_y = np.random.uniform(-range_val, range_val)
+        noise_x = rng.uniform(-range_val, range_val)
+        noise_y = rng.uniform(-range_val, range_val)
         return Point2D(x=glint_position.x + noise_x, y=glint_position.y + noise_y)
 
-    elif config.noise_type == "constant_offset":
+    if config.noise_type == "constant_offset":
         return Point2D(x=glint_position.x + config.offset_x, y=glint_position.y + config.offset_y)
 
     return glint_position

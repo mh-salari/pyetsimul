@@ -1,11 +1,12 @@
 """Unit tests for intersect_ray_plane function."""
 
 import numpy as np
+
 from pyetsimul.geometry.intersections import intersect_ray_plane
-from pyetsimul.types import Ray, Position3D, Direction3D, IntersectionResult, Point3D
+from pyetsimul.types import Direction3D, IntersectionResult, Point3D, Position3D, Ray
 
 
-def test_normal_intersection():
+def test_normal_intersection() -> None:
     """Test normal ray-plane intersection with MATLAB reference values."""
     # Ray perpendicular to plane
     ray_origin = Point3D(0.0, 0.0, -2.0)  # Ray origin
@@ -23,7 +24,7 @@ def test_normal_intersection():
     result.point.assert_close(expected_x, rtol=1e-14, atol=1e-15)
 
 
-def test_ray_parallel_to_plane():
+def test_ray_parallel_to_plane() -> None:
     """Test ray parallel to plane - should return None."""
     # Ray parallel to plane (no intersection)
     ray_origin = Point3D(0.0, 0.0, 1.0)  # Ray origin
@@ -38,7 +39,7 @@ def test_ray_parallel_to_plane():
     assert not result.intersects
 
 
-def test_ray_starting_on_plane():
+def test_ray_starting_on_plane() -> None:
     """Test ray starting on plane with MATLAB reference values."""
     # Ray origin on plane surface
     ray_origin = Point3D(0.0, 0.0, 0.0)  # Ray origin (on plane)
@@ -56,7 +57,7 @@ def test_ray_starting_on_plane():
     result.point.assert_close(expected_x, rtol=1e-14, atol=1e-15)
 
 
-def test_oblique_intersection():
+def test_oblique_intersection() -> None:
     """Test oblique intersection with tilted plane and MATLAB reference values."""
     # Angled ray with tilted plane
     ray_origin = Point3D(0.0, 0.0, -2.0)  # Ray origin
@@ -78,7 +79,7 @@ def test_oblique_intersection():
     assert abs(plane_check) < 1e-14
 
 
-def test_backward_intersection():
+def test_backward_intersection() -> None:
     """Test ray pointing away from plane (backward intersection) with MATLAB reference values."""
     # Ray pointing away from plane
     ray_origin = Point3D(0.0, 0.0, 1.0)  # Ray origin
@@ -96,7 +97,7 @@ def test_backward_intersection():
     result.point.assert_close(expected_x, rtol=1e-14, atol=1e-15)
 
 
-def test_xy_plane_intersection():
+def test_xy_plane_intersection() -> None:
     """Test intersection with XY plane and MATLAB reference values."""
     # Ray hitting XY plane from above
     ray_origin = Point3D(1.0, 2.0, 3.0)  # Ray origin
@@ -114,7 +115,7 @@ def test_xy_plane_intersection():
     result.point.assert_close(expected_x, rtol=1e-14, atol=1e-15)
 
 
-def test_output_properties():
+def test_output_properties() -> None:
     """Test that output has correct properties."""
     ray_origin = Point3D(0.0, 0.0, -2.0)
     ray_direction = Direction3D(0.0, 0.0, 1.0)

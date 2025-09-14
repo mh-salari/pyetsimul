@@ -1,8 +1,8 @@
 """Camera noise simulation for eye tracking experiments."""
 
-from .glint_noise import apply_glint_noise, GlintNoiseConfig
+from .glint_noise import GlintNoiseConfig, apply_glint_noise
 
 __all__ = [
-    "apply_glint_noise",
     "GlintNoiseConfig",
+    "apply_glint_noise",
 ]

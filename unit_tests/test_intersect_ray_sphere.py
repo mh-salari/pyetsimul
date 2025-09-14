@@ -1,11 +1,12 @@
 """Unit tests for intersect_ray_sphere function."""
 
 import numpy as np
+
 from pyetsimul.geometry.intersections import intersect_ray_sphere
-from pyetsimul.types import Ray, Position3D, IntersectionResult, Point3D, Direction3D
+from pyetsimul.types import Direction3D, IntersectionResult, Point3D, Position3D, Ray
 
 
-def test_two_intersections():
+def test_two_intersections() -> None:
     """Test ray intersecting sphere with two points and MATLAB reference values."""
     # Ray passes through sphere center
     ray_origin = Point3D(0.0, 0.0, -2.0)  # Ray origin
@@ -26,7 +27,7 @@ def test_two_intersections():
     result2.point.assert_close(expected_pos2, rtol=1e-14, atol=1e-15)
 
 
-def test_tangent_intersection():
+def test_tangent_intersection() -> None:
     """Test ray tangent to sphere and MATLAB reference values."""
     # Ray just touches sphere surface
     ray_origin = Point3D(0.0, 1.0, -2.0)  # Ray origin
@@ -46,7 +47,7 @@ def test_tangent_intersection():
     result2.point.assert_close(expected_pos, rtol=1e-14, atol=1e-15)
 
 
-def test_ray_missing_sphere():
+def test_ray_missing_sphere() -> None:
     """Test ray that misses sphere - should return None."""
     # Ray misses sphere completely
     ray_origin = Point3D(0.0, 2.0, -2.0)  # Ray origin
@@ -62,7 +63,7 @@ def test_ray_missing_sphere():
     assert not result2.intersects
 
 
-def test_ray_inside_sphere():
+def test_ray_inside_sphere() -> None:
     """Test ray starting inside sphere and MATLAB reference values."""
     # Ray origin at sphere center
     ray_origin = Point3D(0.0, 0.0, 0.0)  # Ray origin (at center)
@@ -83,7 +84,7 @@ def test_ray_inside_sphere():
     result2.point.assert_close(expected_pos2, rtol=1e-14, atol=1e-15)
 
 
-def test_non_unit_direction():
+def test_non_unit_direction() -> None:
     """Test with non-unit ray direction and MATLAB reference values."""
     # Ray direction with length 2.0 (should be normalized)
     ray_origin = Point3D(0.0, 0.0, -3.0)  # Ray origin
@@ -104,7 +105,7 @@ def test_non_unit_direction():
     result2.point.assert_close(expected_pos2, rtol=1e-14, atol=1e-15)
 
 
-def test_output_properties():
+def test_output_properties() -> None:
     """Test that output has correct properties."""
     ray_origin = Point3D(0.0, 0.0, -2.0)
     ray_direction = Direction3D(0.0, 0.0, 1.0)

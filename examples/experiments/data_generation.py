@@ -1,21 +1,22 @@
 """Generate eye tracking data using shared configuration."""
 
-from pyetsimul.simulation import DataGenerationStrategy
 from config import (
-    create_experiment_config,
-    eye_position_variation,
-    target_position_variation,
-    pupil_size_variation,
+    angle_kappa_pupil_variation,
     angle_kappa_variation,
     corneal_radius_variation,
-    corneal_thickness_variation,
-    angle_kappa_pupil_variation,
-    eye_position_angle_kappa_variation,
     corneal_shape_variation,
+    corneal_thickness_variation,
+    create_experiment_config,
+    eye_position_angle_kappa_variation,
+    eye_position_variation,
+    pupil_size_variation,
+    target_position_variation,
 )
 
+from pyetsimul.simulation import DataGenerationStrategy
 
-def main():
+
+def main() -> None:
     """Generate datasets for all variations."""
     base_config = create_experiment_config("base")
 

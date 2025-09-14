@@ -1,14 +1,15 @@
 """Algorithm comparison for ranking multiple eye tracking algorithms."""
 
-import numpy as np
 from dataclasses import dataclass
+
+import numpy as np
 from tabulate import tabulate
 from tqdm import tqdm
 
-from .gaze_accuracy import evaluate_gaze_accuracy
 from ..core import EyeTracker
-from ..types import Position3D, Point3D
 from ..geometry.conversions import calculate_angular_error_degrees
+from ..types import Point3D, Position3D
+from .gaze_accuracy import evaluate_gaze_accuracy
 
 
 @dataclass
@@ -22,7 +23,7 @@ class AlgorithmRanking:
     pairwise_cosine_sim: dict[str, dict[str, float]]  # Algorithm vs algorithm cosine similarities
     pairwise_amplitude: dict[str, dict[str, dict[str, float]]]  # Algorithm vs algorithm amplitude differences
 
-    def pprint(self, title: str = "Algorithm Ranking"):
+    def pprint(self, title: str = "Algorithm Ranking") -> None:
         """Print comprehensive ranking and comparison analysis."""
         # Main ranking table
         print(f"\n{title}")
@@ -38,16 +39,14 @@ class AlgorithmRanking:
             max_error = stats["max"]
             std_error = stats["std"]
 
-            data.append(
-                [
-                    rank,
-                    algo,
-                    f"{mean_error:.3f}°" if not np.isnan(mean_error) else "FAILED",
-                    f"{max_error:.3f}°" if not np.isnan(max_error) else "FAILED",
-                    f"{std_error:.3f}°" if not np.isnan(std_error) else "FAILED",
-                    f"{success:.1f}%",
-                ]
-            )
+            data.append([
+                rank,
+                algo,
+                f"{mean_error:.3f}°" if not np.isnan(mean_error) else "FAILED",
+                f"{max_error:.3f}°" if not np.isnan(max_error) else "FAILED",
+                f"{std_error:.3f}°" if not np.isnan(std_error) else "FAILED",
+                f"{success:.1f}%",
+            ])
 
         headers = ["Rank", "Algorithm", "Mean Error (°)", "Max Error (°)", "Std Error (°)", "Success Rate"]
         print(tabulate(data, headers=headers, tablefmt="grid"))
@@ -65,7 +64,7 @@ class AlgorithmRanking:
         sorted_algos = sorted(self.rankings.keys(), key=lambda x: self.rankings[x])
         return sorted_algos[:n]
 
-    def _print_pairwise_comparisons(self):
+    def _print_pairwise_comparisons(self) -> None:
         """Print pairwise algorithm comparison tables."""
         algorithms = list(self.rankings.keys())
 
@@ -96,7 +95,8 @@ class AlgorithmRanking:
                     pbar.update(1)
         self._print_symmetric_matrix(amplitude_means, algorithms, "6f", "°")
 
-    def _print_symmetric_matrix(self, matrix: dict, algorithms: list[str], fmt: str, unit: str):
+    @staticmethod
+    def _print_symmetric_matrix(matrix: dict, algorithms: list[str], fmt: str, unit: str) -> None:
         """Print a symmetric comparison matrix."""
         # Create header with abbreviated algorithm names for readability
         abbrev_names = [name[:12] + "..." if len(name) > 15 else name for name in algorithms]
@@ -115,7 +115,7 @@ class AlgorithmRanking:
                     row.append("N/A")
             data.append(row)
 
-        headers = ["Algorithm"] + abbrev_names
+        headers = ["Algorithm", *abbrev_names]
         print(tabulate(data, headers=headers, tablefmt="grid"))
 
 
@@ -126,7 +126,6 @@ def compare_algorithms(
     calculate_pairwise: bool = False,
 ) -> AlgorithmRanking:
     """Compare multiple algorithms on same dataset."""
-
     # Evaluate each algorithm
     results = {}
     for name, algorithm in algorithms.items():
@@ -143,7 +142,7 @@ def compare_algorithms(
     rankings = {algo: rank + 1 for rank, algo in enumerate(sorted_algos)}
 
     # Add failed algorithms at the end
-    failed_algos = [name for name in mean_errors.keys() if np.isnan(mean_errors[name])]
+    failed_algos = [name for name in mean_errors if np.isnan(mean_errors[name])]
     for i, algo in enumerate(failed_algos):
         rankings[algo] = len(sorted_algos) + i + 1
 
@@ -236,7 +235,7 @@ def point_wise_angular_difference(
         return np.nan
 
     differences = []
-    for p1, p2, eye_pos in zip(predictions1, predictions2, eye_positions):
+    for p1, p2, eye_pos in zip(predictions1, predictions2, eye_positions, strict=False):
         if p1 is None or p2 is None:
             continue
 
@@ -254,7 +253,7 @@ def cosine_similarity_average(predictions1: list[Position3D], predictions2: list
         return np.nan
 
     similarities = []
-    for p1, p2 in zip(predictions1, predictions2):
+    for p1, p2 in zip(predictions1, predictions2, strict=False):
         if p1 is None or p2 is None:
             continue
 
@@ -279,7 +278,7 @@ def amplitude_agreement(predictions1: list[Position3D], predictions2: list[Posit
         return {"mean": np.nan, "std": np.nan, "max": np.nan}
 
     amp_differences = []
-    for p1, p2 in zip(predictions1, predictions2):
+    for p1, p2 in zip(predictions1, predictions2, strict=False):
         if p1 is None or p2 is None:
             continue
 

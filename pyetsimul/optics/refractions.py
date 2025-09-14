@@ -3,12 +3,22 @@
 Implements Snell's law, ray-surface intersection, and optimization for refraction on spherical and conic surfaces.
 """
 
+from typing import TYPE_CHECKING, cast
+
 import numpy as np
-from typing import Optional, cast
 from scipy.optimize import brentq
-from ..types import Point3D, Ray, IntersectionResult, Position3D, Vector3D, Direction3D
-from ..geometry.intersections import intersect_ray_sphere, intersect_ray_conic, conic_surface_normal
-from ..geometry.intersections import point_on_conic_surface
+
+from ..geometry.intersections import (
+    conic_surface_normal,
+    intersect_ray_conic,
+    intersect_ray_sphere,
+    point_on_conic_surface,
+)
+from ..types import Direction3D, IntersectionResult, Point3D, Position3D, Ray, TransformationMatrix, Vector3D
+
+if TYPE_CHECKING:
+    from ..core.cornea import Cornea
+    from ..core.eye import Eye
 
 
 def _refraction_objective_sphere(
@@ -36,6 +46,7 @@ def _refraction_objective_sphere(
 
     Returns:
         Tuple of (diff, surface_point) where diff is Snell's law difference and surface_point is on sphere surface
+
     """
     # Compute vectors from sphere center to camera and object
     to_camera = (camera_pos - sphere_center).normalize()
@@ -71,7 +82,7 @@ def find_refraction_sphere(
     sphere_radius: float,
     n_outside: float,
     n_sphere: float,
-) -> Optional[Point3D]:
+) -> Point3D | None:
     """Find refraction point on sphere surface.
 
     Uses optimization to find point where object ray refracts to camera position.
@@ -87,6 +98,7 @@ def find_refraction_sphere(
 
     Returns:
         Position on sphere surface where refraction occurs, or None if not found.
+
     """
     try:
         alpha = brentq(
@@ -97,7 +109,7 @@ def find_refraction_sphere(
             1,
         )
         _, result = _refraction_objective_sphere(
-            cast(float, alpha), camera_pos, object_pos, sphere_center, sphere_radius, n_outside, n_sphere
+            cast("float", alpha), camera_pos, object_pos, sphere_center, sphere_radius, n_outside, n_sphere
         )
         return result
     except (ValueError, RuntimeError):
@@ -113,7 +125,7 @@ def _refraction_objective_conic(
     conic_constant: float,
     n_outside: float,
     n_conic: float,
-) -> tuple[float, Optional[Point3D]]:
+) -> tuple[float, Point3D | None]:
     """Objective function for refraction finding on conic surface.
 
     Uses interpolation between camera and object directions to find refraction point.
@@ -132,8 +144,8 @@ def _refraction_objective_conic(
 
     Returns:
         Tuple of (diff, intersection) where diff is Snell's law difference and intersection is surface point
-    """
 
+    """
     # Calculate directions from conic center to camera and object
     to_camera = (camera_pos - conic_center).normalize()
     to_object = (object_pos - conic_center).normalize()
@@ -179,7 +191,7 @@ def find_refraction_conic(
     conic_constant: float,
     n_outside: float,
     n_conic: float,
-) -> Optional[Point3D]:
+) -> Point3D | None:
     """Find refraction point on conic surface.
 
     Uses optimization to find point where object ray refracts to camera position.
@@ -196,6 +208,7 @@ def find_refraction_conic(
 
     Returns:
         Position on conic surface where refraction occurs, or None if not found.
+
     """
     # Calculate directions from conic center
     to_camera = (camera_pos - conic_center).normalize()
@@ -228,7 +241,7 @@ def find_refraction_conic(
             upper_bound,
         )
         _, intersection = _refraction_objective_conic(
-            cast(float, alpha), camera_pos, object_pos, conic_center, radius, conic_constant, n_outside, n_conic
+            cast("float", alpha), camera_pos, object_pos, conic_center, radius, conic_constant, n_outside, n_conic
         )
         return intersection
     except (ValueError, RuntimeError):
@@ -237,7 +250,7 @@ def find_refraction_conic(
 
 def refract_ray_sphere(
     ray: Ray, sphere_center: Position3D, sphere_radius: float, n_outside: float, n_sphere: float
-) -> tuple[Optional[IntersectionResult], Optional[Ray]]:
+) -> tuple[IntersectionResult | None, Ray | None]:
     """Refract ray through sphere surface.
 
     Finds intersection point and computes refracted ray direction using Snell's law.
@@ -254,6 +267,7 @@ def refract_ray_sphere(
         Tuple of (intersection_result, refracted_ray) where intersection_result contains
         the intersection point and refracted_ray is the refracted ray.
         Returns (None, None) if no intersection or total internal reflection.
+
     """
     # Find point of intersection
     intersection_result, _ = intersect_ray_sphere(ray, sphere_center, sphere_radius)
@@ -261,7 +275,7 @@ def refract_ray_sphere(
     if intersection_result is None or not intersection_result.intersects:
         return None, None
 
-    intersection_point = cast(Point3D, intersection_result.point)
+    intersection_point = cast("Point3D", intersection_result.point)
 
     # Find surface normal at point of intersection (pointing inwards)
     normal_vec = (sphere_center.to_point3d() - intersection_point).to_direction3d().normalize()
@@ -287,7 +301,7 @@ def refract_ray_sphere(
 
 def refract_ray_conic(
     ray: Ray, conic_center: Position3D, radius: float, conic_constant: float, n_outside: float, n_conic: float
-) -> tuple[Optional[IntersectionResult], Optional[Ray]]:
+) -> tuple[IntersectionResult | None, Ray | None]:
     """Refract ray through conic surface.
 
     Finds intersection point and computes refracted ray direction using Snell's law.
@@ -307,6 +321,7 @@ def refract_ray_conic(
         - intersection_result: Contains intersection point on conic surface
         - refracted_ray: Refracted ray
         Returns (None, None) if no intersection or total internal reflection.
+
     """
     # Find intersection point
     intersection_result, _ = intersect_ray_conic(ray, conic_center, radius, conic_constant)
@@ -314,7 +329,7 @@ def refract_ray_conic(
     if intersection_result is None or not intersection_result.intersects:
         return None, None
 
-    intersection_point = cast(Point3D, intersection_result.point)
+    intersection_point = cast("Point3D", intersection_result.point)
 
     # Calculate surface normal at intersection point
     surface_normal = conic_surface_normal(intersection_point, conic_center, radius, conic_constant)
@@ -322,7 +337,7 @@ def refract_ray_conic(
     # For refraction, we need inward-pointing normal (toward conic interior)
     center_to_point = intersection_point - conic_center.to_point3d()
     if surface_normal.dot(center_to_point) > 0:  # Normal points outward
-        surface_normal = surface_normal * -1  # Flip to point inward
+        surface_normal *= -1  # Flip to point inward
 
     # Apply Snell's law
     incident_normalized = ray.direction.normalize()
@@ -344,8 +359,8 @@ def refract_ray_conic(
 
 
 def refract_ray_dual_surface(
-    eye, ray_origin: Point3D, ray_direction: Direction3D
-) -> tuple[Optional[Point3D], Optional[Point3D], Optional[Direction3D]]:
+    eye: "Eye", ray_origin: Point3D, ray_direction: Direction3D
+) -> tuple[Point3D | None, Point3D | None, Direction3D | None]:
     """Computes refraction through both anterior and posterior corneal surfaces.
 
     Models complete corneal optical path by calculating refraction at both:
@@ -366,6 +381,7 @@ def refract_ray_dual_surface(
         - posterior_point: Point where ray strikes posterior corneal surface
         - final_direction: Direction of ray after exiting posterior surface
         Returns (None, None, None) if ray doesn't intersect with cornea.
+
     """
     # Get corneal center in world coordinates
     cornea_center_homogeneous = eye.trans @ np.array(eye.cornea.center)
@@ -408,8 +424,8 @@ def refract_ray_dual_surface(
 
 
 def find_refraction_point(
-    cornea, eye_transform, camera_position: Position3D, object_position: Position3D
-) -> Optional[Position3D]:
+    cornea: "Cornea", eye_transform: TransformationMatrix, camera_position: Position3D, object_position: Position3D
+) -> Position3D | None:
     """Computes observed position of intraocular objects through corneal refraction.
 
     Pure function that calculates where camera observes intraocular object through corneal refraction.
@@ -426,6 +442,7 @@ def find_refraction_point(
 
     Returns:
         Position3D on corneal surface where refraction occurs, or None if no solution exists
+
     """
     # Find refraction point on corneal surface using cornea's refraction method
     refraction_point = cornea.find_refraction(

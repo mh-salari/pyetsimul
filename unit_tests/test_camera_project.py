@@ -1,11 +1,12 @@
 """Unit tests for Camera.project method."""
 
 import numpy as np
+
 from pyetsimul.core.camera import Camera
 from pyetsimul.types import Point2D, Position3D
 
 
-def test_mixed_points_in_out_bounds():
+def test_mixed_points_in_out_bounds() -> None:
     """Test mixed points with some in bounds and some out of bounds."""
     # Create test camera matching parameters
     c = Camera(err_type="uniform", err=0)
@@ -24,8 +25,10 @@ def test_mixed_points_in_out_bounds():
     expected_dist = np.array([200.0, 200.0, 300.0])
 
     # Check that invalid points are set to NaN (points 1 and 2 are out of bounds)
-    assert np.isnan(x[0, 0]) and np.isnan(x[1, 0])
-    assert np.isnan(x[0, 1]) and np.isnan(x[1, 1])
+    assert np.isnan(x[0, 0])
+    assert np.isnan(x[1, 0])
+    assert np.isnan(x[0, 1])
+    assert np.isnan(x[1, 1])
 
     # Check valid point projection (point 3)
     np.testing.assert_allclose(x[0, 2], 83.333333, rtol=1e-6, atol=1e-6)
@@ -40,7 +43,7 @@ def test_mixed_points_in_out_bounds():
     np.testing.assert_array_equal(valid_indices, expected_valid_indices)
 
 
-def test_all_points_outside_bounds():
+def test_all_points_outside_bounds() -> None:
     """Test points that are all outside image bounds."""
     c = Camera(err_type="uniform", err=0)
     c.camera_matrix.focal_length = 500
@@ -67,7 +70,7 @@ def test_all_points_outside_bounds():
     assert len(valid_indices) == 0
 
 
-def test_boundary_points():
+def test_boundary_points() -> None:
     """Test points exactly on image boundary."""
     c = Camera(err_type="uniform", err=0)
     c.camera_matrix.focal_length = 500
@@ -107,7 +110,7 @@ def test_boundary_points():
     np.testing.assert_array_equal(valid_indices, expected_valid_indices)
 
 
-def test_center_point():
+def test_center_point() -> None:
     """Test point at image center."""
     c = Camera(err_type="uniform", err=0)
     c.camera_matrix.focal_length = 500
@@ -132,7 +135,7 @@ def test_center_point():
     assert valid_condition[0]
 
 
-def test_output_properties():
+def test_output_properties() -> None:
     """Test that output has correct properties."""
     c = Camera(err_type="uniform", err=0)
     c.camera_matrix.focal_length = 500

@@ -3,13 +3,14 @@
 Demonstrates eye anatomy visualization with different eyelid openness levels (25%, 50%, 75%).
 """
 
-from pyetsimul.core import Eye
-from pyetsimul.core.cornea import SphericalCornea
-from pyetsimul.visualization import plot_eye_anatomy
-from pyetsimul.types import Position3D
-import matplotlib.pyplot as plt
 from pathlib import Path
 
+import matplotlib.pyplot as plt
+
+from pyetsimul.core import Eye
+from pyetsimul.core.cornea import SphericalCornea
+from pyetsimul.types import Position3D
+from pyetsimul.visualization import plot_eye_anatomy
 
 # Define target point for consistent gaze direction
 target_point = Position3D(10e-3, 10e-3, -10e-3)

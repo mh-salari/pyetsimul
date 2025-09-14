@@ -3,8 +3,8 @@
 This module provides plotting functions for gaze tracking analysis results.
 """
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
 
 def _format_error_statistics(errors: dict[str, dict[str, float]], unit_str: str) -> str:
@@ -22,7 +22,6 @@ def plot_error_vectors_2d(
     U: np.ndarray,
     V: np.ndarray,
     errors: dict[str, dict[str, float]],
-    angular_errors: np.ndarray,
     title_prefix: str = "",
     convert_to_mm: bool = True,
     width: float = 0.002,
@@ -40,10 +39,11 @@ def plot_error_vectors_2d(
     Creates quiver plot showing error vectors at measurement points.
 
     Args:
-        X, Y: Grid coordinates for vector positions
-        U, V: Error components in X and Y directions
+        X: Grid coordinates for vector X positions
+        Y: Grid coordinates for vector Y positions
+        U: Error components in X direction
+        V: Error components in Y direction
         errors: dictionary with error statistics (from calculate_error_statistics)
-        angular_errors: Angular errors (degrees) - used in error statistics
         title_prefix: Prefix text for plot title
         convert_to_mm: Convert coordinates and vectors to mm
         width: Arrow width
@@ -53,22 +53,24 @@ def plot_error_vectors_2d(
         show_grid: Show grid lines
         auto_adjust_limits: Automatically adjust plot limits
         figure_size: Figure size tuple
-        xlabel, ylabel: Axis labels
+        xlabel: X-axis label
+        ylabel: Y-axis label
+
     """
     # Apply unit conversion if requested
     if convert_to_mm:
-        X_plot, Y_plot = X * 1000, Y * 1000
-        U_plot, V_plot = U * 1000, V * 1000
+        x_plot, y_plot = X * 1000, Y * 1000
+        u_plot, v_plot = U * 1000, V * 1000
         unit_str = "mm"
     else:
-        X_plot, Y_plot = X, Y
-        U_plot, V_plot = U, V
+        x_plot, y_plot = X, Y
+        u_plot, v_plot = U, V
         unit_str = "m"
 
     # Compute scaling factor for arrows, filtering out NaN/Inf values
-    U_flat = U_plot.flatten()
-    V_flat = V_plot.flatten()
-    magnitudes = np.sqrt(U_flat**2 + V_flat**2)
+    u_flat = u_plot.flatten()
+    v_flat = v_plot.flatten()
+    magnitudes = np.sqrt(u_flat**2 + v_flat**2)
 
     # Extract finite values for scaling calculations
     finite_magnitudes = magnitudes[np.isfinite(magnitudes)]
@@ -77,8 +79,8 @@ def plot_error_vectors_2d(
         return
 
     max_magnitude = np.max(finite_magnitudes)
-    plot_range_x = np.max(X_plot) - np.min(X_plot)
-    plot_range_y = np.max(Y_plot) - np.min(Y_plot)
+    plot_range_x = np.max(x_plot) - np.min(x_plot)
+    plot_range_y = np.max(y_plot) - np.min(y_plot)
     plot_range = max(plot_range_x, plot_range_y)
 
     # Set target arrow length as fraction of plot range
@@ -86,13 +88,13 @@ def plot_error_vectors_2d(
 
     if max_magnitude > target_arrow_length:
         scale_factor = target_arrow_length / max_magnitude
-        U_scaled = U_plot * scale_factor
-        V_scaled = V_plot * scale_factor
+        u_scaled = u_plot * scale_factor
+        v_scaled = v_plot * scale_factor
         scaling_applied = True
     else:
         scale_factor = 1.0
-        U_scaled = U_plot
-        V_scaled = V_plot
+        u_scaled = u_plot
+        v_scaled = v_plot
         scaling_applied = False
 
     # Create figure
@@ -101,20 +103,20 @@ def plot_error_vectors_2d(
     ax.set_facecolor("white")
 
     # Handle both gridded data (2D arrays) and scattered points (1D arrays)
-    if U_scaled.ndim == 2:
+    if u_scaled.ndim == 2:
         # Gridded data - create meshgrid
-        XX, YY = np.meshgrid(X_plot, Y_plot)
-        X_pos, Y_pos = XX, YY
+        xx, yy = np.meshgrid(x_plot, y_plot)
+        x_pos, y_pos = xx, yy
     else:
         # Scattered points - use coordinates directly
-        X_pos, Y_pos = X_plot, Y_plot
+        x_pos, y_pos = x_plot, y_plot
 
     # Create quiver plot
     ax.quiver(
-        X_pos,
-        Y_pos,
-        U_scaled,
-        V_scaled,
+        x_pos,
+        y_pos,
+        u_scaled,
+        v_scaled,
         scale=1,
         scale_units="xy",
         angles="xy",
@@ -125,13 +127,13 @@ def plot_error_vectors_2d(
 
     # Add markers for target and predicted positions
     if mark_target_positions:
-        ax.scatter(X_pos, Y_pos, marker="+", s=50, c="blue", linewidths=2, alpha=0.8, label="Target")
+        ax.scatter(x_pos, y_pos, marker="+", s=50, c="blue", linewidths=2, alpha=0.8, label="Target")
 
     if mark_predicted_positions:
         # Calculate predicted positions (arrow tips)
-        X_pred = X_pos + U_scaled
-        Y_pred = Y_pos + V_scaled
-        ax.scatter(X_pred, Y_pred, marker="o", s=30, c="red", alpha=0.8, label="Predicted")
+        x_pred = x_pos + u_scaled
+        y_pred = y_pos + v_scaled
+        ax.scatter(x_pred, y_pred, marker="o", s=30, c="red", alpha=0.8, label="Predicted")
 
         # Add legend if either marker type is shown
         if mark_target_positions:
@@ -148,11 +150,11 @@ def plot_error_vectors_2d(
 
     # Auto-adjust limits with margin
     if auto_adjust_limits:
-        arrow_tips_x = X_pos.flatten() + U_scaled.flatten()
-        arrow_tips_y = Y_pos.flatten() + V_scaled.flatten()
+        arrow_tips_x = x_pos.flatten() + u_scaled.flatten()
+        arrow_tips_y = y_pos.flatten() + v_scaled.flatten()
 
-        all_x = np.concatenate([X_pos.flatten(), arrow_tips_x])
-        all_y = np.concatenate([Y_pos.flatten(), arrow_tips_y])
+        all_x = np.concatenate([x_pos.flatten(), arrow_tips_x])
+        all_y = np.concatenate([y_pos.flatten(), arrow_tips_y])
 
         # Filter out NaN values for limit calculations
         valid_x = all_x[~np.isnan(all_x)]
@@ -170,10 +172,7 @@ def plot_error_vectors_2d(
     # Create comprehensive title with scaling info
     error_stats = _format_error_statistics(errors, unit_str)
 
-    if scaling_applied:
-        scale_info = f" (arrows scaled {scale_factor:.2f}×)"
-    else:
-        scale_info = " (arrows at full scale)"
+    scale_info = f" (arrows scaled {scale_factor:.2f}x)" if scaling_applied else " (arrows at full scale)"
 
     if title_prefix:
         title = f"{title_prefix}\n{error_stats}{scale_info}"
@@ -212,8 +211,8 @@ def plot_error_vectors_3d(
         show_grid: Show grid lines
         figure_size: Figure size tuple
         position_labels: Labels for X, Y, Z axes
-    """
 
+    """
     # Filter out invalid entries
     valid_mask = ~(np.isnan(positions).any(axis=1) | np.isnan(error_vectors).any(axis=1) | np.isnan(angular_errors))
     if not np.any(valid_mask):
@@ -294,10 +293,7 @@ def plot_error_vectors_3d(
     # Create comprehensive title with scaling info
     error_stats = _format_error_statistics(errors, unit_str)
 
-    if scaling_applied:
-        scale_info = f" (arrows scaled {scale_factor:.2f}×)"
-    else:
-        scale_info = " (arrows at full scale)"
+    scale_info = f" (arrows scaled {scale_factor:.2f}x)" if scaling_applied else " (arrows at full scale)"
 
     if title_prefix:
         title = f"{title_prefix}\n{error_stats}{scale_info}"

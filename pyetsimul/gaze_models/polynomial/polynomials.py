@@ -3,10 +3,10 @@
 Extensible registry system supporting user-defined polynomials.
 """
 
-from typing import Callable, Optional
+from collections.abc import Callable
 from dataclasses import dataclass
-from ...types.algorithms import PolynomialFeatures, PolynomialDescriptor
 
+from ...types.algorithms import PolynomialDescriptor, PolynomialFeatures
 
 # Hennessey et al. (2008) polynomial: [xy, x, y, 1]
 # Mathematical model (same features for both X,Y):
@@ -130,7 +130,7 @@ class PolynomialInfo:
 class PolynomialRegistry:
     """Registry for polynomial functions with user registration support."""
 
-    def __init__(self):
+    def __init__(self) -> None:
         """Initialize empty registry."""
         self._polynomials: dict[str, PolynomialInfo] = {}
 
@@ -142,37 +142,39 @@ class PolynomialRegistry:
 
         Raises:
             ValueError: If polynomial name already exists or function is invalid
+
         """
         if descriptor.name in self._polynomials:
             raise ValueError(f"Polynomial '{descriptor.name}' already registered")
 
         # Validate generated function works correctly
         function = descriptor.generate_function()
-        self._validate_polynomial_function(function, descriptor.name, descriptor.feature_count)
+        PolynomialRegistry._validate_polynomial_function(function, descriptor.name, descriptor.feature_count)
 
         info = PolynomialInfo(descriptor=descriptor)
         self._polynomials[descriptor.name] = info
 
-    def _validate_polynomial_function(self, function: Callable, name: str, expected_count: int) -> None:
+    @staticmethod
+    def _validate_polynomial_function(function: Callable, name: str, expected_count: int) -> None:
         """Validate polynomial function works correctly."""
         test_points = [(0.0, 0.0), (1.0, 1.0), (-1.0, -1.0), (0.5, -0.5)]
 
         for x, y in test_points:
             try:
                 result = function(x, y)
-                if not isinstance(result, PolynomialFeatures):
-                    raise ValueError(f"Polynomial '{name}' must return PolynomialFeatures, got {type(result)}")
-
-                if result.polynomial_name != name:
-                    raise ValueError(f"Polynomial '{name}' returned wrong name: '{result.polynomial_name}'")
-
-                if result.feature_count != expected_count:
-                    raise ValueError(
-                        f"Polynomial '{name}' returned {result.feature_count} features, expected {expected_count}"
-                    )
-
             except Exception as e:
                 raise ValueError(f"Polynomial '{name}' validation failed at ({x}, {y}): {e}") from e
+
+            if not isinstance(result, PolynomialFeatures):
+                raise TypeError(f"Polynomial '{name}' must return PolynomialFeatures, got {type(result)}")
+
+            if result.polynomial_name != name:
+                raise ValueError(f"Polynomial '{name}' returned wrong name: '{result.polynomial_name}'")
+
+            if result.feature_count != expected_count:
+                raise ValueError(
+                    f"Polynomial '{name}' returned {result.feature_count} features, expected {expected_count}"
+                )
 
     def get_polynomial(self, name: str) -> Callable[[float, float], PolynomialFeatures]:
         """Get polynomial function by name.
@@ -185,13 +187,14 @@ class PolynomialRegistry:
 
         Raises:
             ValueError: If polynomial name is not recognized
+
         """
         if name not in self._polynomials:
             available = ", ".join(self.list_polynomials())
             raise ValueError(f"Unknown polynomial '{name}'. Available: {available}")
         return self._polynomials[name].function
 
-    def get_polynomial_info(self, name: str) -> Optional[PolynomialInfo]:
+    def get_polynomial_info(self, name: str) -> PolynomialInfo | None:
         """Get information about a registered polynomial.
 
         Args:
@@ -199,6 +202,7 @@ class PolynomialRegistry:
 
         Returns:
             PolynomialInfo if found, None otherwise
+
         """
         return self._polynomials.get(name)
 
@@ -210,7 +214,7 @@ class PolynomialRegistry:
         """Get list of all polynomial information."""
         return list(self._polynomials.values())
 
-    def filter_polynomials(self, model_type: Optional[str] = None) -> list[PolynomialInfo]:
+    def filter_polynomials(self, model_type: str | None = None) -> list[PolynomialInfo]:
         """Filter polynomials by criteria.
 
         Args:
@@ -218,6 +222,7 @@ class PolynomialRegistry:
 
         Returns:
             List of polynomials meeting criteria
+
         """
         matches = []
         for info in self._polynomials.values():
@@ -268,11 +273,12 @@ def get_polynomial(name: str = "cerrolaza_2008") -> Callable[[float, float], Pol
 
     Raises:
         ValueError: If polynomial name is not recognized
+
     """
     return polynomial_registry.get_polynomial(name)
 
 
-def get_polynomial_info(name: str) -> Optional[PolynomialInfo]:
+def get_polynomial_info(name: str) -> PolynomialInfo | None:
     """Get information about a polynomial from global registry."""
     return polynomial_registry.get_polynomial_info(name)
 

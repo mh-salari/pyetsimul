@@ -4,16 +4,21 @@ Provides 3D visualization functions for eye anatomy using structured types.
 Supports anatomical accuracy and vector-based transformations.
 """
 
-import numpy as np
+from typing import TYPE_CHECKING
+
 import matplotlib.pyplot as plt
 
+if TYPE_CHECKING:
+    from matplotlib.axes import Axes
+import numpy as np
+
 from ..core import Eye
-from ..types import Position3D, Direction3D
+from ..geometry.intersections import intersect_ray_conic, intersect_ray_sphere
+from ..types import Direction3D, Position3D
 from ..utils.eye_surface_points import generate_corneal_surface_points, get_transformed_corneal_landmarks
 from ..utils.eyelid_surface_points import generate_eyelid_opening_edge_local, transform_eyelid_points_to_world
-from ..geometry.intersections import intersect_ray_sphere, intersect_ray_conic
-from .transforms import transform_surface
 from .plot_config import create_plot_config
+from .transforms import transform_surface
 
 
 def _filter_points_by_eyelid_occlusion(points_world: np.ndarray, eye: Eye) -> np.ndarray:
@@ -34,7 +39,7 @@ def _filter_points_by_eyelid_occlusion(points_world: np.ndarray, eye: Eye) -> np
     return points_world[visible_mask]
 
 
-def plot_eye_anatomy(eye: Eye, ax=None):
+def plot_eye_anatomy(eye: Eye, ax: "Axes | None" = None) -> "Axes":
     """Plot 3D eye anatomy using structured types and vector arithmetic.
 
     Visualizes anatomical structures of the eye in 3D using vector-based transformations.
@@ -47,6 +52,7 @@ def plot_eye_anatomy(eye: Eye, ax=None):
 
     Raises:
         ValueError: If eye has no current target point (call eye.look_at() first)
+
     """
     # Get target point from eye
     target_point = eye.current_target_point

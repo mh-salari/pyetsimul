@@ -3,13 +3,21 @@
 Provides specialized plotting functionality for gaze accuracy analysis results.
 """
 
+from typing import TYPE_CHECKING
+
+if TYPE_CHECKING:
+    from ..simulation.core import ParameterVariation
+
 import numpy as np
 
-from .analysis_plots import plot_error_vectors_2d, plot_error_vectors_3d
+from ..core import EyeTracker
+from ..evaluation.gaze_accuracy import GazeAccuracyResult
 from ..simulation.core import TargetVariation
+from ..types import Position3D
+from .analysis_plots import plot_error_vectors_2d, plot_error_vectors_3d
 
 
-def detect_variation_plane(variation):
+def detect_variation_plane(variation: "ParameterVariation") -> tuple[str, str, list[float], list[float]]:
     """Detect which 2D plane a parameter variation occurs in.
 
     Analyzes variation ranges to determine which two axes actually vary.
@@ -20,16 +28,17 @@ def detect_variation_plane(variation):
     Returns:
         tuple: (primary_axis, secondary_axis, primary_range, secondary_range)
                where axes are 'x', 'y', 'z' and ranges are [min, max]
+
     """
     if not hasattr(variation, "grid") or not hasattr(variation.grid, "dx"):
         raise ValueError("Variation object must have grid with dx, dy, dz attributes")
 
     grid = variation.grid
 
-    TOLERANCE = 1e-10
-    x_varies = abs(grid.dx[1] - grid.dx[0]) > TOLERANCE
-    y_varies = abs(grid.dy[1] - grid.dy[0]) > TOLERANCE
-    z_varies = abs(grid.dz[1] - grid.dz[0]) > TOLERANCE
+    tolerance = 1e-10
+    x_varies = abs(grid.dx[1] - grid.dx[0]) > tolerance
+    y_varies = abs(grid.dy[1] - grid.dy[0]) > tolerance
+    z_varies = abs(grid.dz[1] - grid.dz[0]) > tolerance
 
     varying_axes = []
     if x_varies:
@@ -41,15 +50,14 @@ def detect_variation_plane(variation):
 
     if len(varying_axes) == 0:
         return "x", "y", [0.0, 0.0], [0.0, 0.0]
-    elif len(varying_axes) == 1:
+    if len(varying_axes) == 1:
         axis, variation_range = varying_axes[0]
         return axis, axis, variation_range, [0.0, 0.0]
-    else:
-        # Two or more axes vary - use first two
-        return varying_axes[0][0], varying_axes[1][0], varying_axes[0][1], varying_axes[1][1]
+    # Two or more axes vary - use first two
+    return varying_axes[0][0], varying_axes[1][0], varying_axes[0][1], varying_axes[1][1]
 
 
-def extract_variation_coords(position, primary_axis, secondary_axis):
+def extract_variation_coords(position: Position3D, primary_axis: str, secondary_axis: str) -> tuple[float, float]:
     """Extract 2D coordinates from 3D position based on variation axes."""
     coords = {"x": position.x, "y": position.y, "z": position.z}
     return coords[primary_axis], coords[secondary_axis]
@@ -58,7 +66,13 @@ def extract_variation_coords(position, primary_axis, secondary_axis):
 class GazeAccuracyPlotter:
     """Handles plotting for gaze accuracy analysis results."""
 
-    def plot(self, gaze_result, eye_tracker, title_prefix: str = "Gaze Accuracy Analysis", plot_mode: str = "auto"):
+    def plot(
+        self,
+        gaze_result: GazeAccuracyResult,
+        eye_tracker: EyeTracker,
+        title_prefix: str = "Gaze Accuracy Analysis",
+        plot_mode: str = "auto",
+    ) -> None:
         """Plot gaze accuracy results with flexible 2D/3D visualization.
 
         Args:
@@ -66,6 +80,7 @@ class GazeAccuracyPlotter:
             eye_tracker: Eye tracker instance (used to access plane_info for 2D plotting)
             title_prefix: Title prefix for the plot
             plot_mode: "2d", "3d", or "auto" (auto chooses 2D for 2D trackers, 3D otherwise)
+
         """
         if gaze_result.successful_predictions == 0:
             print("No successful predictions to plot")
@@ -82,9 +97,10 @@ class GazeAccuracyPlotter:
         if plot_mode == "2d":
             self._plot_2d(gaze_result, eye_tracker, title_prefix)
         else:
-            self._plot_3d(gaze_result, eye_tracker, title_prefix)
+            GazeAccuracyPlotter._plot_3d(gaze_result, title_prefix)
 
-    def _plot_3d(self, gaze_result, eye_tracker, title_prefix):
+    @staticmethod
+    def _plot_3d(gaze_result: GazeAccuracyResult, title_prefix: str) -> None:
         """Create 3D visualization using existing plotting utilities."""
         positions = []
         error_vectors = []
@@ -121,11 +137,11 @@ class GazeAccuracyPlotter:
             position_labels=("X position", "Y position", "Z position"),
         )
 
-    def _plot_2d(self, gaze_result, eye_tracker, title_prefix):
+    def _plot_2d(self, gaze_result: GazeAccuracyResult, eye_tracker: EyeTracker, title_prefix: str) -> None:
         """Create 2D visualization using natural coordinates from plane detection."""
         if not hasattr(eye_tracker, "plane_info") or eye_tracker.plane_info is None:
             print("Warning: Eye tracker lacks plane info, using 3D visualization")
-            self._plot_3d(gaze_result, eye_tracker, title_prefix)
+            self._plot_3d(gaze_result, title_prefix)
             return
 
         plane_info = eye_tracker.plane_info
@@ -170,10 +186,10 @@ class GazeAccuracyPlotter:
         positions_array = np.array(positions_2d)
         error_vectors_array = np.array(error_vectors_2d)
 
-        X = positions_array[:, 0]
-        Y = positions_array[:, 1]
-        U = error_vectors_array[:, 0]
-        V = error_vectors_array[:, 1]
+        x = positions_array[:, 0]
+        y = positions_array[:, 1]
+        u = error_vectors_array[:, 0]
+        v = error_vectors_array[:, 1]
 
         if coordinate_system == "target_plane":
             primary_label = f"Target {pos_primary_axis.upper()} position"
@@ -183,12 +199,11 @@ class GazeAccuracyPlotter:
             secondary_label = f"Observer {pos_secondary_axis.upper()} position"
 
         plot_error_vectors_2d(
-            X=X,
-            Y=Y,
-            U=U,
-            V=V,
+            X=x,
+            Y=y,
+            U=u,
+            V=v,
             errors=gaze_result.error_stats,
-            angular_errors=np.array(angular_errors),
             title_prefix=title_prefix,
             convert_to_mm=True,
             xlabel=f"{primary_label} (mm)",

@@ -1,8 +1,16 @@
 """Centralized keyboard controls for interactive plots."""
 
-from typing import Any, Optional, Callable
+from collections.abc import Callable
+from typing import TYPE_CHECKING
+
 import matplotlib.pyplot as plt
-from pyetsimul.types import Position3D, Point3D
+
+from pyetsimul.types import Point3D, Position3D
+
+if TYPE_CHECKING:
+    from matplotlib.backend_bases import KeyEvent
+
+    from pyetsimul.core import Eye
 
 
 class InteractiveControls:
@@ -10,13 +18,24 @@ class InteractiveControls:
 
     def __init__(
         self,
-        eye: Any,
+        eye: "Eye",
         target_point: Point3D,
         step_size: float = 2.5e-3,
-        initial_eye_position: Optional[Position3D] = None,
-        initial_target_position: Optional[Point3D] = None,
-        custom_handlers: Optional[dict[str, Callable]] = None,
-    ):
+        initial_eye_position: Position3D | None = None,
+        initial_target_position: Point3D | None = None,
+        custom_handlers: dict[str, Callable] | None = None,
+    ) -> None:
+        """Initialize interactive controls.
+
+        Args:
+            eye: Eye object to control
+            target_point: Target point for gaze
+            step_size: Movement step size in meters
+            initial_eye_position: Initial eye position (defaults to current)
+            initial_target_position: Initial target position (defaults to current)
+            custom_handlers: Additional key handlers
+
+        """
         self.eye = eye
         self.target_point = target_point
 
@@ -26,17 +45,17 @@ class InteractiveControls:
             target_point.x, target_point.y, target_point.z
         )
         self.custom_handlers = custom_handlers or {}
-        self._update_callback: Optional[Callable] = None
+        self._update_callback: Callable | None = None
 
-    def set_update_callback(self, callback: Callable):
+    def set_update_callback(self, callback: Callable) -> None:
         """Set callback function to call after position changes."""
         self._update_callback = callback
 
-    def handle_key_press(self, event) -> bool:
+    def handle_key_press(self, event: "KeyEvent") -> bool:
         """Handle keyboard input and return True if key was handled."""
         standard_actions = {
             # Reset
-            " ": self._reset_positions,
+            " ": self.reset_positions,
             # Target movement
             "up": lambda: self._move_target(0, 0, self.step_size),
             "Up": lambda: self._move_target(0, 0, self.step_size),
@@ -58,7 +77,7 @@ class InteractiveControls:
             ".": lambda: self._move_eye(0, -self.step_size, 0),
             ",": lambda: self._move_eye(0, self.step_size, 0),
             # Special keys
-            "escape": self._handle_escape,
+            "escape": InteractiveControls._handle_escape,
         }
 
         # Check custom handlers first
@@ -76,18 +95,18 @@ class InteractiveControls:
 
         return False
 
-    def _move_target(self, dx: float, dy: float, dz: float):
+    def _move_target(self, dx: float, dy: float, dz: float) -> None:
         """Move target by the specified amounts."""
         self.target_point = Point3D(self.target_point.x + dx, self.target_point.y + dy, self.target_point.z + dz)
 
-    def _move_eye(self, dx: float, dy: float, dz: float):
+    def _move_eye(self, dx: float, dy: float, dz: float) -> None:
         """Move eye by the specified amounts."""
         self.eye.trans[0, 3] += dx
         self.eye.trans[1, 3] += dy
         self.eye.trans[2, 3] += dz
         self.eye.position = Position3D(self.eye.trans[0, 3], self.eye.trans[1, 3], self.eye.trans[2, 3])
 
-    def _reset_positions(self):
+    def reset_positions(self) -> None:
         """Reset eye and target to initial positions."""
         self.eye.trans[0, 3] = self.initial_eye_position.x
         self.eye.trans[1, 3] = self.initial_eye_position.y
@@ -98,17 +117,18 @@ class InteractiveControls:
             self.initial_target_position.x, self.initial_target_position.y, self.initial_target_position.z
         )
 
-    def _handle_escape(self):
+    @staticmethod
+    def _handle_escape() -> None:
         """Handle escape key press - close the current figure."""
         plt.close("all")
 
-    def _trigger_update(self):
+    def _trigger_update(self) -> None:
         """Trigger update callback if set."""
         if self._update_callback:
             self._update_callback()
 
     @staticmethod
-    def print_controls(include_reset: bool = True, additional_controls: Optional[dict[str, str]] = None):
+    def print_controls(include_reset: bool = True, additional_controls: dict[str, str] | None = None) -> None:
         """Print standardized control instructions."""
         print("CONTROLS:")
         print("Target Movement (Arrow keys):")

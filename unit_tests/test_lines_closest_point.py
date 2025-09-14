@@ -1,11 +1,12 @@
 """Unit tests for lines_closest_point function."""
 
 import numpy as np
+
 from pyetsimul.geometry.utils import lines_closest_point
 from pyetsimul.types import Point3D, Vector3D
 
 
-def test_parallel_lines():
+def test_parallel_lines() -> None:
     """Test parallel lines - should return NaN values."""
     p1 = Point3D(0, 0, 0)
     d1 = Vector3D(1, 0, 0)
@@ -15,11 +16,15 @@ def test_parallel_lines():
     x1, x2 = lines_closest_point(p1, d1, p2, d2)
 
     # For parallel lines, should return NaN like MATLAB
-    assert np.isnan(x1.x) and np.isnan(x1.y) and np.isnan(x1.z)
-    assert np.isnan(x2.x) and np.isnan(x2.y) and np.isnan(x2.z)
+    assert np.isnan(x1.x)
+    assert np.isnan(x1.y)
+    assert np.isnan(x1.z)
+    assert np.isnan(x2.x)
+    assert np.isnan(x2.y)
+    assert np.isnan(x2.z)
 
 
-def test_intersecting_lines():
+def test_intersecting_lines() -> None:
     """Test intersecting lines - closest points should be identical."""
     p1 = Point3D(0, 0, 0)
     d1 = Vector3D(1, 1, 0)
@@ -40,7 +45,7 @@ def test_intersecting_lines():
     assert abs(x1.z - x2.z) < 1e-12
 
 
-def test_skew_lines():
+def test_skew_lines() -> None:
     """Test skew lines - should return different closest points."""
     p1 = Point3D(0, 0, 0)
     d1 = Vector3D(1, 0, 0)
@@ -60,7 +65,7 @@ def test_skew_lines():
     assert not (abs(x1.x - x2.x) < 1e-12 and abs(x1.y - x2.y) < 1e-12 and abs(x1.z - x2.z) < 1e-12)
 
 
-def test_non_unit_direction_vectors():
+def test_non_unit_direction_vectors() -> None:
     """Test with non-unit direction vectors."""
     p1 = Point3D(0, 0, 0)
     d1 = Vector3D(3, 0, 0)
@@ -76,7 +81,7 @@ def test_non_unit_direction_vectors():
     np.testing.assert_allclose([x2.x, x2.y, x2.z], [expected.x, expected.y, expected.z], rtol=1e-12)
 
 
-def test_output_properties():
+def test_output_properties() -> None:
     """Test that output has correct properties."""
     p1 = Point3D(0, 0, 0)
     d1 = Vector3D(1, 0, 0)
@@ -90,5 +95,9 @@ def test_output_properties():
     assert isinstance(x2, Point3D)
 
     # For non-parallel cases, values should be finite
-    assert np.isfinite(x1.x) and np.isfinite(x1.y) and np.isfinite(x1.z)
-    assert np.isfinite(x2.x) and np.isfinite(x2.y) and np.isfinite(x2.z)
+    assert np.isfinite(x1.x)
+    assert np.isfinite(x1.y)
+    assert np.isfinite(x1.z)
+    assert np.isfinite(x2.x)
+    assert np.isfinite(x2.y)
+    assert np.isfinite(x2.z)

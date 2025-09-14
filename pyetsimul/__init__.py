@@ -1,5 +1,4 @@
-"""
-PyEtSimul - Python Eye Tracker Simulation Library
+"""PyEtSimul - Python Eye Tracker Simulation Library
 
 Main package API for the eye tracking simulation framework.
 Exports core modules and common structured types for user convenience.
@@ -8,40 +7,33 @@ Exports core modules and common structured types for user convenience.
 __version__ = "1.0.0"
 
 # Make core modules easily accessible
-from . import core
-from . import geometry
-from . import optics
-from . import types
-from . import gaze_models
-from . import simulation
+from . import core, gaze_models, geometry, optics, simulation, types
 
 # Also import commonly used structured types for convenience
 from .types import (
-    Position3D,
-    Direction3D,
-    Point3D,
-    Vector3D,
-    Point2D,
     CameraImage,
-    PupilData,
+    Direction3D,
     GazePrediction,
+    Point2D,
+    Point3D,
+    Position3D,
+    PupilData,
+    Vector3D,
 )
 
 __all__ = [
-    # Modules
+    "CameraImage",
+    "Direction3D",
+    "GazePrediction",
+    "Point2D",
+    "Point3D",
+    "Position3D",
+    "PupilData",
+    "Vector3D",
     "core",
+    "gaze_models",
     "geometry",
     "optics",
-    "types",
-    "gaze_models",
     "simulation",
-    # Common structured types for convenience
-    "Position3D",
-    "Direction3D",
-    "Point3D",
-    "Vector3D",
-    "Point2D",
-    "CameraImage",
-    "PupilData",
-    "GazePrediction",
+    "types",
 ]

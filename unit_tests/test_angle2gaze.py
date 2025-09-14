@@ -1,32 +1,33 @@
 """Unit tests for angle2gaze function."""
 
 import numpy as np
+
 from pyetsimul.geometry.conversions import angle2gaze
 from pyetsimul.types import Direction3D, Point2D, RotationMatrix
 
 
-def test_zero_angles():
+def test_zero_angles() -> None:
     """Test with zero angles - should point in -y direction."""
     result = angle2gaze(Point2D(0.0, 0.0))
     expected = Direction3D(0.0, -1.0, 0.0)
     result.assert_close(expected, rtol=1e-10)
 
 
-def test_positive_angles():
+def test_positive_angles() -> None:
     """Test with positive angles."""
     result = angle2gaze(Point2D(0.1, 0.2))
     expected = Direction3D(-0.0978433950072557, -0.9751703272018158, 0.1986693307950612)
     result.assert_close(expected, rtol=1e-10)
 
 
-def test_negative_angles():
+def test_negative_angles() -> None:
     """Test with negative angles."""
     result = angle2gaze(Point2D(-0.15, -0.25))
     expected = Direction3D(0.1447924628309112, -0.9580325796404553, -0.2474039592545229)
     result.assert_close(expected, rtol=1e-10)
 
 
-def test_custom_rest_position():
+def test_custom_rest_position() -> None:
     """Test with custom rest position matrix."""
     angles = Point2D(0.1, 0.1)
     rest_pos = RotationMatrix(np.array([[0, 1, 0], [0, 0, 1], [1, 0, 0]]))
@@ -35,7 +36,7 @@ def test_custom_rest_position():
     result.assert_close(expected, rtol=1e-10)
 
 
-def test_output_properties():
+def test_output_properties() -> None:
     """Test that output has correct properties."""
     result = angle2gaze(Point2D(0.1, 0.2))
 

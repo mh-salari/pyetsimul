@@ -1,9 +1,7 @@
-#!/usr/bin/env python3
-"""
-Simple script to run all examples in the PyEtSimul project.
-    python tmp/run_all_examples.py          # uses current Python interpreter
-    python tmp/run_all_examples.py --use-uv # uses 'uv run python'
+"""Simple script to run all examples in the PyEtSimul project.
 
+python tmp/run_all_examples.py          # uses current Python interpreter
+python tmp/run_all_examples.py --use-uv # uses 'uv run python'
 """
 
 import subprocess
@@ -23,13 +21,15 @@ examples_dir = project_root / "examples"
 example_files = []
 
 # Add examples from main examples directory
-main_examples = sorted([f for f in examples_dir.glob("*.py") if f.name != "run_all_examples.py"])
+main_examples = sorted([f for f in examples_dir.glob("*.py") if f.name not in {"run_all_examples.py", "__init__.py"}])
 example_files.extend(main_examples)
 
 # Add examples from experiments subdirectory
 experiments_dir = examples_dir / "experiments"
 if experiments_dir.exists():
-    experiment_examples = sorted([f for f in experiments_dir.glob("*.py") if not f.name.startswith("config")])
+    experiment_examples = sorted([
+        f for f in experiments_dir.glob("*.py") if not f.name.startswith("config") and f.name != "__init__.py"
+    ])
     example_files.extend(experiment_examples)
 
 print(f"Found {len(example_files)} example files:")
@@ -53,7 +53,7 @@ for example_file in example_files:
     cmd = ["uv", "run", "python", str(example_file)] if use_uv else [sys.executable, str(example_file)]
 
     try:
-        result = subprocess.run(cmd, cwd=project_root, capture_output=False, timeout=60)
+        result = subprocess.run(cmd, cwd=project_root, capture_output=False, timeout=60, check=False)
 
         if result.returncode == 0:
             print(f"✅ {relative_path} completed successfully")

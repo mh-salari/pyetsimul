@@ -3,15 +3,16 @@
 Provides functions for intersecting rays with spheres, circles, planes, and conic surfaces, as well as related geometric operations.
 """
 
-import numpy as np
 import warnings
-from typing import Optional
-from ..types import Point3D, Vector3D, Ray, IntersectionResult, Position3D, Direction3D
+
+import numpy as np
+
+from ..types import Direction3D, IntersectionResult, Point3D, Position3D, Ray, Vector3D
 
 
 def intersect_ray_sphere(
     ray: Ray, sphere_center: Position3D, sphere_radius: float
-) -> tuple[Optional[IntersectionResult], Optional[IntersectionResult]]:
+) -> tuple[IntersectionResult | None, IntersectionResult | None]:
     """Find intersection points between ray and sphere.
 
     Uses quadratic equation to find intersection points. Returns both intersection
@@ -25,6 +26,7 @@ def intersect_ray_sphere(
     Returns:
         Tuple of (closer_result, farther_result) where closer_result is closer intersection,
         farther_result is farther. Returns (None, None) if no intersection.
+
     """
     # Normalize ray direction
     direction_normalized = ray.direction.normalize()
@@ -61,7 +63,7 @@ def intersect_ray_sphere(
     )
 
 
-def intersect_ray_circle(ray: Ray, circle_center: Point3D, circle_radius: float) -> Optional[IntersectionResult]:
+def intersect_ray_circle(ray: Ray, circle_center: Point3D, circle_radius: float) -> IntersectionResult | None:
     """Find intersection between ray and circle in 2D plane.
 
     Uses quadratic equation to find intersection points in x-y plane.
@@ -74,6 +76,7 @@ def intersect_ray_circle(ray: Ray, circle_center: Point3D, circle_radius: float)
 
     Returns:
         Intersection result with closest point to ray origin, or None if no intersection
+
     """
     # Normalize direction of ray (use only x,y components for 2D)
     direction_2d = Vector3D(ray.direction.x, ray.direction.y, 0).normalize()
@@ -108,7 +111,7 @@ def intersect_ray_circle(ray: Ray, circle_center: Point3D, circle_radius: float)
     return IntersectionResult.intersection_at(intersection_point, abs(t))
 
 
-def intersect_ray_plane(ray: Ray, plane_point: Position3D, plane_normal: Direction3D) -> Optional[IntersectionResult]:
+def intersect_ray_plane(ray: Ray, plane_point: Position3D, plane_normal: Direction3D) -> IntersectionResult | None:
     """Find intersection between ray and plane.
 
     Solves the parametric ray equation with the plane equation using dot product.
@@ -121,6 +124,7 @@ def intersect_ray_plane(ray: Ray, plane_point: Position3D, plane_normal: Directi
 
     Returns:
         Intersection result, or None if ray is parallel to plane
+
     """
     # Normalize plane normal
     normal_normalized = plane_normal.normalize()
@@ -145,7 +149,7 @@ def intersect_ray_plane(ray: Ray, plane_point: Position3D, plane_normal: Directi
 
 def intersect_ray_conic(
     ray: Ray, conic_center: Position3D, radius: float, conic_constant: float
-) -> tuple[Optional[IntersectionResult], Optional[IntersectionResult]]:
+) -> tuple[IntersectionResult | None, IntersectionResult | None]:
     """Find intersection between ray and conic section.
 
     Uses quadratic equation derived from conic surface equation.
@@ -160,6 +164,7 @@ def intersect_ray_conic(
     Returns:
         Tuple (closer_result, farther_result): Intersection results closer and farther from ray origin.
         Returns (None, None) if no intersection.
+
     """
     # Normalize ray direction
     direction_normalized = ray.direction.normalize()
@@ -174,36 +179,35 @@ def intersect_ray_conic(
 
     # Translated conic equation: (x-cx)² + (y-cy)² + (1+k)(z-cz)² - 2*R*(z-cz) = 0
     # Substitute ray equation: (x0+t*dx-cx)² + (y0+t*dy-cy)² + (1+k)(z0+t*dz-cz)² - 2*R*(z0+t*dz-cz) = 0
-    A = dx**2 + dy**2 + (1 + conic_constant) * dz**2
-    B = 2 * ((x0 - cx) * dx + (y0 - cy) * dy + (1 + conic_constant) * (z0 - cz) * dz - radius * dz)
-    C = (x0 - cx) ** 2 + (y0 - cy) ** 2 + (1 + conic_constant) * (z0 - cz) ** 2 - 2 * radius * (z0 - cz)
+    a = dx**2 + dy**2 + (1 + conic_constant) * dz**2
+    b = 2 * ((x0 - cx) * dx + (y0 - cy) * dy + (1 + conic_constant) * (z0 - cz) * dz - radius * dz)
+    c = (x0 - cx) ** 2 + (y0 - cy) ** 2 + (1 + conic_constant) * (z0 - cz) ** 2 - 2 * radius * (z0 - cz)
 
     # Solve quadratic equation
-    disc = B**2 - 4 * A * C
+    disc = b**2 - 4 * a * c
     if disc < 0:
         return None, None  # No real roots, no intersection
 
     sqrt_disc = np.sqrt(disc)
-    t1 = (-B - sqrt_disc) / (2 * A)
-    t2 = (-B + sqrt_disc) / (2 * A)
+    t1 = (-b - sqrt_disc) / (2 * a)
+    t2 = (-b + sqrt_disc) / (2 * a)
 
     # Filter out intersections behind the ray origin (t < 0)
     ts = [t for t in [t1, t2] if t >= 0]
 
     if len(ts) == 0:
         return None, None
-    elif len(ts) == 1:
+    if len(ts) == 1:
         point = ray.point_at(ts[0])
         return IntersectionResult.intersection_at(point, ts[0]), None
-    else:
-        ts.sort()
-        point1 = ray.point_at(ts[0])
-        point2 = ray.point_at(ts[1])
+    ts.sort()
+    point1 = ray.point_at(ts[0])
+    point2 = ray.point_at(ts[1])
 
-        result1 = IntersectionResult.intersection_at(point1, ts[0])
-        result2 = IntersectionResult.intersection_at(point2, ts[1])
+    result1 = IntersectionResult.intersection_at(point1, ts[0])
+    result2 = IntersectionResult.intersection_at(point2, ts[1])
 
-        return result1, result2
+    return result1, result2
 
 
 def conic_surface_normal(
@@ -222,6 +226,7 @@ def conic_surface_normal(
 
     Returns:
         Unit normal vector pointing outward from conic surface
+
     """
     # Conic translation parameters - standard translation for apex positioning
     cx, cy = conic_center.x, conic_center.y
@@ -243,13 +248,13 @@ def conic_surface_normal(
     try:
         return normal.normalize()
     except ValueError:
-        warnings.warn("Degenerate normal vector at conic apex", RuntimeWarning)
+        warnings.warn("Degenerate normal vector at conic apex", RuntimeWarning, stacklevel=2)
         return Direction3D(0, 0, 1)  # Default to z-axis
 
 
 def point_on_conic_surface(
     conic_center: Position3D, direction: Vector3D, radius: float, conic_constant: float
-) -> Optional[Point3D]:
+) -> Point3D | None:
     """Calculate point on conic surface given direction from start point.
 
     Uses quadratic equation to find intersection of ray with conic surface.
@@ -263,6 +268,7 @@ def point_on_conic_surface(
 
     Returns:
         Point on conic surface, or None if no intersection
+
     """
     # Normalize direction vector
     direction_normalized = direction.normalize()
@@ -279,20 +285,20 @@ def point_on_conic_surface(
     # Substitute into conic: (x-cx)² + (y-cy)² + (1+k)(z-cz)² - 2R(z-cz) = 0
     # (x0+t*dx-cx)² + (y0+t*dy-cy)² + (1+k)(z0+t*dz-cz)² - 2R(z0+t*dz-cz) = 0
 
-    # Expand and collect terms: At² + Bt + C = 0
-    A = dx**2 + dy**2 + (1 + conic_constant) * dz**2
-    B = 2 * ((x0 - cx) * dx + (y0 - cy) * dy + (1 + conic_constant) * (z0 - cz) * dz - radius * dz)
-    C = (x0 - cx) ** 2 + (y0 - cy) ** 2 + (1 + conic_constant) * (z0 - cz) ** 2 - 2 * radius * (z0 - cz)
+    # Expand and collect terms: at² + bt + c = 0
+    a = dx**2 + dy**2 + (1 + conic_constant) * dz**2
+    b = 2 * ((x0 - cx) * dx + (y0 - cy) * dy + (1 + conic_constant) * (z0 - cz) * dz - radius * dz)
+    c = (x0 - cx) ** 2 + (y0 - cy) ** 2 + (1 + conic_constant) * (z0 - cz) ** 2 - 2 * radius * (z0 - cz)
 
     # Solve quadratic equation
-    discriminant = B**2 - 4 * A * C
+    discriminant = b**2 - 4 * a * c
 
     if discriminant < 0:
         return None  # No real intersections
 
     sqrt_disc = np.sqrt(discriminant)
-    t1 = (-B + sqrt_disc) / (2 * A)
-    t2 = (-B - sqrt_disc) / (2 * A)
+    t1 = (-b + sqrt_disc) / (2 * a)
+    t2 = (-b - sqrt_disc) / (2 * a)
 
     # Choose the appropriate solution - typically the one that goes in the intended direction
     candidates = []
@@ -311,7 +317,7 @@ def point_on_conic_surface(
     best_point = None
     best_dot = -np.inf
 
-    for t, point in candidates:
+    for _, point in candidates:
         # Vector from start point to intersection point
         start_to_point = point - conic_center.to_point3d()
         # How well does this align with intended direction?

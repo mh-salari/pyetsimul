@@ -4,16 +4,19 @@ This module provides interactive plotting functions for calibration analysis,
 allowing real-time exploration of calibration accuracy and gaze estimation.
 """
 
-import numpy as np
-import matplotlib.pyplot as plt
 import copy
 
+import matplotlib.pyplot as plt
+import numpy as np
+
 from pyetsimul.core import Eye, EyeTracker
-from ..types import Point3D, Point2D
+
 from ..geometry.conversions import calculate_angular_error_degrees
 from ..geometry.plane_detection import PlaneInfo
-from ..visualization import prepare_eye_data_for_plots, plot_setup
-from ..visualization.interactive_controls import InteractiveControls
+from ..types import Point2D, Point3D
+from .coordinate_utils import prepare_eye_data_for_plots
+from .interactive_controls import InteractiveControls
+from .setup_plots import plot_setup
 
 
 def create_interactive_calibration_plot(
@@ -42,7 +45,7 @@ def create_interactive_calibration_plot(
 
     controls = InteractiveControls(interactive_eye, current_target, step_size=10e-3)
 
-    def update_display():
+    def update_display() -> None:
         """Update both 3D and 2D plots with current target position."""
         fig.clear()
 
@@ -105,31 +108,32 @@ def create_interactive_calibration_plot(
 
         # Plot original error vectors and predictions
         valid_indices = np.where(valid_mask)[0]
-        X_valid, Y_valid, U_valid, V_valid, pred_x, pred_y = [], [], [], [], [], []
+        x_valid, y_valid, u_valid, v_valid, pred_x, pred_y = [], [], [], [], [], []
 
         for i in valid_indices:
             pred_point = predicted_points[i]
-            if isinstance(pred_point, Point3D):
+            if isinstance(pred_point, Point3D) and not (
+                np.isnan(pred_point.x) or np.isnan(pred_point.y) or np.isnan(pred_point.z)
+            ):
                 # Check if Point3D has valid coordinates (not NaN)
-                if not (np.isnan(pred_point.x) or np.isnan(pred_point.y) or np.isnan(pred_point.z)):
-                    X_valid.append(X[i] * 1000)
-                    Y_valid.append(Y[i] * 1000)
-                    U_valid.append(U[i] * 1000)
-                    V_valid.append(V[i] * 1000)
-                    # Use plane coordinates for consistent mapping
-                    pred_pos = Point3D(pred_point.x, pred_point.y, pred_point.z)
-                    pred_coord1, pred_coord2 = plane_info.extract_2d_coords(pred_pos)
-                    pred_x.append(pred_coord1 * 1000)
-                    pred_y.append(pred_coord2 * 1000)
+                x_valid.append(X[i] * 1000)
+                y_valid.append(Y[i] * 1000)
+                u_valid.append(U[i] * 1000)
+                v_valid.append(V[i] * 1000)
+                # Use plane coordinates for consistent mapping
+                pred_pos = Point3D(pred_point.x, pred_point.y, pred_point.z)
+                pred_coord1, pred_coord2 = plane_info.extract_2d_coords(pred_pos)
+                pred_x.append(pred_coord1 * 1000)
+                pred_y.append(pred_coord2 * 1000)
 
-        if len(X_valid) > 0:
+        if len(x_valid) > 0:
             # Draw arrows from calibration points to predicted gaze points
-            for i in range(len(X_valid)):
+            for i in range(len(x_valid)):
                 ax.arrow(
-                    X_valid[i],
-                    Y_valid[i],
-                    U_valid[i],
-                    V_valid[i],
+                    x_valid[i],
+                    y_valid[i],
+                    u_valid[i],
+                    v_valid[i],
                     head_width=2,
                     head_length=1.5,
                     fc="gray",

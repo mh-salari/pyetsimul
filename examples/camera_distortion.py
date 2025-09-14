@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""
-Camera distortion comparison example.
+"""Camera distortion comparison example.
 
 Compares pinhole vs actual camera distortion for pupil detection.
 
@@ -11,10 +10,9 @@ https://github.com/pupil-labs/pupil/blob/master/pupil_src/shared_modules/camera_
 import numpy as np
 from tabulate import tabulate
 
-from pyetsimul.core import Eye, Camera
-from pyetsimul.types import Position3D, RotationMatrix, CameraMatrix
+from pyetsimul.core import Camera, Eye
+from pyetsimul.types import CameraMatrix, Position3D, RotationMatrix
 from pyetsimul.visualization import plot_interactive_cameras
-
 
 # Camera configurations from Pupil Labs
 CAMERA_CONFIGS = [
@@ -22,111 +20,93 @@ CAMERA_CONFIGS = [
     {
         "name": "Pupil Cam1 ID2",
         "camera_matrix": CameraMatrix(
-            np.array(
-                [
-                    [395.60662814306596, 0.0, 316.72212558212516],
-                    [0.0, 395.56975615889445, 259.206579702132],
-                    [0.0, 0.0, 1.0],
-                ]
-            )
+            np.array([
+                [395.60662814306596, 0.0, 316.72212558212516],
+                [0.0, 395.56975615889445, 259.206579702132],
+                [0.0, 0.0, 1.0],
+            ])
         ),
-        "dist_coefs": np.array(
-            [
-                -0.2430487205352619,
-                0.1623502095383119,
-                0.0001632500987373085,
-                8.322130878440475e-05,
-                0.017859803336754784,
-                0.1969284124154412,
-                0.00577741263771627,
-                0.09892258337410824,
-            ]
-        ),
+        "dist_coefs": np.array([
+            -0.2430487205352619,
+            0.1623502095383119,
+            0.0001632500987373085,
+            8.322130878440475e-05,
+            0.017859803336754784,
+            0.1969284124154412,
+            0.00577741263771627,
+            0.09892258337410824,
+        ]),
         "cam_type": "radial",
     },
     {
         "name": "Pupil Cam1 ID2",
         "camera_matrix": CameraMatrix(
-            np.array(
-                [
-                    [794.3311439869655, 0.0, 633.0104437728625],
-                    [0.0, 793.5290139393004, 397.36927353414865],
-                    [0.0, 0.0, 1.0],
-                ]
-            )
+            np.array([
+                [794.3311439869655, 0.0, 633.0104437728625],
+                [0.0, 793.5290139393004, 397.36927353414865],
+                [0.0, 0.0, 1.0],
+            ])
         ),
-        "dist_coefs": np.array(
-            [
-                -0.3758628065070806,
-                0.1643326166951343,
-                0.00012182540692089567,
-                0.00013422608638039466,
-                0.03343691733865076,
-                0.08235235770849726,
-                -0.08225804883227375,
-                0.14463365333602152,
-            ]
-        ),
+        "dist_coefs": np.array([
+            -0.3758628065070806,
+            0.1643326166951343,
+            0.00012182540692089567,
+            0.00013422608638039466,
+            0.03343691733865076,
+            0.08235235770849726,
+            -0.08225804883227375,
+            0.14463365333602152,
+        ]),
         "cam_type": "radial",
     },
     {
         "name": "Pupil Cam1 ID2",
         "camera_matrix": CameraMatrix(
-            np.array(
-                [
-                    [793.8052697386686, 0.0, 953.2237035923064],
-                    [0.0, 792.3104221704713, 572.5036513432223],
-                    [0.0, 0.0, 1.0],
-                ]
-            )
+            np.array([
+                [793.8052697386686, 0.0, 953.2237035923064],
+                [0.0, 792.3104221704713, 572.5036513432223],
+                [0.0, 0.0, 1.0],
+            ])
         ),
-        "dist_coefs": np.array(
-            [
-                -0.13648546769272826,
-                -0.0033787366635030644,
-                -0.002343859061730869,
-                0.001926274947199097,
-            ]
-        ),
+        "dist_coefs": np.array([
+            -0.13648546769272826,
+            -0.0033787366635030644,
+            -0.002343859061730869,
+            0.001926274947199097,
+        ]),
         "cam_type": "fisheye",
     },
     # Neon Sensor Module v1
     {
         "name": "Neon Sensor Module v1",
         "camera_matrix": CameraMatrix(
-            np.array(
-                [
-                    [140.68445787837342, 0.0, 99.42393317744813],
-                    [0.0, 140.67571954970256, 96.235134525304],
-                    [0.0, 0.0, 1.0],
-                ]
-            )
+            np.array([
+                [140.68445787837342, 0.0, 99.42393317744813],
+                [0.0, 140.67571954970256, 96.235134525304],
+                [0.0, 0.0, 1.0],
+            ])
         ),
-        "dist_coefs": np.array(
-            [
-                0.05449484235207129,
-                -0.14013187141454536,
-                0.0006598061556076783,
-                5.0572400552608696e-05,
-                -0.6158040573125376,
-                -0.048953803434398195,
-                0.04521347340211147,
-                -0.7004955138758611,
-            ]
-        ),
+        "dist_coefs": np.array([
+            0.05449484235207129,
+            -0.14013187141454536,
+            0.0006598061556076783,
+            5.0572400552608696e-05,
+            -0.6158040573125376,
+            -0.048953803434398195,
+            0.04521347340211147,
+            -0.7004955138758611,
+        ]),
         "cam_type": "radial",
     },
     # Pupil Cam2 ID0 configurations
     {
         "name": "Pupil Cam2 ID0",
         "camera_matrix": CameraMatrix(
-            np.array(
-                [
-                    [282.976877, 0.0, 96],
-                    [0.0, 283.561467, 96],
-                    [0.0, 0.0, 1.0],
-                ]
-            )
+            np.array([
+                [282.976877, 0.0, 96],
+                [0.0, 283.561467, 96],
+                [0.0, 0.0, 1.0],
+            ])
         ),
         "dist_coefs": np.array([0.0, 0.0, 0.0, 0.0, 0.0]),
         "cam_type": "radial",
@@ -134,7 +114,7 @@ CAMERA_CONFIGS = [
 ]
 
 
-def main():
+def main() -> None:
     """Main function to select camera and create comparison."""
     # Camera selection
     print("Available Camera Configurations:")
@@ -146,12 +126,14 @@ def main():
     print(f"\nSelect camera configuration (1-{len(CAMERA_CONFIGS)}): ", end="")
     try:
         choice = int(input()) - 1
-        if choice < 0 or choice >= len(CAMERA_CONFIGS):
-            raise ValueError()
-        selected_config = CAMERA_CONFIGS[choice]
     except (ValueError, KeyboardInterrupt):
+        choice = -1
+
+    if choice < 0 or choice >= len(CAMERA_CONFIGS):
         print("Using fallback: Pupil Cam1 ID2 (1920, 1080)")
         selected_config = CAMERA_CONFIGS[2]  # Fallback to Pupil Cam1 ID2 1920x1080
+    else:
+        selected_config = CAMERA_CONFIGS[choice]
 
     # Create pinhole camera with same focal length and resolution for fair comparison
     c_pinhole = Camera(name="Pinhole")

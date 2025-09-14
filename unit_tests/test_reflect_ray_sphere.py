@@ -1,11 +1,12 @@
 """Unit tests for reflect_ray_sphere function."""
 
 import numpy as np
+
 from pyetsimul.optics.reflections import reflect_ray_sphere
-from pyetsimul.types import Ray, Point3D, Position3D, Direction3D, IntersectionResult
+from pyetsimul.types import Direction3D, IntersectionResult, Point3D, Position3D, Ray
 
 
-def test_basic_center_reflection():
+def test_basic_center_reflection() -> None:
     """Test basic center front reflection with MATLAB reference values."""
     # Ray hitting sphere dead center from front
     ray_origin = Point3D(0.0, 0.0, -5.0)  # Ray origin
@@ -27,7 +28,7 @@ def test_basic_center_reflection():
     reflected_ray.direction.assert_close(expected_direction, rtol=1e-14, atol=1e-15)
 
 
-def test_angled_reflection():
+def test_angled_reflection() -> None:
     """Test angled reflection with MATLAB reference values."""
     # Angled ray with non-normalized input direction
     ray_origin = Point3D(0.0, 0.0, 0.0)  # Ray origin
@@ -52,7 +53,7 @@ def test_angled_reflection():
     assert abs(reflected_ray.direction.magnitude() - 1.0) < 1e-14
 
 
-def test_ray_missing_sphere():
+def test_ray_missing_sphere() -> None:
     """Test ray that misses sphere - should return None."""
     # Ray that doesn't intersect sphere
     ray_origin = Point3D(0.0, 0.0, 0.0)  # Ray origin
@@ -68,7 +69,7 @@ def test_ray_missing_sphere():
     assert reflected_ray is None
 
 
-def test_homogeneous_coordinates():
+def test_homogeneous_coordinates() -> None:
     """Test with homogeneous coordinates and MATLAB reference values."""
     # Test data that was originally in homogeneous coordinates
     ray_origin = Point3D(1.0, 0.0, -4.0)  # Ray origin
@@ -100,7 +101,7 @@ def test_homogeneous_coordinates():
     assert abs(direction_homogeneous[3]) < 1e-15  # Direction should have homogeneous component = 0
 
 
-def test_output_properties():
+def test_output_properties() -> None:
     """Test that output has correct properties."""
     ray_origin = Point3D(0.0, 0.0, -5.0)
     ray_direction = Direction3D(0.0, 0.0, 1.0)

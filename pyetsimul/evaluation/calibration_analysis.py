@@ -8,17 +8,23 @@ import numpy as np
 from tabulate import tabulate
 
 from ..core import Eye, EyeTracker
-from ..types import Point3D, Position3D
 from ..geometry.conversions import calculate_angular_error_degrees
+from ..types import Point3D, Position3D
+from ..visualization.interactive_calibration import create_interactive_calibration_plot
 from .analysis_utils import calculate_error_statistics
 from .calibration_utils import pprint_polynomial_parameters
-from ..visualization.interactive_calibration import create_interactive_calibration_plot
 
 
 class CalibrationResults:
     """Calibration accuracy results with printing method."""
 
-    def __init__(self, errors: dict[str, dict[str, float]]):
+    def __init__(self, errors: dict[str, dict[str, float]]) -> None:
+        """Initialize calibration results.
+
+        Args:
+            errors: Dictionary containing error statistics in different units
+
+        """
         self.errors = errors
 
     def __str__(self) -> str:
@@ -55,6 +61,7 @@ def accuracy_at_calibration_points(et: EyeTracker, eye: Eye, interactive_plot: b
 
     Returns:
         CalibrationResults object with error statistics and formatted printing methods
+
     """
     # Ensure eye tracker is calibrated before running analysis
     if not et.algorithm_state.is_calibrated:
@@ -73,17 +80,17 @@ def accuracy_at_calibration_points(et: EyeTracker, eye: Eye, interactive_plot: b
 
     # Output eye measurements
     apex_pos = eye.cornea.get_apex_position()
-    apex_cornea_dist = np.linalg.norm(apex_pos - eye.cornea.center)
+    apecornea_surface_x_dist = np.linalg.norm(apex_pos - eye.cornea.center)
     cornea_pupil_dist = np.linalg.norm(eye.cornea.center - eye.pupil.pos_pupil)
 
-    print(f"Corneal radius: {apex_cornea_dist * 1e3:.3g} mm")
+    print(f"Corneal radius: {apecornea_surface_x_dist * 1e3:.3g} mm")
     print(f"Pupil radius:   {cornea_pupil_dist * 1e3:.3g} mm")
 
     # Initialize result arrays
     actual_points = []
     predicted_points = []
-    U = np.zeros(n_points)
-    V = np.zeros(n_points)
+    u = np.zeros(n_points)
+    v = np.zeros(n_points)
     errs_deg = np.zeros(n_points)
 
     # Print polynomial parameters
@@ -113,8 +120,8 @@ def accuracy_at_calibration_points(et: EyeTracker, eye: Eye, interactive_plot: b
             predicted_coord1, predicted_coord2 = plane_info.extract_2d_coords(predicted_pos)
 
             # Calculate error vectors using plane coordinates
-            U[i] = predicted_coord1 - actual_coord1
-            V[i] = predicted_coord2 - actual_coord2
+            u[i] = predicted_coord1 - actual_coord1
+            v[i] = predicted_coord2 - actual_coord2
 
             # Compute error in degrees using full 3D coordinates (convert to Point3D)
             target_point = Point3D(target_position.x, target_position.y, target_position.z)
@@ -122,24 +129,26 @@ def accuracy_at_calibration_points(et: EyeTracker, eye: Eye, interactive_plot: b
             errs_deg[i] = calculate_angular_error_degrees(target_point, predicted_point, eye.position)
 
             # Collect data for table
-            error_mm = np.sqrt(U[i] ** 2 + V[i] ** 2)
-            table_data.append(
-                [
-                    i + 1,
-                    f"({actual_coord1 * 1000:6.1f}, {actual_coord2 * 1000:6.1f})",
-                    f"({predicted_coord1 * 1000:6.1f}, {predicted_coord2 * 1000:6.1f})",
-                    f"{error_mm * 1000:8.2f}",
-                    f"{errs_deg[i]:8.4f}",
-                ]
-            )
+            error_mm = np.sqrt(u[i] ** 2 + v[i] ** 2)
+            table_data.append([
+                i + 1,
+                f"({actual_coord1 * 1000:6.1f}, {actual_coord2 * 1000:6.1f})",
+                f"({predicted_coord1 * 1000:6.1f}, {predicted_coord2 * 1000:6.1f})",
+                f"{error_mm * 1000:8.2f}",
+                f"{errs_deg[i]:8.4f}",
+            ])
         else:
             predicted_points.append(Point3D(np.nan, np.nan, np.nan))
-            U[i] = np.nan
-            V[i] = np.nan
+            u[i] = np.nan
+            v[i] = np.nan
             errs_deg[i] = np.nan
-            table_data.append(
-                [i + 1, f"({actual_coord1 * 1000:6.1f}, {actual_coord2 * 1000:6.1f})", "FAILED", "--", "--"]
-            )
+            table_data.append([
+                i + 1,
+                f"({actual_coord1 * 1000:6.1f}, {actual_coord2 * 1000:6.1f})",
+                "FAILED",
+                "--",
+                "--",
+            ])
 
     # Print the results table
     headers = ["Point", "Target (mm)", "Predicted (mm)", "Error (mm)", "Error (°)"]
@@ -147,18 +156,18 @@ def accuracy_at_calibration_points(et: EyeTracker, eye: Eye, interactive_plot: b
     print(tabulate(table_data, headers=headers, tablefmt="grid"))
 
     # Extract coordinates from structured Point3D objects
-    X = np.array([pt.x for pt in actual_points])
-    Y = np.array([pt.y for pt in actual_points])
+    x = np.array([pt.x for pt in actual_points])
+    y = np.array([pt.y for pt in actual_points])
 
     # Calculate error statistics only for valid points
-    valid_mask = ~(np.isnan(U) | np.isnan(V) | np.isnan(errs_deg))
+    valid_mask = ~(np.isnan(u) | np.isnan(v) | np.isnan(errs_deg))
     n_valid = np.sum(valid_mask)
-    n_total = len(U)
+    n_total = len(u)
 
     if n_valid > 0:
         errors = calculate_error_statistics(
-            U[valid_mask].reshape(1, -1),
-            V[valid_mask].reshape(1, -1),
+            u[valid_mask].reshape(1, -1),
+            v[valid_mask].reshape(1, -1),
             errs_deg[valid_mask].reshape(1, -1),
         )
 
@@ -171,7 +180,7 @@ def accuracy_at_calibration_points(et: EyeTracker, eye: Eye, interactive_plot: b
         # Create interactive visualization if requested
         if interactive_plot:
             create_interactive_calibration_plot(
-                et, eye, X, Y, U, V, predicted_points, valid_mask, errs_deg, plane_info
+                et, eye, x, y, u, v, predicted_points, valid_mask, errs_deg, plane_info
             )
     else:
         print(f"\nCalibration Analysis Results: ALL {n_total} POINTS FAILED")

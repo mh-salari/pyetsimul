@@ -1,22 +1,24 @@
-"""
-This module provides dataclasses for camera images, pupil data, and related
-imaging results to replace the Dict[str, Any] pattern.
+"""Dataclasses for camera images, pupil data, and imaging results.
+
+Provides structured dataclasses for imaging operations to replace
+the Dict[str, Any] pattern with type-safe alternatives.
 """
 
 from dataclasses import dataclass
-from typing import Optional
+
 import numpy as np
-from .geometry import Point2D, Point3D
+
 from ..core.default_configs import CameraDefaults
+from .geometry import Point2D, Point3D
 
 
 @dataclass
 class CameraImage:
     """Result of camera.take_image() operation."""
 
-    corneal_reflections: list[Optional[Point2D]]  # CR positions for each light
-    pupil_boundary: Optional[list[Point2D]]  # Pupil boundary points as structured types
-    pupil_center: Optional[Point2D]  # Pupil center position
+    corneal_reflections: list[Point2D | None]  # CR positions for each light
+    pupil_boundary: list[Point2D] | None  # Pupil boundary points as structured types
+    pupil_center: Point2D | None  # Pupil center position
     resolution: Point2D  # Camera resolution
 
     @classmethod
@@ -31,10 +33,10 @@ class CameraImage:
 class PupilData:
     """Result of pupil detection/analysis operations."""
 
-    boundary_points: Optional[np.ndarray] = None  # 2×M matrix of boundary points
-    center: Optional[Point2D] = None  # Pupil center position
-    ellipse_params: Optional[np.ndarray] = None  # Ellipse fitting parameters
-    area: Optional[float] = None  # Pupil area in pixels
+    boundary_points: np.ndarray | None = None  # 2xM matrix of boundary points
+    center: Point2D | None = None  # Pupil center position
+    ellipse_params: np.ndarray | None = None  # Ellipse fitting parameters
+    area: float | None = None  # Pupil area in pixels
 
     @property
     def is_valid(self) -> bool:
@@ -53,8 +55,8 @@ class EyeMeasurement:
 
     camera_image: CameraImage
     pupil_data: PupilData
-    gaze_direction: Optional[Point3D] = None  # 3D gaze direction vector
-    timestamp: Optional[float] = None  # Measurement timestamp
+    gaze_direction: Point3D | None = None  # 3D gaze direction vector
+    timestamp: float | None = None  # Measurement timestamp
 
     @property
     def is_valid(self) -> bool:
@@ -66,9 +68,9 @@ class EyeMeasurement:
 class ProjectionResult:
     """Result of camera projection operation."""
 
-    image_points: np.ndarray  # 2×n matrix of image coordinates (NaN for invalid points)
-    distances: np.ndarray  # 1×n array of distances from camera along optical axis
-    valid_mask: np.ndarray  # 1×n boolean array indicating points within image bounds
+    image_points: np.ndarray  # 2xn matrix of image coordinates (NaN for invalid points)
+    distances: np.ndarray  # 1xn array of distances from camera along optical axis
+    valid_mask: np.ndarray  # 1xn boolean array indicating points within image bounds
 
     @property
     def num_points(self) -> int:
@@ -86,7 +88,13 @@ class ProjectionResult:
 class CameraMatrix:
     """3x3 camera matrix with convenient properties for focal_length and resolution."""
 
-    def __init__(self, matrix: Optional[np.ndarray] = None):
+    def __init__(self, matrix: np.ndarray | None = None) -> None:
+        """Initialize camera matrix.
+
+        Args:
+            matrix: Optional 3x3 camera matrix. If None, uses defaults.
+
+        """
         if matrix is not None:
             self._matrix = np.asarray(matrix, dtype=np.float64)
         else:
@@ -101,6 +109,7 @@ class CameraMatrix:
 
     @property
     def focal_length(self) -> float:
+        """Get the camera focal length in pixels."""
         return float(self._matrix[0, 0])
 
     @focal_length.setter
@@ -114,6 +123,7 @@ class CameraMatrix:
 
     @property
     def resolution(self) -> Point2D:
+        """Get the camera resolution in pixels."""
         cx, cy = self._matrix[0, 2], self._matrix[1, 2]
         return Point2D(x=int(2 * cx), y=int(2 * cy))
 
@@ -124,7 +134,9 @@ class CameraMatrix:
 
     @property
     def matrix(self) -> np.ndarray:
+        """Get the camera intrinsics matrix."""
         return self._matrix
 
     def __array__(self) -> np.ndarray:
+        """Enable numpy array conversion for camera intrinsics."""
         return self._matrix

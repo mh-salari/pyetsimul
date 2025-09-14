@@ -1,8 +1,10 @@
 """Base grid generation system for spatial parameter variations."""
 
-import numpy as np
 from abc import ABC, abstractmethod
-from typing import Iterable, Optional
+from collections.abc import Iterable
+
+import numpy as np
+
 from ..types import Position3D
 
 
@@ -19,13 +21,14 @@ class GridGenerator(ABC):
     @abstractmethod
     def generate_positions(self) -> Iterable[Position3D]:
         """Generate list of 3D positions."""
-        pass
 
 
 class RegularGrid(GridGenerator):
     """Regular 3D grid generation with uniform spacing."""
 
-    def __init__(self, center: Position3D, dx: list[float], dy: list[float], dz: list[float], grid_size: list[int]):
+    def __init__(
+        self, center: Position3D, dx: list[float], dy: list[float], dz: list[float], grid_size: list[int]
+    ) -> None:
         """Initialize regular grid.
 
         Args:
@@ -34,6 +37,7 @@ class RegularGrid(GridGenerator):
             dy: [min_offset, max_offset] in y direction
             dz: [min_offset, max_offset] in z direction
             grid_size: [nx, ny, nz] number of points per dimension
+
         """
         self.center = center
         self.dx = dx
@@ -43,7 +47,7 @@ class RegularGrid(GridGenerator):
 
         self._validate_parameters()
 
-    def _validate_parameters(self):
+    def _validate_parameters(self) -> None:
         """Validate grid parameters."""
         for name, param in [("dx", self.dx), ("dy", self.dy), ("dz", self.dz)]:
             if len(param) != 2:
@@ -84,8 +88,8 @@ class RandomGrid(GridGenerator):
         dy: list[float],
         dz: list[float],
         num_points: int,
-        seed: Optional[int] = None,
-    ):
+        seed: int | None = None,
+    ) -> None:
         """Initialize random grid.
 
         Args:
@@ -95,6 +99,7 @@ class RandomGrid(GridGenerator):
             dz: [min_offset, max_offset] in z direction
             num_points: Number of random points to generate
             seed: Random seed for reproducibility
+
         """
         self.center = center
         self.dx = dx
@@ -105,7 +110,7 @@ class RandomGrid(GridGenerator):
 
         self._validate_parameters()
 
-    def _validate_parameters(self):
+    def _validate_parameters(self) -> None:
         """Validate grid parameters."""
         if len(self.dx) != 2:
             raise ValueError(f"dx must have exactly 2 elements [min, max], got {len(self.dx)} elements: {self.dx}")
@@ -118,15 +123,14 @@ class RandomGrid(GridGenerator):
 
     def generate_positions(self) -> Iterable[Position3D]:
         """Generate random positions."""
-        if self.seed is not None:
-            np.random.seed(self.seed)
+        rng = np.random.default_rng(self.seed)
 
         dx_min, dx_max = self.dx
         dy_min, dy_max = self.dy
         dz_min, dz_max = self.dz
 
         for _ in range(self.num_points):
-            x = self.center.x + np.random.uniform(dx_min, dx_max)
-            y = self.center.y + np.random.uniform(dy_min, dy_max)
-            z = self.center.z + np.random.uniform(dz_min, dz_max)
+            x = self.center.x + rng.uniform(dx_min, dx_max)
+            y = self.center.y + rng.uniform(dy_min, dy_max)
+            z = self.center.z + rng.uniform(dz_min, dz_max)
             yield Position3D(x, y, z)

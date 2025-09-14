@@ -1,14 +1,15 @@
 """Unit tests for Eye.find_cr_simple method."""
 
 import numpy as np
-from pyetsimul.types import Position3D
+
+from pyetsimul.core.camera import Camera
 from pyetsimul.core.eye import Eye
 from pyetsimul.core.light import Light
-from pyetsimul.core.camera import Camera
 from pyetsimul.optics.reflections import find_corneal_reflection_simple
+from pyetsimul.types import Position3D
 
 
-def test_basic_simple_corneal_reflex():
+def test_basic_simple_corneal_reflex() -> None:
     """Test basic simple corneal reflex with MATLAB reference values."""
     e = Eye()
     l = Light(position=Position3D(0, 0, -50))
@@ -31,7 +32,7 @@ def test_basic_simple_corneal_reflex():
     assert arr[3] == 1.0
 
 
-def test_angled_positions():
+def test_angled_positions() -> None:
     """Test simple corneal reflex with angled light and camera positions."""
     e = Eye()
     l = Light(position=Position3D(15, -10, -45))
@@ -54,7 +55,7 @@ def test_angled_positions():
     assert arr[3] == 1.0
 
 
-def test_reflex_outside_cornea_boundary():
+def test_reflex_outside_cornea_boundary() -> None:
     """Test case where simple reflex falls outside cornea boundary - should return None."""
     e = Eye()
     l = Light(position=Position3D(10, 50, -30))
@@ -71,7 +72,7 @@ def test_reflex_outside_cornea_boundary():
     assert cr is None
 
 
-def test_output_properties():
+def test_output_properties() -> None:
     """Test that output has correct properties."""
     e = Eye()
     l = Light(position=Position3D(0, 0, -50))

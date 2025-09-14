@@ -4,16 +4,19 @@ import copy
 import json
 import multiprocessing
 from pathlib import Path
-from typing import Any, Optional
+from typing import TYPE_CHECKING, Any
 
 from ..core import Eye
 from ..types import Position3D
-from .core import ParameterVariation, EyeParameterVariation, TargetVariation, VariationStrategy
-from .composed_variation import ComposedVariation, SequentialVariation
 from ..utils.filename import sanitize_filename
+from .composed_variation import ComposedVariation, SequentialVariation
+from .core import EyeParameterVariation, ParameterVariation, TargetVariation, VariationStrategy
+
+if TYPE_CHECKING:
+    from ..core.camera import Camera
 
 
-def _process_single_variation(args):
+def _process_single_variation(args: tuple[Any, ...]) -> dict[str, Any]:
     """Processes a single variation, designed to be called in parallel from DataGenerationStrategy."""
     (
         eye,
@@ -42,8 +45,8 @@ def _process_single_variation(args):
         save_to_file=False,  # Avoid child processes trying to save
     )
 
-    current_gaze_target = strategy._apply_parameter_variation(eye_copy, variation, value)
-    measurement = strategy._generate_single_measurement(eye_copy, camera, value, index, current_gaze_target)
+    current_gaze_target = strategy.apply_parameter_variation(eye_copy, variation, value)
+    measurement = strategy.generate_single_measurement(eye_copy, camera, value, index, current_gaze_target)
     return measurement
 
 
@@ -80,12 +83,12 @@ class DataGenerationStrategy(VariationStrategy):
         cameras: list,
         lights: list,
         experiment_name: str,
-        gaze_target: Optional[Position3D] = None,
+        gaze_target: Position3D | None = None,
         output_dir: str = "output",
         save_to_file: bool = True,
         use_legacy_look_at: bool = False,
         use_refraction: bool = True,
-    ):
+    ) -> None:
         """Initialize data generation strategy with complete experimental setup.
 
         Args:
@@ -98,6 +101,7 @@ class DataGenerationStrategy(VariationStrategy):
             save_to_file: Whether to save datasets to disk
             use_legacy_look_at: Use legacy eye rotation method for compatibility
             use_refraction: Enable corneal refraction in image capture
+
         """
         self.eyes = eyes
         self.cameras = cameras
@@ -113,11 +117,12 @@ class DataGenerationStrategy(VariationStrategy):
         self.use_legacy_look_at = use_legacy_look_at
         self.use_refraction = use_refraction
 
-    def set_experiment_name(self, experiment_name: str):
+    def set_experiment_name(self, experiment_name: str) -> None:
         """Update the experiment name for subsequent operations.
 
         Args:
             experiment_name: New experiment name for metadata and file operations
+
         """
         self.experiment_name = experiment_name
         self.safe_experiment_name = sanitize_filename(experiment_name)
@@ -130,8 +135,8 @@ class DataGenerationStrategy(VariationStrategy):
 
         Returns:
             Dictionary containing generated dataset with measurements and metadata
-        """
 
+        """
         all_data = {
             "experiment_metadata": self._get_experiment_metadata(variation),
             "setup_configuration": self._get_setup_configuration(self.eyes),
@@ -185,7 +190,7 @@ class DataGenerationStrategy(VariationStrategy):
         # Save the collected data to a file (if requested).
         saved_files = []
         if self.save_to_file:
-            saved_files = self._save_data(all_data, variation.param_name, self.safe_experiment_name)
+            saved_files = self._save_data(all_data, self.safe_experiment_name)
         else:
             print("Dataset generated but not saved (save_to_file=False).")
 
@@ -197,11 +202,15 @@ class DataGenerationStrategy(VariationStrategy):
             "parameter_variation": variation,  # Store variation for plotting
         }
 
-    def _generate_single_measurement(
-        self, eye: Eye, camera, param_value: Any, index: int, gaze_target: Optional[Position3D] = None
+    def generate_single_measurement(
+        self,
+        eye: Eye,
+        camera: "Camera",
+        param_value: Any,  # noqa: ANN401
+        index: int,
+        gaze_target: Position3D | None = None,
     ) -> dict[str, Any]:
         """Generate measurement data for single camera-eye-parameter combination."""
-
         # Take image with this specific camera using same parameters as estimate_gaze_at
         img = camera.take_image(eye, self.lights, use_refraction=self.use_refraction)
 
@@ -231,22 +240,25 @@ class DataGenerationStrategy(VariationStrategy):
             "gaze_target": gaze_target.serialize() if gaze_target else None,
         }
 
-    def _save_data(self, data: dict, param_name: str, experiment_name: str) -> list[str]:
+    def _save_data(self, data: dict, experiment_name: str) -> list[str]:
         """Save dataset to JSON file."""
         # Ensure output directory exists
         Path(self.output_dir).mkdir(parents=True, exist_ok=True)
 
         json_file = Path(self.output_dir) / f"{experiment_name}_data.json"
-        with open(json_file, "w") as f:
+        with Path.open(json_file, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
 
         print(f"Dataset saved to: {json_file}")
 
         return [str(json_file)]
 
-    def _apply_parameter_variation(
-        self, eye_copy: Eye, variation: ParameterVariation, value: Any
-    ) -> Optional[Position3D]:
+    def apply_parameter_variation(
+        self,
+        eye_copy: Eye,
+        variation: ParameterVariation,
+        value: Any,  # noqa: ANN401
+    ) -> Position3D | None:
         """Apply parameter variation to eye copy and return gaze target.
 
         Args:
@@ -256,6 +268,7 @@ class DataGenerationStrategy(VariationStrategy):
 
         Returns:
             Current gaze target position after applying variation
+
         """
         current_gaze_target = self.gaze_target
 
@@ -268,13 +281,13 @@ class DataGenerationStrategy(VariationStrategy):
         elif isinstance(variation, TargetVariation):
             current_gaze_target = self._handle_target_variation(eye_copy, value)
         else:
-            raise ValueError(f"Unknown variation type: {type(variation)}")
+            raise TypeError(f"Unknown variation type: {type(variation)}")
 
         return current_gaze_target
 
     def _handle_composed_variation(
         self, eye_copy: Eye, variation: ComposedVariation, value: dict
-    ) -> Optional[Position3D]:
+    ) -> Position3D | None:
         """Handle ComposedVariation by applying each inner variation."""
         current_gaze_target = self.gaze_target
 
@@ -296,7 +309,7 @@ class DataGenerationStrategy(VariationStrategy):
 
     def _handle_sequential_variation(
         self, eye_copy: Eye, variation: SequentialVariation, value: dict
-    ) -> Optional[Position3D]:
+    ) -> Position3D | None:
         """Handle SequentialVariation by applying one variation from the sequence."""
         current_gaze_target = self.gaze_target
 
@@ -314,8 +327,11 @@ class DataGenerationStrategy(VariationStrategy):
         return current_gaze_target
 
     def _handle_eye_parameter_variation(
-        self, eye_copy: Eye, variation: EyeParameterVariation, value: Any
-    ) -> Optional[Position3D]:
+        self,
+        eye_copy: Eye,
+        variation: EyeParameterVariation,
+        value: Any,  # noqa: ANN401
+    ) -> Position3D | None:
         """Handle simple EyeParameterVariation."""
         # For a simple eye parameter variation, apply it and use the default gaze target.
         variation.apply_to_eye(eye_copy, value)
@@ -323,13 +339,13 @@ class DataGenerationStrategy(VariationStrategy):
             eye_copy.look_at(self.gaze_target, legacy=self.use_legacy_look_at)
         return self.gaze_target
 
-    def _handle_target_variation(self, eye_copy: Eye, value: Any) -> Position3D:
+    def _handle_target_variation(self, eye_copy: Eye, value: Any) -> Position3D:  # noqa: ANN401
         """Handle TargetVariation."""
         # For a target variation, the value itself is the gaze target.
         eye_copy.look_at(value, legacy=self.use_legacy_look_at)
         return value
 
-    def _serialize_param_value(self, param_value):
+    def _serialize_param_value(self, param_value: Any) -> Any:  # noqa: ANN401
         """Serialize parameter values for JSON storage."""
         # Handle None
         if param_value is None:

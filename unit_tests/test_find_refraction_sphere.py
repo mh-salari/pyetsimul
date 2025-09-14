@@ -1,11 +1,12 @@
 """Unit tests for find_refraction_sphere function."""
 
 import numpy as np
+
 from pyetsimul.optics.refractions import find_refraction_sphere
-from pyetsimul.types import Position3D, Point3D
+from pyetsimul.types import Point3D, Position3D
 
 
-def test_basic_refraction():
+def test_basic_refraction() -> None:
     """Test basic refraction scenario with MATLAB reference values."""
     # Define sphere
     sphere_center = Position3D(0.0, 0.0, 0.0)  # Sphere center
@@ -32,7 +33,7 @@ def test_basic_refraction():
     np.testing.assert_allclose(dist_from_center, sphere_radius, rtol=1e-15, atol=1e-15)
 
 
-def test_different_refractive_indices():
+def test_different_refractive_indices() -> None:
     """Test refraction with different refractive indices and MATLAB reference values."""
     # Define sphere
     sphere_center = Position3D(0.0, 0.0, 0.0)
@@ -59,7 +60,7 @@ def test_different_refractive_indices():
     np.testing.assert_allclose(dist_from_center, sphere_radius, rtol=1e-15, atol=1e-15)
 
 
-def test_large_sphere():
+def test_large_sphere() -> None:
     """Test refraction with large sphere and MATLAB reference values."""
     # Define large sphere
     sphere_center = Position3D(0.0, 0.0, 0.0)
@@ -86,7 +87,7 @@ def test_large_sphere():
     np.testing.assert_allclose(dist_from_center, sphere_radius, rtol=1e-15, atol=1e-15)
 
 
-def test_snells_law_verification():
+def test_snells_law_verification() -> None:
     """Test that solution satisfies Snell's law with MATLAB reference values."""
     # Use same setup as basic test
     sphere_center = Position3D(0.0, 0.0, 0.0)
@@ -135,7 +136,7 @@ def test_snells_law_verification():
     assert snell_diff < 1e-10
 
 
-def test_output_properties():
+def test_output_properties() -> None:
     """Test that output has correct properties."""
     sphere_center = Position3D(0.0, 0.0, 0.0)
     sphere_radius = 10.0

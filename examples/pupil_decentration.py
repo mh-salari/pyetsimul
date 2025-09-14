@@ -1,20 +1,21 @@
 #!/usr/bin/env python3
-"""
-Pupil decentration comparison figure.
+"""Pupil decentration comparison figure.
 
 Shows pupil decentration across different pupil sizes and individual variation profiles.
 Three decentration types: no decentration, random individual variation, and fixed seed individual.
 Five pupil sizes from constricted to dilated conditions.
 """
 
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
+
 from pyetsimul.core import Eye
 from pyetsimul.core.pupil_decentration import PupilDecentrationConfig
 from pyetsimul.types import Position3D, RotationMatrix
 
 
-def main():
+def main() -> None:
+    """Demonstrate pupil decentration across different pupil sizes and variation profiles."""
     # Five different pupil sizes (diameters in meters)
     # Range from bright light constriction to dark adaptation dilation
     pupil_sizes = [
@@ -59,7 +60,7 @@ def main():
         ),
     ]
 
-    # Create figure with 3 rows (eye types) × 5 columns (pupil sizes)
+    # Create figure with 3 rows (eye types) x 5 columns (pupil sizes)
     fig, axes = plt.subplots(3, 5, figsize=(20, 12))
 
     # Print individual coefficients for reference
@@ -104,7 +105,7 @@ def main():
             eye_boundary = eye.pupil.get_boundary_points()
             centered_boundary = ref_eye.pupil.get_boundary_points()
 
-            # Convert to mm for plotting (4×N matrix, take x and y rows)
+            # Convert to mm for plotting (4xN matrix, take x and y rows)
             eye_x = eye_boundary[0, :] * 1000  # X coordinates
             eye_y = eye_boundary[1, :] * 1000  # Y coordinates
             centered_x = centered_boundary[0, :] * 1000

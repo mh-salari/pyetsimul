@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
-"""
-Realistic pupil example.
+"""Realistic pupil example.
 
 Compares elliptical vs realistic pupil shapes using pinhole camera.
 """
 
-from pyetsimul.core import Eye, Camera
-from pyetsimul.types import Position3D, RotationMatrix
-from pyetsimul.visualization import plot_interactive_pupil_comparison
 from tabulate import tabulate
 
+from pyetsimul.core import Camera, Eye
+from pyetsimul.types import Position3D, RotationMatrix
+from pyetsimul.visualization import plot_interactive_pupil_comparison
 
-def main():
+
+def main() -> None:
+    """Compare elliptical vs realistic pupil shapes using pinhole camera."""
     # Create two eyes with different pupil types
     eye_elliptical = Eye(pupil_type="elliptical", pupil_boundary_points=300)
     eye_realistic = Eye(pupil_type="realistic", pupil_boundary_points=300, pupil_random_seed=0)

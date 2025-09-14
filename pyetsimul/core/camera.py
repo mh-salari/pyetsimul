@@ -4,24 +4,25 @@ Implements camera projection, pan-tilt, and image capture for synthetic eye trac
 Supports both simple pinhole cameras and realistic cameras with distortion from OpenCV calibration.
 """
 
-import numpy as np
-import cv2
 from dataclasses import dataclass, field
-from typing import TYPE_CHECKING, Optional
+from typing import TYPE_CHECKING
+
+import cv2
+import numpy as np
 from tabulate import tabulate
 
-from .light import Light
+from ..camera_noise import GlintNoiseConfig, apply_glint_noise
 from ..types import (
-    TransformationMatrix,
-    RotationMatrix,
-    Point2D,
-    Position3D,
     CameraImage,
     CameraMatrix,
+    Point2D,
+    Position3D,
     ProjectionResult,
+    RotationMatrix,
+    TransformationMatrix,
 )
-from ..camera_noise import apply_glint_noise, GlintNoiseConfig
 from .default_configs import CameraDefaults
+from .light import Light
 
 if TYPE_CHECKING:
     from .eye import Eye
@@ -47,16 +48,16 @@ class Camera:
     """
 
     camera_matrix: CameraMatrix = field(default_factory=CameraMatrix)
-    dist_coeffs: Optional[np.ndarray] = None
+    dist_coeffs: np.ndarray | None = None
     err: float = CameraDefaults.MEASUREMENT_ERROR
     err_type: str = "gaussian"
-    glint_noise_config: Optional[GlintNoiseConfig] = None
-    name: Optional[str] = None
-    trans: TransformationMatrix = field(default_factory=lambda: TransformationMatrix.identity())
+    glint_noise_config: GlintNoiseConfig | None = None
+    name: str | None = None
+    trans: TransformationMatrix = field(default_factory=TransformationMatrix.identity)
     rest_trans: TransformationMatrix = field(init=False)
 
     # Internal field to track where camera is pointing (set by point_at method)
-    _pointing_at: Optional[Position3D] = field(default=None, init=False)
+    _pointing_at: Position3D | None = field(default=None, init=False)
 
     def __post_init__(self) -> None:
         """Initialize camera with default values."""
@@ -82,6 +83,7 @@ class Camera:
 
         Raises:
             ValueError: If the matrix is not right-handed (det ≠ +1)
+
         """
         # RotationMatrix type already validates during construction
 
@@ -97,7 +99,7 @@ class Camera:
         self.trans[:3, 3] = np.array(value)[:3]  # Extract x,y,z from homogeneous coordinates
 
     @property
-    def pointing_at(self) -> Optional[Position3D]:
+    def pointing_at(self) -> Position3D | None:
         """Get the position that the camera is currently pointing at.
 
         Returns None if point_at() has never been called.
@@ -118,9 +120,10 @@ class Camera:
 
         Returns:
             ProjectionResult containing:
-            - image_points: 2×n matrix of image coordinates (NaN for invalid points)
-            - distances: 1×n array of distances from camera along optical axis
-            - valid_mask: 1×n boolean array indicating points within image bounds
+            - image_points: 2xn matrix of image coordinates (NaN for invalid points)
+            - distances: 1xn array of distances from camera along optical axis
+            - valid_mask: 1xn boolean array indicating points within image bounds
+
         """
         # Convert input to homogeneous coordinates matrix
         if isinstance(pos, Position3D):
@@ -155,10 +158,11 @@ class Camera:
         x[1, :] -= cy
 
         # Add error based on error type
+        rng = np.random.default_rng()
         if self.err_type == "uniform":
-            x = x + self.err * (2 * np.random.rand(2, pos_camera.shape[1]) - 1)
+            x += self.err * (2 * rng.random((2, pos_camera.shape[1])) - 1)
         elif self.err_type == "gaussian":
-            x = x + self.err * np.random.normal(0, 1, (pos_camera.shape[1], 2)).T
+            x += self.err * rng.normal(0, 1, (pos_camera.shape[1], 2)).T
         else:
             raise ValueError(f"Unknown error type: {self.err_type}")
 
@@ -195,48 +199,44 @@ class Camera:
 
         Returns:
             Position3D object(s) in world coordinates
+
         """
         # Convert input to numpy array format
         if isinstance(image_points, Point2D):
             # Single point
-            X = np.array([[image_points.x], [image_points.y]])
+            x = np.array([[image_points.x], [image_points.y]])
             single_point = True
         elif isinstance(image_points, list) and all(isinstance(p, Point2D) for p in image_points):
             # list of points
-            X = np.array([[p.x for p in image_points], [p.y for p in image_points]])
+            x = np.array([[p.x for p in image_points], [p.y for p in image_points]])
             single_point = False
         else:
             raise ValueError(f"Image points must be Point2D or list of Point2D objects, got: {type(image_points)}")
 
-        n = X.shape[1]
+        n = x.shape[1]
 
         # Convert distance to numpy array if needed
-        if isinstance(distance, (int, float)):
-            d = np.full(n, distance)
-        else:
-            d = np.asarray(distance)
+        d = np.full(n, distance) if isinstance(distance, (int, float)) else np.asarray(distance)
 
         # Convert from center-origin to top-left-origin coordinate system
         cx = self.camera_matrix.matrix[0, 2]
         cy = self.camera_matrix.matrix[1, 2]
-        X_opencv = X.copy().astype(np.float64)
-        X_opencv[0, :] += cx
-        X_opencv[1, :] += cy
+        x_opencv = x.copy().astype(np.float64)
+        x_opencv[0, :] += cx
+        x_opencv[1, :] += cy
 
         points_2d_normalized = cv2.undistortPoints(
-            X_opencv.T.reshape(-1, 1, 2).astype(np.float64), self.camera_matrix.matrix, self.dist_coeffs
+            x_opencv.T.reshape(-1, 1, 2).astype(np.float64), self.camera_matrix.matrix, self.dist_coeffs
         )
 
         points_3d = points_2d_normalized.reshape(-1, 2) * d.reshape(-1, 1)
 
-        camera_coords = np.column_stack(
-            [
-                points_3d[:, 0],
-                points_3d[:, 1],
-                -d,  # Camera faces -Z axis
-                np.ones(len(points_3d)),
-            ]
-        ).T
+        camera_coords = np.column_stack([
+            points_3d[:, 0],
+            points_3d[:, 1],
+            -d,  # Camera faces -Z axis
+            np.ones(len(points_3d)),
+        ]).T
 
         # Transform to world coordinates
         world_coords = self.trans @ camera_coords
@@ -244,10 +244,9 @@ class Camera:
         # Convert result back to Position3D objects
         if single_point:
             return Position3D.from_array(world_coords[:, 0])
-        else:
-            return [Position3D.from_array(world_coords[:, i]) for i in range(n)]
+        return [Position3D.from_array(world_coords[:, i]) for i in range(n)]
 
-    def pan_tilt(self, look_at: Position3D, world_frame: Optional[RotationMatrix] = None) -> None:
+    def pan_tilt(self, look_at: Position3D, world_frame: RotationMatrix | None = None) -> None:
         """Pans and tilts a camera towards a certain location.
 
         Orients camera to look directly at specified point in world coordinates.
@@ -256,6 +255,7 @@ class Camera:
         Args:
             look_at: Point to look at in world coordinates
             world_frame: Optional world coordinate frame for camera orientation
+
         """
         # Convert to homogeneous coordinates for transformation
         look_at_homogeneous = np.array(look_at)
@@ -268,32 +268,24 @@ class Camera:
 
         # Calculate pan and tilt angles
         # Handle special case where both axis[2] and axis[0] are zero
-        if abs(axis[2]) < 1e-10 and abs(axis[0]) < 1e-10:
-            # Target is directly in front/behind camera, no pan needed
-            alpha = 0.0
-        else:
-            alpha = np.pi / 2 - np.arctan2(-axis[2], axis[0])
+        alpha = 0.0 if abs(axis[2]) < 1e-10 and abs(axis[0]) < 1e-10 else np.pi / 2 - np.arctan2(-axis[2], axis[0])
         beta = np.arcsin(axis[1])
 
         # Construct pan matrix (rotation around Y axis)
-        pan_matrix = np.array(
-            [
-                [np.cos(alpha), 0, -np.sin(alpha), 0],
-                [0, 1, 0, 0],
-                [np.sin(alpha), 0, np.cos(alpha), 0],
-                [0, 0, 0, 1],
-            ]
-        )
+        pan_matrix = np.array([
+            [np.cos(alpha), 0, -np.sin(alpha), 0],
+            [0, 1, 0, 0],
+            [np.sin(alpha), 0, np.cos(alpha), 0],
+            [0, 0, 0, 1],
+        ])
 
         # Construct tilt matrix (rotation around X axis)
-        tilt_matrix = np.array(
-            [
-                [1, 0, 0, 0],
-                [0, np.cos(beta), -np.sin(beta), 0],
-                [0, np.sin(beta), np.cos(beta), 0],
-                [0, 0, 0, 1],
-            ]
-        )
+        tilt_matrix = np.array([
+            [1, 0, 0, 0],
+            [0, np.cos(beta), -np.sin(beta), 0],
+            [0, np.sin(beta), np.cos(beta), 0],
+            [0, 0, 0, 1],
+        ])
 
         # Apply pan and tilt transformations
         self.trans = TransformationMatrix(self.rest_trans @ pan_matrix @ tilt_matrix)
@@ -307,7 +299,7 @@ class Camera:
         # Get current camera viewing direction (where camera is pointing)
         current_rotation = self.trans[:3, :3]
         viewing_direction = -current_rotation[:, 2]  # Camera looks along -Z
-        viewing_direction = viewing_direction / np.linalg.norm(viewing_direction)
+        viewing_direction /= np.linalg.norm(viewing_direction)
 
         # Use the world's up vector as a reference to define the camera's orientation
         world_up = -world_frame[:, 2]
@@ -320,7 +312,7 @@ class Camera:
             world_x = world_frame[:, 0]
             camera_x = np.cross(viewing_direction, world_x)
 
-        camera_x = camera_x / np.linalg.norm(camera_x)
+        camera_x /= np.linalg.norm(camera_x)
 
         # Compute camera y-axis orthogonal to x-axis and viewing direction
         camera_y = np.cross(camera_x, viewing_direction)
@@ -331,7 +323,7 @@ class Camera:
         # Update camera's orientation
         self.trans[:3, :3] = camera_rotation
 
-    def point_at(self, target_point: Position3D, world_frame: Optional[RotationMatrix] = None) -> None:
+    def point_at(self, target_point: Position3D, world_frame: RotationMatrix | None = None) -> None:
         """Points camera towards a certain location.
 
         Changes camera's rest position to point at specified target.
@@ -341,6 +333,7 @@ class Camera:
         Args:
             target_point: Point to point at in world coordinates
             world_frame: Optional world coordinate frame for camera orientation
+
         """
         # Store the target point for later reference
         self._pointing_at = target_point
@@ -357,7 +350,7 @@ class Camera:
     def take_image(
         self,
         eye: "Eye",
-        lights: Optional[list[Light]] = None,
+        lights: list[Light] | None = None,
         use_refraction: bool = True,
         center_method: str = "ellipse",
     ) -> CameraImage:
@@ -375,9 +368,10 @@ class Camera:
 
         Returns:
             CameraImage object containing corneal reflections, pupil boundary, and pupil center
+
         """
         # Find the corneal reflections for each light (if lights provided)
-        corneal_reflections = []
+        corneal_reflections: list[Point2D | None] = []
         if lights is not None:
             for light in lights:
                 # Find 3D corneal reflection position
@@ -439,7 +433,7 @@ class Camera:
 
         data = [
             ["Focal length (px)", f"{self.camera_matrix.focal_length:.1f}"],
-            ["Resolution", f"{res.x} × {res.y}"],
+            ["Resolution", f"{res.x} x {res.y}"],
             ["Principal point (px)", f"({matrix[0, 2]:.1f}, {matrix[1, 2]:.1f})"],
             ["Position (x,y,z) mm", f"({pos.x * 1000:.1f}, {pos.y * 1000:.1f}, {pos.z * 1000:.1f})"],
             ["Distortion coefficients", dist_info],
@@ -472,7 +466,6 @@ class Camera:
     @classmethod
     def deserialize(cls, data: dict) -> "Camera":
         """Deserialize from dictionary representation."""
-
         # Create camera with basic parameters
         camera = cls(err=data["measurement_error"], err_type=data["error_type"], name=data["name"])
 

@@ -4,7 +4,9 @@ Defines the Light class for generating corneal reflections (glints) in synthetic
 """
 
 from dataclasses import dataclass
+
 from tabulate import tabulate
+
 from ..types import Position3D
 
 
@@ -17,6 +19,7 @@ class Light:
 
     Args:
         position: 3D position in world coordinates (meters)
+
     """
 
     position: Position3D

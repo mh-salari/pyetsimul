@@ -3,12 +3,13 @@
 Defines abstract and concrete pupil models (elliptical, realistic) for boundary generation and anatomical accuracy.
 """
 
-import numpy as np
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, asdict
-from typing import Tuple, Optional
+from dataclasses import asdict, dataclass
+
+import numpy as np
 from tabulate import tabulate
-from ..types import Position3D, Direction3D, TransformationMatrix
+
+from ..types import Direction3D, Position3D, TransformationMatrix
 from .default_configs import PupilDefaults
 
 
@@ -22,6 +23,7 @@ class Pupil(ABC):
         pos_pupil: Center position
         x_pupil: Vector defining X-axis radius/direction
         y_pupil: Vector defining Y-axis radius/direction
+
     """
 
     def __init__(
@@ -29,24 +31,33 @@ class Pupil(ABC):
         pos_pupil: Position3D,
         x_pupil: Direction3D,
         y_pupil: Direction3D,
-        N: int = PupilDefaults.BOUNDARY_POINTS_ELLIPTICAL,
-    ):
+        n: int = PupilDefaults.BOUNDARY_POINTS_ELLIPTICAL,
+    ) -> None:
+        """Initialize elliptical pupil.
+
+        Args:
+            pos_pupil: Center position of pupil
+            x_pupil: X-axis radius/direction vector
+            y_pupil: Y-axis radius/direction vector
+            n: Number of boundary points
+
+        """
         self.pos_pupil = pos_pupil
         self.x_pupil = x_pupil
         self.y_pupil = y_pupil
-        self.N = N  # Number of boundary points for this pupil
+        self.n = n  # Number of boundary points for this pupil
 
     @abstractmethod
-    def get_boundary_points(self, N: Optional[int] = None) -> np.ndarray:
+    def get_boundary_points(self, n: int | None = None) -> np.ndarray:
         """Generate pupil boundary points.
 
         Args:
-            N: Number of boundary points (defaults to self.N if not provided)
+            n: Number of boundary points (defaults to self.n if not provided)
 
         Returns:
-            4×N matrix of points on pupil boundary (homogeneous coordinates)
+            4xn matrix of points on pupil boundary (homogeneous coordinates)
+
         """
-        pass
 
     @abstractmethod
     def get_radii(self) -> tuple[float, float]:
@@ -54,8 +65,8 @@ class Pupil(ABC):
 
         Returns:
             Tuple of (x_radius, y_radius) in meters
+
         """
-        pass
 
     @abstractmethod
     def set_radii(self, x_radius: float, y_radius: float) -> None:
@@ -64,8 +75,8 @@ class Pupil(ABC):
         Args:
             x_radius: Pupil radius in X direction (meters)
             y_radius: Pupil radius in Y direction (meters)
+
         """
-        pass
 
     @abstractmethod
     def set_diameter(self, diameter: float) -> None:
@@ -73,8 +84,8 @@ class Pupil(ABC):
 
         Args:
             diameter: Pupil diameter in meters
+
         """
-        pass
 
     @abstractmethod
     def get_diameter(self) -> float:
@@ -82,13 +93,12 @@ class Pupil(ABC):
 
         Returns:
             Pupil diameter in meters
+
         """
-        pass
 
     @abstractmethod
     def serialize(self) -> dict:
         """Serialize to dictionary representation."""
-        pass
 
     def get_center_world_coords(self, eye_transform: TransformationMatrix) -> Position3D:
         """Get pupil center in world coordinates.
@@ -100,11 +110,12 @@ class Pupil(ABC):
 
         Returns:
             Pupil center position in world coordinates
+
         """
         world_homogeneous = eye_transform @ np.array(self.pos_pupil)
         return Position3D.from_array(world_homogeneous)
 
-    def get_noncircularity(self) -> float:
+    def get_noncircularity(self) -> float:  # noqa: PLR6301
         """Calculate noncircularity.
 
         Default implementation returns 0.0 (perfect circle).
@@ -112,6 +123,7 @@ class Pupil(ABC):
 
         Returns:
             Noncircularity value (0.0 for perfect circle)
+
         """
         return 0.0
 
@@ -132,14 +144,16 @@ class Pupil(ABC):
             ["Position (x,y,z) mm", f"({pos.x * 1000:.3f}, {pos.y * 1000:.3f}, {pos.z * 1000:.3f})"],
             ["X-axis radius (mm)", f"{x_radius * 1000:.3f}"],
             ["Y-axis radius (mm)", f"{y_radius * 1000:.3f}"],
-            ["Boundary points", str(self.N)],
+            ["Boundary points", str(self.n)],
             ["Noncircularity", f"{self.get_noncircularity():.6f}"],
         ]
 
         # Add RealisticPupil-specific parameters
         if isinstance(self, RealisticPupil):
-            data.append(["Base radius (mm)", f"{self.params.base_radius * 1000:.3f}"])
-            data.append(["Random seed", str(self.params.random_seed) if self.params.random_seed else "Random"])
+            data.extend([
+                ["Base radius (mm)", f"{self.params.base_radius * 1000:.3f}"],
+                ["Random seed", str(self.params.random_seed) if self.params.random_seed else "Random"],
+            ])
 
         headers = ["Parameter", "Value"]
         print(f"{self.__class__.__name__} Parameters:")
@@ -150,26 +164,27 @@ class EllipticalPupil(Pupil):
     """Elliptical pupil implementation using parametric representation.
 
     Implements simple elliptical pupil model using parametric formula.
-    Uses cos(α)*x_pupil + sin(α)*y_pupil for boundary generation.
+    Uses cos(α)*x_pupil + sin(α)*y_pupil for boundary generation.  # noqa: RUF002
 
     Args:
         pos_pupil: Center position
         x_pupil: Vector defining X-axis radius/direction
         y_pupil: Vector defining Y-axis radius/direction
+
     """
 
-    def get_boundary_points(self, N: Optional[int] = None) -> np.ndarray:
+    def get_boundary_points(self, n: int | None = None) -> np.ndarray:
         """Generate elliptical pupil boundary points using parametric representation.
 
         Args:
-            N: Number of boundary points (defaults to self.N if not provided)
+            n: Number of boundary points (defaults to self.n if not provided)
 
         Returns:
-            4×N matrix of points on pupil boundary (homogeneous coordinates)
+            4xn matrix of points on pupil boundary (homogeneous coordinates)
+
         """
-        if N is None:
-            N = self.N
-        alpha = 2 * np.pi * np.arange(N) / N
+        n_points = self.n if n is None else n
+        alpha = 2 * np.pi * np.arange(n_points) / n_points
 
         # Convert to homogeneous arrays for computation
         pos_homogeneous = np.array(self.pos_pupil).reshape(-1, 1)
@@ -178,7 +193,7 @@ class EllipticalPupil(Pupil):
 
         # Parametric pupil boundary: pos_pupil + cos(α)*x_pupil + sin(α)*y_pupil
         pupil_points = (
-            np.tile(pos_homogeneous, (1, N))
+            np.tile(pos_homogeneous, (1, n_points))
             + x_homogeneous @ np.cos(alpha).reshape(1, -1)
             + y_homogeneous @ np.sin(alpha).reshape(1, -1)
         )
@@ -190,6 +205,7 @@ class EllipticalPupil(Pupil):
 
         Returns:
             Tuple of (x_radius, y_radius) in meters
+
         """
         x_radius = self.x_pupil.magnitude()
         y_radius = self.y_pupil.magnitude()
@@ -201,6 +217,7 @@ class EllipticalPupil(Pupil):
         Args:
             x_radius: Pupil radius in X direction (meters)
             y_radius: Pupil radius in Y direction (meters)
+
         """
         self.x_pupil = Direction3D(x_radius, 0, 0)
         self.y_pupil = Direction3D(0, y_radius, 0)
@@ -210,6 +227,7 @@ class EllipticalPupil(Pupil):
 
         Args:
             diameter: Pupil diameter in meters
+
         """
         radius = diameter / 2
         self.set_radii(x_radius=radius, y_radius=radius)
@@ -221,6 +239,7 @@ class EllipticalPupil(Pupil):
 
         Returns:
             Pupil diameter in meters
+
         """
         x_radius, y_radius = self.get_radii()
         return x_radius + y_radius
@@ -231,7 +250,7 @@ class EllipticalPupil(Pupil):
             "pos_pupil": self.pos_pupil.serialize(),
             "x_pupil": self.x_pupil.serialize(),
             "y_pupil": self.y_pupil.serialize(),
-            "N": self.N,
+            "n": self.n,
         }
 
     @classmethod
@@ -241,7 +260,7 @@ class EllipticalPupil(Pupil):
             pos_pupil=Position3D.deserialize(data["pos_pupil"]),
             x_pupil=Direction3D.deserialize(data["x_pupil"]),
             y_pupil=Direction3D.deserialize(data["y_pupil"]),
-            N=data["N"],
+            n=data["n"],
         )
 
 
@@ -271,16 +290,17 @@ class RealisticPupilParams:
         n_harmonics: Number of Fourier harmonics to include in shape generation
         age: Subject age in years (affects noncircularity and pupil size)
         random_seed: Random seed for reproducible shape generation (None for random)
+
     """
 
     base_radius: float = PupilDefaults.BASE_RADIUS  # meters
     noncircularity: float = PupilDefaults.NONCIRCULARITY
     ellipse_contribution: float = PupilDefaults.ELLIPSE_CONTRIBUTION
     major_axis_angle: float = PupilDefaults.MAJOR_AXIS_ANGLE
-    pupil_offset_from_limbus: Tuple[float, float] = PupilDefaults.OFFSET_FROM_LIMBUS
+    pupil_offset_from_limbus: tuple[float, float] = PupilDefaults.OFFSET_FROM_LIMBUS
     n_harmonics: int = PupilDefaults.N_HARMONICS
     age: float = PupilDefaults.REFERENCE_AGE
-    random_seed: Optional[int] = None  # seed for reproducible random generation (None = random)
+    random_seed: int | None = None  # seed for reproducible random generation (None = random)
 
 
 class RealisticPupil(Pupil):
@@ -298,6 +318,7 @@ class RealisticPupil(Pupil):
         x_pupil: Vector defining X-axis radius/direction
         y_pupil: Vector defining Y-axis radius/direction
         params: Parameters for realistic pupil shape generation
+
     """
 
     def __init__(
@@ -305,10 +326,20 @@ class RealisticPupil(Pupil):
         pos_pupil: Position3D,
         x_pupil: Direction3D,
         y_pupil: Direction3D,
-        params: Optional[RealisticPupilParams] = None,
-        N: int = PupilDefaults.BOUNDARY_POINTS_REALISTIC,
-    ):
-        super().__init__(pos_pupil, x_pupil, y_pupil, N)
+        params: RealisticPupilParams | None = None,
+        n: int = PupilDefaults.BOUNDARY_POINTS_REALISTIC,
+    ) -> None:
+        """Initialize realistic pupil.
+
+        Args:
+            pos_pupil: Center position
+            x_pupil: Vector defining X-axis radius/direction
+            y_pupil: Vector defining Y-axis radius/direction
+            params: Parameters for realistic pupil shape generation
+            n: Number of boundary points
+
+        """
+        super().__init__(pos_pupil, x_pupil, y_pupil, n)
         self.params = params or RealisticPupilParams()
 
         # Extract current pupil size from elliptical parameters
@@ -321,7 +352,7 @@ class RealisticPupil(Pupil):
 
         # Initialize attributes that will be set dynamically
         self.r2 = None
-        self.harmonics = {}
+        self.harmonics: dict[int, dict[str, float]] = {}
 
         # Set dilated/constricted condition and orientation based on pupil size
         diameter = avg_radius * 2
@@ -329,14 +360,9 @@ class RealisticPupil(Pupil):
 
         self._generate_harmonics()
 
-    def _set_random_seed(self):
-        """Set random seed if specified, for reproducible shape generation."""
-        if self.params.random_seed is not None:
-            np.random.seed(self.params.random_seed)
-
-    def _generate_harmonics(self):
+    def _generate_harmonics(self) -> None:
         """Generate harmonic amplitudes for realistic pupil shape using Wyatt (1995) formula."""
-        self._set_random_seed()
+        rng = np.random.default_rng(self.params.random_seed)
         # Apply age effects to base parameters
         age_offset = self.params.age - PupilDefaults.REFERENCE_AGE
         noncircularity_age_adjusted = self.params.noncircularity + (age_offset / 10) * 0.0015
@@ -359,7 +385,7 @@ class RealisticPupil(Pupil):
         if n_higher_harmonics > 0:
             # Distribute remaining NC² among higher harmonics with exponential decay
             weights = np.array([np.exp(-(n - 2) * 0.7) for n in range(3, self.params.n_harmonics + 1)])
-            weights = weights / np.sum(weights)  # Normalize
+            weights /= np.sum(weights)  # Normalize
 
             for i, n in enumerate(range(3, self.params.n_harmonics + 1)):
                 # Each harmonic gets a fraction of remaining NC²
@@ -368,16 +394,17 @@ class RealisticPupil(Pupil):
 
                 self.harmonics[n] = {
                     "amplitude": amplitude,
-                    "phase": np.random.uniform(0, 2 * np.pi),  # Individual variation
+                    "phase": rng.uniform(0, 2 * np.pi),  # Individual variation
                 }
 
-    def _update_condition_and_orientation(self, diameter: float):
+    def _update_condition_and_orientation(self, diameter: float) -> None:
         """Update dilated/constricted condition and major axis orientation based on pupil size.
 
         Args:
             diameter: Pupil diameter in meters
+
         """
-        self._set_random_seed()
+        rng = np.random.default_rng(self.params.random_seed)
         # Determine orientation based on size (using paper's reference values)
         # Large pupils (dilated) tend to have vertical ellipse orientation
         # Small pupils (constricted) tend to have horizontal ellipse orientation
@@ -385,19 +412,20 @@ class RealisticPupil(Pupil):
             self._is_dilated = True
             # Major axis orientation: clusters around vertical (0°)
             concentration = 3.0  # Controls spread (~±30° for this value)
-            self.params.major_axis_angle = np.random.vonmises(0, concentration)
+            self.params.major_axis_angle = rng.vonmises(0, concentration)
         else:  # Closer to constricted condition size (3.09mm)
             self._is_dilated = False
             # Major axis orientation: clusters around horizontal (±90°)
-            base_angle = np.random.choice([np.pi / 2, -np.pi / 2])
+            base_angle = rng.choice([np.pi / 2, -np.pi / 2])
             concentration = 3.0
-            self.params.major_axis_angle = np.random.vonmises(base_angle, concentration)
+            self.params.major_axis_angle = rng.vonmises(base_angle, concentration)
 
-    def set_diameter(self, diameter: float):
+    def set_diameter(self, diameter: float) -> None:
         """Set pupil diameter and automatically determine shape characteristics.
 
         Args:
             diameter: Pupil diameter in meters
+
         """
         self.params.base_radius = diameter / 2
 
@@ -412,18 +440,18 @@ class RealisticPupil(Pupil):
         self.x_pupil = Direction3D(radius, 0, 0)
         self.y_pupil = Direction3D(0, radius, 0)
 
-    def get_boundary_points(self, N: Optional[int] = None) -> np.ndarray:
+    def get_boundary_points(self, n: int | None = None) -> np.ndarray:
         """Generate realistic pupil boundary points using Fourier series.
 
         Args:
-            N: Number of boundary points (defaults to self.N if not provided)
+            n: Number of boundary points (defaults to self.n if not provided)
 
         Returns:
-            4×N matrix of points on pupil boundary (homogeneous coordinates)
+            4xn matrix of points on pupil boundary (homogeneous coordinates)
+
         """
-        if N is None:
-            N = self.N
-        theta = np.linspace(0, 2 * np.pi, N, endpoint=False)
+        n_points = self.n if n is None else n
+        theta = np.linspace(0, 2 * np.pi, n_points, endpoint=False)
 
         # Start with average radius (in meters)
         radius = np.full_like(theta, self.params.base_radius)
@@ -434,15 +462,15 @@ class RealisticPupil(Pupil):
 
         # Add higher harmonics for individual variation
         if self.harmonics:
-            for n, harmonic in self.harmonics.items():
-                radius += harmonic["amplitude"] * np.cos(n * (theta - harmonic["phase"]))
+            for harmonic_n, harmonic in self.harmonics.items():
+                radius += harmonic["amplitude"] * np.cos(harmonic_n * (theta - harmonic["phase"]))
 
         # Convert to Cartesian coordinates
         x = radius * np.cos(theta)
         y = radius * np.sin(theta)
 
-        # Create 4×N homogeneous coordinate matrix centered at pupil position
-        pupil_points = np.zeros((4, N))
+        # Create 4xn homogeneous coordinate matrix centered at pupil position
+        pupil_points = np.zeros((4, n_points))
         pupil_points[0, :] = self.pos_pupil.x + x
         pupil_points[1, :] = self.pos_pupil.y + y
         pupil_points[2, :] = self.pos_pupil.z
@@ -457,6 +485,7 @@ class RealisticPupil(Pupil):
 
         Returns:
             Tuple of (x_radius, y_radius) in meters
+
         """
         return self.params.base_radius, self.params.base_radius
 
@@ -466,6 +495,7 @@ class RealisticPupil(Pupil):
         Args:
             x_radius: Pupil radius in X direction (meters)
             y_radius: Pupil radius in Y direction (meters)
+
         """
         # For realistic pupil, use average radius and update realistic parameters
         avg_radius = (x_radius + y_radius) / 2
@@ -477,6 +507,7 @@ class RealisticPupil(Pupil):
 
         Returns:
             Pupil diameter in meters (2 * base_radius)
+
         """
         return self.params.base_radius * 2
 
@@ -485,6 +516,7 @@ class RealisticPupil(Pupil):
 
         Returns:
             Noncircularity value using paper's formula: NC² = (1/2) * Σ(rₙ/r_ave)² for n=2 to N
+
         """
         # Paper's formula: NC² = (1/2) * Σ(rₙ/r_ave)² for n=2 to N
         # Where rₙ are the harmonic amplitudes
@@ -509,7 +541,7 @@ class RealisticPupil(Pupil):
             "x_pupil": self.x_pupil.serialize(),
             "y_pupil": self.y_pupil.serialize(),
             "params": asdict(self.params),
-            "N": self.N,
+            "n": self.n,
             "harmonics": {
                 str(n): {"amplitude": h["amplitude"], "phase": h["phase"]} for n, h in self.harmonics.items()
             },
@@ -524,7 +556,7 @@ class RealisticPupil(Pupil):
             x_pupil=Direction3D.deserialize(data["x_pupil"]),
             y_pupil=Direction3D.deserialize(data["y_pupil"]),
             params=RealisticPupilParams(**data["params"]),
-            N=data["N"],
+            n=data["n"],
         )
 
         # Restore harmonics and r2
@@ -537,7 +569,7 @@ class RealisticPupil(Pupil):
 
 
 def create_pupil(
-    pupil_type: str, pos_pupil: Position3D, x_pupil: Direction3D, y_pupil: Direction3D, **kwargs
+    pupil_type: str, pos_pupil: Position3D, x_pupil: Direction3D, y_pupil: Direction3D, **kwargs: float
 ) -> Pupil:
     """Factory function to create pupil instances.
 
@@ -550,7 +582,7 @@ def create_pupil(
         x_pupil: Vector defining X-axis radius/direction
         y_pupil: Vector defining Y-axis radius/direction
         **kwargs: Additional parameters for specific pupil types
-                 - N: Number of boundary points (default: 100 for elliptical, 360 for realistic)
+                 - n: Number of boundary points (default: 100 for elliptical, 360 for realistic)
                  - params: RealisticPupilParams for realistic pupil (including random_seed for deterministic shapes)
 
     Returns:
@@ -558,13 +590,13 @@ def create_pupil(
 
     Raises:
         ValueError: If pupil_type is not supported
+
     """
     if pupil_type == "elliptical":
-        N = kwargs.get("N", PupilDefaults.BOUNDARY_POINTS_FACTORY)
-        return EllipticalPupil(pos_pupil, x_pupil, y_pupil, N)
-    elif pupil_type == "realistic":
-        params = kwargs.get("params", None)
-        N = kwargs.get("N", PupilDefaults.BOUNDARY_POINTS_REALISTIC)
-        return RealisticPupil(pos_pupil, x_pupil, y_pupil, params, N)
-    else:
-        raise ValueError(f"Unsupported pupil type: {pupil_type}. Supported types: 'elliptical', 'realistic'")
+        n: int = kwargs.get("n", PupilDefaults.BOUNDARY_POINTS_FACTORY)
+        return EllipticalPupil(pos_pupil, x_pupil, y_pupil, n)
+    if pupil_type == "realistic":
+        params = kwargs.get("params")
+        n: int = kwargs.get("n", PupilDefaults.BOUNDARY_POINTS_REALISTIC)
+        return RealisticPupil(pos_pupil, x_pupil, y_pupil, params, n)
+    raise ValueError(f"Unsupported pupil type: {pupil_type}. Supported types: 'elliptical', 'realistic'")

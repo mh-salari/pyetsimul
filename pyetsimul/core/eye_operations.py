@@ -1,14 +1,15 @@
-"""
-Eye operation functions extracted from the Eye class.
+"""Eye operation functions extracted from the Eye class.
 
 This module contains eye manipulation operations that were previously
 part of the Eye class, extracted for better modularity and testability.
 """
 
-import numpy as np
 from typing import TYPE_CHECKING
-from ..types import Position3D, Vector3D, RotationMatrix
+
+import numpy as np
+
 from ..geometry.listings_law import calculate_eye_rotation
+from ..types import Position3D, RotationMatrix, Vector3D
 
 if TYPE_CHECKING:
     from .eye import Eye
@@ -26,6 +27,7 @@ def look_at_target(eye: "Eye", target_position: Position3D) -> None:
 
     Raises:
         ValueError: If target_position is the same as eye position (zero-length direction vector)
+
     """
     # Get eye position as Position3D
     eye_position = eye.position
@@ -52,20 +54,18 @@ def look_at_target(eye: "Eye", target_position: Position3D) -> None:
         alpha = eye.fovea_alpha_deg * np.pi / 180.0
         beta = eye.fovea_beta_deg * np.pi / 180.0
         # Unit vector components (see Eye.point_rest_orientation_at_target)
-        v_local = np.array(
-            [
-                -np.sin(alpha) * np.cos(beta),
-                -np.sin(beta),
-                -np.cos(alpha) * np.cos(beta),
-            ]
-        )
-        rest_axis = Vector3D.from_array(eye._rest_orientation @ v_local)
+        v_local = np.array([
+            -np.sin(alpha) * np.cos(beta),
+            -np.sin(beta),
+            -np.cos(alpha) * np.cos(beta),
+        ])
+        rest_axis = Vector3D.from_array(eye.rest_orientation @ v_local)
     else:
         # Optical axis in local coordinates is -Z
-        rest_axis = Vector3D.from_array(eye._rest_orientation @ np.array([0.0, 0.0, -1.0]))
+        rest_axis = Vector3D.from_array(eye.rest_orientation @ np.array([0.0, 0.0, -1.0]))
 
     # Use Listing's law to compute eye rotation that aligns chosen axis with the target direction
-    new_orientation = calculate_eye_rotation(rest_axis, direction_vec) @ eye._rest_orientation
+    new_orientation = calculate_eye_rotation(rest_axis, direction_vec) @ eye.rest_orientation
     eye.orientation = RotationMatrix(new_orientation)
 
 
@@ -84,6 +84,7 @@ def look_at_target_optical_then_kappa(eye: "Eye", target_position: Position3D) -
 
     Raises:
         ValueError: If target_position coincides with eye position (zero-length vector)
+
     """
     # Eye position
     eye_position = eye.position
@@ -104,30 +105,26 @@ def look_at_target_optical_then_kappa(eye: "Eye", target_position: Position3D) -
     direction_vec = direction_vec.normalize()
 
     # First align optical axis (-Z in local) to the target using Listing's law
-    rest_optical_axis = Vector3D.from_array(eye._rest_orientation @ np.array([0.0, 0.0, -1.0]))
-    orientation = calculate_eye_rotation(rest_optical_axis, direction_vec) @ eye._rest_orientation
+    rest_optical_axis = Vector3D.from_array(eye.rest_orientation @ np.array([0.0, 0.0, -1.0]))
+    orientation = calculate_eye_rotation(rest_optical_axis, direction_vec) @ eye.rest_orientation
 
     # Then apply post-rotations from foveal displacement (kappa) if enabled
     if eye.fovea_displacement:
         alpha = eye.fovea_alpha_deg * np.pi / 180.0
         beta = eye.fovea_beta_deg * np.pi / 180.0
 
-        A = np.array(
-            [
-                [np.cos(alpha), 0.0, -np.sin(alpha)],
-                [0.0, 1.0, 0.0],
-                [np.sin(alpha), 0.0, np.cos(alpha)],
-            ]
-        )
+        rotation_matrix_x = np.array([
+            [np.cos(alpha), 0.0, -np.sin(alpha)],
+            [0.0, 1.0, 0.0],
+            [np.sin(alpha), 0.0, np.cos(alpha)],
+        ])
 
-        B = np.array(
-            [
-                [1.0, 0.0, 0.0],
-                [0.0, np.cos(beta), np.sin(beta)],
-                [0.0, -np.sin(beta), np.cos(beta)],
-            ]
-        )
+        rotation_matrix_y = np.array([
+            [1.0, 0.0, 0.0],
+            [0.0, np.cos(beta), np.sin(beta)],
+            [0.0, -np.sin(beta), np.cos(beta)],
+        ])
 
-        orientation = orientation @ B @ A
+        orientation = orientation @ rotation_matrix_y @ rotation_matrix_x
 
     eye.orientation = RotationMatrix(orientation, validate_handedness=False)

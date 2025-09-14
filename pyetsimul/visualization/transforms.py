@@ -4,15 +4,18 @@ Provides functions for transforming local surface coordinates to world coordinat
 """
 
 import numpy as np
+
 from ..types import TransformationMatrix
 
 
-def _assert_shape(x, shape: list):
+def _assert_shape(x: np.ndarray, shape: list[int | None]) -> None:
     """ex: assert_shape(conv_input_array, [8, 3, None, None])"""
-    assert len(x.shape) == len(shape), (x.shape, shape)
-    for _a, _b in zip(x.shape, shape):
-        if isinstance(_b, int):
-            assert _a == _b, (x.shape, shape)
+    if len(x.shape) != len(shape):
+        raise ValueError(f"Expected shape of length {len(shape)}, got {x.shape}")
+
+    for actual, expected in zip(x.shape, shape, strict=False):
+        if isinstance(expected, int) and actual != expected:
+            raise ValueError(f"Expected dimension {expected} but got {actual} for shape {x.shape}")
 
 
 def transform_surface(
@@ -23,11 +26,14 @@ def transform_surface(
     Applies homogeneous transformation to local surface coordinates for plotting.
 
     Args:
-        x_local, y_local, z_local: Local surface coordinates
+        x_local: Local surface X coordinates
+        y_local: Local surface Y coordinates
+        z_local: Local surface Z coordinates
         trans_matrix: 4x4 transformation matrix
 
     Returns:
         Tuple of transformed (x, y, z) world coordinates
+
     """
     _assert_shape(y_local, x_local.shape)
     _assert_shape(z_local, x_local.shape)

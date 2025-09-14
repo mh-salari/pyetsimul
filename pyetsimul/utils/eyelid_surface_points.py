@@ -6,12 +6,17 @@ for visualization and analysis.
 
 from __future__ import annotations
 
-from typing import Optional
+from typing import TYPE_CHECKING
 
 import numpy as np
 
+if TYPE_CHECKING:
+    from ..core import Eyelid
 
-def generate_eyelid_points_local(eyelid, n_points: int = 500, rng: Optional[np.random.Generator] = None) -> np.ndarray:
+
+def generate_eyelid_points_local(
+    eyelid: Eyelid, n_points: int = 500, rng: np.random.Generator | None = None
+) -> np.ndarray:
     """Generate eyelid surface points as (N, 3) array in local coordinates.
 
     Sample full sphere, keep front hemisphere points
@@ -24,12 +29,13 @@ def generate_eyelid_points_local(eyelid, n_points: int = 500, rng: Optional[np.r
 
     Returns:
         Array of shape (M, 3) where M <= n_points containing eyelid surface points
+
     """
     if rng is None:
         rng = np.random.default_rng()
 
-    C = np.array([eyelid.center.x, eyelid.center.y, eyelid.center.z], dtype=float)
-    S = float(eyelid.sphere_radius)
+    center_coordinates_array = np.array([eyelid.center.x, eyelid.center.y, eyelid.center.z], dtype=float)
+    sphere_radius = float(eyelid.sphere_radius)
 
     phi_vals = rng.uniform(0.0, np.pi, n_points)
     theta_vals = rng.uniform(0.0, 2.0 * np.pi, n_points)
@@ -47,14 +53,14 @@ def generate_eyelid_points_local(eyelid, n_points: int = 500, rng: Optional[np.r
         phi = phi_vals[i]
         theta = theta_vals[i]
 
-        x = C[0] + S * np.sin(phi) * np.cos(theta)
-        y = C[1] + S * np.cos(phi)
-        z = C[2] - S * np.sin(phi) * np.sin(theta)
+        x = center_coordinates_array[0] + sphere_radius * np.sin(phi) * np.cos(theta)
+        y = center_coordinates_array[1] + sphere_radius * np.cos(phi)
+        z = center_coordinates_array[2] - sphere_radius * np.sin(phi) * np.sin(theta)
 
-        if z <= C[2]:
+        if z <= center_coordinates_array[2]:
             # Apply in-plane rotation for ellipse test
-            x_rot = (x - C[0]) * cos_a - (y - C[1]) * sin_a
-            y_rot = (x - C[0]) * sin_a + (y - C[1]) * cos_a
+            x_rot = (x - center_coordinates_array[0]) * cos_a - (y - center_coordinates_array[1]) * sin_a
+            y_rot = (x - center_coordinates_array[0]) * sin_a + (y - center_coordinates_array[1]) * cos_a
 
             if width > 0.0 and height > 0.0:
                 y_rel = y_rot - y_center
@@ -67,7 +73,7 @@ def generate_eyelid_points_local(eyelid, n_points: int = 500, rng: Optional[np.r
     return np.array(eyelid_points, dtype=float)
 
 
-def generate_eyelid_opening_edge_local(eyelid, n_edge_points: int = 100) -> np.ndarray:
+def generate_eyelid_opening_edge_local(eyelid: Eyelid, n_edge_points: int = 100) -> np.ndarray:
     """Generate opening boundary points on the sphere as (M, 3) array.
 
     Projects a tilted ellipse onto the spherical surface (front hemisphere).
@@ -78,9 +84,10 @@ def generate_eyelid_opening_edge_local(eyelid, n_edge_points: int = 100) -> np.n
 
     Returns:
         Array of shape (n_edge_points, 3) containing opening boundary points
+
     """
-    C = np.array([eyelid.center.x, eyelid.center.y, eyelid.center.z], dtype=float)
-    S = float(eyelid.sphere_radius)
+    center_coordinates_array = np.array([eyelid.center.x, eyelid.center.y, eyelid.center.z], dtype=float)
+    sphere_radius = float(eyelid.sphere_radius)
     width, height = eyelid.ellipse_axes()
     y_center = eyelid.ellipse_center_offset()
     # No rotation angle - ellipse aligned with coordinate axes
@@ -90,7 +97,7 @@ def generate_eyelid_opening_edge_local(eyelid, n_edge_points: int = 100) -> np.n
     opening_edge_points = []
 
     # Anatomical footprint radius in XY (small circle at phi_max)
-    r_xy = S * np.sin(float(eyelid.phi_max))
+    r_xy = sphere_radius * np.sin(float(eyelid.phi_max))
 
     for i in range(n_edge_points):
         t = (i / n_edge_points) * 2.0 * np.pi
@@ -110,8 +117,12 @@ def generate_eyelid_opening_edge_local(eyelid, n_edge_points: int = 100) -> np.n
 
         r_sq = x_rot * x_rot + y_rot * y_rot
         # Project to front hemisphere of the sphere
-        z_sphere = C[2] - np.sqrt(max(S * S - r_sq, 0.0))
-        opening_edge_points.append([C[0] + x_rot, C[1] + y_rot, z_sphere])
+        z_sphere = center_coordinates_array[2] - np.sqrt(max(sphere_radius * sphere_radius - r_sq, 0.0))
+        opening_edge_points.append([
+            center_coordinates_array[0] + x_rot,
+            center_coordinates_array[1] + y_rot,
+            z_sphere,
+        ])
 
     return np.array(opening_edge_points, dtype=float)
 
@@ -125,6 +136,7 @@ def transform_eyelid_points_to_world(points_local: np.ndarray, transformation_ma
 
     Returns:
         Array of shape (N, 3) with world coordinates
+
     """
     if len(points_local) == 0:
         return points_local

@@ -17,6 +17,7 @@ def sanitize_filename(name: str) -> str:
         'my_experiment'
         >>> sanitize_filename("Eye Position Variation")
         'eye_position_variation'
+
     """
     safe_name = re.sub(r"[^\w\s-]", "", name.lower()).strip()
     return re.sub(r"[-\s]+", "_", safe_name)

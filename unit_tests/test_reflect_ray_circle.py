@@ -1,11 +1,12 @@
 """Unit tests for reflect_ray_circle function."""
 
 import numpy as np
+
 from pyetsimul.optics.reflections import reflect_ray_circle
-from pyetsimul.types import Ray, Point3D, Direction3D
+from pyetsimul.types import Direction3D, Point3D, Ray
 
 
-def test_basic_center_reflection():
+def test_basic_center_reflection() -> None:
     """Test basic center front reflection with MATLAB reference values."""
     # Ray hitting circle dead center from front
     ray_origin = Point3D(0.0, -3.0, 0.0)  # Ray origin
@@ -14,18 +15,18 @@ def test_basic_center_reflection():
     circle_center = Point3D(0.0, 0.0, 0.0)  # Circle center
     circle_radius = 2.0  # Circle radius
 
-    S0, Sd = reflect_ray_circle(ray, circle_center, circle_radius)
+    source_point, source_direction = reflect_ray_circle(ray, circle_center, circle_radius)
 
     # MATLAB reference values
-    expected_S0 = Point3D(0.0, -2.0, 0.0)
-    # expected_Sd = Vector3D(0.0, -1.0, 0.0)
+    expected_source_point = Point3D(0.0, -2.0, 0.0)
+    # expected_source_direction = Vector3D(0.0, -1.0, 0.0)
 
-    assert S0 is not None
-    assert Sd is not None
-    S0.point.assert_close(expected_S0, rtol=1e-14, atol=1e-15)
+    assert source_point is not None
+    assert source_direction is not None
+    source_point.point.assert_close(expected_source_point, rtol=1e-14, atol=1e-15)
 
 
-def test_angled_reflection():
+def test_angled_reflection() -> None:
     """Test angled reflection with MATLAB reference values."""
     # Angled ray with non-normalized input direction
     ray_origin = Point3D(-2.0, -2.0, 0.0)  # Ray origin
@@ -34,22 +35,22 @@ def test_angled_reflection():
     circle_center = Point3D(0.0, 0.0, 0.0)  # Circle center
     circle_radius = 1.5  # Circle radius
 
-    S0, Sd = reflect_ray_circle(ray, circle_center, circle_radius)
+    source_point, source_direction = reflect_ray_circle(ray, circle_center, circle_radius)
 
     # MATLAB reference values
-    expected_S0 = Point3D(-1.0606601717798214, -1.0606601717798214, 0.0)
-    expected_Sd = Direction3D(-0.7071067811865472, -0.7071067811865472, 0.0)
+    expected_source_point = Point3D(-1.0606601717798214, -1.0606601717798214, 0.0)
+    expected_source_direction = Direction3D(-0.7071067811865472, -0.7071067811865472, 0.0)
 
-    assert S0 is not None
-    assert Sd is not None
-    S0.point.assert_close(expected_S0, rtol=1e-14, atol=1e-15)
-    Sd.direction.assert_close(expected_Sd, rtol=1e-14, atol=1e-15)
+    assert source_point is not None
+    assert source_direction is not None
+    source_point.point.assert_close(expected_source_point, rtol=1e-14, atol=1e-15)
+    source_direction.direction.assert_close(expected_source_direction, rtol=1e-14, atol=1e-15)
 
     # Test that reflected direction is normalized
-    assert abs(Sd.direction.magnitude() - 1.0) < 1e-14
+    assert abs(source_direction.direction.magnitude() - 1.0) < 1e-14
 
 
-def test_offset_circle():
+def test_offset_circle() -> None:
     """Test reflection with offset circle and MATLAB reference values."""
     # Circle not centered at origin
     ray_origin = Point3D(0.0, 0.0, 0.0)  # Ray origin
@@ -58,19 +59,19 @@ def test_offset_circle():
     circle_center = Point3D(2.0, 2.0, 0.0)  # Circle center
     circle_radius = 1.0  # Circle radius
 
-    S0, Sd = reflect_ray_circle(ray, circle_center, circle_radius)
+    source_point, source_direction = reflect_ray_circle(ray, circle_center, circle_radius)
 
     # MATLAB reference values
-    expected_S0 = Point3D(1.1300909166052995, 1.5067878888070660, 0.0)
-    expected_Sd = Direction3D(-0.9945696889543475, -0.1040727332842388, 0.0)
+    expected_source_point = Point3D(1.1300909166052995, 1.5067878888070660, 0.0)
+    expected_source_direction = Direction3D(-0.9945696889543475, -0.1040727332842388, 0.0)
 
-    assert S0 is not None
-    assert Sd is not None
-    S0.point.assert_close(expected_S0, rtol=1e-14, atol=1e-15)
-    Sd.direction.assert_close(expected_Sd, rtol=1e-14, atol=1e-15)
+    assert source_point is not None
+    assert source_direction is not None
+    source_point.point.assert_close(expected_source_point, rtol=1e-14, atol=1e-15)
+    source_direction.direction.assert_close(expected_source_direction, rtol=1e-14, atol=1e-15)
 
 
-def test_grazing_incidence():
+def test_grazing_incidence() -> None:
     """Test grazing incidence with MATLAB reference values."""
     # Ray parallel to tangent
     ray_origin = Point3D(-3.0, 0.0, 0.0)  # Ray origin
@@ -79,19 +80,19 @@ def test_grazing_incidence():
     circle_center = Point3D(0.0, 0.0, 0.0)  # Circle center
     circle_radius = 1.0  # Circle radius
 
-    S0, Sd = reflect_ray_circle(ray, circle_center, circle_radius)
+    source_point, source_direction = reflect_ray_circle(ray, circle_center, circle_radius)
 
     # MATLAB reference values
-    expected_S0 = Point3D(-1.0, 0.0, 0.0)
-    expected_Sd = Direction3D(-1.0, 0.0, 0.0)
+    expected_source_point = Point3D(-1.0, 0.0, 0.0)
+    expected_source_direction = Direction3D(-1.0, 0.0, 0.0)
 
-    assert S0 is not None
-    assert Sd is not None
-    S0.point.assert_close(expected_S0, rtol=1e-14, atol=1e-15)
-    Sd.direction.assert_close(expected_Sd, rtol=1e-14, atol=1e-15)
+    assert source_point is not None
+    assert source_direction is not None
+    source_point.point.assert_close(expected_source_point, rtol=1e-14, atol=1e-15)
+    source_direction.direction.assert_close(expected_source_direction, rtol=1e-14, atol=1e-15)
 
 
-def test_ray_missing_circle():
+def test_ray_missing_circle() -> None:
     """Test ray that misses circle - should return None."""
     # Ray that doesn't intersect circle
     ray_origin = Point3D(0.0, 0.0, 0.0)  # Ray origin
@@ -100,14 +101,14 @@ def test_ray_missing_circle():
     circle_center = Point3D(0.0, 3.0, 0.0)  # Circle center (away from ray)
     circle_radius = 1.0  # Circle radius
 
-    S0, Sd = reflect_ray_circle(ray, circle_center, circle_radius)
+    source_point, source_direction = reflect_ray_circle(ray, circle_center, circle_radius)
 
     # Should return None for both when ray misses circle
-    assert S0 is None
-    assert Sd is None
+    assert source_point is None
+    assert source_direction is None
 
 
-def test_output_properties():
+def test_output_properties() -> None:
     """Test that output has correct properties."""
     ray_origin = Point3D(0.0, -3.0, 0.0)
     ray_direction = Direction3D(0.0, 1.0, 0.0)
@@ -115,14 +116,14 @@ def test_output_properties():
     circle_center = Point3D(0.0, 0.0, 0.0)
     circle_radius = 2.0
 
-    S0, Sd = reflect_ray_circle(ray, circle_center, circle_radius)
-    assert S0 is not None, "S0 should not be None for these inputs"
-    assert Sd is not None, "Sd should not be None for these inputs"
+    source_point, source_direction = reflect_ray_circle(ray, circle_center, circle_radius)
+    assert source_point is not None, "source_point should not be None for these inputs"
+    assert source_direction is not None, "source_direction should not be None for these inputs"
 
     # Check types and shapes
-    assert isinstance(S0.point, Point3D)
-    assert isinstance(Sd, Ray)
-    assert isinstance(Sd.direction, Direction3D)
+    assert isinstance(source_point.point, Point3D)
+    assert isinstance(source_direction, Ray)
+    assert isinstance(source_direction.direction, Direction3D)
 
     # Reflected direction should be normalized
-    assert np.isclose(Sd.direction.magnitude(), 1.0, rtol=1e-12)
+    assert np.isclose(source_direction.direction.magnitude(), 1.0, rtol=1e-12)

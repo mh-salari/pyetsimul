@@ -2,12 +2,13 @@
 
 import numpy as np
 import pytest
-from pyetsimul.core.eye import Eye
+
 from pyetsimul.core.camera import Camera
-from pyetsimul.types import Position3D, Point2D
+from pyetsimul.core.eye import Eye
+from pyetsimul.types import Point2D, Position3D
 
 
-def test_camera_pointed_at_eye():
+def test_camera_pointed_at_eye() -> None:
     """Test eye pupil image with camera properly pointed at eye using MATLAB reference values."""
     # Create eye and camera
     e = Eye(fovea_displacement=False)
@@ -30,51 +31,49 @@ def test_camera_pointed_at_eye():
     e.look_at(Position3D(x=0, y=0, z=0))
 
     # Get pupil image with 20 points
-    N = 20
-    e.pupil.N = N  # Set pupil resolution
-    X, _ = e.get_pupil_in_camera_image(c)
+    num_boundary_points = 20
+    e.pupil.n = num_boundary_points  # Set pupil resolution
+    pupil_boundary_points, _ = e.get_pupil_in_camera_image(c)
 
     # MATLAB reference values from proper setup
-    matlab_expected_points = np.array(
-        [
-            [18.220, 0.000],
-            [17.328, -5.630],
-            [14.740, -10.710],
-            [10.710, -14.740],
-            [5.630, -17.328],
-            [0.000, -18.220],
-            [-5.630, -17.328],
-            [-10.710, -14.740],
-            [-14.740, -10.710],
-            [-17.328, -5.630],
-            [-18.220, 0.000],
-            [-17.328, 5.630],
-            [-14.740, 10.710],
-            [-10.710, 14.740],
-            [-5.630, 17.328],
-            [-0.000, 18.220],
-            [5.630, 17.328],
-            [10.710, 14.740],
-            [14.740, 10.710],
-            [17.328, 5.630],
-        ]
-    ).T
+    matlab_expected_points = np.array([
+        [18.220, 0.000],
+        [17.328, -5.630],
+        [14.740, -10.710],
+        [10.710, -14.740],
+        [5.630, -17.328],
+        [0.000, -18.220],
+        [-5.630, -17.328],
+        [-10.710, -14.740],
+        [-14.740, -10.710],
+        [-17.328, -5.630],
+        [-18.220, 0.000],
+        [-17.328, 5.630],
+        [-14.740, 10.710],
+        [-10.710, 14.740],
+        [-5.630, 17.328],
+        [-0.000, 18.220],
+        [5.630, 17.328],
+        [10.710, 14.740],
+        [14.740, 10.710],
+        [17.328, 5.630],
+    ]).T
 
     # Should return valid pupil points
-    assert X is not None
-    assert isinstance(X, list)  # Should be List[Point2D]
-    assert len(X) == N  # Should have N points
+    assert pupil_boundary_points is not None
+    assert isinstance(pupil_boundary_points, list)  # Should be List[Point2D]
+    assert len(pupil_boundary_points) == num_boundary_points  # Should have n points
 
     # Test actual point values against MATLAB reference
     tolerance = 1.0
-    for i in range(min(N, matlab_expected_points.shape[1])):
-        px, py = X[i].x, X[i].y
+    for i in range(min(num_boundary_points, matlab_expected_points.shape[1])):
+        px, py = pupil_boundary_points[i].x, pupil_boundary_points[i].y
         mx, my = matlab_expected_points[0, i], matlab_expected_points[1, i]
         assert abs(px - mx) < tolerance, f"Point {i}: X mismatch {px} vs {mx}"
         assert abs(py - my) < tolerance, f"Point {i}: Y mismatch {py} vs {my}"
 
 
-def test_output_properties():
+def test_output_properties() -> None:
     """Test that output has correct properties when pupil is visible."""
     e = Eye(fovea_displacement=False)
     c = Camera()
@@ -91,21 +90,21 @@ def test_output_properties():
 
     e.look_at(Position3D(x=0, y=0, z=0))
 
-    e.pupil.N = 20  # Set pupil resolution
-    X, _ = e.get_pupil_in_camera_image(c)
+    e.pupil.n = 20  # Set pupil resolution
+    pupil_boundary_points, _ = e.get_pupil_in_camera_image(c)
 
-    assert X is not None, "X should not be None for these inputs"
+    assert pupil_boundary_points is not None, "pupil_boundary_points should not be None for these inputs"
 
     # Check types and shapes
-    assert isinstance(X, list)  # Should be List[Point2D]
-    assert len(X) == 20
-    assert all(isinstance(p, Point2D) for p in X)
+    assert isinstance(pupil_boundary_points, list)  # Should be List[Point2D]
+    assert len(pupil_boundary_points) == 20
+    assert all(isinstance(p, Point2D) for p in pupil_boundary_points)
 
     # All values should be finite
-    assert all(np.isfinite(p.x) and np.isfinite(p.y) for p in X)
+    assert all(np.isfinite(p.x) and np.isfinite(p.y) for p in pupil_boundary_points)
 
 
-def test_eye_facing_away_from_camera():
+def test_eye_facing_away_from_camera() -> None:
     """Test that method returns None and warns when eye is facing away from camera."""
     e = Eye(fovea_displacement=False)
     c = Camera()
@@ -137,17 +136,17 @@ def test_eye_facing_away_from_camera():
     e.look_at(eye_target)
 
     # Test that method returns None and produces expected warning
-    e.pupil.N = 20  # Set pupil resolution
+    e.pupil.n = 20  # Set pupil resolution
 
     # Expect warning about no refracted pupil points
     with pytest.warns(UserWarning, match="No refracted pupil points could be computed"):
-        X, _ = e.get_pupil_in_camera_image(c)
+        pupil_boundary_points, _ = e.get_pupil_in_camera_image(c)
 
     # Should return None for back-of-eye scenario
-    assert X is None, "Should return None when eye faces away from camera"
+    assert pupil_boundary_points is None, "Should return None when eye faces away from camera"
 
 
-def test_eye_behind_camera():
+def test_eye_behind_camera() -> None:
     """Test that method returns None and warns when eye is behind camera."""
     e = Eye(fovea_displacement=False)
     c = Camera()
@@ -172,17 +171,17 @@ def test_eye_behind_camera():
     e.look_at(Position3D(x=0, y=0, z=0))
 
     # Test that method returns None and produces expected warning
-    e.pupil.N = 20  # Set pupil resolution
+    e.pupil.n = 20  # Set pupil resolution
 
     # Expect warning about no valid pupil points found
     with pytest.warns(UserWarning, match="No valid pupil points found in camera image"):
-        X, _ = e.get_pupil_in_camera_image(c)
+        pupil_boundary_points, _ = e.get_pupil_in_camera_image(c)
 
     # Should return None for behind-camera scenario
-    assert X is None, "Should return None when eye is behind camera"
+    assert pupil_boundary_points is None, "Should return None when eye is behind camera"
 
 
-def test_eye_rotated_90_degrees():
+def test_eye_rotated_90_degrees() -> None:
     """Test that method returns None when eye is rotated 90 degrees away."""
     e = Eye(fovea_displacement=False)
     c = Camera()
@@ -209,12 +208,12 @@ def test_eye_rotated_90_degrees():
     e.look_at(side_target)
 
     # Get pupil image - may return None or some points depending on geometry
-    e.pupil.N = 20  # Set pupil resolution
-    X, _ = e.get_pupil_in_camera_image(c)
+    e.pupil.n = 20  # Set pupil resolution
+    pupil_boundary_points, _ = e.get_pupil_in_camera_image(c)
 
     # In this case we just verify the method handles it gracefully
     # Could be None or a valid result depending on exact geometry
-    if X is not None:
-        assert isinstance(X, list)  # Should be List[Point2D]
-        assert all(isinstance(p, Point2D) for p in X)
-        assert all(np.isfinite(p.x) and np.isfinite(p.y) for p in X)
+    if pupil_boundary_points is not None:
+        assert isinstance(pupil_boundary_points, list)  # Should be List[Point2D]
+        assert all(isinstance(p, Point2D) for p in pupil_boundary_points)
+        assert all(np.isfinite(p.x) and np.isfinite(p.y) for p in pupil_boundary_points)

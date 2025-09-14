@@ -23,11 +23,13 @@ def calculate_error_statistics(
     """Calculate gaze tracking error statistics.
 
     Args:
-        U, V: Error arrays in X and Y directions (in meters)
+        U: Error array in X direction (in meters)
+        V: Error array in Y direction (in meters)
         angular_errors: Angular error array (in degrees)
 
     Returns:
         dict: Error statistics with 'mtr' and 'deg' keys containing mean, max, std, median
+
     """
     euclidean_errors = np.sqrt(U**2 + V**2).flatten()
     angular_errors_flat = angular_errors.flatten()

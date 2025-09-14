@@ -8,10 +8,6 @@ This module provides geometric functions for:
 - Plane detection for calibration
 """
 
-from . import conversions
-from . import intersections
-from . import listings_law
-from . import plane_detection
-from . import utils
+from . import conversions, intersections, listings_law, plane_detection, utils
 
 __all__ = ["conversions", "intersections", "listings_law", "plane_detection", "utils"]

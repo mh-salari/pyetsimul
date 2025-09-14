@@ -4,17 +4,18 @@ This module provides the EyeTracker class that represents a complete eye trackin
 system with cameras, lights, calibration points, and algorithm functions.
 """
 
-import numpy as np
-from dataclasses import dataclass, field
-from typing import Optional, Any
 from abc import ABC, abstractmethod
+from dataclasses import dataclass, field
+from typing import Any
+
+import numpy as np
 from tabulate import tabulate
 
-from .camera import Camera
-from .light import Light
-from .eye import Eye
-from ..types import Position3D, Point3D, GazePrediction, EyeMeasurement, PupilData
+from ..types import EyeMeasurement, GazePrediction, Point3D, Position3D, PupilData
 from ..utils import validate_eye_camera_setup
+from .camera import Camera
+from .eye import Eye
+from .light import Light
 
 
 @dataclass
@@ -46,7 +47,6 @@ class EyeTracker(ABC):
     @abstractmethod
     def algorithm_name(self) -> str:
         """Algorithm name identifier - must be implemented by subclasses."""
-        pass
 
     def add_camera(self, camera: Camera) -> None:
         """Add a camera to the eye tracker.
@@ -87,6 +87,7 @@ class EyeTracker(ABC):
 
         Returns:
             Self for method chaining
+
         """
         # Validate eye-camera setup if cameras are present
         if self.cameras:
@@ -101,10 +102,8 @@ class EyeTracker(ABC):
         """Helper to collect measurements for each calibration point.
 
         Gathers calibration data and reports detection failures.
-        Ensures reproducible results with fixed random seed.
         """
         measurements = []
-        np.random.seed(0)  # For reproducible results
 
         n_points = len(self.calib_points)
         failed_points = []
@@ -148,7 +147,7 @@ class EyeTracker(ABC):
 
         return measurements
 
-    def estimate_gaze_at(self, eye: Eye, look_at_pos: Point3D) -> Optional[GazePrediction]:
+    def estimate_gaze_at(self, eye: Eye, look_at_pos: Point3D) -> GazePrediction | None:
         """Estimate gaze position when eye looks at a target.
 
         Implements complete gaze estimation pipeline: eye movement → camera → prediction.
@@ -160,6 +159,7 @@ class EyeTracker(ABC):
 
         Returns:
             GazePrediction with estimated gaze and intermediate values
+
         """
         # Make eye look at target position
         target = Position3D(look_at_pos.x, look_at_pos.y, look_at_pos.z)
@@ -191,6 +191,7 @@ class EyeTracker(ABC):
 
         Returns:
             Tuple of (u, v) gaze error in meters, or (NaN, NaN) if estimation fails
+
         """
         gaze_prediction = self.estimate_gaze_at(eye, look_at_pos)
 
@@ -198,8 +199,7 @@ class EyeTracker(ABC):
             u = gaze_prediction.gaze_point.x - look_at_pos.x
             v = gaze_prediction.gaze_point.y - look_at_pos.y
             return u, v
-        else:
-            return np.nan, np.nan
+        return np.nan, np.nan
 
     @abstractmethod
     def calibrate(self, calibration_measurements: list[EyeMeasurement]) -> None:
@@ -210,10 +210,10 @@ class EyeTracker(ABC):
 
         Args:
             calibration_measurements: List of eye measurements collected at each calibration point
-        """
-        pass
 
-    def test_calibration_fit(self, eye: Eye) -> list[tuple[Position3D, Optional[GazePrediction]]]:
+        """
+
+    def test_calibration_fit(self, eye: Eye) -> list[tuple[Position3D, GazePrediction | None]]:
         """Test calibrated polynomial by predicting each calibration point.
 
         Validates calibration quality by testing full pipeline on known targets.
@@ -224,6 +224,7 @@ class EyeTracker(ABC):
 
         Returns:
             List of (target_position, prediction) tuples for each calibration point
+
         """
         results = []
 
@@ -249,7 +250,7 @@ class EyeTracker(ABC):
         return results
 
     @abstractmethod
-    def predict_gaze(self, measurement: EyeMeasurement) -> Optional[GazePrediction]:
+    def predict_gaze(self, measurement: EyeMeasurement) -> GazePrediction | None:
         """Predict gaze position from eye measurement.
 
         Abstract interface for algorithm-specific gaze prediction implementation.
@@ -260,8 +261,8 @@ class EyeTracker(ABC):
 
         Returns:
             GazePrediction with estimated gaze position or None if prediction fails
+
         """
-        pass
 
     def __str__(self) -> str:
         """Basic string representation of the eye tracker."""
@@ -271,11 +272,12 @@ class EyeTracker(ABC):
             calibrated = False
         return f"{self.__class__.__name__}(algorithm={self.algorithm_name}, cameras={len(self.cameras)}, lights={len(self.lights)}, calibrated={calibrated})"
 
-    def pprint(self, eye=None) -> None:
+    def pprint(self, eye: "Eye | None" = None) -> None:
         """Print detailed eye tracker parameters in a formatted table.
 
         Args:
             eye: Optional Eye instance to include eye position in the summary.
+
         """
         # Check calibration status
         try:
@@ -292,17 +294,15 @@ class EyeTracker(ABC):
             pos = eye.position
             data.append(["Eye position (mm)", f"({pos.x * 1000:.1f}, {pos.y * 1000:.1f}, {pos.z * 1000:.1f})"])
 
-        data.extend(
-            [
-                ["Algorithm", self.algorithm_name],
-                ["Cameras", str(len(self.cameras))],
-                ["Lights", str(len(self.lights))],
-                ["Calibration points", str(calib_points)],
-                ["Calibration status", "Calibrated" if calibrated else "Not calibrated"],
-                ["Use refraction", "Yes" if self.use_refraction else "No"],
-                ["Legacy look_at mode", "Yes" if self.use_legacy_look_at else "No"],
-            ]
-        )
+        data.extend([
+            ["Algorithm", self.algorithm_name],
+            ["Cameras", str(len(self.cameras))],
+            ["Lights", str(len(self.lights))],
+            ["Calibration points", str(calib_points)],
+            ["Calibration status", "Calibrated" if calibrated else "Not calibrated"],
+            ["Use refraction", "Yes" if self.use_refraction else "No"],
+            ["Legacy look_at mode", "Yes" if self.use_legacy_look_at else "No"],
+        ])
 
         # Add algorithm-specific configuration
         if hasattr(self, "algorithm_state") and hasattr(self.algorithm_state, "config"):
@@ -316,17 +316,19 @@ class EyeTracker(ABC):
         if self.cameras:
             for i, cam in enumerate(self.cameras):
                 pos = cam.position
-                data.append(
-                    [f"Camera {i + 1} position (mm)", f"({pos.x * 1000:.1f}, {pos.y * 1000:.1f}, {pos.z * 1000:.1f})"]
-                )
+                data.append([
+                    f"Camera {i + 1} position (mm)",
+                    f"({pos.x * 1000:.1f}, {pos.y * 1000:.1f}, {pos.z * 1000:.1f})",
+                ])
 
         # Add light details
         if self.lights:
             for i, light in enumerate(self.lights):
                 pos = light.position
-                data.append(
-                    [f"Light {i + 1} position (mm)", f"({pos.x * 1000:.1f}, {pos.y * 1000:.1f}, {pos.z * 1000:.1f})"]
-                )
+                data.append([
+                    f"Light {i + 1} position (mm)",
+                    f"({pos.x * 1000:.1f}, {pos.y * 1000:.1f}, {pos.z * 1000:.1f})",
+                ])
 
         headers = ["Parameter", "Value"]
         print(f"{self.__class__.__name__} Configuration:")

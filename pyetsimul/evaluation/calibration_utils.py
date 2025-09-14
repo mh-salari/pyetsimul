@@ -4,9 +4,10 @@ This module provides utility functions for calibration analysis,
 including parameter printing and data formatting functions.
 """
 
+from tabulate import tabulate
+
 from pyetsimul.core import EyeTracker
 from pyetsimul.gaze_models.polynomial.polynomials import get_polynomial_info
-from tabulate import tabulate
 
 
 def pprint_polynomial_parameters(et: EyeTracker) -> None:
@@ -38,12 +39,10 @@ def pprint_polynomial_parameters(et: EyeTracker) -> None:
     if et.algorithm_state.is_calibrated:
         state = et.algorithm_state
         if state.x_coefficients is not None and state.y_coefficients is not None:
-            general_data.extend(
-                [
-                    ["X coefficients shape", f"{state.x_coefficients.shape}"],
-                    ["Y coefficients shape", f"{state.y_coefficients.shape}"],
-                ]
-            )
+            general_data.extend([
+                ["X coefficients shape", f"{state.x_coefficients.shape}"],
+                ["Y coefficients shape", f"{state.y_coefficients.shape}"],
+            ])
 
     print(tabulate(general_data, headers=headers, tablefmt="simple"))
 
@@ -63,21 +62,21 @@ def pprint_polynomial_parameters(et: EyeTracker) -> None:
             print("\nX Coordinate Terms:")
             x_coeff_data = []
             x_terms = term_descriptions[0]
-            for term, coeff in zip(x_terms, state.x_coefficients):
+            for term, coeff in zip(x_terms, state.x_coefficients, strict=False):
                 x_coeff_data.append([term, f"{coeff:8.6f}"])
             print(tabulate(x_coeff_data, headers=coeff_headers, tablefmt="grid"))
 
             print("\nY Coordinate Terms:")
             y_coeff_data = []
             y_terms = term_descriptions[1]
-            for term, coeff in zip(y_terms, state.y_coefficients):
+            for term, coeff in zip(y_terms, state.y_coefficients, strict=False):
                 y_coeff_data.append([term, f"{coeff:8.6f}"])
             print(tabulate(y_coeff_data, headers=coeff_headers, tablefmt="grid"))
         else:
             # same features for x and y: show combined table with shared terms
             coeff_headers = ["Term", "X Coefficient", "Y Coefficient"]
             coeff_data = []
-            for term, x_val, y_val in zip(term_descriptions, state.x_coefficients, state.y_coefficients):
+            for term, x_val, y_val in zip(term_descriptions, state.x_coefficients, state.y_coefficients, strict=False):
                 coeff_data.append([term, f"{x_val:8.6f}", f"{y_val:8.6f}"])
             print(tabulate(coeff_data, headers=coeff_headers, tablefmt="grid"))
     else:

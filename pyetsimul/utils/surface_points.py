@@ -1,11 +1,15 @@
 """Surface point generation utilities"""
 
+from collections.abc import Callable
+
 import numpy as np
-from typing import Callable
-from ..types import Point3D, Direction3D, Ray
+
+from ..types import Direction3D, Point3D, Ray
 
 
-def generate(intersection_func: Callable, center: Point3D, radius: float, *args, n_points: int = 40) -> np.ndarray:
+def generate(
+    intersection_func: Callable, center: Point3D, radius: float, *args: float, n_points: int = 40
+) -> np.ndarray:
     """Generate surface points using a given intersection function.
 
     Args:
@@ -17,6 +21,7 @@ def generate(intersection_func: Callable, center: Point3D, radius: float, *args,
 
     Returns:
         points: (N, 3) array of surface points
+
     """
     # Create sampling directions from surface center
     sample_range = np.linspace(-0.8, 0.8, n_points)
@@ -38,9 +43,6 @@ def generate(intersection_func: Callable, center: Point3D, radius: float, *args,
                         points.append([point.x, point.y, point.z])
 
     # Remove duplicates and convert to array
-    if points:
-        points = np.unique(np.array(points), axis=0)
-    else:
-        points = np.array([])
+    points = np.unique(np.array(points), axis=0) if points else np.array([])
 
     return points

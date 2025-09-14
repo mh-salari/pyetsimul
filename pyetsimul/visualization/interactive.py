@@ -4,18 +4,21 @@ Provides interactive eye tracking visualization with keyboard controls for real-
 Enables dynamic visualization of eye tracking with target and eye movement controls.
 """
 
-import numpy as np
-import matplotlib.pyplot as plt
 import copy
 
-from .integrated_plots import plot_setup_and_camera_view
+import matplotlib.pyplot as plt
+import numpy as np
+
+from ..core import Camera, Eye, Light
+from ..types import Position3D
 from .coordinate_utils import prepare_eye_data_for_plots
-from .setup_plots import plot_setup
-from .plot_config import create_plot_config
+from .integrated_plots import plot_setup_and_camera_view
 from .interactive_controls import InteractiveControls
+from .plot_config import create_plot_config
+from .setup_plots import plot_setup
 
 
-def plot_interactive_setup(eye_base, lights, camera, target_point):
+def plot_interactive_setup(eye_base: Eye, lights: list[Light], camera: Camera, target_point: Position3D) -> None:
     """Create and run interactive setup and camera view with keyboard controls.
 
     Args:
@@ -23,6 +26,7 @@ def plot_interactive_setup(eye_base, lights, camera, target_point):
         lights: List of light objects
         camera: Camera object
         target_point: Initial target point
+
     """
     InteractiveControls.print_controls()
 
@@ -38,7 +42,7 @@ def plot_interactive_setup(eye_base, lights, camera, target_point):
     plot_setup_and_camera_view(e_ref, target_point, camera, lights=lights, ax1=ax1, ax2=ax2, fig=fig)
     ref_bounds = {"x": ax1.get_xlim(), "y": ax1.get_ylim(), "z": ax1.get_zlim()}
 
-    def update_plot():
+    def update_plot() -> None:
         """Update the visualization with current eye and target positions."""
         e = copy.deepcopy(eye_base)
         e.look_at(controls.target_point)
@@ -61,13 +65,14 @@ def plot_interactive_setup(eye_base, lights, camera, target_point):
     plt.show()
 
 
-def plot_interactive_cameras(cameras, eye, target_point):
+def plot_interactive_cameras(cameras: list[Camera], eye: Eye, target_point: Position3D) -> None:
     """Create and run interactive camera comparison with keyboard controls.
 
     Args:
         cameras: List of Camera objects
         eye: Eye object
         target_point: Initial target point
+
     """
     camera_names = [cam.name or f"Camera {i + 1}" for i, cam in enumerate(cameras)]
     print(f"Camera Comparison: {' vs '.join(camera_names)}")
@@ -107,7 +112,7 @@ def plot_interactive_cameras(cameras, eye, target_point):
     colors = config.colors.camera_comparison
     markers = config.markers.camera_comparison
 
-    def update():
+    def update() -> None:
         """Update the visualization with current eye position."""
         eye.look_at(controls.target_point)
         prepared_data = prepare_eye_data_for_plots([eye], [controls.target_point], None, cameras)
@@ -217,7 +222,9 @@ def plot_interactive_cameras(cameras, eye, target_point):
     plt.show()
 
 
-def plot_interactive_pupil_comparison(eye_elliptical, eye_realistic, camera, target_point):
+def plot_interactive_pupil_comparison(
+    eye_elliptical: Eye, eye_realistic: Eye, camera: Camera, target_point: Position3D
+) -> None:
     """Create and run interactive pupil comparison with keyboard controls.
 
     Args:
@@ -225,6 +232,7 @@ def plot_interactive_pupil_comparison(eye_elliptical, eye_realistic, camera, tar
         eye_realistic: Realistic pupil eye object
         camera: Camera object
         target_point: Initial target point
+
     """
     initial_pupil_radii = eye_elliptical.get_pupil_radii()
 
@@ -234,24 +242,24 @@ def plot_interactive_pupil_comparison(eye_elliptical, eye_realistic, camera, tar
 
     config = create_plot_config()
 
-    def handle_pupil_size_decrease(event, controls):
+    def handle_pupil_size_decrease(_event: object, _controls: InteractiveControls) -> None:
         """Handle [ key - make pupil smaller."""
         current_radii = eye_elliptical.get_pupil_radii()
         new_radius = max(0.5e-3, current_radii[0] - 0.5e-3)
         eye_elliptical.set_pupil_radii(new_radius, new_radius)
         eye_realistic.set_pupil_radii(new_radius, new_radius)
 
-    def handle_pupil_size_increase(event, controls):
+    def handle_pupil_size_increase(_event: object, _controls: InteractiveControls) -> None:
         """Handle ] key - make pupil bigger."""
         current_radii = eye_elliptical.get_pupil_radii()
         new_radius = min(5e-3, current_radii[0] + 0.5e-3)
         eye_elliptical.set_pupil_radii(new_radius, new_radius)
         eye_realistic.set_pupil_radii(new_radius, new_radius)
 
-    def handle_reset_with_pupil(event, controls):
+    def handle_reset_with_pupil(_event: object, controls: InteractiveControls) -> None:
         """Reset positions and pupil size."""
         # Let controls handle standard reset
-        controls._reset_positions()
+        controls.reset_positions()
         # Sync realistic eye and reset pupil sizes
         eye_realistic.trans = eye_elliptical.trans.copy()
         eye_realistic.position = eye_elliptical.position
@@ -286,7 +294,7 @@ def plot_interactive_pupil_comparison(eye_elliptical, eye_realistic, camera, tar
     )
     ref_bounds = {"x": ax1.get_xlim(), "y": ax1.get_ylim(), "z": ax1.get_zlim()}
 
-    def update():
+    def update() -> None:
         """Update the visualization with current eye positions."""
         # Sync realistic eye to match elliptical eye position
         eye_realistic.trans = eye_elliptical.trans.copy()

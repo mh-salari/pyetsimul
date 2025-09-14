@@ -46,7 +46,7 @@ class ColorPalettes:
     # Interactive comparison colors
     camera_comparison: list[str] | None = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Initialize default color arrays if not provided."""
         if self.eyes is None:
             self.eyes = ["blue", "red", "green", "purple", "orange", "brown"]
@@ -88,7 +88,7 @@ class MarkerConfig:
     # Marker styles for different comparison contexts
     camera_comparison: list[str] | None = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Initialize default marker style arrays."""
         if self.camera_comparison is None:
             self.camera_comparison = ["+", "x", "o", "s", "^", "v", "d", "p"]
@@ -142,7 +142,7 @@ class LayoutConfig:
     legend_outside_right: dict[str, str | tuple[float, float]] | None = None
     legend_upper_left: dict[str, str] | None = None
 
-    def __post_init__(self):
+    def __post_init__(self) -> None:
         """Initialize legend positioning dictionaries."""
         if self.legend_outside_right is None:
             self.legend_outside_right = {"bbox_to_anchor": (1.05, 1), "loc": "upper left"}
@@ -193,6 +193,7 @@ def create_plot_config() -> PlotConfig:
 
     Returns:
         PlotConfig: Complete styling configuration with PyEtSimul defaults
+
     """
     return PlotConfig(
         colors=ColorPalettes(),

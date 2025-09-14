@@ -1,19 +1,21 @@
 #!/usr/bin/env python3
-"""
-Realistic pupil comparison figure.
+"""Realistic pupil comparison figure.
 
 Compares realistic vs circular pupil shapes across different pupil sizes.
 Shows three subplots side by side: small, default, and large pupil sizes.
 """
 
-import numpy as np
-import matplotlib.pyplot as plt
 from pathlib import Path
+
+import matplotlib.pyplot as plt
+import numpy as np
+
 from pyetsimul.core import Eye
-from pyetsimul.types import Position3D, RotationMatrix, Direction3D
+from pyetsimul.types import Direction3D, Position3D, RotationMatrix
 
 
-def main():
+def main() -> None:
+    """Compare realistic vs circular pupil shapes across different pupil sizes."""
     # Create three different pupil sizes (diameters in meters)
     # Default comes from our code's default pupil radius (3mm radius = 6mm diameter)
     # Research-based extremes: ~2mm (bright light) to ~8mm (dark adaptation)
@@ -24,7 +26,7 @@ def main():
     pupil_sizes = [("Small", small_diameter), ("Default", default_diameter), ("Large", large_diameter)]
 
     # Create figure with three subplots
-    fig, axes = plt.subplots(1, 3, figsize=(15, 5))
+    _, axes = plt.subplots(1, 3, figsize=(15, 5))
 
     for i, (size_name, diameter) in enumerate(pupil_sizes):
         ax = axes[i]
@@ -62,7 +64,7 @@ def main():
         realistic_boundary = eye_realistic.pupil.get_boundary_points()
         circular_boundary = eye_circular.pupil.get_boundary_points()
 
-        # Convert to mm for plotting (4×N matrix, take x and y rows)
+        # Convert to mm for plotting (4xN matrix, take x and y rows)
         realistic_x = realistic_boundary[0, :] * 1000  # X coordinates of all points
         realistic_y = realistic_boundary[1, :] * 1000  # Y coordinates of all points
         circular_x = circular_boundary[0, :] * 1000

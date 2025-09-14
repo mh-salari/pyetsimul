@@ -1,5 +1,4 @@
-"""
-Listing's law implementation for eye rotation calculations.
+"""Listing's law implementation for eye rotation calculations.
 
 This module implements Listing's law, which describes how the eye rotates
 when changing fixation direction. Extracted from the Eye class for better
@@ -7,7 +6,8 @@ modularity and testability.
 """
 
 import numpy as np
-from ..types import Vector3D, RotationMatrix
+
+from ..types import RotationMatrix, Vector3D
 
 
 def calculate_eye_rotation(out_rest: Vector3D, out_new: Vector3D) -> RotationMatrix:
@@ -22,6 +22,7 @@ def calculate_eye_rotation(out_rest: Vector3D, out_new: Vector3D) -> RotationMat
 
     Returns:
         3x3 rotation matrix A representing the eye rotation
+
     """
     # Normalize input vectors
     out_rest_norm = out_rest.normalize()

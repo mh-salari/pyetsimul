@@ -3,25 +3,34 @@
 Provides high-level functions that combine 3D setup and camera views for comprehensive eye tracking visualization.
 """
 
+from typing import TYPE_CHECKING
+
 import matplotlib.pyplot as plt
 
-from .coordinate_utils import prepare_eye_data_for_plots
-from .setup_plots import plot_setup
+if TYPE_CHECKING:
+    from matplotlib.axes import Axes
+    from matplotlib.figure import Figure
+import numpy as np
+
+from ..core import Camera, Eye, Light
+from ..types import Position3D
 from .camera_view import plot_camera_view_of_eye
+from .coordinate_utils import prepare_eye_data_for_plots
 from .plot_config import create_plot_config
+from .setup_plots import plot_setup
 
 
 def plot_setup_and_camera_view(
-    eyes,
-    look_at_targets,
-    cameras=None,
-    lights=None,
-    calib_points=None,
-    ax1=None,
-    ax2=None,
-    fig=None,
-    ref_bounds=None,
-):
+    eyes: list[Eye] | Eye,
+    look_at_targets: list[Position3D] | Position3D,
+    cameras: list[Camera] | Camera | None = None,
+    lights: list[Light] | Light | None = None,
+    calib_points: np.ndarray | None = None,
+    ax1: "Axes | None" = None,
+    ax2: "Axes | None" = None,
+    fig: "Figure | None" = None,
+    ref_bounds: dict[str, tuple[float, float]] | None = None,
+) -> "Figure":
     """Create comprehensive eye tracking visualization with 3D setup and camera view.
 
     Shows 3D scene and camera image for complete system visualization.
@@ -32,12 +41,14 @@ def plot_setup_and_camera_view(
         cameras: Optional list of Camera objects
         lights: Optional list of Light objects with positions
         calib_points: Optional calibration points array
-        ax1, ax2: Optional matplotlib axes for reuse
+        ax1: Optional matplotlib axes for reuse
+        ax2: Optional matplotlib axes for reuse
         fig: Optional matplotlib figure for reuse
         ref_bounds: Optional reference bounds dict with 'x', 'y', 'z' keys
 
     Returns:
         fig: Matplotlib figure object
+
     """
     # Ensure inputs are lists
     if not isinstance(eyes, list):

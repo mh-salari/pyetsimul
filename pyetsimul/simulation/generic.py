@@ -1,7 +1,9 @@
 """Generic parameter variation for any eye model parameter."""
 
+from collections.abc import Iterable
+
 import numpy as np
-from typing import Iterable, Optional
+
 from ..core import Eye
 from .core import EyeParameterVariation
 
@@ -14,8 +16,8 @@ class GenericEyeVariation(EyeParameterVariation):
     """
 
     def __init__(
-        self, parameter_name: str, value_range: list[float], num_steps: int, description: Optional[str] = None
-    ):
+        self, parameter_name: str, value_range: list[float], num_steps: int, description: str | None = None
+    ) -> None:
         """Initialize generic parameter variation.
 
         Args:
@@ -23,6 +25,7 @@ class GenericEyeVariation(EyeParameterVariation):
             value_range: [min_value, max_value] range
             num_steps: Number of steps to generate
             description: Optional human-readable description
+
         """
         super().__init__(parameter_name)
         self.value_range = value_range
@@ -36,6 +39,7 @@ class GenericEyeVariation(EyeParameterVariation):
         return f"{param_name} {min_val:.3f}-{max_val:.3f} ({self.num_steps} steps)"
 
     def __len__(self) -> int:
+        """Return the number of variation steps."""
         return self.num_steps
 
     def generate_values(self) -> Iterable[float]:
@@ -47,9 +51,10 @@ class GenericEyeVariation(EyeParameterVariation):
 
     def apply_to_eye(self, eye: Eye, value: float) -> None:
         """Apply parameter value to eye using parameter path resolution."""
-        self._set_parameter(eye, self.param_name, value)
+        GenericEyeVariation._set_parameter(eye, self.param_name, value)
 
-    def _set_parameter(self, eye: Eye, parameter_path: str, value: float) -> None:
+    @staticmethod
+    def _set_parameter(eye: Eye, parameter_path: str, value: float) -> None:
         """Set parameter value using path resolution."""
         # Handle method calls
         if parameter_path == "pupil_diameter":

@@ -1,16 +1,17 @@
-#!/usr/bin/env python3
-"""
-Basic usage demonstration for PyEtSimul paper.
+"""Basic usage demonstration for PyEtSimul paper.
+
 Creates setup using established patterns from examples/ directory.
 """
 
-import matplotlib.pyplot as plt
 from pathlib import Path
-from pyetsimul.core import Eye, Camera, Light
+
+import matplotlib.pyplot as plt
+
+from pyetsimul.core import Camera, Eye, Light
 from pyetsimul.types import Position3D, RotationMatrix
+from pyetsimul.visualization.camera_view import plot_camera_view_of_eye
 from pyetsimul.visualization.coordinate_utils import prepare_eye_data_for_plots
 from pyetsimul.visualization.setup_plots import plot_setup
-from pyetsimul.visualization.camera_view import plot_camera_view_of_eye
 
 # Create eye-tracking setup following examples/setup_visualization.py pattern
 eye = Eye(eyelid_enabled=True, pupil_boundary_points=50)

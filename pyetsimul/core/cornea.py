@@ -3,14 +3,16 @@
 Defines abstract and concrete cornea models (spherical, conic) for anatomical and optical simulation.
 """
 
-import numpy as np
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field, InitVar
-from typing import Optional, TYPE_CHECKING
+from dataclasses import InitVar, dataclass, field
+from typing import TYPE_CHECKING
+
+import numpy as np
 from tabulate import tabulate
-from ..types import Point3D, Vector3D, Position3D, Direction3D, Ray, IntersectionResult, TransformationMatrix
+
 from ..geometry import intersections
 from ..optics import reflections, refractions
+from ..types import Direction3D, IntersectionResult, Point3D, Position3D, Ray, TransformationMatrix, Vector3D
 from .default_configs import CorneaDefaults
 
 if TYPE_CHECKING:
@@ -25,41 +27,45 @@ class Cornea(ABC):
     Provides unified interface for intersection, reflection, and refraction calculations.
     """
 
-    center_init: InitVar[Optional[Position3D]] = None
-    _center: Optional[Position3D] = field(default=None, init=False)
+    center_init: InitVar[Position3D | None] = None
+    _center: Position3D | None = field(default=None, init=False)
 
     _cornea_depth_default: float = CorneaDefaults.CORNEA_DEPTH
     _cornea_center_to_rotation_center_default: float = CorneaDefaults.CENTER_TO_ROTATION
 
-    def __post_init__(self, center_init: Optional[Position3D]) -> None:
+    def __post_init__(self, center_init: Position3D | None) -> None:
+        """Initialize cornea center if provided."""
         if center_init is not None:
             self._center = center_init
 
     @property
     def center(self) -> Position3D:
+        """Get the cornea center position."""
         if self._center is None:
             raise ValueError("Center has not been initialized. Did you call setup_eye_geometry() already?")
         return self._center
 
     @center.setter
-    def center(self, value: Position3D):
+    def center(self, value: Position3D) -> None:
         self._center = value
+
+    @property
+    def cornea_center_to_rotation_center_default(self) -> float:
+        """Get the default cornea center to rotation center distance."""
+        return self._cornea_center_to_rotation_center_default
 
     @property
     @abstractmethod
     def cornea_type(self) -> str:
         """Return the type name of this cornea model."""
-        pass
 
     @abstractmethod
-    def intersect(self, ray: Ray) -> Optional[IntersectionResult]:
+    def intersect(self, ray: Ray) -> IntersectionResult | None:
         """Calculates the intersection point of a light ray with the cornea."""
-        pass
 
     @abstractmethod
     def normal_at(self, point: Point3D) -> Direction3D:
         """Calculates the normal vector at a given point on the cornea's surface."""
-        pass
 
     def point_within_cornea(self, p: Position3D, eye: "Eye") -> bool:
         """Tests whether a point lies within the cornea boundaries.
@@ -72,8 +78,8 @@ class Cornea(ABC):
 
         Returns:
             bool: True if point lies within cornea boundaries, False otherwise
-        """
 
+        """
         # Calculate direction from apex to cornea center
         apex_pos = eye.cornea.get_apex_position()
         direction = Vector3D(self.center.x - apex_pos.x, self.center.y - apex_pos.y, self.center.z - apex_pos.z)
@@ -86,9 +92,8 @@ class Cornea(ABC):
     @abstractmethod
     def find_reflection(
         self, light_pos: Position3D, camera_pos: Position3D, eye_transform: TransformationMatrix
-    ) -> Optional[Point3D]:
+    ) -> Point3D | None:
         """Finds position of a glint on the corneal surface."""
-        pass
 
     @abstractmethod
     def find_refraction(
@@ -98,9 +103,8 @@ class Cornea(ABC):
         n_outside: float,
         n_cornea: float,
         eye_transform: TransformationMatrix,
-    ) -> Optional[Point3D]:
+    ) -> Point3D | None:
         """Finds position where refraction occurs on the corneal surface."""
-        pass
 
     def __str__(self) -> str:
         """Basic string representation of the cornea."""
@@ -126,22 +130,27 @@ class Cornea(ABC):
 
         # SphericalCornea and ConicCornea parameters
         if isinstance(self, (SphericalCornea, ConicCornea)):
-            data.append(["Anterior radius (mm)", f"{self.anterior_radius * 1000:.3f}"])
-            data.append(["Posterior radius (mm)", f"{self.posterior_radius * 1000:.3f}"])
-            data.append(["Refractive index", f"{self.refractive_index:.3f}"])
-            data.append(["Thickness offset (mm)", f"{self.thickness_offset * 1000:.3f}"])
-            data.append(["Corneal depth (mm)", f"{self.get_corneal_depth() * 1000:.3f}"])
+            data.extend([
+                ["Anterior radius (mm)", f"{self.anterior_radius * 1000:.3f}"],
+                ["Posterior radius (mm)", f"{self.posterior_radius * 1000:.3f}"],
+                ["Refractive index", f"{self.refractive_index:.3f}"],
+                ["Thickness offset (mm)", f"{self.thickness_offset * 1000:.3f}"],
+                ["Corneal depth (mm)", f"{self.get_corneal_depth() * 1000:.3f}"],
+            ])
 
             if self.center:
                 apex = self.get_apex_position()
-                data.append(
-                    ["Apex position (x,y,z) mm", f"({apex.x * 1000:.3f}, {apex.y * 1000:.3f}, {apex.z * 1000:.3f})"]
-                )
+                data.append([
+                    "Apex position (x,y,z) mm",
+                    f"({apex.x * 1000:.3f}, {apex.y * 1000:.3f}, {apex.z * 1000:.3f})",
+                ])
 
         # ConicCornea-specific parameters
         if isinstance(self, ConicCornea):
-            data.append(["Anterior k (conic)", f"{self.anterior_k:.3f}"])
-            data.append(["Posterior k (conic)", f"{self.posterior_k:.3f}"])
+            data.extend([
+                ["Anterior k (conic)", f"{self.anterior_k:.3f}"],
+                ["Posterior k (conic)", f"{self.posterior_k:.3f}"],
+            ])
 
         headers = ["Parameter", "Value"]
         print(f"{self.__class__.__name__} Parameters:")
@@ -160,6 +169,7 @@ class SphericalCornea(Cornea):
         posterior_radius (float): The radius of the posterior (inner) corneal surface.
         thickness (float): Central corneal thickness.
         center (Point4D): Inherited from parent. If None, will be calculated by Eye based on anatomical scaling.
+
     """
 
     anterior_radius: float = CorneaDefaults.ANTERIOR_RADIUS
@@ -183,6 +193,7 @@ class SphericalCornea(Cornea):
 
         Returns:
             Posterior corneal radius in meters (scaled from reference)
+
         """
         scale = self.get_scale_factor()
         return scale * self._posterior_radius_default
@@ -193,6 +204,7 @@ class SphericalCornea(Cornea):
 
         Returns:
             Thickness offset in meters (scaled from reference)
+
         """
         scale = self.get_scale_factor()
         return scale * self._thickness_offset_default
@@ -206,6 +218,7 @@ class SphericalCornea(Cornea):
 
         Returns:
             Central corneal thickness in meters
+
         """
         # Distance between surface centers along optical axis
         center_distance = abs(self.anterior_radius - self.posterior_radius - self.thickness_offset)
@@ -216,8 +229,9 @@ class SphericalCornea(Cornea):
         thickness_term = self.anterior_radius - self.posterior_radius - self.thickness_offset
         return Position3D(self.center.x, self.center.y, self.center.z - thickness_term)
 
+    @staticmethod
     def calculate_center_position(
-        self, scale: float, axial_length: float, cornea_center_to_rotation_center: float
+        scale: float, axial_length: float, cornea_center_to_rotation_center: float
     ) -> Position3D:
         """Calculate the center position for spherical cornea based on anatomical parameters.
 
@@ -230,6 +244,7 @@ class SphericalCornea(Cornea):
 
         Returns:
             Cornea center position
+
         """
         cornea_z_offset = axial_length - 2 * cornea_center_to_rotation_center
         return Position3D(0, 0, -scale * cornea_z_offset)
@@ -241,6 +256,7 @@ class SphericalCornea(Cornea):
 
         Returns:
             Corneal apex position
+
         """
         return Position3D(self.center.x, self.center.y, self.center.z - self.anterior_radius)
 
@@ -252,6 +268,7 @@ class SphericalCornea(Cornea):
 
         Returns:
             Scale factor (dimensionless)
+
         """
         return self.anterior_radius / self._r_cornea_default
 
@@ -260,6 +277,7 @@ class SphericalCornea(Cornea):
 
         Returns:
             Corneal depth in meters (scaled from reference depth)
+
         """
         scale = self.get_scale_factor()
         return scale * self._cornea_depth_default
@@ -275,6 +293,7 @@ class SphericalCornea(Cornea):
 
         Returns:
             Dictionary containing all calculated geometry parameters
+
         """
         scale = self.get_scale_factor()
 
@@ -291,7 +310,7 @@ class SphericalCornea(Cornea):
             "cornea_center_to_rotation_center": self._cornea_center_to_rotation_center_default,
         }
 
-    def intersect(self, ray: Ray) -> Optional[IntersectionResult]:
+    def intersect(self, ray: Ray) -> IntersectionResult | None:
         """Calculates intersection for a spherical cornea.
 
         Returns the intersection result closer to the ray origin.
@@ -307,7 +326,7 @@ class SphericalCornea(Cornea):
 
     def find_reflection(
         self, light_pos: Position3D, camera_pos: Position3D, eye_transform: TransformationMatrix
-    ) -> Optional[Point3D]:
+    ) -> Point3D | None:
         """Finds position of a glint on the spherical corneal surface."""
         world_center_homogeneous = eye_transform @ np.array(self.center)
         world_center = Position3D.from_array(world_center_homogeneous)
@@ -320,7 +339,7 @@ class SphericalCornea(Cornea):
         n_outside: float,
         n_cornea: float,
         eye_transform: TransformationMatrix,
-    ) -> Optional[Point3D]:
+    ) -> Point3D | None:
         """Finds position where refraction occurs on the spherical corneal surface."""
         world_center_homogeneous = eye_transform @ np.array(self.center)
         world_center = Position3D.from_array(world_center_homogeneous)
@@ -369,6 +388,7 @@ class ConicCornea(Cornea):
                   - k = 0: Perfect sphere
                   - k < 0: Prolate ellipsoid (typical cornea, flattens toward periphery)
                   - k > 0: Oblate ellipsoid (steepens toward periphery)
+
     """
 
     # Anterior surface (30-year defaults from Goncharov & Dainty 2007)
@@ -418,6 +438,7 @@ class ConicCornea(Cornea):
 
         Returns:
             Corneal apex position
+
         """
         # Mathematical apex position: z = -R/(1+k) from center
         apex_z = -self.anterior_radius / (1 + self.anterior_k)
@@ -431,20 +452,23 @@ class ConicCornea(Cornea):
 
         Returns:
             Corneal depth in meters
+
         """
         return self._cornea_depth_default
 
-    def get_scale_factor(self) -> float:
+    def get_scale_factor(self) -> float:  # noqa: PLR6301
         """Get scale factor for conic cornea.
 
         Conic cornea uses absolute dimensions, so scale factor is always 1.0.
 
         Returns:
             Scale factor of 1.0 (no scaling)
+
         """
         return 1.0
 
-    def calculate_center_position(self, axial_length: float, cornea_center_to_rotation_center: float) -> Position3D:
+    @staticmethod
+    def calculate_center_position(axial_length: float, cornea_center_to_rotation_center: float) -> Position3D:
         """Calculate the center position for conic cornea based on anatomical parameters (no scaling).
 
         Args:
@@ -453,6 +477,7 @@ class ConicCornea(Cornea):
 
         Returns:
             Cornea center position
+
         """
         cornea_z_offset = axial_length - 2 * cornea_center_to_rotation_center
         return Position3D(0, 0, -cornea_z_offset)
@@ -467,6 +492,7 @@ class ConicCornea(Cornea):
 
         Returns:
             Dictionary containing geometry parameters
+
         """
         # Set default center if not already set (no scaling applied)
         # For conic: position center at origin for mathematical consistency
@@ -481,7 +507,8 @@ class ConicCornea(Cornea):
             "cornea_center_to_rotation_center": 0.0,  # Not applicable for conic #CHECK
         }
 
-    def __post_init__(self, center_init: Optional[Position3D]):
+    def __post_init__(self, center_init: Position3D | None) -> None:
+        """Initialize conic cornea with validation of k parameters."""
         super().__post_init__(center_init)
         # Validate k parameter ranges for both surfaces
         if self.anterior_k < -1:
@@ -501,7 +528,7 @@ class ConicCornea(Cornea):
                 f"Warning: posterior (1+k) = {posterior_1_plus_k} ≤ 0 may cause numerical issues in conic calculations"
             )
 
-    def intersect(self, ray: Ray) -> Optional[IntersectionResult]:
+    def intersect(self, ray: Ray) -> IntersectionResult | None:
         """Calculates intersection for the anterior conic surface.
 
         Returns the intersection result closer to the ray origin.
@@ -517,7 +544,7 @@ class ConicCornea(Cornea):
 
     def find_reflection(
         self, light_pos: Position3D, camera_pos: Position3D, eye_transform: TransformationMatrix
-    ) -> Optional[Point3D]:
+    ) -> Point3D | None:
         """Finds position of a glint on the anterior conic surface."""
         world_center_homogeneous = eye_transform @ np.array(self.center)
         world_center = Position3D.from_array(world_center_homogeneous)
@@ -532,7 +559,7 @@ class ConicCornea(Cornea):
         n_outside: float,
         n_cornea: float,
         eye_transform: TransformationMatrix,
-    ) -> Optional[Point3D]:
+    ) -> Point3D | None:
         """Finds position where refraction occurs on the anterior conic surface."""
         world_center_homogeneous = eye_transform @ np.array(self.center)
         world_center = Position3D.from_array(world_center_homogeneous)
@@ -569,7 +596,7 @@ class ConicCornea(Cornea):
         return cornea
 
 
-def create_cornea(cornea_model_type: str, center: Position3D, **kwargs) -> Cornea:
+def create_cornea(cornea_model_type: str, center: Position3D, **kwargs: float) -> Cornea:
     """Factory function to create a cornea object of specified type.
 
     Provides unified interface for creating different corneal models.
@@ -588,10 +615,10 @@ def create_cornea(cornea_model_type: str, center: Position3D, **kwargs) -> Corne
 
     Raises:
         ValueError: If an unsupported cornea_model_type is provided.
+
     """
     if cornea_model_type == "spherical":
         return SphericalCornea(center_init=center, **kwargs)
-    elif cornea_model_type == "conic":
+    if cornea_model_type == "conic":
         return ConicCornea(center_init=center, **kwargs)
-    else:
-        raise ValueError(f"Unknown cornea model type: '{cornea_model_type}'")
+    raise ValueError(f"Unknown cornea model type: '{cornea_model_type}'")

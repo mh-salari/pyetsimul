@@ -5,15 +5,21 @@ Handles eye anatomy, camera imaging, and corneal reflection calculations.
 Support for multiple eyes, cameras, and lights.
 """
 
-import numpy as np
 from typing import Any
 
-from pyetsimul.core import Eye
+import numpy as np
+
+from pyetsimul.core import Camera, Eye, Light
+
 from ..types import Position3D
 
 
 def prepare_eye_data_for_plots(
-    eyes, look_at_targets, lights=None, cameras=None, use_legacy_lookat=False
+    eyes: list[Eye] | Eye,
+    look_at_targets: list[Position3D] | Position3D,
+    lights: list[Light] | Light | None = None,
+    cameras: list[Camera] | Camera | None = None,
+    use_legacy_lookat: bool = False,
 ) -> dict[str, Any]:
     """Prepare eye visualization data for plotting.
 
@@ -25,9 +31,11 @@ def prepare_eye_data_for_plots(
         look_at_targets: Target point or list of target points, one per eye
         lights: Optional Light object or list of Light objects with positions
         cameras: Optional Camera object or list of Camera objects
+        use_legacy_lookat: Whether to use the legacy look-at method
 
     Returns:
         dict: Contains eyes_data list, camera_images list, and cr_3d_lists for plotting
+
     """
     # Convert single objects to lists
     if not isinstance(eyes, list):
@@ -49,7 +57,7 @@ def prepare_eye_data_for_plots(
     camera_images = []
     cr_3d_lists = []
 
-    for i, (eye, target) in enumerate(zip(eyes, look_at_targets)):
+    for eye, target in zip(eyes, look_at_targets, strict=False):
         eye_data = _prepare_single_eye_data(eye, target, use_legacy_lookat)
         eyes_data.append(eye_data)
 
@@ -84,11 +92,11 @@ def prepare_eye_data_for_plots(
     return {"eyes_data": eyes_data, "camera_images": camera_images, "cr_3d_lists": cr_3d_lists}
 
 
-def _prepare_single_eye_data(eye: Eye, look_at_target: Position3D, use_legacy_lookat) -> dict[str, Any]:
+def _prepare_single_eye_data(eye: Eye, look_at_target: Position3D, use_legacy_lookat: bool) -> dict[str, Any]:
     """Helper function to prepare single eye data for visualization."""
 
     # Calculate all values once
-    def transform_point(point) -> Position3D:
+    def transform_point(point: Position3D) -> Position3D:
         p = eye.trans @ point
         return Position3D.from_array(p) if not isinstance(p, Position3D) else p
 
@@ -107,27 +115,29 @@ def _prepare_single_eye_data(eye: Eye, look_at_target: Position3D, use_legacy_lo
     # Draw corneal surface
     u = np.linspace(0, 2 * np.pi, 20)
     v = np.linspace(0, np.pi, 20)
-    X_cornea = r_cornea * np.outer(np.cos(u), np.sin(v))
-    Y_cornea = r_cornea * np.outer(np.sin(u), np.sin(v))
-    Z_cornea = r_cornea * np.outer(np.ones(np.size(u)), np.cos(v))
+    cornea_surface_x = r_cornea * np.outer(np.cos(u), np.sin(v))
+    cornea_surface_y = r_cornea * np.outer(np.sin(u), np.sin(v))
+    cornea_surface_z = r_cornea * np.outer(np.ones(np.size(u)), np.cos(v))
 
     # Only show anterior surface (cap)
-    mask = Z_cornea > -r_cornea + depth_cornea
-    X_cornea[mask] = np.nan
-    Y_cornea[mask] = np.nan
-    Z_cornea[mask] = np.nan
+    mask = cornea_surface_z > -r_cornea + depth_cornea
+    cornea_surface_x[mask] = np.nan
+    cornea_surface_y[mask] = np.nan
+    cornea_surface_z[mask] = np.nan
 
     # Transform cornea surface points to world coordinates
-    for i in range(X_cornea.shape[0]):
-        for j in range(X_cornea.shape[1]):
-            if not np.isnan(X_cornea[i, j]):
-                point = np.array([cornea_center.x, cornea_center.y, cornea_center.z]) + np.array(
-                    [X_cornea[i, j], Y_cornea[i, j], Z_cornea[i, j]]
-                )
+    for i in range(cornea_surface_x.shape[0]):
+        for j in range(cornea_surface_x.shape[1]):
+            if not np.isnan(cornea_surface_x[i, j]):
+                point = np.array([cornea_center.x, cornea_center.y, cornea_center.z]) + np.array([
+                    cornea_surface_x[i, j],
+                    cornea_surface_y[i, j],
+                    cornea_surface_z[i, j],
+                ])
                 point_world = transform_point(Position3D.from_array(point))
-                X_cornea[i, j] = point_world.x
-                Y_cornea[i, j] = point_world.y
-                Z_cornea[i, j] = point_world.z
+                cornea_surface_x[i, j] = point_world.x
+                cornea_surface_y[i, j] = point_world.y
+                cornea_surface_z[i, j] = point_world.z
 
     # Calculate optical axis
     optical_axis_direction_local = np.array([0, 0, -1, 0])  # negative z in homogeneous coordinates
@@ -139,9 +149,9 @@ def _prepare_single_eye_data(eye: Eye, look_at_target: Position3D, use_legacy_lo
     )
 
     return {
-        "X_cornea": X_cornea,
-        "Y_cornea": Y_cornea,
-        "Z_cornea": Z_cornea,
+        "cornea_surface_x": cornea_surface_x,
+        "cornea_surface_y": cornea_surface_y,
+        "cornea_surface_z": cornea_surface_z,
         "cornea_center_world": cornea_center_world,
         "pupil_world": pupil_world,
         "optical_axis_end": optical_axis_end,

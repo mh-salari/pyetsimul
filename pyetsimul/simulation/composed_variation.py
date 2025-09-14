@@ -1,19 +1,22 @@
 """Composed parameter variations for complex experiment designs."""
 
 import math
-from typing import Any, Iterable
+from collections.abc import Generator, Iterable
+from typing import Any
+
 from .core import ParameterVariation
 
 
 class ComposedVariation(ParameterVariation):
     """Combines multiple parameter variations into a single experiment."""
 
-    def __init__(self, variations: list[ParameterVariation], param_name: str = "composed"):
+    def __init__(self, variations: list[ParameterVariation], param_name: str = "composed") -> None:
         """Initialize composed variation.
 
         Args:
             variations: List of parameter variations to combine
             param_name: Name for the composed parameter
+
         """
         super().__init__(param_name)
         self.variations = variations
@@ -22,7 +25,8 @@ class ComposedVariation(ParameterVariation):
             raise ValueError("Must provide at least one variation")
 
     @property
-    def description(self):
+    def description(self) -> str:
+        """Get a description of the composed variation."""
         names = [v.__class__.__name__ for v in self.variations]
         return f"Composed({', '.join(names)})"
 
@@ -45,7 +49,9 @@ class ComposedVariation(ParameterVariation):
         descriptions = [var.describe() for var in self.variations]
         return f"Combined: {' + '.join(descriptions)}"
 
-    def _generate_combinations(self, all_values, current_combo, index):
+    def _generate_combinations(
+        self, all_values: list[tuple[str, list[Any]]], current_combo: dict[str, Any], index: int
+    ) -> Generator[dict[str, Any], None, None]:
         """Recursively generate all combinations."""
         if index == len(all_values):
             yield current_combo.copy()
@@ -61,12 +67,13 @@ class ComposedVariation(ParameterVariation):
 class SequentialVariation(ParameterVariation):
     """Applies variations sequentially rather than in combination."""
 
-    def __init__(self, variations: list[ParameterVariation], param_name: str = "sequential"):
+    def __init__(self, variations: list[ParameterVariation], param_name: str = "sequential") -> None:
         """Initialize sequential variation.
 
         Args:
             variations: List of parameter variations to apply sequentially
             param_name: Name for the sequential parameter
+
         """
         super().__init__(param_name)
         self.variations = variations

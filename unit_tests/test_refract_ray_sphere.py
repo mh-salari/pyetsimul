@@ -1,11 +1,12 @@
 """Unit tests for refract_ray_sphere function."""
 
 import numpy as np
+
 from pyetsimul.optics.refractions import refract_ray_sphere
-from pyetsimul.types import Ray, Point3D, Direction3D, Position3D, IntersectionResult
+from pyetsimul.types import Direction3D, IntersectionResult, Point3D, Position3D, Ray
 
 
-def test_basic_refraction():
+def test_basic_refraction() -> None:
     """Test basic refraction scenario with MATLAB reference values."""
     # Ray entering sphere (relevant to corneal refraction)
     ray_origin = Point3D(0.0, 0.0, 0.0)  # Ray origin
@@ -29,7 +30,7 @@ def test_basic_refraction():
     refracted_ray.direction.assert_close(expected_direction, rtol=1e-12, atol=1e-14)
 
 
-def test_oblique_incidence():
+def test_oblique_incidence() -> None:
     """Test oblique incidence refraction with MATLAB reference values."""
     # Diagonal ray - relevant to off-axis eye tracking scenarios
     ray_origin = Point3D(-3.0, 0.0, 0.0)  # Ray origin
@@ -54,7 +55,7 @@ def test_oblique_incidence():
     refracted_ray.direction.assert_close(expected_direction, rtol=1e-12, atol=1e-14)
 
 
-def test_ray_missing_sphere():
+def test_ray_missing_sphere() -> None:
     """Test case where ray misses sphere - should return None."""
     ray_origin = Point3D(0.0, 0.0, 0.0)  # Ray origin
     ray_direction = Direction3D(1.0, 0.0, 0.0)  # Ray direction (misses sphere)
@@ -71,7 +72,7 @@ def test_ray_missing_sphere():
     assert refracted_ray is None
 
 
-def test_output_properties():
+def test_output_properties() -> None:
     """Test that output has correct properties."""
     ray_origin = Point3D(0.0, 0.0, 0.0)
     ray_direction = Direction3D(0.0, 0.0, 1.0)

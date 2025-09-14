@@ -5,15 +5,16 @@ Demonstrates how to add random noise to corneal reflection (glint) positions
 to simulate realistic eye tracking measurement errors. Based on the basic example.py structure.
 """
 
-import numpy as np
-from pyetsimul.core import Eye, Camera, Light
-from pyetsimul.types import Position3D, RotationMatrix
-from pyetsimul.camera_noise import GlintNoiseConfig
 import matplotlib.pyplot as plt
+import numpy as np
 from tabulate import tabulate
 
+from pyetsimul.camera_noise import GlintNoiseConfig
+from pyetsimul.core import Camera, Eye, Light
+from pyetsimul.types import Position3D, RotationMatrix
 
-def main():
+
+def main() -> None:
     """Run glint noise demonstration: simulate eye, camera, and light with different noise levels."""
     # Create an eye
     rotation_matrix = RotationMatrix(np.array([[1, 0, 0], [0, 0, 1], [0, -1, 0]]))

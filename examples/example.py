@@ -5,14 +5,15 @@ Demonstrates basic usage of the PyEtSimul framework for eye, camera, and light s
 Shows pupil and glint detection with and without corneal refraction.
 """
 
-import numpy as np
-from pyetsimul.core import Eye, Camera, Light
-from pyetsimul.types import Position3D, RotationMatrix
 import matplotlib.pyplot as plt
+import numpy as np
 from tabulate import tabulate
 
+from pyetsimul.core import Camera, Eye, Light
+from pyetsimul.types import Position3D, RotationMatrix
 
-def main():
+
+def main() -> None:
     """Run a basic PyEtSimul example: simulate eye, camera, and light, and plot results."""
     # Create an eye with default corneal radius (7.98 mm) and its optical axis points along
     # the negative y-axis. (In the eye's local coordinate system, the optical axis

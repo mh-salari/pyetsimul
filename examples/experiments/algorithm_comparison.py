@@ -1,24 +1,29 @@
 """Algorithm comparison experiment using shared configuration."""
 
-from pyetsimul.gaze_models.polynomial import PolynomialGazeModel
-from pyetsimul.gaze_models.polynomial.polynomials import list_available_polynomials
-from pyetsimul.evaluation.algorithm_comparison import compare_algorithms
-from pyetsimul.evaluation.calibration_analysis import accuracy_at_calibration_points
-from pyetsimul.simulation import DataGenerationStrategy
-from pyetsimul.simulation.data_loading import load_experiment_data
+from typing import Any
+
 from config import (
-    create_experiment_config,
-    calibration_points,
-    eye_position_variation,
-    target_position_variation,
-    pupil_size_variation,
     angle_kappa_variation,
+    calibration_points,
     corneal_radius_variation,
     corneal_thickness_variation,
+    create_experiment_config,
+    eye_position_variation,
+    pupil_size_variation,
+    target_position_variation,
 )
 
+from pyetsimul.evaluation.algorithm_comparison import AlgorithmRanking, compare_algorithms
+from pyetsimul.evaluation.calibration_analysis import accuracy_at_calibration_points
+from pyetsimul.gaze_models.polynomial import PolynomialGazeModel
+from pyetsimul.gaze_models.polynomial.polynomials import list_available_polynomials
+from pyetsimul.simulation import DataGenerationStrategy
+from pyetsimul.simulation.config import ExperimentConfig
+from pyetsimul.simulation.core import ParameterVariation
+from pyetsimul.simulation.data_loading import load_experiment_data
 
-def setup_algorithms():
+
+def setup_algorithms() -> dict[str, PolynomialGazeModel]:
     """Setup and calibrate all available algorithms."""
     base_config = create_experiment_config("base")
     available_methods = list_available_polynomials()
@@ -45,7 +50,9 @@ def setup_algorithms():
     return algorithms
 
 
-def generate_dataset(config, variation, use_cache=True):
+def generate_dataset(
+    config: ExperimentConfig, variation: ParameterVariation, use_cache: bool = True
+) -> dict[str, Any]:
     """Generate dataset and optionally cache it."""
     if use_cache:
         try:
@@ -78,7 +85,9 @@ def generate_dataset(config, variation, use_cache=True):
     return dataset
 
 
-def run_experiment(config, variation, algorithms, use_cache=True):
+def run_experiment(
+    config: ExperimentConfig, variation: ParameterVariation, algorithms: dict[str, Any], use_cache: bool = True
+) -> AlgorithmRanking:
     """Run algorithm comparison on a specific variation."""
     print("\n" + "=" * 60)
     print(f"TEST: {config.experiment_name.upper()}")
@@ -92,7 +101,7 @@ def run_experiment(config, variation, algorithms, use_cache=True):
     return comparison
 
 
-def main():
+def main() -> None:
     """Compare algorithms using experiment configurations."""
     use_cache = True
 

@@ -3,7 +3,10 @@
 import json
 from pathlib import Path
 from typing import Any
+
 from tqdm import tqdm
+
+from pyetsimul.core import Camera, Eye, Light
 
 
 def find_data_files(outputs_dir: Path) -> list[Path]:
@@ -35,8 +38,6 @@ def validate_experiment_metadata(data: dict[str, Any]) -> bool:
 
 def validate_measurements(data: dict[str, Any]) -> bool:
     """Validate measurement data by recreating simulator and comparing results."""
-    from pyetsimul.core import Eye, Camera, Light
-
     cameras_data = data.get("cameras", [])
     if not cameras_data:
         print("No camera data found")
@@ -118,7 +119,7 @@ def validate_measurements(data: dict[str, Any]) -> bool:
     return valid_measurements == total_measurements
 
 
-def compare_values(actual, expected, field_name, tolerance=1e-10):
+def compare_values(actual: Any, expected: Any, field_name: str, tolerance: float = 1e-10) -> bool:  # noqa: ANN401, PLR0911
     """Compare actual vs expected values with tolerance."""
     if actual is None and expected is None:
         return True
@@ -132,7 +133,7 @@ def compare_values(actual, expected, field_name, tolerance=1e-10):
             print(f"Mismatch in {field_name}: different lengths {len(actual)} vs {len(expected)}")
             return False
 
-        for i, (a, e) in enumerate(zip(actual, expected)):
+        for i, (a, e) in enumerate(zip(actual, expected, strict=False)):
             if not compare_values(a, e, f"{field_name}[{i}]", tolerance):
                 return False
         return True
@@ -200,6 +201,22 @@ def validate_parameter_values(data: dict[str, Any]) -> bool:
     return True
 
 
+def _validate_eye_position(eye_position: dict[str, Any]) -> bool:
+    """Validate a single eye position for reasonable coordinates."""
+    # Check if coordinates are reasonable (not NaN, not extreme values)
+    coords = [eye_position.get("x"), eye_position.get("y"), eye_position.get("z")]
+    if any(coord is None for coord in coords):
+        print("Eye position has None coordinates")
+        return False
+
+    # Check for NaN or extreme values
+    for coord in coords:
+        if abs(coord) > 1.0:  # More than 1 meter seems unreasonable
+            print(f"Extreme eye coordinate: {coord}")
+            return False
+    return True
+
+
 def validate_coordinate_consistency(data: dict[str, Any]) -> bool:
     """Validate coordinate system consistency."""
     cameras = data.get("cameras", [])
@@ -213,18 +230,8 @@ def validate_coordinate_consistency(data: dict[str, Any]) -> bool:
                 eye_state = measurement.get("eye_state", {})
                 eye_position = eye_state.get("position")
 
-                if eye_position:
-                    # Check if coordinates are reasonable (not NaN, not extreme values)
-                    coords = [eye_position.get("x"), eye_position.get("y"), eye_position.get("z")]
-                    if any(coord is None for coord in coords):
-                        print("Eye position has None coordinates")
-                        return False
-
-                    # Check for NaN or extreme values
-                    for coord in coords:
-                        if abs(coord) > 1.0:  # More than 1 meter seems unreasonable
-                            print(f"Extreme eye coordinate: {coord}")
-                            return False
+                if eye_position and not _validate_eye_position(eye_position):
+                    return False
 
     return True
 
@@ -234,7 +241,7 @@ def validate_dataset(json_file: Path) -> bool:
     print(f"\nValidating: {json_file.name}")
 
     try:
-        with open(json_file, "r") as f:
+        with Path.open(json_file, encoding="utf-8") as f:
             data = json.load(f)
     except Exception as e:
         print(f"Failed to load JSON: {e}")
@@ -258,7 +265,7 @@ def validate_dataset(json_file: Path) -> bool:
     return all_passed
 
 
-def main():
+def main() -> None:
     """Validate all generated datasets."""
     print("Data Validation")
     print("=" * 30)

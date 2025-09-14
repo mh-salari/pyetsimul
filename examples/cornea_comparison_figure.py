@@ -1,20 +1,22 @@
 #!/usr/bin/env python3
-"""
-Cornea comparison figure.
+"""Cornea comparison figure.
 
 Compares conic vs spherical cornea shapes using camera view visualization.
 """
 
-import numpy as np
-import matplotlib.pyplot as plt
 from pathlib import Path
-from pyetsimul.core import Eye, Camera
-from pyetsimul.core.cornea import SphericalCornea, ConicCornea
-from pyetsimul.types import Position3D, RotationMatrix
+
+import matplotlib.pyplot as plt
+import numpy as np
 from tabulate import tabulate
 
+from pyetsimul.core import Camera, Eye
+from pyetsimul.core.cornea import ConicCornea, SphericalCornea
+from pyetsimul.types import Position3D, RotationMatrix
 
-def main():
+
+def main() -> None:
+    """Compare conic vs spherical cornea shapes using camera view visualization."""
     # Create two eyes with different cornea types
     eye_spherical = Eye(cornea=SphericalCornea(), pupil_boundary_points=300)
     eye_conic = Eye(cornea=ConicCornea(), pupil_boundary_points=300)
@@ -56,7 +58,7 @@ def main():
     image_conic = camera.take_image(eye_conic, [])
 
     # Create single figure comparing both cornea types
-    fig, ax = plt.subplots(1, 1, figsize=(8, 8))
+    _, ax = plt.subplots(1, 1, figsize=(8, 8))
 
     # Plot pupil boundaries - convert structured types to numpy
     pupil_boundary = image_spherical.pupil_boundary

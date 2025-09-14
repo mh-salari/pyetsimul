@@ -1,44 +1,45 @@
-"""
-This module re-exports the structured data types from its submodules
-and defines common type aliases for the project.
+"""Structured data types and common type aliases for the project.
+
+Re-exports the structured data types from submodules and defines
+common type aliases used throughout PyEtSimul.
 """
 
 from .algorithms import (
     AlgorithmState,
     GazePrediction,
-    PolynomialGazeModelState,
     PolynomialFeatures,
+    PolynomialGazeModelState,
 )
 from .geometry import (
+    Direction3D,
     IntersectionResult,
     Point2D,
     Point3D,
-    Ray,
-    Vector3D,
     Position3D,
-    Direction3D,
-    TransformationMatrix,
+    Ray,
     RotationMatrix,
+    TransformationMatrix,
+    Vector3D,
 )
-from .imaging import CameraImage, CameraMatrix, EyeMeasurement, PupilData, ProjectionResult
+from .imaging import CameraImage, CameraMatrix, EyeMeasurement, ProjectionResult, PupilData
 
 __all__ = [
     "AlgorithmState",
+    "CameraImage",
+    "CameraMatrix",
+    "Direction3D",
+    "EyeMeasurement",
     "GazePrediction",
-    "PolynomialGazeModelState",
-    "PolynomialFeatures",
     "IntersectionResult",
     "Point2D",
     "Point3D",
-    "Ray",
-    "Vector3D",
+    "PolynomialFeatures",
+    "PolynomialGazeModelState",
     "Position3D",
-    "Direction3D",
-    "CameraImage",
-    "CameraMatrix",
-    "EyeMeasurement",
-    "PupilData",
     "ProjectionResult",
+    "PupilData",
+    "Ray",
     "RotationMatrix",
     "TransformationMatrix",
+    "Vector3D",
 ]

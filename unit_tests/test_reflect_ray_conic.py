@@ -1,10 +1,10 @@
 """Unit tests for reflect_ray_conic function."""
 
-from pyetsimul.optics.reflections import reflect_ray_sphere, reflect_ray_conic
-from pyetsimul.types import Ray, Point3D, Direction3D, Position3D
+from pyetsimul.optics.reflections import reflect_ray_conic, reflect_ray_sphere
+from pyetsimul.types import Direction3D, Point3D, Position3D, Ray
 
 
-def test_conic_equals_sphere_reflection():
+def test_conic_equals_sphere_reflection() -> None:
     """Test conic reflection with k=0 gives sphere behavior."""
     # Off-axis ray for realistic reflection
     ray_origin = Point3D(-1.0, 0.5, -2.0)

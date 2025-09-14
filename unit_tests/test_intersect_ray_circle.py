@@ -1,11 +1,12 @@
 """Unit tests for intersect_ray_circle function."""
 
 import numpy as np
+
 from pyetsimul.geometry.intersections import intersect_ray_circle
-from pyetsimul.types import Ray, Point3D, Direction3D, IntersectionResult
+from pyetsimul.types import Direction3D, IntersectionResult, Point3D, Ray
 
 
-def test_normal_intersection():
+def test_normal_intersection() -> None:
     """Test ray intersecting circle with MATLAB reference values."""
     # Ray hitting circle from below (returns closest intersection)
     ray_origin = Point3D(0.0, -2.0, 0.0)  # Ray origin (z=0 for 2D context)
@@ -23,7 +24,7 @@ def test_normal_intersection():
     result.point.assert_close(expected_pos, rtol=1e-14, atol=1e-15)
 
 
-def test_tangent_intersection():
+def test_tangent_intersection() -> None:
     """Test ray tangent to circle with MATLAB reference values."""
     # Ray just touching circle surface
     ray_origin = Point3D(1.0, -2.0, 0.0)  # Ray origin
@@ -41,7 +42,7 @@ def test_tangent_intersection():
     result.point.assert_close(expected_pos, rtol=1e-14, atol=1e-15)
 
 
-def test_ray_missing_circle():
+def test_ray_missing_circle() -> None:
     """Test ray that misses circle - should return None."""
     # Ray misses circle completely
     ray_origin = Point3D(2.0, -2.0, 0.0)  # Ray origin
@@ -56,7 +57,7 @@ def test_ray_missing_circle():
     assert not result.intersects
 
 
-def test_ray_inside_circle():
+def test_ray_inside_circle() -> None:
     """Test ray starting inside circle with MATLAB reference values."""
     # Ray origin at circle center
     ray_origin = Point3D(0.0, 0.0, 0.0)  # Ray origin (at center)
@@ -74,7 +75,7 @@ def test_ray_inside_circle():
     result.point.assert_close(expected_pos, rtol=1e-14, atol=1e-15)
 
 
-def test_non_unit_direction():
+def test_non_unit_direction() -> None:
     """Test with non-unit ray direction and MATLAB reference values."""
     # Ray direction with length 2.0 (should be normalized)
     ray_origin = Point3D(0.0, -3.0, 0.0)  # Ray origin
@@ -92,7 +93,7 @@ def test_non_unit_direction():
     result.point.assert_close(expected_pos, rtol=1e-14, atol=1e-15)
 
 
-def test_diagonal_intersection():
+def test_diagonal_intersection() -> None:
     """Test diagonal ray intersection with MATLAB reference values."""
     # Ray moving diagonally
     ray_origin = Point3D(-2.0, -2.0, 0.0)  # Ray origin
@@ -115,7 +116,7 @@ def test_diagonal_intersection():
     assert abs(dist_from_center - expected_dist) < 1e-15
 
 
-def test_output_properties():
+def test_output_properties() -> None:
     """Test that output has correct properties."""
     ray_origin = Point3D(0.0, -2.0, 0.0)
     ray_direction = Direction3D(0.0, 1.0, 0.0)

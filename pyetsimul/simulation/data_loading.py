@@ -19,6 +19,7 @@ def load_experiment_data(experiment_name: str, output_dir: str | Path = "outputs
 
     Raises:
         FileNotFoundError: If no cached dataset exists for this experiment name
+
     """
     output_path = Path(output_dir)
     safe_filename = sanitize_filename(experiment_name)
@@ -28,7 +29,7 @@ def load_experiment_data(experiment_name: str, output_dir: str | Path = "outputs
     if not cache_path.exists():
         raise FileNotFoundError(f"No cached dataset found for experiment '{experiment_name}' at: {cache_path}")
 
-    with open(cache_path, "r") as f:
+    with Path.open(cache_path, encoding="utf-8") as f:
         cached_data = json.load(f)
 
     # Return in the format expected by comparison functions

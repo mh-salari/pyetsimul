@@ -1,11 +1,12 @@
 """Unit tests for find_reflection_conic function."""
 
 import numpy as np
-from pyetsimul.optics.reflections import find_reflection_sphere, find_reflection_conic
-from pyetsimul.types import Position3D, Point3D
+
+from pyetsimul.optics.reflections import find_reflection_conic, find_reflection_sphere
+from pyetsimul.types import Point3D, Position3D
 
 
-def test_conic_equals_sphere_reflection():
+def test_conic_equals_sphere_reflection() -> None:
     """Test conic reflection with k=0 gives sphere behavior."""
     # Realistic eye tracking geometry based on example.py
     light_pos = Position3D(200e-3, 0, 0)  # Light position (200mm in x)
@@ -30,7 +31,7 @@ def test_conic_equals_sphere_reflection():
     sphere_glint.assert_close(conic_glint, rtol=1e-12, atol=1e-14)
 
 
-def test_conic_output_properties():
+def test_conic_output_properties() -> None:
     """Test that conic reflection output has correct properties."""
     light_pos = Position3D(200e-3, 0, 0)  # Realistic light position
     camera_pos = Position3D(0, 0, -50e-3)  # Realistic camera position
@@ -48,7 +49,7 @@ def test_conic_output_properties():
     assert np.all(np.isfinite(np.array(glint_pos)))
 
 
-def test_prolate_vs_oblate_conic():
+def test_prolate_vs_oblate_conic() -> None:
     """Test that prolate and oblate conics give different results."""
     light_pos = Position3D(200e-3, 0, 0)  # Realistic light position
     camera_pos = Position3D(0, 0, -50e-3)  # Realistic camera position

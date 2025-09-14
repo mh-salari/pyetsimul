@@ -1,7 +1,8 @@
 """Target 3D position variations."""
 
 import math
-from typing import Iterable
+from collections.abc import Iterable
+
 from ..types import Position3D
 from .core import TargetVariation
 from .grid_base import RegularGrid
@@ -12,7 +13,17 @@ class TargetPositionVariation(TargetVariation):
 
     def __init__(
         self, grid_center: Position3D, dx: list[float], dy: list[float], dz: list[float], grid_size: list[int]
-    ):
+    ) -> None:
+        """Initialize target position variation.
+
+        Args:
+            grid_center: Center position for grid
+            dx: X-axis displacement ranges
+            dy: Y-axis displacement ranges
+            dz: Z-axis displacement ranges
+            grid_size: Number of steps in each dimension
+
+        """
         super().__init__("target_position")
         self.grid = RegularGrid(center=grid_center, dx=dx, dy=dy, dz=dz, grid_size=grid_size)
 
@@ -22,6 +33,7 @@ class TargetPositionVariation(TargetVariation):
         return f"gaze targets across {total_targets} screen positions"
 
     def __len__(self) -> int:
+        """Return the total number of target positions."""
         return math.prod(self.grid.grid_size)
 
     def generate_values(self) -> Iterable[Position3D]:
