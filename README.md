@@ -27,15 +27,6 @@ cd pyetsimul
 uv sync
 ```
 
-3. Run examples:
-```bash
-uv run python examples/example.py
-uv run python examples/custom_polynomial_example.py
-uv run python examples/eye_anatomy.py
-uv run python examples/setup_visualization.py
-uv run python examples/camera_distortion.py
-uv run python examples/realistic_pupil.py
-```
 
 ### Using pip (Alternative)
 
@@ -64,6 +55,10 @@ git clone https://github.com/mh-salari/pyetsimul.git
 cd pyetsimul
 python3 -m pip install -e .
 ```
+
+## Examples
+
+After installation, explore the various examples in the `examples/` directory to see PyEtSimul in action.
 
 ## Citation
 
