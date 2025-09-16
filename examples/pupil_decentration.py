@@ -179,10 +179,7 @@ def main() -> None:
                 offset_text = "No decentration"
 
             # Create title - show size name only on top row
-            if row == 0:
-                title = f"{size_name}\n({diameter * 1000:.1f} mm)\n{offset_text}"
-            else:
-                title = f"{diameter * 1000:.1f} mm\n{offset_text}"
+            title = f"{size_name} ({diameter * 1000:.1f} mm)\n{offset_text}" if row == 0 else f"{offset_text}"
             ax.set_title(title, fontsize=9, fontweight="bold")
 
             # Set consistent axis limits
