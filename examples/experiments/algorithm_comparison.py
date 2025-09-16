@@ -10,6 +10,7 @@ from config import (
     create_experiment_config,
     eye_position_variation,
     pupil_size_variation,
+    pupil_size_with_decentration_variation,
     target_position_variation,
 )
 
@@ -115,6 +116,7 @@ def main() -> None:
         "Eye Position Variation": eye_position_variation,
         "Target Position Variation": target_position_variation,
         "Pupil Size Variation": pupil_size_variation,
+        "Pupil Size with Decentration": pupil_size_with_decentration_variation,
         "Angle Kappa Variation": angle_kappa_variation,
         "Corneal Radius Variation": corneal_radius_variation,
         "Corneal Thickness Variation": corneal_thickness_variation,

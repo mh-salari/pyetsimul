@@ -5,6 +5,7 @@ from .anatomy import (
     CorneaRadiusVariation,
     CorneaThicknessVariation,
     PupilSizeVariation,
+    PupilSizeWithDecentrationVariation,
 )
 from .composed_variation import ComposedVariation, SequentialVariation
 from .config import (
@@ -32,6 +33,7 @@ __all__ = [
     "GridGenerator",
     "ParameterVariation",
     "PupilSizeVariation",
+    "PupilSizeWithDecentrationVariation",
     "RandomGrid",
     "RegularGrid",
     "SequentialVariation",

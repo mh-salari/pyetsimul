@@ -9,6 +9,7 @@ This module defines:
 from pathlib import Path
 
 from pyetsimul.core import Camera, Eye, Light
+from pyetsimul.core.pupil_decentration import PupilDecentrationConfig
 from pyetsimul.simulation import (
     AngleKappaVariation,
     ComposedVariation,
@@ -17,6 +18,7 @@ from pyetsimul.simulation import (
     ExperimentConfig,
     EyePositionVariation,
     PupilSizeVariation,
+    PupilSizeWithDecentrationVariation,
     TargetPositionVariation,
 )
 from pyetsimul.types import Position3D, RotationMatrix
@@ -92,6 +94,16 @@ angle_kappa_variation = AngleKappaVariation(
 corneal_radius_variation = CorneaRadiusVariation([7.5e-3, 8.5e-3], 20)
 
 corneal_thickness_variation = CorneaThicknessVariation([0.4e-3, 0.7e-3], 15)
+
+pupil_size_with_decentration_variation = PupilSizeWithDecentrationVariation(
+    diameter_range=[3.0e-3, 7.5e-3],
+    decentration_config=PupilDecentrationConfig(
+        enabled=True,
+        model_name="wildenmann_2013",
+        baseline_diameter=4.75e-3,  # Wildenmann baseline
+    ),
+    num_steps=10,
+)
 
 # Multi-parameter variations
 angle_kappa_pupil_variation = ComposedVariation(

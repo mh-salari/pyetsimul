@@ -9,6 +9,7 @@ from .generic import GenericEyeVariation
 
 if TYPE_CHECKING:
     from ..core.eye import Eye
+    from ..core.pupil_decentration import PupilDecentrationConfig
 
 
 class PupilSizeVariation(GenericEyeVariation):
@@ -132,3 +133,46 @@ class CorneaThicknessVariation(GenericEyeVariation):
         # So: anterior_radius = (desired_thickness / _thickness_offset_default) * _r_cornea_default
         desired_radius = (value / CorneaDefaults.THICKNESS_OFFSET) * CorneaDefaults.ANTERIOR_RADIUS
         cornea.anterior_radius = desired_radius
+
+
+class PupilSizeWithDecentrationVariation(GenericEyeVariation):
+    """Pupil size variation with decentration effects enabled."""
+
+    def __init__(
+        self, diameter_range: list[float], decentration_config: "PupilDecentrationConfig", num_steps: int = 10
+    ) -> None:
+        """Initialize pupil size variation with decentration.
+
+        Args:
+            diameter_range: Range of pupil diameters in meters
+            decentration_config: PupilDecentrationConfig to apply
+            num_steps: Number of steps in variation
+
+        """
+        super().__init__("pupil_diameter", diameter_range, num_steps)
+        self.decentration_config = decentration_config
+
+    def describe(self) -> str:
+        """Return description of pupil size variation with decentration."""
+        min_mm = self.value_range[0] * 1000
+        max_mm = self.value_range[1] * 1000
+
+        config = self.decentration_config
+        baseline_mm = config.baseline_diameter * 1000 if config.baseline_diameter else "auto"
+
+        decentration_details = f"{config.model_name}, baseline={baseline_mm}mm"
+        if config.use_individual_variation:
+            seed_info = f"seed={config.individual_seed}" if config.individual_seed else "random"
+            decentration_details += f", individual_variation ({seed_info})"
+        else:
+            params_str = ", ".join(f"{k}={v:.2f}" for k, v in config.get_model_params().items())
+            decentration_details += f", population averages: {params_str}"
+
+        return f"pupil diameter {min_mm:.1f}-{max_mm:.1f}mm with decentration ({self.num_steps} steps, {decentration_details})"
+
+    def apply_to_eye(self, eye: "Eye", value: float) -> None:
+        """Apply decentration config and set pupil diameter."""
+        # Apply the decentration config
+        eye.decentration_config = self.decentration_config
+        # Set pupil diameter - this will trigger decentration
+        eye.set_pupil_diameter(value)
