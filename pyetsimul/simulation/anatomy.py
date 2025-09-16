@@ -176,3 +176,78 @@ class PupilSizeWithDecentrationVariation(GenericEyeVariation):
         eye.decentration_config = self.decentration_config
         # Set pupil diameter - this will trigger decentration
         eye.set_pupil_diameter(value)
+
+
+class PupilDecentrationVariation(GenericEyeVariation):
+    """Pupil decentration variation without changing pupil size.
+
+    Uses move_pupil_position to apply offsets in x, y, and/or z directions.
+    """
+
+    def __init__(
+        self,
+        dx_range: list[float] | None = None,
+        dy_range: list[float] | None = None,
+        dz_range: list[float] | None = None,
+        num_steps: int = 10,
+    ) -> None:
+        """Initialize pupil decentration variation.
+
+        Args:
+            dx_range: [min_dx, max_dx] range for x offset in meters
+            dy_range: [min_dy, max_dy] range for y offset in meters
+            dz_range: [min_dz, max_dz] range for z offset in meters
+            num_steps: Number of steps in variation
+
+        """
+        if dx_range is None and dy_range is None and dz_range is None:
+            raise ValueError("At least one of dx_range, dy_range, or dz_range must be provided")
+
+        # Use first available range as primary for GenericEyeVariation
+        primary_range = dx_range or dy_range or dz_range
+        super().__init__("pupil_decentration", primary_range, num_steps)
+
+        self.dx_range = dx_range
+        self.dy_range = dy_range
+        self.dz_range = dz_range
+
+    def describe(self) -> str:
+        """Return description of pupil decentration variation."""
+        ranges_desc = []
+        if self.dx_range:
+            min_dx, max_dx = self.dx_range
+            ranges_desc.append(f"dx: {min_dx * 1000:.2f}-{max_dx * 1000:.2f}mm")
+        if self.dy_range:
+            min_dy, max_dy = self.dy_range
+            ranges_desc.append(f"dy: {min_dy * 1000:.2f}-{max_dy * 1000:.2f}mm")
+        if self.dz_range:
+            min_dz, max_dz = self.dz_range
+            ranges_desc.append(f"dz: {min_dz * 1000:.2f}-{max_dz * 1000:.2f}mm")
+
+        ranges_str = ", ".join(ranges_desc)
+        return f"pupil decentration {ranges_str} ({self.num_steps} steps)"
+
+    def apply_to_eye(self, eye: "Eye", value: float) -> None:
+        """Apply pupil decentration by moving pupil position."""
+        # Calculate interpolation factor (0 to 1)
+        factor = (value - self.value_range[0]) / (self.value_range[1] - self.value_range[0])
+
+        # Calculate offsets for each axis
+        dx = 0.0
+        dy = 0.0
+        dz = 0.0
+
+        if self.dx_range:
+            min_dx, max_dx = self.dx_range
+            dx = min_dx + factor * (max_dx - min_dx)
+
+        if self.dy_range:
+            min_dy, max_dy = self.dy_range
+            dy = min_dy + factor * (max_dy - min_dy)
+
+        if self.dz_range:
+            min_dz, max_dz = self.dz_range
+            dz = min_dz + factor * (max_dz - min_dz)
+
+        # Apply the pupil position offset
+        eye.move_pupil_position(dx, dy, dz)

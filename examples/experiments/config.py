@@ -17,6 +17,7 @@ from pyetsimul.simulation import (
     CorneaThicknessVariation,
     ExperimentConfig,
     EyePositionVariation,
+    PupilDecentrationVariation,
     PupilSizeVariation,
     PupilSizeWithDecentrationVariation,
     TargetPositionVariation,
@@ -102,6 +103,12 @@ pupil_size_with_decentration_variation = PupilSizeWithDecentrationVariation(
         model_name="wildenmann_2013",
         baseline_diameter=4.75e-3,  # Wildenmann baseline
     ),
+    num_steps=10,
+)
+
+pupil_decentration_variation = PupilDecentrationVariation(
+    dx_range=[-0.2e-3, 0.2e-3],  # ±0.2mm horizontal (nasal-temporal) from Wildenmann
+    dy_range=[-0.3e-3, 0.3e-3],  # ±0.3mm vertical (superior-inferior) from Wildenmann
     num_steps=10,
 )
 

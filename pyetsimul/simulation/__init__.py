@@ -4,6 +4,7 @@ from .anatomy import (
     AngleKappaVariation,
     CorneaRadiusVariation,
     CorneaThicknessVariation,
+    PupilDecentrationVariation,
     PupilSizeVariation,
     PupilSizeWithDecentrationVariation,
 )
@@ -32,6 +33,7 @@ __all__ = [
     "GenericEyeVariation",
     "GridGenerator",
     "ParameterVariation",
+    "PupilDecentrationVariation",
     "PupilSizeVariation",
     "PupilSizeWithDecentrationVariation",
     "RandomGrid",
