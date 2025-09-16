@@ -79,6 +79,33 @@ class EyelidDefaults:
     BISECTION_ITERATIONS_AREA: int = 120
 
 
+@dataclass
+class PupilDecentrationDefaults:
+    """Pupil decentration parameters from Wildenmann & Schaeffel (2013).
+
+    Reference: Wildenmann U & Schaeffel F. Variations of pupil centration and their
+    effects on video eye tracking. Ophthalmic Physiol Opt 2013, 33, 634-641.
+
+    """
+
+    # Right eye (OD): horizontal -0.03±0.07
+    RIGHT_EYE_X_COEFF: float = -0.03  # mm/mm
+    RIGHT_EYE_X_STD: float = 0.07  # mm/mm
+    # Right eye (OD): vertical -0.04±0.06 mm/mm
+    RIGHT_EYE_Y_COEFF: float = -0.04  # mm/mm
+    RIGHT_EYE_Y_STD: float = 0.06  # mm/mm
+
+    # Left eye (OS): horizontal +0.03±0.04
+    LEFT_EYE_X_COEFF: float = 0.03  # mm/mm
+    LEFT_EYE_X_STD: float = 0.04  # mm/mm
+    # Left eye (OS): vertical -0.05±0.12 mm/mm
+    LEFT_EYE_Y_COEFF: float = -0.05  # mm/mm
+    LEFT_EYE_Y_STD: float = 0.12  # mm/mm
+
+    # Baseline diameter used in the original study
+    BASELINE_DIAMETER: float = 4.75e-3  # m (4.75±0.52 mm at 800 lux)
+
+
 def pprint_anatomical_defaults() -> None:
     """Print anatomical default values in formatted table."""
     print("Eye Anatomy:")

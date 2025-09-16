@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
 """Pupil decentration comparison figure.
 
-Shows pupil decentration across different pupil sizes and individual variation profiles.
-Three decentration types: no decentration, random individual variation, and fixed seed individual.
+Shows pupil decentration across different pupil sizes comparing eye types.
+Four configurations: right eye population average, right eye individual, left eye population average, left eye individual.
 Five pupil sizes from constricted to dilated conditions.
 """
 
@@ -28,48 +28,60 @@ def main() -> None:
 
     baseline_diameter = 4.75e-3  # Baseline from Wildenmann & Schaeffel (2013)
 
-    # Three decentration configurations
+    # Four decentration configurations: right eye, individual right, left eye, individual left
     eye_configs = [
         (
-            "Standard Model",
+            "Right Eye (Population Average)",
             PupilDecentrationConfig(
                 enabled=True,
                 model_name="wildenmann_2013",
                 baseline_diameter=baseline_diameter,
-                # Uses default 0.05 mm/mm coefficients from paper
+                which_eye="right",  # Uses -0.03, -0.04 mm/mm
             ),
         ),
         (
-            "Random Individual",
+            "Right Eye (Individual Variation)",
             PupilDecentrationConfig(
                 enabled=True,
                 model_name="wildenmann_2013",
                 baseline_diameter=baseline_diameter,
-                use_individual_variation=True,  # Random coefficients from 0.044-0.179 range
+                which_eye="right",
+                use_individual_variation=True,  # Random around right eye mean
             ),
         ),
         (
-            "Fixed Seed (42)",
+            "Left Eye (Population Average)",
             PupilDecentrationConfig(
                 enabled=True,
                 model_name="wildenmann_2013",
                 baseline_diameter=baseline_diameter,
-                use_individual_variation=True,
-                individual_seed=42,  # Reproducible individual profile
+                which_eye="left",  # Uses +0.03, -0.05 mm/mm
+            ),
+        ),
+        (
+            "Left Eye (Individual Variation)",
+            PupilDecentrationConfig(
+                enabled=True,
+                model_name="wildenmann_2013",
+                baseline_diameter=baseline_diameter,
+                which_eye="left",
+                use_individual_variation=True,  # Random around left eye mean
             ),
         ),
     ]
 
-    # Create figure with 3 rows (eye types) x 5 columns (pupil sizes)
-    fig, axes = plt.subplots(3, 5, figsize=(20, 12))
+    # Create figure with 4 rows (eye types) x 5 columns (pupil sizes)
+    fig, axes = plt.subplots(4, 5, figsize=(15, 14))
 
-    # Print individual coefficients for reference
-    print("Individual variation coefficients:")
+    # Print coefficients for reference
+    print("Decentration coefficients:")
     for config_name, config in eye_configs:
-        if config.enabled and hasattr(config, "x_coeff") and config.x_coeff is not None:
-            print(f"  {config_name}: x_coeff={config.x_coeff:.6f}, y_coeff={config.y_coeff:.6f}")
+        # Get model parameters to show the actual coefficients being used
+        params = config.get_model_params()
+        if params and "x_coeff" in params:
+            print(f"  {config_name}: x_coeff={params['x_coeff']:.6f}, y_coeff={params['y_coeff']:.6f}")
         else:
-            print(f"  {config_name}: No individual coefficients (disabled or using defaults)")
+            print(f"  {config_name}: No coefficients available")
     print()
 
     for row, (config_name, config) in enumerate(eye_configs):
@@ -158,12 +170,19 @@ def main() -> None:
 
             # Calculate decentration info for title
             diameter_change = diameter - baseline_diameter
-            expected_x_offset = config.x_coeff * diameter_change * 1000
-            expected_y_offset = config.y_coeff * diameter_change * 1000
-            offset_text = f"Δx={expected_x_offset:.2f}, Δy={expected_y_offset:.2f} mm"
+            params = config.get_model_params()
+            if params and "x_coeff" in params:
+                expected_x_offset = params["x_coeff"] * diameter_change * 1000
+                expected_y_offset = params["y_coeff"] * diameter_change * 1000
+                offset_text = f"Δx={expected_x_offset:.2f}, Δy={expected_y_offset:.2f} mm"
+            else:
+                offset_text = "No decentration"
 
-            # Create title
-            title = f"{size_name}\n(d = {diameter * 1000:.1f} mm)\n{offset_text}"
+            # Create title - show size name only on top row
+            if row == 0:
+                title = f"{size_name}\n({diameter * 1000:.1f} mm)\n{offset_text}"
+            else:
+                title = f"{diameter * 1000:.1f} mm\n{offset_text}"
             ax.set_title(title, fontsize=9, fontweight="bold")
 
             # Set consistent axis limits
@@ -179,7 +198,7 @@ def main() -> None:
             # Label axes only on left and bottom
             if col == 0:
                 ax.set_ylabel("y (mm)", fontsize=9)
-            if row == 2:
+            if row == 3:
                 ax.set_xlabel("x (mm)", fontsize=9)
 
         # Add row labels on the right
@@ -191,7 +210,7 @@ def main() -> None:
             rotation=90,
             va="center",
             ha="left",
-            fontsize=12,
+            fontsize=10,
             fontweight="bold",
         )
 
@@ -201,8 +220,8 @@ def main() -> None:
 
     # Add main title
     fig.suptitle(
-        "Pupil Decentration: Individual Variation Profiles\nWildenmann & Schaeffel (2013) Model",
-        fontsize=16,
+        "Pupil Decentration: Eye Type Comparison\nWildenmann & Schaeffel (2013) Model",
+        fontsize=14,
         fontweight="bold",
         y=0.98,
     )

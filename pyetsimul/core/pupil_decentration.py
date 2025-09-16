@@ -11,6 +11,7 @@ from dataclasses import dataclass
 import numpy as np
 
 from ..types import Position3D
+from .default_configs import PupilDecentrationDefaults
 
 
 class PupilDecentrationModel(ABC):
@@ -156,6 +157,7 @@ class PupilDecentrationConfig:
     enabled: bool = False
     model_name: str = "wildenmann_2013"
     baseline_diameter: float | None = None  # Auto-set to current diameter if None
+    which_eye: str = "right"  # Which eye this config is for
 
     # Common parameters for built-in models
     x_coeff: float | None = None
@@ -171,13 +173,33 @@ class PupilDecentrationConfig:
             # Generate individual coefficients ONCE when config is created
             rng = np.random.default_rng(self.individual_seed)
 
-            # Sample from paper's observed range: 0.044-0.179 mm/mm
-            self.x_coeff = rng.uniform(0.044, 0.179)
-            self.y_coeff = rng.uniform(0.044, 0.179)
+            # Sample with preserved anatomical direction (no sign flip)
+            if self.which_eye == "left":
+                x_variation = rng.normal(0, PupilDecentrationDefaults.LEFT_EYE_X_STD)
+                y_variation = rng.normal(0, PupilDecentrationDefaults.LEFT_EYE_Y_STD)
+                self.x_coeff = PupilDecentrationDefaults.LEFT_EYE_X_COEFF + abs(x_variation) * (
+                    1 if PupilDecentrationDefaults.LEFT_EYE_X_COEFF >= 0 else -1
+                )
+                self.y_coeff = PupilDecentrationDefaults.LEFT_EYE_Y_COEFF + abs(y_variation) * (
+                    1 if PupilDecentrationDefaults.LEFT_EYE_Y_COEFF >= 0 else -1
+                )
+            else:  # right eye
+                x_variation = rng.normal(0, PupilDecentrationDefaults.RIGHT_EYE_X_STD)
+                y_variation = rng.normal(0, PupilDecentrationDefaults.RIGHT_EYE_Y_STD)
+                self.x_coeff = PupilDecentrationDefaults.RIGHT_EYE_X_COEFF + abs(x_variation) * (
+                    1 if PupilDecentrationDefaults.RIGHT_EYE_X_COEFF >= 0 else -1
+                )
+                self.y_coeff = PupilDecentrationDefaults.RIGHT_EYE_Y_COEFF + abs(y_variation) * (
+                    1 if PupilDecentrationDefaults.RIGHT_EYE_Y_COEFF >= 0 else -1
+                )
         elif self.enabled and self.x_coeff is None and self.y_coeff is None:
-            # Set standard model coefficients (population average from paper)
-            self.x_coeff = 0.05  # 0.05 mm/mm from Wildenmann & Schaeffel (2013)
-            self.y_coeff = 0.05  # 0.05 mm/mm from Wildenmann & Schaeffel (2013)
+            # Set eye-specific coefficients (population average from paper)
+            if self.which_eye == "left":
+                self.x_coeff = PupilDecentrationDefaults.LEFT_EYE_X_COEFF
+                self.y_coeff = PupilDecentrationDefaults.LEFT_EYE_Y_COEFF
+            else:  # right eye
+                self.x_coeff = PupilDecentrationDefaults.RIGHT_EYE_X_COEFF
+                self.y_coeff = PupilDecentrationDefaults.RIGHT_EYE_Y_COEFF
 
     def get_model_params(self) -> dict:
         """Get parameters to pass to model's calculate_offset method."""
