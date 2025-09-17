@@ -50,6 +50,17 @@ def main() -> None:
             ),
         ),
         (
+            "Right Eye (Direct Slope)",
+            PupilDecentrationConfig(
+                enabled=True,
+                model_name="wildenmann_2013",
+                baseline_diameter=baseline_diameter,
+                which_eye="right",
+                x_coeff=0.0903,     # parameters of right eye of Subject 5 in Wildenmann & Schaeffel (2013), see figure 3
+                y_coeff=-0.1794
+            ),
+        ),
+        (
             "Left Eye (Population Average)",
             PupilDecentrationConfig(
                 enabled=True,
@@ -70,8 +81,8 @@ def main() -> None:
         ),
     ]
 
-    # Create figure with 4 rows (eye types) x 5 columns (pupil sizes)
-    fig, axes = plt.subplots(4, 5, figsize=(15, 14))
+    # Create figure with 5 rows (eye types) x 5 columns (pupil sizes)
+    fig, axes = plt.subplots(5, 5, figsize=(15, 14))
 
     # Print coefficients for reference
     print("Decentration coefficients:")
