@@ -66,7 +66,8 @@ def look_at_target(eye: "Eye", target_position: Position3D) -> None:
 
     # Use Listing's law to compute eye rotation that aligns chosen axis with the target direction
     new_orientation = calculate_eye_rotation(rest_axis, direction_vec) @ eye.rest_orientation
-    eye.orientation = RotationMatrix(new_orientation)
+    # Preserve handedness from rest_orientation (allow left-handed if rest is left-handed)
+    eye.orientation = RotationMatrix(new_orientation, validate_handedness=False)
 
 
 def look_at_target_optical_then_kappa(eye: "Eye", target_position: Position3D) -> None:
