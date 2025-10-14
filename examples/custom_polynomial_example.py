@@ -6,10 +6,9 @@ and use it for eye tracking calibration.
 
 from pyetsimul.core import Camera, Eye, Light
 from pyetsimul.evaluation import accuracy_at_calibration_points
-from pyetsimul.gaze_models.polynomial import PolynomialGazeModel
+from pyetsimul.gaze_models.polynomial import PolynomialDescriptor, PolynomialGazeModel
 from pyetsimul.gaze_models.polynomial.polynomials import register_polynomial
 from pyetsimul.types import Position3D, RotationMatrix
-from pyetsimul.types.algorithms import PolynomialDescriptor
 
 # Custom third-order polynomial with cross-terms: [x³, y³, x²y, xy², x², y², xy, x, y, 1]
 # Mathematical model (same features for both X,Y):

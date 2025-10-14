@@ -6,7 +6,8 @@ Extensible registry system supporting user-defined polynomials.
 from collections.abc import Callable
 from dataclasses import dataclass
 
-from ...types.algorithms import PolynomialDescriptor, PolynomialFeatures
+from .polynomial_descriptor import PolynomialDescriptor
+from .polynomial_features import PolynomialFeatures
 
 # Hennessey et al. (2008) polynomial: [xy, x, y, 1]
 # Mathematical model (same features for both X,Y):
