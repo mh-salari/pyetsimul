@@ -4,12 +4,7 @@ Re-exports the structured data types from submodules and defines
 common type aliases used throughout PyEtSimul.
 """
 
-from .algorithms import (
-    AlgorithmState,
-    GazePrediction,
-    PolynomialFeatures,
-    PolynomialGazeModelState,
-)
+from .algorithms import AlgorithmState, GazePrediction
 from .geometry import (
     Direction3D,
     IntersectionResult,
@@ -33,8 +28,6 @@ __all__ = [
     "IntersectionResult",
     "Point2D",
     "Point3D",
-    "PolynomialFeatures",
-    "PolynomialGazeModelState",
     "Position3D",
     "ProjectionResult",
     "PupilData",

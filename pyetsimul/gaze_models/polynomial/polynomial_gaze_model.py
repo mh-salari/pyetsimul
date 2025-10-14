@@ -8,11 +8,12 @@ import time
 import numpy as np
 
 from pyetsimul.core import Camera, EyeTracker, Light
-from pyetsimul.types.algorithms import GazePrediction, PolynomialGazeModelState
+from pyetsimul.types.algorithms import GazePrediction
 from pyetsimul.types.geometry import Point3D, Position3D
 from pyetsimul.types.imaging import EyeMeasurement
 
 from ...geometry.plane_detection import PlaneInfo, detect_calibration_plane, summarize_plane_detection
+from .polynomial_state import PolynomialGazeModelState
 from .polynomials import get_polynomial
 
 
