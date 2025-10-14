@@ -50,6 +50,36 @@ def create_experiment_config(name: str) -> ExperimentConfig:
     )
 
 
+def create_homography_experiment_config(name: str) -> ExperimentConfig:
+    """Create experiment config for homography normalization (requires 4+ lights)."""
+    # Standard eye configuration (same as regular config)
+    eye = Eye()
+    eye.set_rest_orientation(RotationMatrix([[1, 0, 0], [0, 0, 1], [0, 1, 0]], validate_handedness=False))
+    eye.position = Position3D(0.0, 550e-3, 350e-3)
+
+    # Standard camera configuration (same as regular config)
+    camera = Camera(err=0.0, err_type="gaussian")
+    camera.orientation = RotationMatrix([[1, 0, 0], [0, 0, -1], [0, 1, 0]], validate_handedness=False)
+    camera.point_at(eye.position)
+
+    # Four lights at corners of calibration grid
+    lights = [
+        Light(position=Position3D(-200e-3, 0.0, 50e-3)),  # Bottom-left corner
+        Light(position=Position3D(200e-3, 0.0, 50e-3)),  # Bottom-right corner
+        Light(position=Position3D(200e-3, 0.0, 350e-3)),  # Top-right corner
+        Light(position=Position3D(-200e-3, 0.0, 350e-3)),  # Top-left corner
+    ]
+
+    return ExperimentConfig(
+        experiment_name=name,
+        eyes=[eye],
+        cameras=[camera],
+        lights=lights,  # Four lights instead of one
+        gaze_target=Position3D(0.0, 0.0, 200e-3),
+        output_dir=Path(__file__).parent / "outputs",
+    )
+
+
 # 3x3 calibration grid on XZ plane
 calibration_points = [
     Position3D(-200e-3, 0.0, 50e-3),
