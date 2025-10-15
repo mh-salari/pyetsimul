@@ -13,7 +13,7 @@ from config import (
 
 from pyetsimul.evaluation.calibration_analysis import accuracy_at_calibration_points
 from pyetsimul.evaluation.gaze_accuracy import evaluate_gaze_accuracy
-from pyetsimul.gaze_models import HomographyGazeModel
+from pyetsimul.gaze_models import HomographyNormalizationGazeModel
 from pyetsimul.simulation import DataGenerationStrategy
 from pyetsimul.visualization.gaze_accuracy_plots import GazeAccuracyPlotter
 
@@ -25,7 +25,7 @@ def main() -> None:
     print("Python Homography Normalization Gaze Model Test\n")
 
     # Setup tracker
-    et = HomographyGazeModel.create(
+    et = HomographyNormalizationGazeModel.create(
         base_config.cameras,
         base_config.lights,
         calibration_points,

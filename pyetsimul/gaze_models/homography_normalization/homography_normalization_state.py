@@ -13,7 +13,7 @@ from pyetsimul.types.geometry import Point2D
 
 
 @dataclass
-class HomographyGazeModelState(AlgorithmState):
+class HomographyNormalizationGazeModelState(AlgorithmState):
     """State for homography normalization gaze model."""
 
     # Calibration: normalized space → screen space mapping
@@ -59,7 +59,7 @@ class HomographyGazeModelState(AlgorithmState):
         }
 
     @classmethod
-    def deserialize(cls, data: dict) -> "HomographyGazeModelState":
+    def deserialize(cls, data: dict) -> "HomographyNormalizationGazeModelState":
         """Deserialize from dictionary.
 
         Restores the GP model from base64-encoded joblib bytes if present.
