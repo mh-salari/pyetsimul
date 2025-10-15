@@ -3,7 +3,7 @@
 Provides structured dataclasses to replace dictionary-based state management
 for eye tracking algorithms and their results.
 
-Note: Algorithm-specific state classes (PolynomialGazeModelState, HomographyGazeModelState, etc.)
+Note: Algorithm-specific state classes (PolynomialGazeModelState, HomographyNormalizationGazeModelState, etc.)
 are defined in their respective algorithm modules, not here.
 """
 

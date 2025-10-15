@@ -5,11 +5,11 @@ Gaze Estimation in Uncalibrated Setups" (ETRA 2010).
 """
 
 from .gaussian_process import GaussianProcessErrorCorrection
-from .homography_gaze_model import HomographyGazeModel
-from .homography_state import HomographyGazeModelState
+from .homography_normalization_gaze_model import HomographyNormalizationGazeModel
+from .homography_normalization_state import HomographyNormalizationGazeModelState
 
 __all__ = [
     "GaussianProcessErrorCorrection",
-    "HomographyGazeModel",
-    "HomographyGazeModelState",
+    "HomographyNormalizationGazeModel",
+    "HomographyNormalizationGazeModelState",
 ]

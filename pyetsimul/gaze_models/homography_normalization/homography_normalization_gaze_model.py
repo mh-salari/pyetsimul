@@ -15,11 +15,11 @@ from pyetsimul.types.imaging import EyeMeasurement
 
 from ...geometry.plane_detection import PlaneInfo, detect_calibration_plane, summarize_plane_detection
 from .gaussian_process import GaussianProcessErrorCorrection
-from .homography_state import HomographyGazeModelState
-from .homography_utils import apply_homography, compute_homography, order_points_by_angle
+from .homography_normalization_state import HomographyNormalizationGazeModelState
+from .homography_normalization_utils import apply_homography, compute_homography, order_points_by_angle
 
 
-class HomographyGazeModel(EyeTracker):
+class HomographyNormalizationGazeModel(EyeTracker):
     """Homography normalization gaze estimation eye tracker.
 
     Uses 4+ glints to normalize head pose effects through projective
@@ -38,7 +38,7 @@ class HomographyGazeModel(EyeTracker):
 
         """
         super().__init__(**kwargs)
-        self.algorithm_state = HomographyGazeModelState(ransac_threshold=ransac_threshold)
+        self.algorithm_state = HomographyNormalizationGazeModelState(ransac_threshold=ransac_threshold)
         self.use_gp_correction = use_gp_correction
         self.ransac_threshold = ransac_threshold
         self.plane_info: PlaneInfo | None = None
@@ -46,7 +46,7 @@ class HomographyGazeModel(EyeTracker):
     @property
     def algorithm_name(self) -> str:
         """Algorithm name identifier."""
-        return "homography"
+        return "homography_normalization"
 
     @classmethod
     def create(
@@ -57,10 +57,10 @@ class HomographyGazeModel(EyeTracker):
         use_gp_correction: bool = False,
         ransac_threshold: float = 5.0,
         use_refraction: bool = True,
-    ) -> "HomographyGazeModel":
-        """Create homography gaze model eye tracker setup.
+    ) -> "HomographyNormalizationGazeModel":
+        """Create homography normalization gaze model eye tracker setup.
 
-        Factory method for configuring complete homography gaze model tracker.
+        Factory method for configuring complete homography normalization gaze model tracker.
 
         Args:
             cameras: List of Camera objects
@@ -71,7 +71,7 @@ class HomographyGazeModel(EyeTracker):
             use_refraction: Whether to use refraction in optical calculations
 
         Returns:
-            HomographyGazeModel: Configured homography gaze model eye tracker
+            HomographyNormalizationGazeModel: Configured homography normalization gaze model eye tracker
 
         """
         return cls(
@@ -183,7 +183,7 @@ class HomographyGazeModel(EyeTracker):
             return GazePrediction(
                 gaze_point=Point3D(0, 0, 0),
                 confidence=0.0,
-                algorithm_name="homography",
+                algorithm_name="homography_normalization",
                 processing_time=time.time() - start_time,
                 intermediate_results=intermediate_results,
             )
@@ -194,7 +194,7 @@ class HomographyGazeModel(EyeTracker):
             return GazePrediction(
                 gaze_point=Point3D(0, 0, 0),
                 confidence=0.0,
-                algorithm_name="homography",
+                algorithm_name="homography_normalization",
                 processing_time=time.time() - start_time,
                 intermediate_results=intermediate_results,
             )
@@ -256,7 +256,7 @@ class HomographyGazeModel(EyeTracker):
         }
 
     @classmethod
-    def deserialize(cls, data: dict) -> "HomographyGazeModel":
+    def deserialize(cls, data: dict) -> "HomographyNormalizationGazeModel":
         """Deserialize eye tracker from dictionary.
 
         Restores complete eye tracker state including calibration and hardware configuration.
@@ -266,7 +266,7 @@ class HomographyGazeModel(EyeTracker):
             data: Dictionary from serialize() method
 
         Returns:
-            HomographyGazeModel: Fully configured and calibrated eye tracker
+            HomographyNormalizationGazeModel: Fully configured and calibrated eye tracker
 
         """
         # Deserialize hardware components
@@ -285,7 +285,7 @@ class HomographyGazeModel(EyeTracker):
         )
 
         # Restore algorithm state and plane info
-        tracker.algorithm_state = HomographyGazeModelState.deserialize(data["algorithm_state"])
+        tracker.algorithm_state = HomographyNormalizationGazeModelState.deserialize(data["algorithm_state"])
         if data["plane_info"]:
             tracker.plane_info = PlaneInfo.deserialize(data["plane_info"])
 
