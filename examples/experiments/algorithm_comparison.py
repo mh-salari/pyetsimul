@@ -17,8 +17,8 @@ from config import (
 
 from pyetsimul.evaluation.algorithm_comparison import AlgorithmRanking, compare_algorithms
 from pyetsimul.evaluation.calibration_analysis import accuracy_at_calibration_points
-from pyetsimul.gaze_models.polynomial import PolynomialGazeModel
-from pyetsimul.gaze_models.polynomial.polynomials import list_available_polynomials
+from pyetsimul.gaze_mapping.polynomial import PolynomialGazeModel
+from pyetsimul.gaze_mapping.polynomial.polynomials import list_available_polynomials
 from pyetsimul.simulation import DataGenerationStrategy
 from pyetsimul.simulation.config import ExperimentConfig
 from pyetsimul.simulation.core import ParameterVariation

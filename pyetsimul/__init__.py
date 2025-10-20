@@ -7,7 +7,7 @@ Exports core modules and common structured types for user convenience.
 __version__ = "1.0.0"
 
 # Make core modules easily accessible
-from . import core, gaze_models, geometry, optics, simulation, types
+from . import core, gaze_mapping, geometry, optics, simulation, types
 
 # Also import commonly used structured types for convenience
 from .types import (
@@ -31,7 +31,7 @@ __all__ = [
     "PupilData",
     "Vector3D",
     "core",
-    "gaze_models",
+    "gaze_mapping",
     "geometry",
     "optics",
     "simulation",

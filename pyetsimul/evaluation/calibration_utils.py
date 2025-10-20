@@ -7,7 +7,7 @@ including parameter printing and data formatting functions.
 from tabulate import tabulate
 
 from pyetsimul.core import EyeTracker
-from pyetsimul.gaze_models.polynomial.polynomials import get_polynomial_info
+from pyetsimul.gaze_mapping.polynomial.polynomials import get_polynomial_info
 
 
 def pprint_polynomial_parameters(et: EyeTracker) -> None:

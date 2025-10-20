@@ -56,8 +56,8 @@ def main() -> None:
                 model_name="wildenmann_2013",
                 baseline_diameter=baseline_diameter,
                 which_eye="right",
-                x_coeff=0.0903,     # parameters of right eye of Subject 5 in Wildenmann & Schaeffel (2013), see figure 3
-                y_coeff=-0.1794
+                x_coeff=0.0903,  # parameters of right eye of Subject 5 in Wildenmann & Schaeffel (2013), see figure 3
+                y_coeff=-0.1794,
             ),
         ),
         (

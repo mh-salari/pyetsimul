@@ -2,8 +2,8 @@
 
 import pytest
 
-from pyetsimul.gaze_models.polynomial import PolynomialDescriptor
-from pyetsimul.gaze_models.polynomial.polynomials import register_polynomial
+from pyetsimul.gaze_mapping.polynomial import PolynomialDescriptor
+from pyetsimul.gaze_mapping.polynomial.polynomials import register_polynomial
 
 
 def test_invalid_order_format() -> None:
