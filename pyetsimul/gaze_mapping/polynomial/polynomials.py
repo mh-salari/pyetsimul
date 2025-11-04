@@ -1,6 +1,34 @@
 """Polynomial feature functions for polynomial gaze model eye tracking.
 
 Extensible registry system supporting user-defined polynomials.
+
+References:
+Hennessey, C., Noureddin, B., & Lawrence, P. (2008). Fixation precision in
+    high-speed noncontact eye-gaze tracking. IEEE Transactions on Systems, Man,
+    and Cybernetics, Part B (Cybernetics), 38(2), 289-298.
+
+Hoormann, J., Jainta, S., & Jaschinski, W. (2007). The effect of calibration
+    errors on the accuracy of the eye movement recordings. Journal of Eye Movement
+    Research, 1(2).
+
+Cerrolaza, J. J., Villanueva, A., & Cabeza, R. (2008, March). Taxonomic study of
+    polynomial regressions applied to the calibration of video-oculographic systems.
+    In Proceedings of the 2008 symposium on Eye tracking research & applications
+    (pp. 259-266).
+
+Cerrolaza, J. J., Villanueva, A., & Cabeza, R. (2012). Study of polynomial mapping
+    functions in video-oculography eye trackers. ACM Transactions on Computer-Human
+    Interaction (TOCHI), 19(2), 1-25.
+
+
+Zhu, Z., & Ji, Q. (2005, June). Eye gaze tracking under natural head movements. In
+    2005 IEEE Computer Society Conference on Computer Vision and Pattern Recognition
+    (CVPR'05) (Vol. 1, pp. 918-923). IEEE.
+
+Blignaut, P., & Wium, D. (2013, August). The effect of mapping function on the accuracy
+    of a video-based eye tracker. In Proceedings of the 2013 conference on eye tracking
+    South Africa (pp. 39-46).
+
 """
 
 from collections.abc import Callable
