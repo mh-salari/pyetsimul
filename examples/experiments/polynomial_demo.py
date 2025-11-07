@@ -25,7 +25,7 @@ def main() -> None:
     print("Python Polynomial Gaze Model Test - Using Shared Configuration\n")
 
     # Setup tracker using shared config
-    method = "cerrolaza_2008"
+    method = "cerrolaza_2008_symmetric"
     et = PolynomialGazeModel.create(base_config.cameras, base_config.lights, calibration_points, method)
     et.use_legacy_look_at = True
 

@@ -65,9 +65,9 @@ HOORMAN_2008 = PolynomialDescriptor(
 # Mathematical model (same features for both X,Y):
 # gaze_x = a₀*x² + a₁*y² + a₂*x*y + a₃*x + a₄*y + a₅
 # gaze_y = b₀*x² + b₁*y² + b₂*x*y + b₃*x + b₄*y + b₅
-CERROLAZA_2008 = PolynomialDescriptor(
-    name="cerrolaza_2008",
-    description="Cerrolaza et al. (2008) second-order polynomial",
+CERROLAZA_2008_SYMMETRIC = PolynomialDescriptor(
+    name="cerrolaza_2008_symmetric",
+    description="Cerrolaza et al. (2008) symmetric second-order polynomial",
     terms=["x", "y", "x*y", "x", "y", "1"],
     orders=[2, 2, [1, 1], 1, 1, 0],
 )
@@ -97,13 +97,13 @@ ZHU_JI_2005 = PolynomialDescriptor(
 )
 
 
-# Cerrolaza and Villanueva (2008) polynomial: [[x², x, y, 1, 0], [x²*y, x², x*y, y, 1]]
+# Cerrolaza et al. (2008) polynomial: [[x², x, y, 1, 0], [x²*y, x², x*y, y, 1]]
 # Mathematical model (different features for X,Y):
 # gaze_x = a₀*x² + a₁*x + a₂*y + a₃
 # gaze_y = b₀*x²*y + b₁*x² + b₂*x*y + b₃*y + b₄
-CERROLAZA_VILLANUEVA_2008 = PolynomialDescriptor(
-    name="cerrolaza_villanueva_2008",
-    description="Cerrolaza and Villanueva (2008) asymmetric polynomial",
+CERROLAZA_2008_ASYMMETRIC = PolynomialDescriptor(
+    name="cerrolaza_2008_asymmetric",
+    description="Cerrolaza et al. (2008) asymmetric second-order polynomial",
     terms=[["x", "x", "y", "1", "1"], ["x*y", "x", "x*y", "y", "1"]],
     orders=[[2, 1, 1, 0, 0], [[2, 1], 2, [1, 1], 1, 0]],
 )
@@ -275,10 +275,10 @@ polynomial_registry = PolynomialRegistry()
 builtin_descriptors = [
     HENNESSEY_2008,
     HOORMAN_2008,
-    CERROLAZA_2008,
+    CERROLAZA_2008_SYMMETRIC,
     SECOND_ORDER,
     ZHU_JI_2005,
-    CERROLAZA_VILLANUEVA_2008,
+    CERROLAZA_2008_ASYMMETRIC,
     BLIGNAUT_WIUM_2013,
 ]
 
@@ -291,11 +291,11 @@ def register_polynomial(descriptor: PolynomialDescriptor) -> None:
     polynomial_registry.register(descriptor)
 
 
-def get_polynomial(name: str = "cerrolaza_2008") -> Callable[[float, float], PolynomialFeatures]:
+def get_polynomial(name: str = "cerrolaza_2008_symmetric") -> Callable[[float, float], PolynomialFeatures]:
     """Get polynomial function by name from global registry.
 
     Args:
-        name: Polynomial name (default: 'cerrolaza_2008')
+        name: Polynomial name (default: 'cerrolaza_2008_symmetric')
 
     Returns:
         Polynomial function that returns structured features
