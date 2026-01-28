@@ -40,6 +40,9 @@ class EyeTracker(ABC):
     # Refraction setting
     use_refraction: bool = True
 
+    # Pupil center calculation method: "ellipse" (default) or "center_of_mass"
+    pupil_center_method: str = "ellipse"
+
     # MATLAB compatibility mode for eye rotation
     use_legacy_look_at: bool = False
 
@@ -119,7 +122,9 @@ class EyeTracker(ABC):
             if not self.cameras:
                 raise ValueError("No cameras available for calibration")
 
-            camera_image = self.cameras[0].take_image(eye, self.lights, use_refraction=self.use_refraction)
+            camera_image = self.cameras[0].take_image(
+                eye, self.lights, use_refraction=self.use_refraction, center_method=self.pupil_center_method
+            )
 
             # Create pupil data from camera image
             pupil_data = PupilData(boundary_points=camera_image.pupil_boundary, center=camera_image.pupil_center)
@@ -166,7 +171,9 @@ class EyeTracker(ABC):
         eye.look_at(target, legacy=self.use_legacy_look_at)
 
         # Use first camera (TODO: multi-camera support is algorithm-dependent)
-        camera_image = self.cameras[0].take_image(eye, self.lights, use_refraction=self.use_refraction)
+        camera_image = self.cameras[0].take_image(
+            eye, self.lights, use_refraction=self.use_refraction, center_method=self.pupil_center_method
+        )
 
         # Create EyeMeasurement from camera image
         pupil_data = PupilData(boundary_points=camera_image.pupil_boundary, center=camera_image.pupil_center)
@@ -233,7 +240,9 @@ class EyeTracker(ABC):
             eye.look_at(target_position, legacy=self.use_legacy_look_at)
 
             # Take fresh camera measurement
-            camera_image = self.cameras[0].take_image(eye, self.lights, use_refraction=self.use_refraction)
+            camera_image = self.cameras[0].take_image(
+                eye, self.lights, use_refraction=self.use_refraction, center_method=self.pupil_center_method
+            )
 
             # Create measurement from camera image
             pupil_data = PupilData(boundary_points=camera_image.pupil_boundary, center=camera_image.pupil_center)

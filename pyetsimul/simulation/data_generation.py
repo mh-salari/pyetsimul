@@ -28,6 +28,7 @@ def _process_single_variation(args: tuple[Any, ...]) -> dict[str, Any]:
         gaze_target,
         use_legacy_look_at,
         use_refraction,
+        pupil_center_method,
     ) = args
 
     eye_copy = copy.deepcopy(eye)
@@ -42,6 +43,7 @@ def _process_single_variation(args: tuple[Any, ...]) -> dict[str, Any]:
         gaze_target=gaze_target,
         use_legacy_look_at=use_legacy_look_at,
         use_refraction=use_refraction,
+        pupil_center_method=pupil_center_method,
         save_to_file=False,  # Avoid child processes trying to save
     )
 
@@ -88,6 +90,7 @@ class DataGenerationStrategy(VariationStrategy):
         save_to_file: bool = True,
         use_legacy_look_at: bool = False,
         use_refraction: bool = True,
+        pupil_center_method: str = "ellipse",
     ) -> None:
         """Initialize data generation strategy with complete experimental setup.
 
@@ -101,6 +104,7 @@ class DataGenerationStrategy(VariationStrategy):
             save_to_file: Whether to save datasets to disk
             use_legacy_look_at: Use legacy eye rotation method for compatibility
             use_refraction: Enable corneal refraction in image capture
+            pupil_center_method: Method for pupil center calculation ("ellipse" or "center_of_mass")
 
         """
         self.eyes = eyes
@@ -116,6 +120,7 @@ class DataGenerationStrategy(VariationStrategy):
         self.save_to_file = save_to_file
         self.use_legacy_look_at = use_legacy_look_at
         self.use_refraction = use_refraction
+        self.pupil_center_method = pupil_center_method
 
     def set_experiment_name(self, experiment_name: str) -> None:
         """Update the experiment name for subsequent operations.
@@ -173,6 +178,7 @@ class DataGenerationStrategy(VariationStrategy):
                         self.gaze_target,
                         self.use_legacy_look_at,
                         self.use_refraction,
+                        self.pupil_center_method,
                     )
                     for i, value in enumerate(variation.generate_values())
                 ]
@@ -212,7 +218,9 @@ class DataGenerationStrategy(VariationStrategy):
     ) -> dict[str, Any]:
         """Generate measurement data for single camera-eye-parameter combination."""
         # Take image with this specific camera using same parameters as estimate_gaze_at
-        img = camera.take_image(eye, self.lights, use_refraction=self.use_refraction)
+        img = camera.take_image(
+            eye, self.lights, use_refraction=self.use_refraction, center_method=self.pupil_center_method
+        )
 
         # Extract pupil data including boundary_points like estimate_gaze_at does
         pupil_points = []
