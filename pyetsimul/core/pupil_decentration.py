@@ -150,7 +150,16 @@ class PupilDecentrationConfig:
         enabled: Whether decentration is enabled
         model_name: Name of registered decentration model to use
         baseline_diameter: Diameter at which decentration is zero (auto-set if None)
-        **model_params: Model-specific parameters passed to calculate_offset()
+        which_eye: Which eye this config is for ("left" or "right")
+        x_coeff: X coefficient (mm/mm), auto-set if None
+        y_coeff: Y coefficient (mm/mm), auto-set if None
+        use_individual_variation: If True, sample coefficients from distribution
+        individual_seed: Seed for reproducible individual variation
+        preserve_anatomical_direction: If True (default), variation only increases
+            magnitude in the anatomical direction (no sign flip - all subjects shift
+            in the same direction, just by different amounts). If False, uses symmetric
+            normal distribution (mean ± std) matching paper's reported statistics exactly.
+            Note: The paper reports mean ± std, so set to False to match paper statistics.
 
     """
 
@@ -166,6 +175,8 @@ class PupilDecentrationConfig:
     # Individual variation from Wildenmann & Schaeffel (2013): 0.044-0.179 mm per mm
     use_individual_variation: bool = False
     individual_seed: int | None = None  # Seed for generating individual profile
+    # Paper reports mean ± std; set to False to match paper statistics exactly
+    preserve_anatomical_direction: bool = True  # If True, variation only increases magnitude (no sign flip)
 
     def __post_init__(self) -> None:
         """Set coefficients: individual variation or standard model defaults."""
@@ -173,25 +184,30 @@ class PupilDecentrationConfig:
             # Generate individual coefficients ONCE when config is created
             rng = np.random.default_rng(self.individual_seed)
 
-            # Sample with preserved anatomical direction (no sign flip)
             if self.which_eye == "left":
-                x_variation = rng.normal(0, PupilDecentrationDefaults.LEFT_EYE_X_STD)
-                y_variation = rng.normal(0, PupilDecentrationDefaults.LEFT_EYE_Y_STD)
-                self.x_coeff = PupilDecentrationDefaults.LEFT_EYE_X_COEFF + abs(x_variation) * (
-                    1 if PupilDecentrationDefaults.LEFT_EYE_X_COEFF >= 0 else -1
-                )
-                self.y_coeff = PupilDecentrationDefaults.LEFT_EYE_Y_COEFF + abs(y_variation) * (
-                    1 if PupilDecentrationDefaults.LEFT_EYE_Y_COEFF >= 0 else -1
-                )
+                x_mean = PupilDecentrationDefaults.LEFT_EYE_X_COEFF
+                x_std = PupilDecentrationDefaults.LEFT_EYE_X_STD
+                y_mean = PupilDecentrationDefaults.LEFT_EYE_Y_COEFF
+                y_std = PupilDecentrationDefaults.LEFT_EYE_Y_STD
             else:  # right eye
-                x_variation = rng.normal(0, PupilDecentrationDefaults.RIGHT_EYE_X_STD)
-                y_variation = rng.normal(0, PupilDecentrationDefaults.RIGHT_EYE_Y_STD)
-                self.x_coeff = PupilDecentrationDefaults.RIGHT_EYE_X_COEFF + abs(x_variation) * (
-                    1 if PupilDecentrationDefaults.RIGHT_EYE_X_COEFF >= 0 else -1
-                )
-                self.y_coeff = PupilDecentrationDefaults.RIGHT_EYE_Y_COEFF + abs(y_variation) * (
-                    1 if PupilDecentrationDefaults.RIGHT_EYE_Y_COEFF >= 0 else -1
-                )
+                x_mean = PupilDecentrationDefaults.RIGHT_EYE_X_COEFF
+                x_std = PupilDecentrationDefaults.RIGHT_EYE_X_STD
+                y_mean = PupilDecentrationDefaults.RIGHT_EYE_Y_COEFF
+                y_std = PupilDecentrationDefaults.RIGHT_EYE_Y_STD
+
+            if self.preserve_anatomical_direction:
+                # Variation only increases magnitude in the anatomical direction (no sign flip)
+                # Uses abs(variation) to ensure direction is preserved
+                x_variation = rng.normal(0, x_std)
+                y_variation = rng.normal(0, y_std)
+                self.x_coeff = x_mean + abs(x_variation) * (1 if x_mean >= 0 else -1)
+                self.y_coeff = y_mean + abs(y_variation) * (1 if y_mean >= 0 else -1)
+            else:
+                # Symmetric normal distribution matching paper's reported statistics
+                # coeff = mean + N(0, std)
+                self.x_coeff = x_mean + rng.normal(0, x_std)
+                self.y_coeff = y_mean + rng.normal(0, y_std)
+
         elif self.enabled and self.x_coeff is None and self.y_coeff is None:
             # Set eye-specific coefficients (population average from paper)
             if self.which_eye == "left":
