@@ -51,6 +51,9 @@ class Eye:
     pupil_type: str = "elliptical"  # Pupil type: "elliptical" (default), "realistic"
     pupil_boundary_points: int | None = None  # Number of points for pupil boundary (uses pupil default if None)
     pupil_random_seed: int | None = None  # Random seed for realistic pupil (None = random, int = deterministic)
+    realistic_pupil_params: RealisticPupilParams | None = (
+        None  # Full params for realistic pupil (overrides pupil_random_seed)
+    )
 
     # Eyelid configuration (enabled off by default to avoid behavior changes)
     eyelid_enabled: bool = False
@@ -115,10 +118,12 @@ class Eye:
         if self.pupil_boundary_points is not None:
             pupil_kwargs["n"] = self.pupil_boundary_points
 
-        # For realistic pupils, create params with random seed if specified
-        if self.pupil_type == "realistic" and self.pupil_random_seed is not None:
-            pupil_params = RealisticPupilParams(random_seed=self.pupil_random_seed)
-            pupil_kwargs["params"] = pupil_params
+        # For realistic pupils, use provided params or create from random seed
+        if self.pupil_type == "realistic":
+            if self.realistic_pupil_params is not None:
+                pupil_kwargs["params"] = self.realistic_pupil_params
+            elif self.pupil_random_seed is not None:
+                pupil_kwargs["params"] = RealisticPupilParams(random_seed=self.pupil_random_seed)
 
         self.pupil = create_pupil(
             pupil_type=self.pupil_type, pos_pupil=pupil_position, x_pupil=x_pupil, y_pupil=y_pupil, **pupil_kwargs
