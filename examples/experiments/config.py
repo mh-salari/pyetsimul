@@ -137,8 +137,8 @@ pupil_size_with_decentration_variation = PupilSizeWithDecentrationVariation(
 )
 
 pupil_decentration_variation = PupilDecentrationVariation(
-    dx_range=[-0.2e-3, 0.2e-3],  # ±0.2mm horizontal (nasal-temporal) from Wildenmann
-    dy_range=[-0.3e-3, 0.3e-3],  # ±0.3mm vertical (superior-inferior) from Wildenmann
+    dx_range=[-0.1e-3, 0.1e-3],  # ±0.1mm horizontal - realistic dynamic range per Wildenmann 2013
+    dy_range=[-0.15e-3, 0.15e-3],  # ±0.15mm vertical - ~0.05mm shift per mm pupil size change
     num_steps=10,
 )
 
