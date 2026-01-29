@@ -63,6 +63,7 @@ class Eye:
     # Eyelid transform (local→world): follows eye position but keeps a fixed orientation
     eyelid_trans: TransformationMatrix = field(init=False, repr=False)
     _rest_orientation: RotationMatrix = field(init=False)
+    _rest_orientation_explicitly_set: bool = field(init=False, default=False)  # Track if user set rest orientation
     _current_target_point: Position3D | None = field(init=False, default=None)  # Updated by look_at()
     axial_length: float = field(init=False)  # Total axial length of eye (m)
     n_aqueous_humor: float = field(init=False)
@@ -176,6 +177,7 @@ class Eye:
         # RotationMatrix type already validates during construction
 
         self._rest_orientation = value.copy()
+        self._rest_orientation_explicitly_set = True
         self.trans[:3, :3] = value
 
         # Keep eyelid orientation aligned to rest orientation (stationary relative to eye rotation)
@@ -516,6 +518,13 @@ class Eye:
         """
         if self.eyelid is None:
             return False
+
+        # Fail if rest orientation hasn't been set - eyelid checks will be incorrect
+        if not self._rest_orientation_explicitly_set:
+            raise ValueError(
+                "Eyelid occlusion check requires rest orientation to be set. "
+                "Call set_rest_orientation_at_target(target) before using eyelid features."
+            )
 
         # Transform world point to eye position
         p_relative_to_eye = np.array(p) - np.array(self.position)
