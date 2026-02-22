@@ -14,8 +14,10 @@ Usage:
     close_log_file()                   # stop writing to file
 """
 
+import multiprocessing
 import pathlib
 import warnings
+from datetime import datetime
 from enum import IntEnum
 from typing import Any
 
@@ -31,7 +33,7 @@ class LogLevel(IntEnum):
 
 
 _level: LogLevel = LogLevel.INFO
-_log_file = None
+_log_file_path: pathlib.Path | None = None
 _original_showwarning = warnings.showwarning
 
 
@@ -46,32 +48,40 @@ def get_log_level() -> LogLevel:
     return _level
 
 
-def set_log_file(path: str) -> None:
+def set_log_file(path: str, mode: str = "a") -> None:
     """Start writing all output (including warnings) to a file.
 
-    The file is opened in write mode, overwriting any existing content.
-    Console output continues as normal based on the current log level.
+    mode: "a" to append (default), "w" to overwrite.
     """
-    global _log_file  # noqa: PLW0603
-    close_log_file()
-    _log_file = pathlib.Path(path).open("w", encoding="utf-8")  # noqa: SIM115
+    # Spawned worker processes re-import the main module — skip to avoid wiping the log
+    if multiprocessing.current_process().name != "MainProcess":
+        return
+    global _log_file_path  # noqa: PLW0603
+    _log_file_path = pathlib.Path(path)
+    if mode == "w":
+        _log_file_path.write_text("", encoding="utf-8")
     warnings.showwarning = _showwarning_with_file
 
 
 def close_log_file() -> None:
-    """Stop writing to the log file and close it."""
-    global _log_file  # noqa: PLW0603
-    if _log_file is not None:
-        _log_file.close()
-        _log_file = None
+    """Stop writing to the log file."""
+    global _log_file_path  # noqa: PLW0603
+    _log_file_path = None
     warnings.showwarning = _original_showwarning
 
 
-def _write_to_file(text: str) -> None:
-    """Write a line to the log file if one is open."""
-    if _log_file is not None:
-        _log_file.write(text + "\n")
-        _log_file.flush()
+def _write_to_file(text: str, level: str = "INFO") -> None:
+    """Append a timestamped, separated entry to the log file if one is set."""
+    if _log_file_path is None:
+        return
+    stripped = text.strip("\n")
+    # Skip lines that are only dashes (visual separators)
+    if stripped and all(c == "-" for c in stripped):
+        return
+    timestamp = datetime.now(tz=datetime.UTC).strftime("%Y-%m-%d %H:%M:%S")
+    with _log_file_path.open("a", encoding="utf-8") as f:
+        f.write(f"--- [{timestamp}] [{level}] ---\n")
+        f.write(stripped + "\n")
 
 
 def _showwarning_with_file(
@@ -84,7 +94,7 @@ def _showwarning_with_file(
 ) -> None:
     """Custom warning handler that also writes to our log file."""
     _original_showwarning(message, category, filename, lineno, file, line)
-    _write_to_file(f"[{category.__name__}] {filename}:{lineno}: {message}")
+    _write_to_file(f"[{category.__name__}] {filename}:{lineno}: {message}", level="WARNING")
 
 
 def info(*args: Any, **kwargs: Any) -> None:
@@ -94,8 +104,7 @@ def info(*args: Any, **kwargs: Any) -> None:
     """
     if _level >= LogLevel.INFO:
         print(*args, **kwargs)
-    text = " ".join(str(a) for a in args)
-    _write_to_file(text)
+    _write_to_file(" ".join(str(a) for a in args))
 
 
 def warning(*args: Any, **kwargs: Any) -> None:
@@ -105,15 +114,13 @@ def warning(*args: Any, **kwargs: Any) -> None:
     """
     if _level >= LogLevel.WARNING:
         print(*args, **kwargs)
-    text = " ".join(str(a) for a in args)
-    _write_to_file(f"[WARNING] {text}")
+    _write_to_file(" ".join(str(a) for a in args), level="WARNING")
 
 
 def error(*args: Any, **kwargs: Any) -> None:
     """Print error-level messages. Always shown regardless of log level."""
     print(*args, **kwargs)
-    text = " ".join(str(a) for a in args)
-    _write_to_file(f"[ERROR] {text}")
+    _write_to_file(" ".join(str(a) for a in args), level="ERROR")
 
 
 def table(data: Any, headers: Any, **kwargs: Any) -> None:
