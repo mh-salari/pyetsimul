@@ -8,6 +8,7 @@ import time
 import numpy as np
 
 from pyetsimul.core import Camera, EyeTracker, Light
+from pyetsimul.log import info
 from pyetsimul.types.algorithms import GazePrediction
 from pyetsimul.types.geometry import Point3D, Position3D
 from pyetsimul.types.imaging import EyeMeasurement
@@ -89,7 +90,7 @@ class PolynomialGazeModel(EyeTracker):
         """
         # Detect calibration plane for coordinate system
         self.plane_info = detect_calibration_plane(self.calib_points)
-        print(summarize_plane_detection(self.calib_points, self.plane_info))
+        info(summarize_plane_detection(self.calib_points, self.plane_info))
 
         # Determine polynomial feature type for appropriate calibration
         test_features = self.polynomial_func(0.0, 0.0)

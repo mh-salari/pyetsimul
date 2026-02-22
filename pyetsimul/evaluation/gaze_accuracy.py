@@ -6,6 +6,8 @@ from typing import Any, cast
 import numpy as np
 from tqdm import tqdm
 
+from pyetsimul.log import info, warning
+
 from ..core import EyeTracker
 from ..geometry.conversions import calculate_angular_error_degrees
 from ..types import CameraImage, EyeMeasurement, Point2D, Point3D, Position3D, PupilData
@@ -32,11 +34,11 @@ class GazeAccuracyResult:
 
     def pprint(self, title: str = "Gaze Accuracy Results") -> None:
         """Print formatted results matching existing style."""
-        print(f"\n{title}")
-        print("-" * len(title))
+        info(f"\n{title}")
+        info("-" * len(title))
 
         success_rate = (self.successful_predictions / self.total_measurements) * 100
-        print(f"Success rate: {self.successful_predictions}/{self.total_measurements} ({success_rate:.1f}%)")
+        info(f"Success rate: {self.successful_predictions}/{self.total_measurements} ({success_rate:.1f}%)")
 
         if self.successful_predictions > 0:
             # Display both mm and degrees together
@@ -47,11 +49,11 @@ class GazeAccuracyResult:
             std_mm = self.error_stats["mtr"]["std"] * 1e3
             std_deg = self.error_stats["deg"]["std"]
 
-            print(f"Maximum error {max_deg:.2f}° ({max_mm:.2f} mm)")
-            print(f"Mean error {mean_deg:.2f}° ({mean_mm:.2f} mm)")
-            print(f"Standard deviation {std_deg:.2f}° ({std_mm:.2f} mm)")
+            info(f"Maximum error {max_deg:.2f}° ({max_mm:.2f} mm)")
+            info(f"Mean error {mean_deg:.2f}° ({mean_mm:.2f} mm)")
+            info(f"Standard deviation {std_deg:.2f}° ({std_mm:.2f} mm)")
         else:
-            print("No successful predictions to analyze")
+            warning("No successful predictions to analyze")
 
 
 def evaluate_gaze_accuracy(

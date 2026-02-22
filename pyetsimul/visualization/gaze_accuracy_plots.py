@@ -5,6 +5,8 @@ Provides specialized plotting functionality for gaze accuracy analysis results.
 
 from typing import TYPE_CHECKING
 
+from pyetsimul.log import warning
+
 if TYPE_CHECKING:
     from ..simulation.core import ParameterVariation
 
@@ -160,7 +162,7 @@ class GazeAccuracyPlotter:
     ) -> plt.Figure:
         """Create 2D visualization using natural coordinates from plane detection."""
         if not hasattr(eye_tracker, "plane_info") or eye_tracker.plane_info is None:
-            print("Warning: Eye tracker lacks plane info, using 3D visualization")
+            warning("Eye tracker lacks plane info, using 3D visualization")
             return self._plot_3d(gaze_result, title_prefix, ax=ax)
 
         plane_info = eye_tracker.plane_info

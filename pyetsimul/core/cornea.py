@@ -8,7 +8,8 @@ from dataclasses import InitVar, dataclass, field
 from typing import TYPE_CHECKING
 
 import numpy as np
-from tabulate import tabulate
+
+from pyetsimul.log import info, table, warning
 
 from ..geometry import intersections
 from ..optics import reflections, refractions
@@ -153,8 +154,8 @@ class Cornea(ABC):
             ])
 
         headers = ["Parameter", "Value"]
-        print(f"{self.__class__.__name__} Parameters:")
-        print(tabulate(data, headers=headers, tablefmt="grid"))
+        info(f"{self.__class__.__name__} Parameters:")
+        table(data, headers=headers, tablefmt="grid")
 
 
 @dataclass
@@ -512,21 +513,17 @@ class ConicCornea(Cornea):
         super().__post_init__(center_init)
         # Validate k parameter ranges for both surfaces
         if self.anterior_k < -1:
-            print(f"Warning: anterior_k = {self.anterior_k} < -1 may represent unusual corneal geometry")
+            warning(f"anterior_k = {self.anterior_k} < -1 may represent unusual corneal geometry")
         if self.posterior_k < -1:
-            print(f"Warning: posterior_k = {self.posterior_k} < -1 may represent unusual corneal geometry")
+            warning(f"posterior_k = {self.posterior_k} < -1 may represent unusual corneal geometry")
 
         # Calculate (1+k) values for reference
         anterior_1_plus_k = 1 + self.anterior_k
         posterior_1_plus_k = 1 + self.posterior_k
         if anterior_1_plus_k <= 0:
-            print(
-                f"Warning: anterior (1+k) = {anterior_1_plus_k} ≤ 0 may cause numerical issues in conic calculations"
-            )
+            warning(f"anterior (1+k) = {anterior_1_plus_k} ≤ 0 may cause numerical issues in conic calculations")
         if posterior_1_plus_k <= 0:
-            print(
-                f"Warning: posterior (1+k) = {posterior_1_plus_k} ≤ 0 may cause numerical issues in conic calculations"
-            )
+            warning(f"posterior (1+k) = {posterior_1_plus_k} ≤ 0 may cause numerical issues in conic calculations")
 
     def intersect(self, ray: Ray) -> IntersectionResult | None:
         """Calculates intersection for the anterior conic surface.

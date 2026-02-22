@@ -5,7 +5,7 @@ Defines the Light class for generating corneal reflections (glints) in synthetic
 
 from dataclasses import dataclass
 
-from tabulate import tabulate
+from pyetsimul.log import info, table
 
 from ..types import Position3D
 
@@ -44,8 +44,8 @@ class Light:
         ]
 
         headers = ["Parameter", "Value"]
-        print("Light Source Parameters:")
-        print(tabulate(data, headers=headers, tablefmt="grid"))
+        info("Light Source Parameters:")
+        table(data, headers=headers, tablefmt="grid")
 
     def serialize(self) -> dict:
         """Serialize to dictionary representation."""

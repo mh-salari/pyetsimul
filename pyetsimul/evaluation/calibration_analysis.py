@@ -6,7 +6,8 @@ at the original calibration points to assess calibration quality.
 
 import matplotlib.pyplot as plt
 import numpy as np
-from tabulate import tabulate
+
+from pyetsimul.log import error, info, table
 
 from ..core import Eye, EyeTracker
 from ..geometry.conversions import calculate_angular_error_degrees
@@ -38,7 +39,7 @@ class CalibrationResults:
 
     def pprint(self, title: str = "Calibration Accuracy") -> None:
         """Print formatted calibration error statistics."""
-        print(f"\n{title}:")
+        info(f"\n{title}:")
 
         headers = ["Statistic", "Error (degrees)", "Error (mm)"]
         data = [
@@ -48,7 +49,7 @@ class CalibrationResults:
             ["Median", f"{self.errors['deg']['median']:.4f}", f"{self.errors['mtr']['median'] * 1e3:.4f}"],
         ]
 
-        print(tabulate(data, headers=headers, tablefmt="grid"))
+        table(data, headers=headers, tablefmt="grid")
 
     def interactive_plot(self, show: bool = True) -> plt.Figure:
         """Create the interactive calibration plot on demand.
@@ -112,15 +113,15 @@ def accuracy_at_calibration_points(et: EyeTracker, eye: Eye) -> CalibrationResul
     # Get the eye tracker's plane info for coordinate system
     plane_info = et.plane_info
 
-    print(f"Analyzing calibration accuracy at {n_points} points...")
+    info(f"Analyzing calibration accuracy at {n_points} points...")
 
     # Output eye measurements
     apex_pos = eye.cornea.get_apex_position()
     apecornea_surface_x_dist = np.linalg.norm(apex_pos - eye.cornea.center)
     cornea_pupil_dist = np.linalg.norm(eye.cornea.center - eye.pupil.pos_pupil)
 
-    print(f"Corneal radius: {apecornea_surface_x_dist * 1e3:.3g} mm")
-    print(f"Pupil radius:   {cornea_pupil_dist * 1e3:.3g} mm")
+    info(f"Corneal radius: {apecornea_surface_x_dist * 1e3:.3g} mm")
+    info(f"Pupil radius:   {cornea_pupil_dist * 1e3:.3g} mm")
 
     # Initialize result arrays
     actual_points = []
@@ -188,8 +189,8 @@ def accuracy_at_calibration_points(et: EyeTracker, eye: Eye) -> CalibrationResul
 
     # Print the results table
     headers = ["Point", "Target (mm)", "Predicted (mm)", "Error (mm)", "Error (°)"]
-    print("\nCalibration Point Analysis:")
-    print(tabulate(table_data, headers=headers, tablefmt="grid"))
+    info("\nCalibration Point Analysis:")
+    table(table_data, headers=headers, tablefmt="grid")
 
     # Calculate error statistics only for valid points
     valid_mask = ~(np.isnan(u) | np.isnan(v) | np.isnan(errs_deg))
@@ -204,15 +205,15 @@ def accuracy_at_calibration_points(et: EyeTracker, eye: Eye) -> CalibrationResul
         )
 
         # Display statistics
-        print(f"\nCalibration Analysis Results ({n_valid}/{n_total} points successful):")
-        print(f"Maximum error {errors['deg']['max']:.4f}° ({errors['mtr']['max'] * 1e3:.3g} mm)")
-        print(f"Mean error {errors['deg']['mean']:.4f}° ({errors['mtr']['mean'] * 1e3:.3g} mm)")
-        print(f"Standard deviation {errors['deg']['std']:.4f}° ({errors['mtr']['std'] * 1e3:.3g} mm)")
+        info(f"\nCalibration Analysis Results ({n_valid}/{n_total} points successful):")
+        info(f"Maximum error {errors['deg']['max']:.4f}° ({errors['mtr']['max'] * 1e3:.3g} mm)")
+        info(f"Mean error {errors['deg']['mean']:.4f}° ({errors['mtr']['mean'] * 1e3:.3g} mm)")
+        info(f"Standard deviation {errors['deg']['std']:.4f}° ({errors['mtr']['std'] * 1e3:.3g} mm)")
 
         # Store minimal data for on-demand plot creation via interactive_plot()
         plot_data = {"et": et, "eye": eye}
     else:
-        print(f"\nCalibration Analysis Results: ALL {n_total} POINTS FAILED")
+        error(f"\nCalibration Analysis Results: ALL {n_total} POINTS FAILED")
         errors = {
             "mtr": {"max": np.nan, "mean": np.nan, "std": np.nan, "median": np.nan},
             "deg": {"max": np.nan, "mean": np.nan, "std": np.nan, "median": np.nan},

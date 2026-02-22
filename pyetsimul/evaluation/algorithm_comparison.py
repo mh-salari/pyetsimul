@@ -3,8 +3,9 @@
 from dataclasses import dataclass
 
 import numpy as np
-from tabulate import tabulate
 from tqdm import tqdm
+
+from pyetsimul.log import info, table
 
 from ..core import EyeTracker
 from ..geometry.conversions import calculate_angular_error_degrees
@@ -26,8 +27,8 @@ class AlgorithmRanking:
     def pprint(self, title: str = "Algorithm Ranking") -> None:
         """Print comprehensive ranking and comparison analysis."""
         # Main ranking table
-        print(f"\n{title}")
-        print("-" * len(title))
+        info(f"\n{title}")
+        info("-" * len(title))
 
         data = []
         for algo in sorted(self.rankings.keys(), key=lambda x: self.rankings[x]):
@@ -49,7 +50,7 @@ class AlgorithmRanking:
             ])
 
         headers = ["Rank", "Algorithm", "Mean Error (°)", "Max Error (°)", "Std Error (°)", "Success Rate"]
-        print(tabulate(data, headers=headers, tablefmt="grid"))
+        table(data, headers=headers, tablefmt="grid")
 
         # Pairwise comparison tables (only if data exists)
         if self.pairwise_angular_diff:
@@ -69,18 +70,18 @@ class AlgorithmRanking:
         algorithms = list(self.rankings.keys())
 
         # Angular Difference Table (lower is better - more similar)
-        print("\nPairwise Angular Differences (°) - Lower = More Similar")
-        print("-" * 60)
+        info("\nPairwise Angular Differences (°) - Lower = More Similar")
+        info("-" * 60)
         self._print_symmetric_matrix(self.pairwise_angular_diff, algorithms, "3f", "°")
 
         # Cosine Similarity Table (higher is better - more similar)
-        print("\nPairwise Cosine Similarities - Higher = More Similar")
-        print("-" * 55)
+        info("\nPairwise Cosine Similarities - Higher = More Similar")
+        info("-" * 55)
         self._print_symmetric_matrix(self.pairwise_cosine_sim, algorithms, "6f", "")
 
         # Amplitude Difference Table (mean values, lower is better)
-        print("\nPairwise Amplitude Differences (°) - Lower = More Similar")
-        print("-" * 62)
+        info("\nPairwise Amplitude Differences (°) - Lower = More Similar")
+        info("-" * 62)
         amplitude_means = {}
 
         # Add progress bar for amplitude calculation
@@ -116,7 +117,7 @@ class AlgorithmRanking:
             data.append(row)
 
         headers = ["Algorithm", *abbrev_names]
-        print(tabulate(data, headers=headers, tablefmt="grid"))
+        table(data, headers=headers, tablefmt="grid")
 
 
 def compare_algorithms(

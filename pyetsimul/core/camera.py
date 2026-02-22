@@ -9,7 +9,8 @@ from typing import TYPE_CHECKING
 
 import cv2
 import numpy as np
-from tabulate import tabulate
+
+from pyetsimul.log import info, table
 
 from ..camera_noise import GlintNoiseConfig, apply_glint_noise
 from ..types import (
@@ -443,8 +444,8 @@ class Camera:
         ]
 
         headers = ["Parameter", "Value"]
-        print("Camera Parameters:")
-        print(tabulate(data, headers=headers, tablefmt="grid"))
+        info("Camera Parameters:")
+        table(data, headers=headers, tablefmt="grid")
 
     def serialize(self) -> dict:
         """Serialize to dictionary representation."""

@@ -9,6 +9,8 @@ import copy
 import matplotlib.pyplot as plt
 import numpy as np
 
+from pyetsimul.log import info
+
 from ..core import Camera, Eye, Light
 from ..types import Position3D
 from .coordinate_utils import prepare_eye_data_for_plots
@@ -75,10 +77,10 @@ def plot_interactive_cameras(cameras: list[Camera], eye: Eye, target_point: Posi
 
     """
     camera_names = [cam.name or f"Camera {i + 1}" for i, cam in enumerate(cameras)]
-    print(f"Camera Comparison: {' vs '.join(camera_names)}")
-    print("=" * 50)
+    info(f"Camera Comparison: {' vs '.join(camera_names)}")
+    info("=" * 50)
     InteractiveControls.print_controls()
-    print("=" * 50)
+    info("=" * 50)
 
     config = create_plot_config()
     controls = InteractiveControls([eye], target_point, step_size=1e-3)
@@ -236,8 +238,8 @@ def plot_interactive_pupil_comparison(
     """
     initial_pupil_radii = eye_elliptical.get_pupil_radii()
 
-    print("Pupil Shape Comparison")
-    print("=" * 50)
+    info("Pupil Shape Comparison")
+    info("=" * 50)
     InteractiveControls.print_controls(additional_controls={"Pupil Size ([/])": "[: smaller, ]: bigger"})
 
     config = create_plot_config()

@@ -26,6 +26,7 @@ from pyetsimul.gaze_mapping.polynomial import PolynomialGazeModel
 from pyetsimul.gaze_mapping.polynomial.polynomial_descriptor import PolynomialDescriptor
 from pyetsimul.gaze_mapping.polynomial.polynomials import register_polynomial
 from pyetsimul.geometry.plane_detection import detect_calibration_plane, summarize_plane_detection
+from pyetsimul.log import info
 from pyetsimul.types import Position3D
 from pyetsimul.types.algorithms import GazePrediction
 from pyetsimul.types.geometry import Point3D
@@ -85,7 +86,7 @@ class Stampe1993GazeModel(PolynomialGazeModel):
         """Two-stage calibration: biquadratic polynomial, then corner correction."""
         # Stage 1: Fit the biquadratic polynomial
         self.plane_info = detect_calibration_plane(self.calib_points)
-        print(summarize_plane_detection(self.calib_points, self.plane_info))
+        info(summarize_plane_detection(self.calib_points, self.plane_info))
         self._calibrate_same_xy(calibration_measurements)
 
         # Stage 2: Fit corner correction from residuals
@@ -105,7 +106,7 @@ class Stampe1993GazeModel(PolynomialGazeModel):
         coords_array = np.array(calib_coords_2d)
         self.screen_center_2d = (float(np.mean(coords_array[:, 0])), float(np.mean(coords_array[:, 1])))
         cx_center, cy_center = self.screen_center_2d
-        print(f"\nCalibration grid center (2D): ({cx_center * 1000:.1f}, {cy_center * 1000:.1f}) mm")
+        info(f"\nCalibration grid center (2D): ({cx_center * 1000:.1f}, {cy_center * 1000:.1f}) mm")
 
         # Group points by quadrant relative to calibration center
         quadrant_data: dict[int, list[tuple[float, float, float, float]]] = {0: [], 1: [], 2: [], 3: []}
@@ -166,11 +167,11 @@ class Stampe1993GazeModel(PolynomialGazeModel):
                 self.corner_coefficients[q, 1] = np.dot(residuals_y, products_arr) / dot_pp
 
         quadrant_names = ["Q0 (top-left)", "Q1 (top-right)", "Q2 (bottom-left)", "Q3 (bottom-right)"]
-        print("\nCorner Correction Coefficients:")
+        info("\nCorner Correction Coefficients:")
         for q in range(4):
             cx, cy = self.corner_coefficients[q]
             n_points = len(quadrant_data[q])
-            print(f"  {quadrant_names[q]}: cx={cx:.6e}, cy={cy:.6e}  ({n_points} points)")
+            info(f"  {quadrant_names[q]}: cx={cx:.6e}, cy={cy:.6e}  ({n_points} points)")
 
     def predict_gaze(self, measurement: EyeMeasurement) -> GazePrediction | None:
         """Predict gaze: biquadratic polynomial + corner correction."""

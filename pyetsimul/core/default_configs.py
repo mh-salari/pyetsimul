@@ -5,6 +5,8 @@ Defaults for anatomical and hardware parameters.
 
 from dataclasses import dataclass
 
+from pyetsimul.log import info
+
 
 @dataclass
 class EyeAnatomyDefaults:
@@ -108,36 +110,36 @@ class PupilDecentrationDefaults:
 
 def pprint_anatomical_defaults() -> None:
     """Print anatomical default values in formatted table."""
-    print("Eye Anatomy:")
-    print(f"  Axial Length: {EyeAnatomyDefaults.AXIAL_LENGTH * 1000:.2f} mm")
-    print(f"  Pupil Radius: {EyeAnatomyDefaults.PUPIL_RADIUS * 1000:.1f} mm")
-    print(f"  Aqueous Humor n: {EyeAnatomyDefaults.N_AQUEOUS_HUMOR:.3f}")
-    print(f"  Fovea α: {EyeAnatomyDefaults.FOVEA_ALPHA_DEG:.1f}°")
-    print(f"  Fovea β: {EyeAnatomyDefaults.FOVEA_BETA_DEG:.1f}°")
+    info("Eye Anatomy:")
+    info(f"  Axial Length: {EyeAnatomyDefaults.AXIAL_LENGTH * 1000:.2f} mm")
+    info(f"  Pupil Radius: {EyeAnatomyDefaults.PUPIL_RADIUS * 1000:.1f} mm")
+    info(f"  Aqueous Humor n: {EyeAnatomyDefaults.N_AQUEOUS_HUMOR:.3f}")
+    info(f"  Fovea α: {EyeAnatomyDefaults.FOVEA_ALPHA_DEG:.1f}°")
+    info(f"  Fovea β: {EyeAnatomyDefaults.FOVEA_BETA_DEG:.1f}°")
 
-    print("Cornea:")
-    print(f"  Anterior Radius: {CorneaDefaults.ANTERIOR_RADIUS * 1000:.2f} mm")
-    print(f"  Posterior Radius: {CorneaDefaults.POSTERIOR_RADIUS * 1000:.2f} mm")
-    print(f"  Refractive Index: {CorneaDefaults.REFRACTIVE_INDEX:.3f}")
-    print(f"  Thickness: {CorneaDefaults.THICKNESS_OFFSET * 1000:.2f} mm")
+    info("Cornea:")
+    info(f"  Anterior Radius: {CorneaDefaults.ANTERIOR_RADIUS * 1000:.2f} mm")
+    info(f"  Posterior Radius: {CorneaDefaults.POSTERIOR_RADIUS * 1000:.2f} mm")
+    info(f"  Refractive Index: {CorneaDefaults.REFRACTIVE_INDEX:.3f}")
+    info(f"  Thickness: {CorneaDefaults.THICKNESS_OFFSET * 1000:.2f} mm")
 
 
 def pprint_hardware_defaults() -> None:
     """Print hardware default values in formatted table."""
-    print("Camera:")
-    print(f"  Focal Length: {CameraDefaults.FOCAL_LENGTH:.0f} pixels")
-    print(f"  Resolution: {CameraDefaults.RESOLUTION_WIDTH}x{CameraDefaults.RESOLUTION_HEIGHT}")
-    print(f"  Principal Point: ({CameraDefaults.PRINCIPAL_POINT_X:.0f}, {CameraDefaults.PRINCIPAL_POINT_Y:.0f})")
+    info("Camera:")
+    info(f"  Focal Length: {CameraDefaults.FOCAL_LENGTH:.0f} pixels")
+    info(f"  Resolution: {CameraDefaults.RESOLUTION_WIDTH}x{CameraDefaults.RESOLUTION_HEIGHT}")
+    info(f"  Principal Point: ({CameraDefaults.PRINCIPAL_POINT_X:.0f}, {CameraDefaults.PRINCIPAL_POINT_Y:.0f})")
 
-    print("Pupil:")
-    print(f"  Base Radius: {PupilDefaults.BASE_RADIUS * 1000:.1f} mm")
-    print(f"  Noncircularity: {PupilDefaults.NONCIRCULARITY:.4f}")
-    print(f"  Boundary Points: {PupilDefaults.BOUNDARY_POINTS_REALISTIC}")
+    info("Pupil:")
+    info(f"  Base Radius: {PupilDefaults.BASE_RADIUS * 1000:.1f} mm")
+    info(f"  Noncircularity: {PupilDefaults.NONCIRCULARITY:.4f}")
+    info(f"  Boundary Points: {PupilDefaults.BOUNDARY_POINTS_REALISTIC}")
 
 
 def pprint_all_defaults() -> None:
     """Print all default parameters in formatted tables."""
-    print("=== PyEtSimul Default Parameters ===")
+    info("=== PyEtSimul Default Parameters ===")
     pprint_anatomical_defaults()
-    print()
+    info()
     pprint_hardware_defaults()

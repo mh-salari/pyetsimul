@@ -4,10 +4,9 @@ This module provides utility functions for calibration analysis,
 including parameter printing and data formatting functions.
 """
 
-from tabulate import tabulate
-
 from pyetsimul.core import EyeTracker
 from pyetsimul.gaze_mapping.polynomial.polynomials import get_polynomial_info
+from pyetsimul.log import info, table, warning
 
 
 def pprint_polynomial_parameters(et: EyeTracker) -> None:
@@ -18,22 +17,22 @@ def pprint_polynomial_parameters(et: EyeTracker) -> None:
     """
     # Only print polynomial parameters for polynomial gaze model trackers
     if et.algorithm_name != "polynomial":
-        print(f"\nCalibration Parameters ({et.algorithm_name}):")
-        print("-" * 40)
+        info(f"\nCalibration Parameters ({et.algorithm_name}):")
+        info("-" * 40)
         if et.algorithm_state.is_calibrated:
-            print("Calibration status: Calibrated")
-            print("Algorithm: Geometric gaze estimation (non-polynomial)")
+            info("Calibration status: Calibrated")
+            info("Algorithm: Geometric gaze estimation (non-polynomial)")
         else:
-            print("Calibration status: ✗ Not calibrated")
+            warning("Calibration status: [X] Not calibrated")
         return
 
-    print("\nPolynomial Parameters:")
+    info("\nPolynomial Parameters:")
 
     # General info table
     headers = ["Parameter", "Value"]
     general_data = [
         ["Polynomial type", et.polynomial_name],
-        ["Calibration status", "Calibrated" if et.algorithm_state.is_calibrated else "✗ Not calibrated"],
+        ["Calibration status", "Calibrated" if et.algorithm_state.is_calibrated else "[X] Not calibrated"],
     ]
 
     if et.algorithm_state.is_calibrated:
@@ -44,12 +43,12 @@ def pprint_polynomial_parameters(et: EyeTracker) -> None:
                 ["Y coefficients shape", f"{state.y_coefficients.shape}"],
             ])
 
-    print(tabulate(general_data, headers=headers, tablefmt="simple"))
+    table(general_data, headers=headers, tablefmt="simple")
 
     # Coefficients table with term descriptions
     if et.algorithm_state.is_calibrated:
         state = et.algorithm_state
-        print("\nCoefficients Values:")
+        info("\nCoefficients Values:")
 
         # Get polynomial term descriptions
         poly_info = get_polynomial_info(et.polynomial_name)
@@ -59,25 +58,25 @@ def pprint_polynomial_parameters(et: EyeTracker) -> None:
             # Different features for x and y: show separate tables for X and Y coordinates
             coeff_headers = ["Term", "Coefficient"]
 
-            print("\nX Coordinate Terms:")
+            info("\nX Coordinate Terms:")
             x_coeff_data = []
             x_terms = term_descriptions[0]
             for term, coeff in zip(x_terms, state.x_coefficients, strict=False):
                 x_coeff_data.append([term, f"{coeff:8.6f}"])
-            print(tabulate(x_coeff_data, headers=coeff_headers, tablefmt="grid"))
+            table(x_coeff_data, headers=coeff_headers, tablefmt="grid")
 
-            print("\nY Coordinate Terms:")
+            info("\nY Coordinate Terms:")
             y_coeff_data = []
             y_terms = term_descriptions[1]
             for term, coeff in zip(y_terms, state.y_coefficients, strict=False):
                 y_coeff_data.append([term, f"{coeff:8.6f}"])
-            print(tabulate(y_coeff_data, headers=coeff_headers, tablefmt="grid"))
+            table(y_coeff_data, headers=coeff_headers, tablefmt="grid")
         else:
             # same features for x and y: show combined table with shared terms
             coeff_headers = ["Term", "X Coefficient", "Y Coefficient"]
             coeff_data = []
             for term, x_val, y_val in zip(term_descriptions, state.x_coefficients, state.y_coefficients, strict=False):
                 coeff_data.append([term, f"{x_val:8.6f}", f"{y_val:8.6f}"])
-            print(tabulate(coeff_data, headers=coeff_headers, tablefmt="grid"))
+            table(coeff_data, headers=coeff_headers, tablefmt="grid")
     else:
-        print("No calibration parameters found (tracker not calibrated)")
+        warning("No calibration parameters found (tracker not calibrated)")

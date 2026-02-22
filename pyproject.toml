@@ -155,3 +155,4 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 "unit_tests/**/*.py" = ["S101"]
 "examples/run_all_examples.py" = ["S404", "S603"]
+"pyetsimul/log.py" = ["ANN401"]

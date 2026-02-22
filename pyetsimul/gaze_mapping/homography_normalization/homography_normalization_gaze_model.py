@@ -9,6 +9,7 @@ import time
 import numpy as np
 
 from pyetsimul.core import Camera, EyeTracker, Light
+from pyetsimul.log import info
 from pyetsimul.types.algorithms import GazePrediction
 from pyetsimul.types.geometry import Point2D, Point3D, Position3D
 from pyetsimul.types.imaging import EyeMeasurement
@@ -97,14 +98,14 @@ class HomographyNormalizationGazeModel(EyeTracker):
         5. (Optional) Train Gaussian Process on residual errors.
         """
         self.plane_info = detect_calibration_plane(self.calib_points)
-        print(summarize_plane_detection(self.calib_points, self.plane_info))
+        info(summarize_plane_detection(self.calib_points, self.plane_info))
 
         first_valid = next((m for m in calibration_measurements if m.camera_image.corneal_reflections), None)
         if first_valid is None or len(first_valid.camera_image.corneal_reflections) < 4:
             raise ValueError("Homography normalization requires at least 4 glints.")
 
         n_glints = len(first_valid.camera_image.corneal_reflections)
-        print(f"Using {n_glints} glints for homography normalization.")
+        info(f"Using {n_glints} glints for homography normalization.")
 
         # Define normalized reference pattern using 2D projection of light positions
         # The homography will map current glints to this reference pattern
@@ -159,10 +160,10 @@ class HomographyNormalizationGazeModel(EyeTracker):
             self.algorithm_state.gp_model = gp_model
             self.algorithm_state.calibration_errors = errors
 
-            print("Gaussian Process error correction model trained.")
+            info("Gaussian Process error correction model trained.")
 
         self.algorithm_state.is_calibrated = True
-        print(f"Homography calibration complete with {len(normalized_pupils)} points.")
+        info(f"Homography calibration complete with {len(normalized_pupils)} points.")
 
     def predict_gaze(self, measurement: EyeMeasurement) -> GazePrediction:
         """Predict gaze using homography normalization."""

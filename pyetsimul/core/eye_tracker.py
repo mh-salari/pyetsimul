@@ -9,7 +9,8 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import numpy as np
-from tabulate import tabulate
+
+from pyetsimul.log import info, table, warning
 
 from ..types import EyeMeasurement, GazePrediction, Point3D, Position3D, PupilData
 from ..utils import validate_eye_camera_setup
@@ -42,6 +43,9 @@ class EyeTracker(ABC):
 
     # Pupil center calculation method: "ellipse" (default) or "center_of_mass"
     pupil_center_method: str = "ellipse"
+
+    # Calibration diagnostics: list of (point_number, position, reason) for failed points
+    failed_calibration_points: list[tuple[int, Position3D, str]] = field(default_factory=list)
 
     # MATLAB compatibility mode for eye rotation
     use_legacy_look_at: bool = False
@@ -111,7 +115,7 @@ class EyeTracker(ABC):
         n_points = len(self.calib_points)
         failed_points = []
 
-        print(f"Collecting calibration data at {n_points} points...")
+        info(f"Collecting calibration data at {n_points} points...")
 
         for i, calib_point in enumerate(self.calib_points):
             # Make eye look at calibration point
@@ -143,12 +147,13 @@ class EyeTracker(ABC):
             elif not camera_image.corneal_reflections or camera_image.corneal_reflections[0] is None:
                 failed_points.append((i + 1, calib_point, "CR not detected"))
 
-        # Summary of failed points
+        # Store and report failed points
+        self.failed_calibration_points = failed_points
         if failed_points:
-            print(f"\n⚠️  WARNING: {len(failed_points)}/{n_points} calibration points failed:")
+            warning(f"\n{len(failed_points)}/{n_points} calibration points failed:")
             for point_num, point, reason in failed_points:
-                print(f"  Point {point_num} ({point.x * 1000:.0f}mm, {point.z * 1000:.0f}mm): {reason}")
-            print(f"  Calibration will proceed with {n_points - len(failed_points)} valid points.\n")
+                warning(f"  Point {point_num} ({point.x * 1000:.0f}mm, {point.z * 1000:.0f}mm): {reason}")
+            warning(f"  Calibration will proceed with {n_points - len(failed_points)} valid points.\n")
 
         return measurements
 
@@ -340,5 +345,5 @@ class EyeTracker(ABC):
                 ])
 
         headers = ["Parameter", "Value"]
-        print(f"{self.__class__.__name__} Configuration:")
-        print(tabulate(data, headers=headers, tablefmt="grid"))
+        info(f"{self.__class__.__name__} Configuration:")
+        table(data, headers=headers, tablefmt="grid")

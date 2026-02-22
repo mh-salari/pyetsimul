@@ -7,7 +7,8 @@ from abc import ABC, abstractmethod
 from dataclasses import asdict, dataclass
 
 import numpy as np
-from tabulate import tabulate
+
+from pyetsimul.log import info, table
 
 from ..types import Direction3D, Position3D, TransformationMatrix
 from .default_configs import PupilDefaults
@@ -156,8 +157,8 @@ class Pupil(ABC):
             ])
 
         headers = ["Parameter", "Value"]
-        print(f"{self.__class__.__name__} Parameters:")
-        print(tabulate(data, headers=headers, tablefmt="grid"))
+        info(f"{self.__class__.__name__} Parameters:")
+        table(data, headers=headers, tablefmt="grid")
 
 
 class EllipticalPupil(Pupil):

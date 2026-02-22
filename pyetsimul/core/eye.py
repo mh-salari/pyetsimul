@@ -8,7 +8,8 @@ from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
 
 import numpy as np
-from tabulate import tabulate
+
+from pyetsimul.log import info, table
 
 from ..optics.pupil_imaging import calculate_pupil_center_from_boundary
 from ..optics.reflections import find_corneal_reflection
@@ -745,8 +746,8 @@ class Eye:
         ]
 
         headers = ["Parameter", "Value"]
-        print("Eye Anatomy Parameters:")
-        print(tabulate(data, headers=headers, tablefmt="grid"))
+        info("Eye Anatomy Parameters:")
+        table(data, headers=headers, tablefmt="grid")
 
     def serialize(self) -> dict:
         """Serialize eye state to a dictionary.

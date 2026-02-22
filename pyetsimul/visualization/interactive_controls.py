@@ -5,6 +5,7 @@ from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 
+from pyetsimul.log import info
 from pyetsimul.types import Point3D, Position3D
 
 if TYPE_CHECKING:
@@ -134,17 +135,17 @@ class InteractiveControls:
     @staticmethod
     def print_controls(include_reset: bool = True, additional_controls: dict[str, str] | None = None) -> None:
         """Print standardized control instructions."""
-        print("CONTROLS:")
-        print("Target Movement (Arrow keys):")
-        print("  ↑/↓: Move target up/down")
-        print("  ←/→: Move target left/right")
-        print()
-        print("Eye Movement (I/K/J/L/./):")
-        print("  I/K: Move eye up/down")
-        print("  J/L: Move eye left/right")
-        print("  ./,: Move eye closer/farther from camera")
+        info("CONTROLS:")
+        info("Target Movement (Arrow keys):")
+        info("  ↑/↓: Move target up/down")
+        info("  ←/→: Move target left/right")
+        info()
+        info("Eye Movement (I/K/J/L/./):")
+        info("  I/K: Move eye up/down")
+        info("  J/L: Move eye left/right")
+        info("  ./,: Move eye closer/farther from camera")
         if include_reset:
-            print("Reset (Space): Reset eye and target to initial positions")
+            info("Reset (Space): Reset eye and target to initial positions")
         if additional_controls:
             for description, keys in additional_controls.items():
-                print(f"{description}: {keys}")
+                info(f"{description}: {keys}")

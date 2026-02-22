@@ -6,6 +6,8 @@ import multiprocessing
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
+from pyetsimul.log import info
+
 from ..core import Eye
 from ..types import Position3D
 from ..utils.filename import sanitize_filename
@@ -158,7 +160,7 @@ class DataGenerationStrategy(VariationStrategy):
             }
 
             for eye_idx, eye in enumerate(self.eyes):
-                print(f"Processing Camera {camera_idx + 1}/{len(self.cameras)}, Eye {eye_idx + 1}/{len(self.eyes)}...")
+                info(f"Processing Camera {camera_idx + 1}/{len(self.cameras)}, Eye {eye_idx + 1}/{len(self.eyes)}...")
                 eye_data = {
                     "eye_id": eye_idx,
                     "eye_name": f"Eye {eye_idx + 1}",
@@ -198,7 +200,7 @@ class DataGenerationStrategy(VariationStrategy):
         if self.save_to_file:
             saved_files = self._save_data(all_data, self.safe_experiment_name)
         else:
-            print("Dataset generated but not saved (save_to_file=False).")
+            info("Dataset generated but not saved (save_to_file=False).")
 
         return {
             "total_measurements": total_measurements,
@@ -257,7 +259,7 @@ class DataGenerationStrategy(VariationStrategy):
         with Path.open(json_file, "w", encoding="utf-8") as f:
             json.dump(data, f, indent=2)
 
-        print(f"Dataset saved to: {json_file}")
+        info(f"Dataset saved to: {json_file}")
 
         return [str(json_file)]
 
