@@ -236,17 +236,13 @@ def create_interactive_gaze_plot(
 
             if len(x_valid) > 0:
                 for i in range(len(x_valid)):
-                    ax.arrow(
-                        x_valid[i],
-                        y_valid[i],
-                        u_valid[i],
-                        v_valid[i],
-                        head_width=2,
-                        head_length=1.5,
-                        fc=color,
-                        ec=color,
+                    ax.plot(
+                        [x_valid[i], pred_x[i]],
+                        [y_valid[i], pred_y[i]],
+                        color=color,
                         linewidth=1,
                         alpha=0.4,
+                        linestyle="--",
                     )
 
                 ax.scatter(
@@ -286,15 +282,10 @@ def create_interactive_gaze_plot(
 
                     error_x = (pred_coord1 - target_coord1) * 1000
                     error_y = (pred_coord2 - target_coord2) * 1000
-                    ax.arrow(
-                        target_coord1 * 1000,
-                        target_coord2 * 1000,
-                        error_x,
-                        error_y,
-                        head_width=2,
-                        head_length=1.5,
-                        fc=color,
-                        ec=color,
+                    ax.plot(
+                        [target_coord1 * 1000, pred_coord1 * 1000],
+                        [target_coord2 * 1000, pred_coord2 * 1000],
+                        color=color,
                         linewidth=1.5,
                         alpha=0.8,
                         linestyle="--",
