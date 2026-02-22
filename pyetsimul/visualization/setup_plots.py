@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from matplotlib.axes import Axes
 
 from ..core import Camera, Light
-from ..types import Point2D, Point3D, Position3D, TransformationMatrix, Vector3D
+from ..types import Point2D, Point3D, Position3D, ScreenGeometry, TransformationMatrix, Vector3D
 from .plot_config import PlotConfig, create_plot_config
 
 
@@ -64,6 +64,7 @@ def plot_setup(
     cr_3d_lists: list[list[Any]] | None = None,
     ref_bounds: dict[str, tuple[float, float]] | None = None,
     calib_points: list[Point2D] | None = None,
+    screen: ScreenGeometry | None = None,
 ) -> tuple[list[str], list[str]]:
     """Plot 3D eye tracking setup visualization.
 
@@ -78,6 +79,7 @@ def plot_setup(
         cr_3d_lists: List of lists of corneal reflection 3D positions for each eye
         ref_bounds: Optional reference bounds dict with 'x', 'y', 'z' keys
         calib_points: Optional calibration points array to plot as black x markers
+        screen: Optional screen geometry to draw the screen border
 
     Returns:
         Tuple[List[str], List[str]]: Lists of eye and camera colors used in the plot.
@@ -305,6 +307,24 @@ def plot_setup(
             linewidth=config.lines.thick_lines,
             label="Calibration Points",
         )
+
+    # Draw screen border if screen geometry provided
+    if screen is not None:
+        hw = screen.width / 2
+        hh = screen.height / 2
+        if screen.plane == "xz":
+            sx = [-hw, hw, hw, -hw, -hw]
+            sy = [0.0, 0.0, 0.0, 0.0, 0.0]
+            sz = [-hh, -hh, hh, hh, -hh]
+        elif screen.plane == "xy":
+            sx = [-hw, hw, hw, -hw, -hw]
+            sy = [-hh, -hh, hh, hh, -hh]
+            sz = [0.0, 0.0, 0.0, 0.0, 0.0]
+        else:  # yz
+            sx = [0.0, 0.0, 0.0, 0.0, 0.0]
+            sy = [-hw, hw, hw, -hw, -hw]
+            sz = [-hh, -hh, hh, hh, -hh]
+        ax1.plot(sx, sy, sz, color="black", linewidth=config.lines.standard_lines, linestyle=config.lines.dashed, label="Screen")
 
     return eye_colors, camera_colors
 

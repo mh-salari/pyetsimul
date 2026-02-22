@@ -13,6 +13,7 @@ from .geometry import (
     Position3D,
     Ray,
     RotationMatrix,
+    ScreenGeometry,
     TransformationMatrix,
     Vector3D,
 )
@@ -33,6 +34,7 @@ __all__ = [
     "PupilData",
     "Ray",
     "RotationMatrix",
+    "ScreenGeometry",
     "TransformationMatrix",
     "Vector3D",
 ]

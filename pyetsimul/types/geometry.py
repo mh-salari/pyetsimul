@@ -800,3 +800,21 @@ class TransformationMatrix(np.ndarray):
     def get_translation(self) -> Position3D:
         """Extract the translation vector as Position3D."""
         return Position3D(x=self[0, 3], y=self[1, 3], z=self[2, 3])
+
+
+@dataclass(frozen=True)
+class ScreenGeometry:
+    """Physical screen dimensions and orientation for visualization.
+
+    Defines a screen centered at the origin on the specified plane.
+    """
+
+    width: float  # full screen width in meters
+    height: float  # full screen height in meters
+    plane: str  # "xz", "xy", or "yz"
+
+    def __post_init__(self) -> None:
+        """Validate plane parameter."""
+        valid_planes = ("xz", "xy", "yz")
+        if self.plane not in valid_planes:
+            raise ValueError(f"plane must be one of {valid_planes}, got '{self.plane}'")
