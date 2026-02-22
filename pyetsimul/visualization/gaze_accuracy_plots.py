@@ -74,6 +74,7 @@ class GazeAccuracyPlotter:
         title_prefix: str = "Gaze Accuracy Analysis",
         plot_mode: str = "auto",
         show: bool = True,
+        ax: plt.Axes | None = None,
     ) -> plt.Figure:
         """Plot gaze accuracy results with flexible 2D/3D visualization.
 
@@ -86,6 +87,8 @@ class GazeAccuracyPlotter:
                   If False, return the figure for saving (fig.savefig()) without displaying.
                   The figure is removed from matplotlib's manager to prevent it from
                   appearing unexpectedly in later plt.show() calls.
+            ax: Optional matplotlib Axes to draw on. If provided, show is ignored
+                and the caller manages the figure lifecycle.
 
         Returns:
             The matplotlib Figure.
@@ -102,19 +105,19 @@ class GazeAccuracyPlotter:
             plot_mode = "2d" if has_plane_info else "3d"
 
         if plot_mode == "2d":
-            fig = self._plot_2d(gaze_result, eye_tracker, title_prefix)
+            fig = self._plot_2d(gaze_result, eye_tracker, title_prefix, ax=ax)
         else:
-            fig = GazeAccuracyPlotter._plot_3d(gaze_result, title_prefix)
+            fig = GazeAccuracyPlotter._plot_3d(gaze_result, title_prefix, ax=ax)
 
-        if show:
-            plt.show()
-
-        plt.close(fig)
+        if ax is None:
+            if show:
+                plt.show()
+            plt.close(fig)
 
         return fig
 
     @staticmethod
-    def _plot_3d(gaze_result: GazeAccuracyResult, title_prefix: str) -> plt.Figure:
+    def _plot_3d(gaze_result: GazeAccuracyResult, title_prefix: str, ax: plt.Axes | None = None) -> plt.Figure:
         """Create 3D visualization using existing plotting utilities."""
         positions = []
         error_vectors = []
@@ -149,13 +152,16 @@ class GazeAccuracyPlotter:
             title_prefix=title_prefix,
             convert_to_mm=True,
             position_labels=("X position", "Y position", "Z position"),
+            ax=ax,
         )
 
-    def _plot_2d(self, gaze_result: GazeAccuracyResult, eye_tracker: EyeTracker, title_prefix: str) -> plt.Figure:
+    def _plot_2d(
+        self, gaze_result: GazeAccuracyResult, eye_tracker: EyeTracker, title_prefix: str, ax: plt.Axes | None = None
+    ) -> plt.Figure:
         """Create 2D visualization using natural coordinates from plane detection."""
         if not hasattr(eye_tracker, "plane_info") or eye_tracker.plane_info is None:
             print("Warning: Eye tracker lacks plane info, using 3D visualization")
-            return self._plot_3d(gaze_result, title_prefix)
+            return self._plot_3d(gaze_result, title_prefix, ax=ax)
 
         plane_info = eye_tracker.plane_info
 
@@ -220,4 +226,5 @@ class GazeAccuracyPlotter:
             convert_to_mm=True,
             xlabel=f"{primary_label} (mm)",
             ylabel=f"{secondary_label} (mm)",
+            ax=ax,
         )

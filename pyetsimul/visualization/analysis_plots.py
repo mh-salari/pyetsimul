@@ -33,6 +33,7 @@ def plot_error_vectors_2d(
     figure_size: tuple[int, int] = (10, 8),
     xlabel: str = "Observer X position (mm)",
     ylabel: str = "Observer Y position (mm)",
+    ax: plt.Axes | None = None,
 ) -> plt.Figure:
     """Plot gaze tracking error vectors with adaptive scaling.
 
@@ -55,6 +56,7 @@ def plot_error_vectors_2d(
         figure_size: Figure size tuple
         xlabel: X-axis label
         ylabel: Y-axis label
+        ax: Optional matplotlib Axes to draw on. If None, a new figure is created.
 
     Returns:
         The matplotlib Figure.
@@ -99,10 +101,13 @@ def plot_error_vectors_2d(
         v_scaled = v_plot
         scaling_applied = False
 
-    # Create figure
-    plt.style.use("default")  # Reset to default style
-    fig, ax = plt.subplots(figsize=figure_size, facecolor="white")
-    ax.set_facecolor("white")
+    # Create figure or use provided axes
+    if ax is None:
+        plt.style.use("default")
+        fig, ax = plt.subplots(figsize=figure_size, facecolor="white")
+        ax.set_facecolor("white")
+    else:
+        fig = ax.get_figure()
 
     # Handle both gridded data (2D arrays) and scattered points (1D arrays)
     if u_scaled.ndim == 2:
@@ -199,6 +204,7 @@ def plot_error_vectors_3d(
     show_grid: bool = True,
     figure_size: tuple[int, int] = (12, 10),
     position_labels: tuple[str, str, str] = ("X position", "Y position", "Z position"),
+    ax: plt.Axes | None = None,
 ) -> plt.Figure:
     """Plot 3D gaze tracking error vectors with adaptive scaling.
 
@@ -215,6 +221,7 @@ def plot_error_vectors_3d(
         show_grid: Show grid lines
         figure_size: Figure size tuple
         position_labels: Labels for X, Y, Z axes
+        ax: Optional 3D matplotlib Axes to draw on. If None, a new figure is created.
 
     Returns:
         The matplotlib Figure.
@@ -263,11 +270,14 @@ def plot_error_vectors_3d(
         error_vectors_scaled = error_vectors_plot
         scaling_applied = False
 
-    # Create 3D figure
-    plt.style.use("default")
-    fig = plt.figure(figsize=figure_size, facecolor="white")
-    ax = fig.add_subplot(111, projection="3d")
-    ax.set_facecolor("white")
+    # Create 3D figure or use provided axes
+    if ax is None:
+        plt.style.use("default")
+        fig = plt.figure(figsize=figure_size, facecolor="white")
+        ax = fig.add_subplot(111, projection="3d")
+        ax.set_facecolor("white")
+    else:
+        fig = ax.get_figure()
 
     # Plot error vectors
     ax.quiver(
