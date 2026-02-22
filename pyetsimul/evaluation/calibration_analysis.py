@@ -12,7 +12,6 @@ from ..core import Eye, EyeTracker
 from ..geometry.conversions import calculate_angular_error_degrees
 from ..types import Point3D, Position3D
 from ..visualization.interactive_gaze_plot import create_interactive_gaze_plot
-from ..visualization.interactive_controls import InteractiveControls
 from .analysis_utils import calculate_error_statistics
 from .calibration_utils import pprint_polynomial_parameters
 
@@ -72,25 +71,16 @@ class CalibrationResults:
 
         et = self._plot_data["et"]
         eye = self._plot_data["eye"]
-        fig = create_interactive_gaze_plot(
-            eye,
-            et.estimate_gaze_at,
+        return create_interactive_gaze_plot(
+            [eye],
+            [et.estimate_gaze_at],
             et.calib_points,
             et.plane_info,
             et.cameras,
             et.lights,
             et.use_legacy_look_at,
+            show=show,
         )
-
-        if show:
-            print("\nInteractive controls:")
-            InteractiveControls.print_controls(additional_controls={"Exit": "ESC"})
-            print("Click on the plot window to focus for keyboard input\n")
-            plt.show()
-        else:
-            plt.close(fig)
-
-        return fig
 
 
 def accuracy_at_calibration_points(et: EyeTracker, eye: Eye) -> CalibrationResults:
@@ -200,10 +190,6 @@ def accuracy_at_calibration_points(et: EyeTracker, eye: Eye) -> CalibrationResul
     headers = ["Point", "Target (mm)", "Predicted (mm)", "Error (mm)", "Error (°)"]
     print("\nCalibration Point Analysis:")
     print(tabulate(table_data, headers=headers, tablefmt="grid"))
-
-    # Extract coordinates from structured Point3D objects
-    x = np.array([pt.x for pt in actual_points])
-    y = np.array([pt.y for pt in actual_points])
 
     # Calculate error statistics only for valid points
     valid_mask = ~(np.isnan(u) | np.isnan(v) | np.isnan(errs_deg))

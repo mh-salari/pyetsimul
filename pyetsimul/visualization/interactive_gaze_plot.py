@@ -2,7 +2,10 @@
 
 This module provides a standalone interactive plot that visualizes gaze estimation
 accuracy at calibration points with a 3D setup view. It computes all calibration
-errors internally from a predict function — no pre-computed arrays needed.
+errors internally from predict functions — no pre-computed arrays needed.
+
+Supports multiple eyes: each eye gets its own predict function, color-coded arrows
+and predictions on the 2D panel, and all eyes appear in the 3D setup view.
 """
 
 import copy
@@ -18,6 +21,7 @@ from ..geometry.plane_detection import PlaneInfo
 from ..types import GazePrediction, Point2D, Point3D
 from .coordinate_utils import prepare_eye_data_for_plots
 from .interactive_controls import InteractiveControls
+from .plot_config import create_plot_config
 from .setup_plots import plot_setup
 
 
@@ -54,9 +58,7 @@ def _compute_calibration_errors(
                 u[i] = pred_coord1 - coord1
                 v[i] = pred_coord2 - coord2
                 target_point = Point3D(target.x, target.y, target.z)
-                errs_deg[i] = calculate_angular_error_degrees(
-                    target_point, Point3D(gp.x, gp.y, gp.z), eye.position
-                )
+                errs_deg[i] = calculate_angular_error_degrees(target_point, Point3D(gp.x, gp.y, gp.z), eye.position)
                 predicted_points.append(gp)
                 valid_mask[i] = True
                 continue
@@ -79,51 +81,67 @@ def _compute_calibration_errors(
 
 
 def create_interactive_gaze_plot(
-    eye: Eye,
-    predict_fn: Callable[[Eye, Point3D], GazePrediction | None],
+    eyes: list[Eye],
+    predict_fns: list[Callable[[Eye, Point3D], GazePrediction | None]],
     calibration_points: list[Point3D],
     plane_info: PlaneInfo,
     cameras: list,
     lights: list,
     use_legacy_look_at: bool = False,
+    eye_labels: list[str] | None = None,
+    eye_colors: list[str] | None = None,
+    show: bool = True,
 ) -> plt.Figure:
     """Create interactive gaze plot with keyboard controls.
 
-    Computes calibration errors internally by calling predict_fn at each
+    Computes calibration errors internally by calling each predict_fn at each
     calibration point. Provides real-time exploration of gaze tracking accuracy
     with a 3D setup visualization alongside a 2D error vector plot.
 
+    Supports multiple eyes: each eye/predict_fn pair is color-coded on the plot.
+
     Args:
-        eye: The Eye object to use for gaze prediction.
-        predict_fn: Function that predicts gaze given (eye, target_point).
+        eyes: List of Eye objects to use for gaze prediction.
+        predict_fns: List of functions that predict gaze given (eye, target_point).
         calibration_points: List of 3D calibration target positions.
         plane_info: Plane detection info for coordinate mapping.
         cameras: List of Camera objects in the setup.
         lights: List of Light objects in the setup.
         use_legacy_look_at: Whether to use legacy look-at behavior.
+        eye_labels: Optional labels for each eye (e.g. ["Right", "Left"]).
+            Defaults to "Eye 1", "Eye 2", etc.
+        eye_colors: Optional colors for each eye (e.g. ["blue", "green"]).
+            Defaults to the config eye color palette.
+        show: If True (default), print controls and display with plt.show().
+              If False, close the figure from matplotlib's manager and return it
+              for saving with fig.savefig().
 
     Returns:
-        The matplotlib Figure containing the interactive gaze plot.
+        The matplotlib Figure.
 
     """
-    # Compute calibration errors once for the static overlay
-    calib_data = _compute_calibration_errors(predict_fn, eye, calibration_points, plane_info)
-    x = calib_data["x"]
-    y = calib_data["y"]
-    u = calib_data["u"]
-    v = calib_data["v"]
-    errs_deg = calib_data["errs_deg"]
-    predicted_points = calib_data["predicted_points"]
-    valid_mask = calib_data["valid_mask"]
+    config = create_plot_config()
+    if eye_colors is None:
+        eye_colors = config.colors.eyes
+    target_color = config.colors.target
+    n_eyes = len(eyes)
+
+    if eye_labels is None:
+        eye_labels = [f"Eye {i + 1}" for i in range(n_eyes)]
+
+    # Compute calibration errors once per eye for the static overlay
+    all_calib_data = [
+        _compute_calibration_errors(predict_fns[i], eyes[i], calibration_points, plane_info) for i in range(n_eyes)
+    ]
 
     fig = plt.figure(figsize=(24, 10))
-    interactive_eye = copy.deepcopy(eye)
+    interactive_eyes = [copy.deepcopy(eye) for eye in eyes]
 
     mean_x = sum(pt.x for pt in calibration_points) / len(calibration_points)
     mean_z = sum(pt.z for pt in calibration_points) / len(calibration_points)
     current_target = Point3D(mean_x, 0, mean_z)
 
-    controls = InteractiveControls(interactive_eye, current_target, step_size=10e-3)
+    controls = InteractiveControls(interactive_eyes, current_target, step_size=10e-3)
 
     def update_display() -> None:
         """Update both 3D and 2D plots with current target position."""
@@ -134,21 +152,18 @@ def create_interactive_gaze_plot(
 
         target_3d = Point3D(controls.target_point.x, 0, controls.target_point.z)
 
-        # Convert calibration points to 2D list for plot overlay
         calib_points_2d: list[Point2D] = []
         for pt in calibration_points:
             calib_points_2d.append(Point2D(*plane_info.extract_2d_coords(pt)))
 
-        # Prepare eye data
         prepared_data = prepare_eye_data_for_plots(
-            [interactive_eye], [target_3d], lights, cameras, use_legacy_look_at
+            interactive_eyes, [target_3d] * n_eyes, lights, cameras, use_legacy_look_at
         )
 
-        # Plot 3D setup
         plot_setup(
             ax_3d,
             prepared_data["eyes_data"],
-            [target_3d],
+            [target_3d] * n_eyes,
             lights,
             cameras,
             prepared_data["cr_3d_lists"],
@@ -159,165 +174,179 @@ def create_interactive_gaze_plot(
             [controls.target_point.x],
             [0],
             [controls.target_point.z],
-            c="green",
+            c=target_color,
             s=40,
-            marker="x",
-            label="Current Target",
+            marker="+",
+            label="Target",
         )
         ax_3d.legend()
         ax_3d.set_title("Eye Tracking Setup", fontsize=14, fontweight="bold", pad=20)
 
-        # Right subplot: 2D calibration analysis with real-time prediction
+        # Right subplot: 2D calibration analysis
         ax = fig.add_subplot(1, 2, 2)
         ax.set_facecolor("white")
 
-        # Plot all calibration points
+        # Calibration target points (shared across all eyes)
+        calib_x = all_calib_data[0]["x"]
+        calib_y = all_calib_data[0]["y"]
         ax.scatter(
-            x * 1000,
-            y * 1000,
-            marker="+",
-            s=30,
-            c="blue",
+            calib_x * 1000,
+            calib_y * 1000,
+            marker="x",
+            s=40,
+            c="dimgray",
             linewidths=1.5,
             alpha=0.8,
             label="Calibration Points",
             zorder=3,
         )
 
-        # Plot original error vectors and predictions
-        valid_indices = np.where(valid_mask)[0]
-        x_valid, y_valid, u_valid, v_valid, pred_x, pred_y = [], [], [], [], [], []
+        # Static calibration error overlay per eye
+        for eye_idx in range(n_eyes):
+            calib_data = all_calib_data[eye_idx]
+            color = eye_colors[eye_idx % len(eye_colors)]
+            label = eye_labels[eye_idx]
+            x = calib_data["x"]
+            y = calib_data["y"]
+            u = calib_data["u"]
+            v = calib_data["v"]
+            predicted_points = calib_data["predicted_points"]
+            valid_mask = calib_data["valid_mask"]
 
-        for i in valid_indices:
-            pred_point = predicted_points[i]
-            if isinstance(pred_point, Point3D) and not (
-                np.isnan(pred_point.x) or np.isnan(pred_point.y) or np.isnan(pred_point.z)
-            ):
-                x_valid.append(x[i] * 1000)
-                y_valid.append(y[i] * 1000)
-                u_valid.append(u[i] * 1000)
-                v_valid.append(v[i] * 1000)
-                pred_coord1, pred_coord2 = plane_info.extract_2d_coords(
-                    Point3D(pred_point.x, pred_point.y, pred_point.z)
+            valid_indices = np.where(valid_mask)[0]
+            x_valid, y_valid, u_valid, v_valid, pred_x, pred_y = [], [], [], [], [], []
+
+            for i in valid_indices:
+                pred_point = predicted_points[i]
+                if isinstance(pred_point, Point3D) and not (
+                    np.isnan(pred_point.x) or np.isnan(pred_point.y) or np.isnan(pred_point.z)
+                ):
+                    x_valid.append(x[i] * 1000)
+                    y_valid.append(y[i] * 1000)
+                    u_valid.append(u[i] * 1000)
+                    v_valid.append(v[i] * 1000)
+                    pred_coord1, pred_coord2 = plane_info.extract_2d_coords(
+                        Point3D(pred_point.x, pred_point.y, pred_point.z)
+                    )
+                    pred_x.append(pred_coord1 * 1000)
+                    pred_y.append(pred_coord2 * 1000)
+
+            if len(x_valid) > 0:
+                for i in range(len(x_valid)):
+                    ax.arrow(
+                        x_valid[i],
+                        y_valid[i],
+                        u_valid[i],
+                        v_valid[i],
+                        head_width=2,
+                        head_length=1.5,
+                        fc=color,
+                        ec=color,
+                        linewidth=1,
+                        alpha=0.4,
+                    )
+
+                ax.scatter(
+                    pred_x,
+                    pred_y,
+                    marker="o",
+                    s=12,
+                    c=color,
+                    alpha=0.5,
+                    label=f"{label} Predictions",
+                    zorder=4,
                 )
-                pred_x.append(pred_coord1 * 1000)
-                pred_y.append(pred_coord2 * 1000)
 
-        if len(x_valid) > 0:
-            for i in range(len(x_valid)):
-                ax.arrow(
-                    x_valid[i],
-                    y_valid[i],
-                    u_valid[i],
-                    v_valid[i],
-                    head_width=2,
-                    head_length=1.5,
-                    fc="gray",
-                    ec="gray",
-                    linewidth=1,
-                    alpha=0.6,
-                )
+        # Real-time prediction per eye
+        current_errors_mm = []
+        current_errors_deg = []
+        for eye_idx in range(n_eyes):
+            color = eye_colors[eye_idx % len(eye_colors)]
+            prediction = predict_fns[eye_idx](interactive_eyes[eye_idx], controls.target_point)
 
-            ax.scatter(
-                pred_x,
-                pred_y,
-                marker="o",
-                s=20,
-                c="red",
-                alpha=0.7,
-                label="Calibration Predictions",
-                zorder=4,
-            )
+            if prediction is not None and prediction.gaze_point is not None:
+                gp = prediction.gaze_point
+                if not (np.isnan(gp.x) or np.isnan(gp.y) or np.isnan(gp.z)):
+                    pred_pos = Point3D(gp.x, gp.y, gp.z)
+                    target_coord1, target_coord2 = plane_info.extract_2d_coords(controls.target_point)
+                    pred_coord1, pred_coord2 = plane_info.extract_2d_coords(pred_pos)
 
-        current_prediction = predict_fn(interactive_eye, controls.target_point)
+                    ax.scatter(
+                        [pred_coord1 * 1000],
+                        [pred_coord2 * 1000],
+                        marker="x",
+                        s=40,
+                        c=color,
+                        label=f"{eye_labels[eye_idx]} Current",
+                        zorder=5,
+                    )
 
-        if current_prediction is not None and current_prediction.gaze_point is not None:
-            target_coord1, target_coord2 = plane_info.extract_2d_coords(controls.target_point)
-            pred_pos = Point3D(
-                current_prediction.gaze_point.x, current_prediction.gaze_point.y, current_prediction.gaze_point.z
-            )
-            pred_coord1, pred_coord2 = plane_info.extract_2d_coords(pred_pos)
+                    error_x = (pred_coord1 - target_coord1) * 1000
+                    error_y = (pred_coord2 - target_coord2) * 1000
+                    ax.arrow(
+                        target_coord1 * 1000,
+                        target_coord2 * 1000,
+                        error_x,
+                        error_y,
+                        head_width=2,
+                        head_length=1.5,
+                        fc=color,
+                        ec=color,
+                        linewidth=1.5,
+                        alpha=0.8,
+                        linestyle="--",
+                    )
 
-            ax.scatter(
-                [target_coord1 * 1000],
-                [target_coord2 * 1000],
-                marker="x",
-                s=60,
-                c="green",
-                label="Current Target",
-                zorder=5,
-            )
-            ax.scatter(
-                [pred_coord1 * 1000],
-                [pred_coord2 * 1000],
-                marker="x",
-                s=40,
-                c="orange",
-                label="Current Prediction",
-                zorder=5,
-            )
+                    current_errors_mm.append(np.sqrt(error_x**2 + error_y**2))
+                    current_errors_deg.append(
+                        calculate_angular_error_degrees(
+                            controls.target_point, pred_pos, interactive_eyes[eye_idx].position
+                        )
+                    )
 
-            error_x = (pred_coord1 - target_coord1) * 1000
-            error_y = (pred_coord2 - target_coord2) * 1000
-            ax.arrow(
-                target_coord1 * 1000,
-                target_coord2 * 1000,
-                error_x,
-                error_y,
-                head_width=2,
-                head_length=1.5,
-                fc="black",
-                ec="black",
-                linewidth=1,
-                alpha=0.6,
-                linestyle="--",
-            )
+        # Target marker (shared)
+        target_coord1, target_coord2 = plane_info.extract_2d_coords(controls.target_point)
+        ax.scatter(
+            [target_coord1 * 1000],
+            [target_coord2 * 1000],
+            marker="+",
+            s=60,
+            c=target_color,
+            label="Target",
+            zorder=6,
+        )
 
-            current_error_mm = np.sqrt(error_x**2 + error_y**2)
-            current_error_deg = calculate_angular_error_degrees(
-                controls.target_point, pred_pos, interactive_eye.position
-            )
+        # Title with error summary
+        if len(current_errors_mm) > 0:
+            avg_mm = np.mean(current_errors_mm)
+            avg_deg = np.mean(current_errors_deg)
+            current_text = f"Current gaze error: {avg_mm:.2f}mm ({avg_deg:.4f}°)"
+            if n_eyes > 1:
+                current_text += f" avg across {n_eyes} eyes"
+        else:
+            current_text = "Current gaze error: PREDICTION FAILED"
 
-            valid_errors = errs_deg[valid_mask]
-            if len(valid_errors) > 0:
-                calib_errors_text = f"Avg: {np.mean(valid_errors):.3f}° | Max: {np.max(valid_errors):.3f}°"
-            else:
-                calib_errors_text = "No valid calibration points"
+        # Calibration error summary across all eyes
+        all_valid_errors = []
+        for eye_idx in range(n_eyes):
+            calib_data = all_calib_data[eye_idx]
+            valid_errors = calib_data["errs_deg"][calib_data["valid_mask"]]
+            all_valid_errors.extend(valid_errors)
 
-            ax.set_title(
-                f"Calibration Analysis\n"
-                f"Current gaze error: {current_error_mm:.2f}mm ({current_error_deg:.4f}°)\n"
-                f"Calibration errors: {calib_errors_text}",
-                fontsize=12,
-                fontweight="bold",
-                pad=20,
+        if len(all_valid_errors) > 0:
+            all_valid_errors = np.array(all_valid_errors)
+            calib_text = (
+                f"Calibration errors — Avg: {np.mean(all_valid_errors):.3f}° | Max: {np.max(all_valid_errors):.3f}°"
             )
         else:
-            target_coord1, target_coord2 = plane_info.extract_2d_coords(controls.target_point)
-            ax.scatter(
-                [target_coord1 * 1000],
-                [target_coord2 * 1000],
-                marker="x",
-                s=60,
-                c="green",
-                label="Current Target",
-                zorder=5,
-            )
+            calib_text = "No valid calibration points"
 
-            valid_errors = errs_deg[valid_mask]
-            if len(valid_errors) > 0:
-                calib_errors_text = f"Avg: {np.mean(valid_errors):.3f}° | Max: {np.max(valid_errors):.3f}°"
-            else:
-                calib_errors_text = "No valid calibration points"
-
-            ax.set_title(
-                f"Calibration Analysis\n"
-                f"Current gaze error: PREDICTION FAILED\n"
-                f"Calibration errors: {calib_errors_text}",
-                fontsize=12,
-                fontweight="bold",
-                pad=20,
-            )
+        ax.set_title(
+            f"Calibration Analysis\n{current_text}\n{calib_text}",
+            fontsize=12,
+            fontweight="bold",
+            pad=20,
+        )
 
         ax.set_xlabel(f"{plane_info.primary_axis.upper()} Position (mm)")
         ax.set_ylabel(f"{plane_info.secondary_axis.upper()} Position (mm)")
@@ -332,5 +361,11 @@ def create_interactive_gaze_plot(
     fig.canvas.mpl_connect("key_press_event", controls.handle_key_press)
 
     update_display()
+
+    if show:
+        InteractiveControls.print_controls(additional_controls={"Exit": "ESC"})
+        plt.show()
+
+    plt.close(fig)
 
     return fig

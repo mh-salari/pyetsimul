@@ -31,7 +31,7 @@ def plot_interactive_setup(eye_base: Eye, lights: list[Light], camera: Camera, t
     InteractiveControls.print_controls()
 
     config = create_plot_config()
-    controls = InteractiveControls(eye_base, target_point)
+    controls = InteractiveControls([eye_base], target_point)
 
     fig = plt.figure(figsize=config.layout.extra_wide, constrained_layout=True)
     ax1 = fig.add_subplot(1, 2, 1, projection="3d")
@@ -81,7 +81,7 @@ def plot_interactive_cameras(cameras: list[Camera], eye: Eye, target_point: Posi
     print("=" * 50)
 
     config = create_plot_config()
-    controls = InteractiveControls(eye, target_point, step_size=1e-3)
+    controls = InteractiveControls([eye], target_point, step_size=1e-3)
 
     # Create figure with 3D view and camera comparison subplot
     fig = plt.figure(figsize=config.layout.wide_comparison)
@@ -164,7 +164,7 @@ def plot_interactive_cameras(cameras: list[Camera], eye: Eye, target_point: Posi
                     center[0],
                     center[1],
                     color=color,
-                    s=config.markers.detail_elements,
+                    s=config.markers.small_details,
                     marker=marker,
                     linewidth=config.lines.thick_lines,
                     label=f"Center ({camera_name})",
@@ -272,7 +272,7 @@ def plot_interactive_pupil_comparison(
         " ": handle_reset_with_pupil,
     }
 
-    controls = InteractiveControls(eye_elliptical, target_point, step_size=2.5e-3, custom_handlers=custom_handlers)
+    controls = InteractiveControls([eye_elliptical], target_point, step_size=2.5e-3, custom_handlers=custom_handlers)
 
     # Create figure with 3D view and camera comparison subplot
     fig = plt.figure(figsize=config.layout.wide_comparison)
