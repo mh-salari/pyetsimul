@@ -166,8 +166,8 @@ def plot_setup(
             [pupil_center.z, target.z],
             color=config.colors.visual_axis,
             linestyle=config.lines.dashed,
-            linewidth=config.lines.thick_lines,
-            alpha=0.5,
+            linewidth=config.lines.standard_lines,
+            alpha=config.lines.secondary_alpha,
             label=f"Eye {eye_idx + 1} Visual Axis",
         )
 
@@ -324,7 +324,15 @@ def plot_setup(
             sx = [0.0, 0.0, 0.0, 0.0, 0.0]
             sy = [-hw, hw, hw, -hw, -hw]
             sz = [-hh, -hh, hh, hh, -hh]
-        ax1.plot(sx, sy, sz, color="black", linewidth=config.lines.standard_lines, linestyle=config.lines.dashed, label="Screen")
+        ax1.plot(
+            sx,
+            sy,
+            sz,
+            color="black",
+            linewidth=config.lines.standard_lines,
+            linestyle=config.lines.dashed,
+            label="Screen",
+        )
 
     return eye_colors, camera_colors
 

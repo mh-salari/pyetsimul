@@ -18,7 +18,7 @@ from pyetsimul.core import Eye
 
 from ..geometry.conversions import calculate_angular_error_degrees
 from ..geometry.plane_detection import PlaneInfo
-from ..types import GazePrediction, Point2D, Point3D
+from ..types import GazePrediction, Point2D, Point3D, ScreenGeometry
 from .coordinate_utils import prepare_eye_data_for_plots
 from .interactive_controls import InteractiveControls
 from .plot_config import create_plot_config
@@ -90,6 +90,7 @@ def create_interactive_gaze_plot(
     use_legacy_look_at: bool = False,
     eye_labels: list[str] | None = None,
     eye_colors: list[str] | None = None,
+    screen: ScreenGeometry | None = None,
     show: bool = True,
 ) -> plt.Figure:
     """Create interactive gaze plot with keyboard controls.
@@ -112,6 +113,7 @@ def create_interactive_gaze_plot(
             Defaults to "Eye 1", "Eye 2", etc.
         eye_colors: Optional colors for each eye (e.g. ["blue", "green"]).
             Defaults to the config eye color palette.
+        screen: Optional ScreenGeometry to draw screen border on the 3D plot.
         show: If True (default), print controls and display with plt.show().
               If False, close the figure from matplotlib's manager and return it
               for saving with fig.savefig().
@@ -168,6 +170,7 @@ def create_interactive_gaze_plot(
             cameras,
             prepared_data["cr_3d_lists"],
             calib_points=calib_points_2d,
+            screen=screen,
         )
 
         ax_3d.scatter(
