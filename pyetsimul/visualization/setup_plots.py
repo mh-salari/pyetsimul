@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING, Any
 
 import numpy as np
 from matplotlib import ticker
+from matplotlib.path import Path
 
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
@@ -15,6 +16,43 @@ if TYPE_CHECKING:
 from ..core import Camera, Light
 from ..types import Point2D, Point3D, Position3D, TransformationMatrix, Vector3D
 from .plot_config import PlotConfig, create_plot_config
+
+
+def _camera_marker() -> Path:
+    """Create a camera-shaped marker: rectangle with a circle (lens) inside."""
+    # Rectangle (outer body)
+    rect = [
+        (Path.MOVETO, (-1.0, -0.7)),
+        (Path.LINETO, (1.0, -0.7)),
+        (Path.LINETO, (1.0, 0.7)),
+        (Path.LINETO, (-1.0, 0.7)),
+        (Path.CLOSEPOLY, (-1.0, -0.7)),
+    ]
+
+    # Circle (lens) — approximate with cubic Bezier curves
+    r = 0.45
+    k = r * 0.5522848  # control point offset for circular Bezier
+    circle = [
+        (Path.MOVETO, (r, 0)),
+        (Path.CURVE4, (r, k)),
+        (Path.CURVE4, (k, r)),
+        (Path.CURVE4, (0, r)),
+        (Path.CURVE4, (-k, r)),
+        (Path.CURVE4, (-r, k)),
+        (Path.CURVE4, (-r, 0)),
+        (Path.CURVE4, (-r, -k)),
+        (Path.CURVE4, (-k, -r)),
+        (Path.CURVE4, (0, -r)),
+        (Path.CURVE4, (k, -r)),
+        (Path.CURVE4, (r, -k)),
+        (Path.CURVE4, (r, 0)),
+    ]
+
+    codes, verts = zip(*(rect + circle), strict=True)
+    return Path(verts, codes)
+
+
+CAMERA_MARKER = _camera_marker()
 
 
 def plot_setup(
@@ -127,6 +165,7 @@ def plot_setup(
             color=config.colors.visual_axis,
             linestyle=config.lines.dashed,
             linewidth=config.lines.thick_lines,
+            alpha=0.5,
             label=f"Eye {eye_idx + 1} Visual Axis",
         )
 
@@ -137,7 +176,7 @@ def plot_setup(
             target.z,
             color=config.colors.target,
             s=config.markers.key_landmarks,
-            marker="D",
+            marker="+",
             label=f"Eye {eye_idx + 1} Target",
         )
 
@@ -151,6 +190,8 @@ def plot_setup(
                 light_pos.y,
                 light_pos.z,
                 color=color,
+                edgecolors="black",
+                linewidths=0.5,
                 s=config.markers.scene_elements,
                 marker="*",
                 label=f"Light Source {i + 1}",
@@ -165,9 +206,11 @@ def plot_setup(
                 camera_pos.x,
                 camera_pos.y,
                 camera_pos.z,
-                color=color,
+                facecolors="none",
+                edgecolors=color,
+                linewidths=1.5,
                 s=config.markers.scene_elements,
-                marker="s",
+                marker=CAMERA_MARKER,
                 label=f"Camera {cam_idx + 1}",
             )
 
@@ -258,7 +301,7 @@ def plot_setup(
             calib_z,
             color=config.colors.calibration_points,
             marker="x",
-            s=config.markers.detail_elements,
+            s=config.markers.calibration_points,
             linewidth=config.lines.thick_lines,
             label="Calibration Points",
         )
@@ -322,15 +365,13 @@ def _plot_corneal_reflections_for_eye(
     """Plot corneal reflections and light rays for a single eye."""
     for cr_idx, cr_3d in enumerate(cr_3d_list):
         if cr_3d is not None:
-            color = config.colors.corneal_reflections_detailed[
-                cr_idx % len(config.colors.corneal_reflections_detailed)
-            ]
+            color = config.colors.lights[cr_idx % len(config.colors.lights)]
             ax.scatter(
                 cr_3d.x,
                 cr_3d.y,
                 cr_3d.z,
                 color=color,
-                s=config.markers.detail_elements + 30,
+                s=config.markers.corneal_reflections,
                 marker="o",
                 edgecolor=config.colors.rotation_center,
                 linewidth=config.lines.standard_lines,
@@ -346,7 +387,7 @@ def _plot_corneal_reflections_for_eye(
                     [light_pos.y, cr_3d.y],
                     [light_pos.z, cr_3d.z],
                     color=color,
-                    linestyle=config.lines.solid,
-                    linewidth=config.lines.thick_lines,
-                    alpha=config.lines.secondary_alpha,
+                    linestyle=config.lines.dashed,
+                    linewidth=config.lines.standard_lines,
+                    alpha=config.lines.background_alpha,
                 )

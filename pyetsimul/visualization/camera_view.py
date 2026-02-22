@@ -139,7 +139,7 @@ def plot_camera_view_of_eye(
                             cr_img[0, 0],
                             cr_img[1, 0],
                             color=config.colors.corneal_reflection,
-                            s=config.markers.detail_elements,
+                            s=config.markers.corneal_reflections,
                             marker="o",
                             edgecolor=cam_color,
                             linewidth=config.elements.corneal_reflection_width,

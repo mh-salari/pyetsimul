@@ -31,7 +31,7 @@ class ColorPalettes:
     eyelid: str = "#836641"
 
     # Scene element colors
-    target: str = "hotpink"
+    target: str = "red"
     corneal_reflection: str = "gold"
     rotation_center: str = "navy"
     calibration_points: str = "black"
@@ -40,28 +40,22 @@ class ColorPalettes:
     optical_axis: str = "green"
     visual_axis: str = "red"
 
-    # Corneal reflection hex codes for different light sources
-    corneal_reflections_detailed: list[str] | None = None
-
     # Interactive comparison colors
     camera_comparison: list[str] | None = None
 
     def __post_init__(self) -> None:
         """Initialize default color arrays if not provided."""
         if self.eyes is None:
-            self.eyes = ["blue", "red", "green", "purple", "orange", "brown"]
+            self.eyes = ["blue", "green", "purple", "orange", "brown", "teal"]
 
         if self.eyes_light is None:
-            self.eyes_light = ["lightblue", "lightcoral", "lightgreen", "plum", "moccasin", "tan"]
+            self.eyes_light = ["lightblue", "lightgreen", "plum", "moccasin", "tan", "paleturquoise"]
 
         if self.cameras is None:
-            self.cameras = ["black", "gray", "darkgreen", "darkblue", "purple", "brown"]
+            self.cameras = ["#405068", "gray", "darkgreen", "darkblue", "purple", "brown"]
 
         if self.lights is None:
-            self.lights = ["yellow", "orange", "gold", "khaki"]
-
-        if self.corneal_reflections_detailed is None:
-            self.corneal_reflections_detailed = ["#FFE171", "#F9F871", "#FFD67C", "#C9AF41"]
+            self.lights = ["darkgoldenrod", "orange", "gold", "khaki"]
 
         if self.camera_comparison is None:
             self.camera_comparison = ["cornflowerblue", "red", "green", "orange", "purple", "brown", "pink", "gray"]
@@ -73,9 +67,10 @@ class MarkerConfig:
 
     # Size hierarchy - larger markers indicate greater visual importance
     scene_elements: int = 200  # Lights, cameras - primary scene components
-    key_landmarks: int = 150  # Targets, major anatomical points
-    landmarks: int = 100  # Cornea centers, pupil centers
-    detail_elements: int = 50  # Corneal reflections, calibration points
+    key_landmarks: int = 80  # Targets, major anatomical points
+    landmarks: int = 15  # Cornea centers, pupil centers
+    corneal_reflections: int = 10  # Corneal reflection markers
+    calibration_points: int = 40  # Calibration point markers
     small_details: int = 25  # Small pupil centers, minor features
     surface_points: int = 3  # Surface texture points
 

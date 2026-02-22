@@ -191,7 +191,7 @@ def plot_eye_anatomy(eye: Eye, ax: "Axes | None" = None) -> "Axes":
         eye_rotation_center.y,
         eye_rotation_center.z,
         color=config.colors.rotation_center,
-        s=config.markers.detail_elements,
+        s=config.markers.small_details,
         marker="o",
         label="Rotation Center",
     )
@@ -218,7 +218,7 @@ def plot_eye_anatomy(eye: Eye, ax: "Axes | None" = None) -> "Axes":
         fovea_world.y,
         fovea_world.z,
         color=config.colors.fovea,
-        s=config.markers.detail_elements + 30,
+        s=config.markers.small_details + 30,
         marker="*",
         label="Fovea",
     )

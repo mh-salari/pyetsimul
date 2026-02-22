@@ -108,8 +108,8 @@ class GazeAccuracyPlotter:
 
         if show:
             plt.show()
-        else:
-            plt.close(fig)
+
+        plt.close(fig)
 
         return fig
 
