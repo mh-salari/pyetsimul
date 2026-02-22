@@ -43,7 +43,7 @@ def setup_algorithms() -> dict[str, PolynomialGazeModel]:
         display_name = algorithm.polynomial_name.replace("_", " ").title()
         print(f"  - {display_name}...")
 
-        calib_results = accuracy_at_calibration_points(algorithm, eye=base_config.eyes[0], interactive_plot=False)
+        calib_results = accuracy_at_calibration_points(algorithm, eye=base_config.eyes[0])
         mean_error = calib_results.errors["deg"]["mean"]
         print(f"    Calibration accuracy: {mean_error:.3f}°")
 

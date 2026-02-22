@@ -4,6 +4,7 @@ This module analyzes eye tracker calibration accuracy by testing gaze estimation
 at the original calibration points to assess calibration quality.
 """
 
+import matplotlib.pyplot as plt
 import numpy as np
 from tabulate import tabulate
 
@@ -11,21 +12,24 @@ from ..core import Eye, EyeTracker
 from ..geometry.conversions import calculate_angular_error_degrees
 from ..types import Point3D, Position3D
 from ..visualization.interactive_calibration import create_interactive_calibration_plot
+from ..visualization.interactive_controls import InteractiveControls
 from .analysis_utils import calculate_error_statistics
 from .calibration_utils import pprint_polynomial_parameters
 
 
 class CalibrationResults:
-    """Calibration accuracy results with printing method."""
+    """Calibration accuracy results with on-demand visualization."""
 
-    def __init__(self, errors: dict[str, dict[str, float]]) -> None:
+    def __init__(self, errors: dict[str, dict[str, float]], plot_data: dict | None = None) -> None:
         """Initialize calibration results.
 
         Args:
             errors: Dictionary containing error statistics in different units
+            plot_data: Internal data needed for on-demand plot creation (None if all points failed)
 
         """
         self.errors = errors
+        self._plot_data = plot_data
 
     def __str__(self) -> str:
         """Basic string representation of calibration results."""
@@ -47,20 +51,63 @@ class CalibrationResults:
 
         print(tabulate(data, headers=headers, tablefmt="grid"))
 
+    def interactive_plot(self, show: bool = True) -> plt.Figure:
+        """Create the interactive calibration plot on demand.
 
-def accuracy_at_calibration_points(et: EyeTracker, eye: Eye, interactive_plot: bool = True) -> CalibrationResults:
+        No figure is created until this method is called, preventing figures from
+        lurking in matplotlib's global figure manager and appearing unexpectedly.
+
+        Args:
+            show: If True (default), display the figure with plt.show() (blocks until closed).
+                  If False, return the figure for saving (fig.savefig()) without displaying.
+                  The figure is removed from matplotlib's manager to prevent it from
+                  appearing unexpectedly in later plt.show() calls.
+
+        Returns:
+            The matplotlib Figure.
+
+        """
+        if self._plot_data is None:
+            raise ValueError("No valid calibration data available for plotting.")
+
+        fig = create_interactive_calibration_plot(
+            self._plot_data["et"],
+            self._plot_data["eye"],
+            self._plot_data["x"],
+            self._plot_data["y"],
+            self._plot_data["u"],
+            self._plot_data["v"],
+            self._plot_data["predicted_points"],
+            self._plot_data["valid_mask"],
+            self._plot_data["errs_deg"],
+            self._plot_data["plane_info"],
+        )
+
+        if show:
+            print("\nInteractive controls:")
+            InteractiveControls.print_controls(additional_controls={"Exit": "ESC"})
+            print("Click on the plot window to focus for keyboard input\n")
+            plt.show()
+        else:
+            plt.close(fig)
+
+        return fig
+
+
+def accuracy_at_calibration_points(et: EyeTracker, eye: Eye) -> CalibrationResults:
     """Computes gaze error at calibration points to assess calibration quality.
 
     Evaluates calibration accuracy by testing gaze prediction at original calibration targets.
     Provides comprehensive error analysis with both spatial and angular metrics.
 
+    To visualize the results, call calib_results.interactive_plot() on the returned object.
+
     Args:
         et: Eye tracker structure
         eye: Pre-configured Eye object (required)
-        interactive_plot: Whether to create interactive visualization (default: True)
 
     Returns:
-        CalibrationResults object with error statistics and formatted printing methods
+        CalibrationResults object with error statistics, printing, and on-demand visualization
 
     """
     # Ensure eye tracker is calibrated before running analysis
@@ -177,16 +224,25 @@ def accuracy_at_calibration_points(et: EyeTracker, eye: Eye, interactive_plot: b
         print(f"Mean error {errors['mtr']['mean'] * 1e3:.3g} mm ({errors['deg']['mean']:.4f}°)")
         print(f"Standard deviation {errors['mtr']['std'] * 1e3:.3g} mm ({errors['deg']['std']:.4f}°)")
 
-        # Create interactive visualization if requested
-        if interactive_plot:
-            create_interactive_calibration_plot(
-                et, eye, x, y, u, v, predicted_points, valid_mask, errs_deg, plane_info
-            )
+        # Store data for on-demand plot creation via interactive_plot()
+        plot_data = {
+            "et": et,
+            "eye": eye,
+            "x": x,
+            "y": y,
+            "u": u,
+            "v": v,
+            "predicted_points": predicted_points,
+            "valid_mask": valid_mask,
+            "errs_deg": errs_deg,
+            "plane_info": plane_info,
+        }
     else:
         print(f"\nCalibration Analysis Results: ALL {n_total} POINTS FAILED")
         errors = {
             "mtr": {"max": np.nan, "mean": np.nan, "std": np.nan, "median": np.nan},
             "deg": {"max": np.nan, "mean": np.nan, "std": np.nan, "median": np.nan},
         }
+        plot_data = None
 
-    return CalibrationResults(errors)
+    return CalibrationResults(errors, plot_data=plot_data)

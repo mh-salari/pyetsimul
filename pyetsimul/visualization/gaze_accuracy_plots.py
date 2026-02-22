@@ -8,6 +8,7 @@ from typing import TYPE_CHECKING
 if TYPE_CHECKING:
     from ..simulation.core import ParameterVariation
 
+import matplotlib.pyplot as plt
 import numpy as np
 
 from ..core import EyeTracker
@@ -72,7 +73,8 @@ class GazeAccuracyPlotter:
         eye_tracker: EyeTracker,
         title_prefix: str = "Gaze Accuracy Analysis",
         plot_mode: str = "auto",
-    ) -> None:
+        show: bool = True,
+    ) -> plt.Figure:
         """Plot gaze accuracy results with flexible 2D/3D visualization.
 
         Args:
@@ -80,27 +82,39 @@ class GazeAccuracyPlotter:
             eye_tracker: Eye tracker instance (used to access plane_info for 2D plotting)
             title_prefix: Title prefix for the plot
             plot_mode: "2d", "3d", or "auto" (auto chooses 2D for 2D trackers, 3D otherwise)
+            show: If True (default), display the figure with plt.show() (blocks until closed).
+                  If False, return the figure for saving (fig.savefig()) without displaying.
+                  The figure is removed from matplotlib's manager to prevent it from
+                  appearing unexpectedly in later plt.show() calls.
+
+        Returns:
+            The matplotlib Figure.
 
         """
         if gaze_result.successful_predictions == 0:
-            print("No successful predictions to plot")
-            return
+            raise ValueError("No successful predictions to plot")
 
         if gaze_result.variation is None:
-            print("No variation information available for plotting")
-            return
+            raise ValueError("No variation information available for plotting")
 
         if plot_mode == "auto":
             has_plane_info = hasattr(eye_tracker, "plane_info") and eye_tracker.plane_info is not None
             plot_mode = "2d" if has_plane_info else "3d"
 
         if plot_mode == "2d":
-            self._plot_2d(gaze_result, eye_tracker, title_prefix)
+            fig = self._plot_2d(gaze_result, eye_tracker, title_prefix)
         else:
-            GazeAccuracyPlotter._plot_3d(gaze_result, title_prefix)
+            fig = GazeAccuracyPlotter._plot_3d(gaze_result, title_prefix)
+
+        if show:
+            plt.show()
+        else:
+            plt.close(fig)
+
+        return fig
 
     @staticmethod
-    def _plot_3d(gaze_result: GazeAccuracyResult, title_prefix: str) -> None:
+    def _plot_3d(gaze_result: GazeAccuracyResult, title_prefix: str) -> plt.Figure:
         """Create 3D visualization using existing plotting utilities."""
         positions = []
         error_vectors = []
@@ -127,7 +141,7 @@ class GazeAccuracyPlotter:
         error_vectors = np.array(error_vectors)
         angular_errors = np.array(angular_errors)
 
-        plot_error_vectors_3d(
+        return plot_error_vectors_3d(
             positions=positions,
             error_vectors=error_vectors,
             angular_errors=angular_errors,
@@ -137,12 +151,11 @@ class GazeAccuracyPlotter:
             position_labels=("X position", "Y position", "Z position"),
         )
 
-    def _plot_2d(self, gaze_result: GazeAccuracyResult, eye_tracker: EyeTracker, title_prefix: str) -> None:
+    def _plot_2d(self, gaze_result: GazeAccuracyResult, eye_tracker: EyeTracker, title_prefix: str) -> plt.Figure:
         """Create 2D visualization using natural coordinates from plane detection."""
         if not hasattr(eye_tracker, "plane_info") or eye_tracker.plane_info is None:
             print("Warning: Eye tracker lacks plane info, using 3D visualization")
-            self._plot_3d(gaze_result, title_prefix)
-            return
+            return self._plot_3d(gaze_result, title_prefix)
 
         plane_info = eye_tracker.plane_info
 
@@ -180,8 +193,7 @@ class GazeAccuracyPlotter:
                 angular_errors.append(gaze_result.errors_angular[data_idx])
 
         if not positions_2d:
-            print("No valid data points for 2D plotting")
-            return
+            raise ValueError("No valid data points for 2D plotting")
 
         positions_array = np.array(positions_2d)
         error_vectors_array = np.array(error_vectors_2d)
@@ -198,7 +210,7 @@ class GazeAccuracyPlotter:
             primary_label = f"Observer {pos_primary_axis.upper()} position"
             secondary_label = f"Observer {pos_secondary_axis.upper()} position"
 
-        plot_error_vectors_2d(
+        return plot_error_vectors_2d(
             X=x,
             Y=y,
             U=u,

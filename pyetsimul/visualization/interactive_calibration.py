@@ -30,11 +30,15 @@ def create_interactive_calibration_plot(
     valid_mask: np.ndarray,
     errs_deg: np.ndarray,
     plane_info: PlaneInfo,
-) -> None:
+) -> plt.Figure:
     """Create interactive calibration plot with keyboard controls.
 
     Provides real-time exploration of gaze tracking accuracy with 3D setup visualization.
     Allows interactive target positioning to test calibration quality.
+
+    Returns:
+        The matplotlib Figure containing the interactive calibration plot.
+
     """
     fig = plt.figure(figsize=(24, 10))
     interactive_eye = copy.deepcopy(eye)
@@ -216,7 +220,7 @@ def create_interactive_calibration_plot(
 
             # Update title with current error and calibration errors
             ax.set_title(
-                f"Interactive Calibration Analysis\n"
+                f"Calibration Analysis\n"
                 f"Current gaze error: {current_error_mm:.2f}mm ({current_error_deg:.4f}°)\n"
                 f"Calibration errors: {calib_errors_text}",
                 fontsize=12,
@@ -244,7 +248,7 @@ def create_interactive_calibration_plot(
                 calib_errors_text = "No valid calibration points"
 
             ax.set_title(
-                f"Interactive Calibration Analysis\n"
+                f"Calibration Analysis\n"
                 f"Current gaze error: PREDICTION FAILED\n"
                 f"Calibration errors: {calib_errors_text}",
                 fontsize=12,
@@ -265,10 +269,6 @@ def create_interactive_calibration_plot(
     controls.set_update_callback(update_display)
     fig.canvas.mpl_connect("key_press_event", controls.handle_key_press)
 
-    print("\nINTERACTIVE MODE:")
-    InteractiveControls.print_controls(additional_controls={"Exit": "ESC"})
-    print("Click on the plot window to focus for keyboard input\n")
-
     update_display()
 
-    plt.show()
+    return fig

@@ -33,7 +33,7 @@ def plot_error_vectors_2d(
     figure_size: tuple[int, int] = (10, 8),
     xlabel: str = "Observer X position (mm)",
     ylabel: str = "Observer Y position (mm)",
-) -> None:
+) -> plt.Figure:
     """Plot gaze tracking error vectors with adaptive scaling.
 
     Creates quiver plot showing error vectors at measurement points.
@@ -56,6 +56,9 @@ def plot_error_vectors_2d(
         xlabel: X-axis label
         ylabel: Y-axis label
 
+    Returns:
+        The matplotlib Figure.
+
     """
     # Apply unit conversion if requested
     if convert_to_mm:
@@ -75,8 +78,7 @@ def plot_error_vectors_2d(
     # Extract finite values for scaling calculations
     finite_magnitudes = magnitudes[np.isfinite(magnitudes)]
     if len(finite_magnitudes) == 0:
-        print("Warning: All error magnitudes are NaN/Inf, skipping plot")
-        return
+        raise ValueError("All error magnitudes are NaN/Inf, cannot create plot")
 
     max_magnitude = np.max(finite_magnitudes)
     plot_range_x = np.max(x_plot) - np.min(x_plot)
@@ -99,7 +101,7 @@ def plot_error_vectors_2d(
 
     # Create figure
     plt.style.use("default")  # Reset to default style
-    _, ax = plt.subplots(figsize=figure_size, facecolor="white")
+    fig, ax = plt.subplots(figsize=figure_size, facecolor="white")
     ax.set_facecolor("white")
 
     # Handle both gridded data (2D arrays) and scattered points (1D arrays)
@@ -183,6 +185,8 @@ def plot_error_vectors_2d(
 
     plt.tight_layout()
 
+    return fig
+
 
 def plot_error_vectors_3d(
     positions: np.ndarray,
@@ -195,7 +199,7 @@ def plot_error_vectors_3d(
     show_grid: bool = True,
     figure_size: tuple[int, int] = (12, 10),
     position_labels: tuple[str, str, str] = ("X position", "Y position", "Z position"),
-) -> None:
+) -> plt.Figure:
     """Plot 3D gaze tracking error vectors with adaptive scaling.
 
     Creates 3D quiver plot showing error vectors in 3D space.
@@ -212,12 +216,14 @@ def plot_error_vectors_3d(
         figure_size: Figure size tuple
         position_labels: Labels for X, Y, Z axes
 
+    Returns:
+        The matplotlib Figure.
+
     """
     # Filter out invalid entries
     valid_mask = ~(np.isnan(positions).any(axis=1) | np.isnan(error_vectors).any(axis=1) | np.isnan(angular_errors))
     if not np.any(valid_mask):
-        print("Warning: No valid data points for 3D plotting")
-        return
+        raise ValueError("No valid data points for 3D plotting")
 
     positions_valid = positions[valid_mask]
     error_vectors_valid = error_vectors[valid_mask]
@@ -237,8 +243,7 @@ def plot_error_vectors_3d(
     finite_magnitudes = magnitudes[np.isfinite(magnitudes)]
 
     if len(finite_magnitudes) == 0:
-        print("Warning: All error magnitudes are NaN/Inf, skipping plot")
-        return
+        raise ValueError("All error magnitudes are NaN/Inf, cannot create plot")
 
     max_magnitude = np.max(finite_magnitudes)
 
@@ -304,3 +309,5 @@ def plot_error_vectors_3d(
 
     # Improve layout
     plt.tight_layout()
+
+    return fig

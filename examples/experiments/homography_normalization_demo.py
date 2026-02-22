@@ -1,6 +1,5 @@
 """Homography gaze model eye tracking example using shared configuration."""
 
-import matplotlib.pyplot as plt
 from config import (
     angle_kappa_variation,
     calibration_points,
@@ -45,6 +44,7 @@ def main() -> None:
     print("-" * 60)
     calib_results = accuracy_at_calibration_points(et, eye=base_config.eyes[0])
     calib_results.pprint("Calibration Test Summary")
+    calib_results.interactive_plot()
 
     # Single reusable strategy for all tests
     data_gen = DataGenerationStrategy(
@@ -95,8 +95,7 @@ def main() -> None:
         )
         test_results.pprint(f"{test_name} Test Summary")
 
-    print("\nAll tests complete. Displaying all plots...")
-    plt.show()
+    print("\nAll tests complete.")
 
 
 if __name__ == "__main__":

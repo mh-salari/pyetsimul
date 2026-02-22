@@ -73,6 +73,7 @@ def main() -> None:
     print("-" * 60)
     calib_results = accuracy_at_calibration_points(et, eye=eye)
     calib_results.pprint("Custom Polynomial Calibration Test")
+    calib_results.interactive_plot()
 
 
 if __name__ == "__main__":
