@@ -47,9 +47,9 @@ class GazeAccuracyResult:
             std_mm = self.error_stats["mtr"]["std"] * 1e3
             std_deg = self.error_stats["deg"]["std"]
 
-            print(f"Maximum error {max_mm:.2f} mm ({max_deg:.2f}°)")
-            print(f"Mean error {mean_mm:.2f} mm ({mean_deg:.2f}°)")
-            print(f"Standard deviation {std_mm:.2f} mm ({std_deg:.2f}°)")
+            print(f"Maximum error {max_deg:.2f}° ({max_mm:.2f} mm)")
+            print(f"Mean error {mean_deg:.2f}° ({mean_mm:.2f} mm)")
+            print(f"Standard deviation {std_deg:.2f}° ({std_mm:.2f} mm)")
         else:
             print("No successful predictions to analyze")
 

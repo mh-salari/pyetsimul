@@ -10,9 +10,9 @@ import numpy as np
 def _format_error_statistics(errors: dict[str, dict[str, float]], unit_str: str) -> str:
     """Format error statistics for plot titles."""
     return (
-        f"Max: {errors['mtr']['max'] * 1e3:.2f} {unit_str} ({errors['deg']['max']:.3f}°), "
-        f"Mean: {errors['mtr']['mean'] * 1e3:.2f} {unit_str} ({errors['deg']['mean']:.3f}°), "
-        f"Std: {errors['mtr']['std'] * 1e3:.2f} {unit_str} ({errors['deg']['std']:.3f}°)"
+        f"Max: {errors['deg']['max']:.3f}° ({errors['mtr']['max'] * 1e3:.2f} {unit_str}), "
+        f"Mean: {errors['deg']['mean']:.3f}° ({errors['mtr']['mean'] * 1e3:.2f} {unit_str}), "
+        f"Std: {errors['deg']['std']:.3f}° ({errors['mtr']['std'] * 1e3:.2f} {unit_str})"
     )
 
 

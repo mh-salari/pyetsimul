@@ -323,7 +323,7 @@ def create_interactive_gaze_plot(
         if len(current_errors_mm) > 0:
             avg_mm = np.mean(current_errors_mm)
             avg_deg = np.mean(current_errors_deg)
-            current_text = f"Current gaze error: {avg_mm:.2f}mm ({avg_deg:.4f}°)"
+            current_text = f"Current gaze error: {avg_deg:.4f}° ({avg_mm:.2f}mm)"
             if n_eyes > 1:
                 current_text += f" avg across {n_eyes} eyes"
         else:

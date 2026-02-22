@@ -34,18 +34,18 @@ class CalibrationResults:
         """Basic string representation of calibration results."""
         mean_error_mm = self.errors["mtr"]["mean"] * 1e3
         mean_error_deg = self.errors["deg"]["mean"]
-        return f"CalibrationResults(mean_error={mean_error_mm:.2f}mm / {mean_error_deg:.3f}°)"
+        return f"CalibrationResults(mean_error={mean_error_deg:.3f}° / {mean_error_mm:.2f}mm)"
 
     def pprint(self, title: str = "Calibration Accuracy") -> None:
         """Print formatted calibration error statistics."""
         print(f"\n{title}:")
 
-        headers = ["Statistic", "Error (mm)", "Error (degrees)"]
+        headers = ["Statistic", "Error (degrees)", "Error (mm)"]
         data = [
-            ["Max", f"{self.errors['mtr']['max'] * 1e3:.4f}", f"{self.errors['deg']['max']:.4f}"],
-            ["Mean", f"{self.errors['mtr']['mean'] * 1e3:.4f}", f"{self.errors['deg']['mean']:.4f}"],
-            ["Std", f"{self.errors['mtr']['std'] * 1e3:.4f}", f"{self.errors['deg']['std']:.4f}"],
-            ["Median", f"{self.errors['mtr']['median'] * 1e3:.4f}", f"{self.errors['deg']['median']:.4f}"],
+            ["Max", f"{self.errors['deg']['max']:.4f}", f"{self.errors['mtr']['max'] * 1e3:.4f}"],
+            ["Mean", f"{self.errors['deg']['mean']:.4f}", f"{self.errors['mtr']['mean'] * 1e3:.4f}"],
+            ["Std", f"{self.errors['deg']['std']:.4f}", f"{self.errors['mtr']['std'] * 1e3:.4f}"],
+            ["Median", f"{self.errors['deg']['median']:.4f}", f"{self.errors['mtr']['median'] * 1e3:.4f}"],
         ]
 
         print(tabulate(data, headers=headers, tablefmt="grid"))
@@ -205,9 +205,9 @@ def accuracy_at_calibration_points(et: EyeTracker, eye: Eye) -> CalibrationResul
 
         # Display statistics
         print(f"\nCalibration Analysis Results ({n_valid}/{n_total} points successful):")
-        print(f"Maximum error {errors['mtr']['max'] * 1e3:.3g} mm ({errors['deg']['max']:.4f}°)")
-        print(f"Mean error {errors['mtr']['mean'] * 1e3:.3g} mm ({errors['deg']['mean']:.4f}°)")
-        print(f"Standard deviation {errors['mtr']['std'] * 1e3:.3g} mm ({errors['deg']['std']:.4f}°)")
+        print(f"Maximum error {errors['deg']['max']:.4f}° ({errors['mtr']['max'] * 1e3:.3g} mm)")
+        print(f"Mean error {errors['deg']['mean']:.4f}° ({errors['mtr']['mean'] * 1e3:.3g} mm)")
+        print(f"Standard deviation {errors['deg']['std']:.4f}° ({errors['mtr']['std'] * 1e3:.3g} mm)")
 
         # Store minimal data for on-demand plot creation via interactive_plot()
         plot_data = {"et": et, "eye": eye}
