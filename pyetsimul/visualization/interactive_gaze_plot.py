@@ -1,50 +1,126 @@
-"""Interactive calibration plotting for evaluation.
+"""Interactive gaze plot for exploring calibration accuracy.
 
-This module provides interactive plotting functions for calibration analysis,
-allowing real-time exploration of calibration accuracy and gaze estimation.
+This module provides a standalone interactive plot that visualizes gaze estimation
+accuracy at calibration points with a 3D setup view. It computes all calibration
+errors internally from a predict function — no pre-computed arrays needed.
 """
 
 import copy
+from collections.abc import Callable
 
 import matplotlib.pyplot as plt
 import numpy as np
 
-from pyetsimul.core import Eye, EyeTracker
+from pyetsimul.core import Eye
 
 from ..geometry.conversions import calculate_angular_error_degrees
 from ..geometry.plane_detection import PlaneInfo
-from ..types import Point2D, Point3D
+from ..types import GazePrediction, Point2D, Point3D
 from .coordinate_utils import prepare_eye_data_for_plots
 from .interactive_controls import InteractiveControls
 from .setup_plots import plot_setup
 
 
-def create_interactive_calibration_plot(
-    et: EyeTracker,
+def _compute_calibration_errors(
+    predict_fn: Callable[[Eye, Point3D], GazePrediction | None],
     eye: Eye,
-    X: np.ndarray,
-    Y: np.ndarray,
-    U: np.ndarray,
-    V: np.ndarray,
-    predicted_points: list,
-    valid_mask: np.ndarray,
-    errs_deg: np.ndarray,
+    calibration_points: list[Point3D],
     plane_info: PlaneInfo,
-) -> plt.Figure:
-    """Create interactive calibration plot with keyboard controls.
+) -> dict:
+    """Compute calibration errors by predicting at each calibration point.
 
-    Provides real-time exploration of gaze tracking accuracy with 3D setup visualization.
-    Allows interactive target positioning to test calibration quality.
+    Returns a dict with arrays needed for the 2D error plot.
+    """
+    n = len(calibration_points)
+    x = np.zeros(n)
+    y = np.zeros(n)
+    u = np.zeros(n)
+    v = np.zeros(n)
+    errs_deg = np.zeros(n)
+    predicted_points: list[Point3D] = []
+    valid_mask = np.zeros(n, dtype=bool)
+
+    for i, target in enumerate(calibration_points):
+        coord1, coord2 = plane_info.extract_2d_coords(target)
+        x[i] = coord1
+        y[i] = coord2
+
+        prediction = predict_fn(eye, target)
+
+        if prediction is not None and prediction.gaze_point is not None:
+            gp = prediction.gaze_point
+            if not (np.isnan(gp.x) or np.isnan(gp.y) or np.isnan(gp.z)):
+                pred_coord1, pred_coord2 = plane_info.extract_2d_coords(gp)
+                u[i] = pred_coord1 - coord1
+                v[i] = pred_coord2 - coord2
+                target_point = Point3D(target.x, target.y, target.z)
+                errs_deg[i] = calculate_angular_error_degrees(
+                    target_point, Point3D(gp.x, gp.y, gp.z), eye.position
+                )
+                predicted_points.append(gp)
+                valid_mask[i] = True
+                continue
+
+        # Failed prediction
+        u[i] = np.nan
+        v[i] = np.nan
+        errs_deg[i] = np.nan
+        predicted_points.append(Point3D(np.nan, np.nan, np.nan))
+
+    return {
+        "x": x,
+        "y": y,
+        "u": u,
+        "v": v,
+        "errs_deg": errs_deg,
+        "predicted_points": predicted_points,
+        "valid_mask": valid_mask,
+    }
+
+
+def create_interactive_gaze_plot(
+    eye: Eye,
+    predict_fn: Callable[[Eye, Point3D], GazePrediction | None],
+    calibration_points: list[Point3D],
+    plane_info: PlaneInfo,
+    cameras: list,
+    lights: list,
+    use_legacy_look_at: bool = False,
+) -> plt.Figure:
+    """Create interactive gaze plot with keyboard controls.
+
+    Computes calibration errors internally by calling predict_fn at each
+    calibration point. Provides real-time exploration of gaze tracking accuracy
+    with a 3D setup visualization alongside a 2D error vector plot.
+
+    Args:
+        eye: The Eye object to use for gaze prediction.
+        predict_fn: Function that predicts gaze given (eye, target_point).
+        calibration_points: List of 3D calibration target positions.
+        plane_info: Plane detection info for coordinate mapping.
+        cameras: List of Camera objects in the setup.
+        lights: List of Light objects in the setup.
+        use_legacy_look_at: Whether to use legacy look-at behavior.
 
     Returns:
-        The matplotlib Figure containing the interactive calibration plot.
+        The matplotlib Figure containing the interactive gaze plot.
 
     """
+    # Compute calibration errors once for the static overlay
+    calib_data = _compute_calibration_errors(predict_fn, eye, calibration_points, plane_info)
+    x = calib_data["x"]
+    y = calib_data["y"]
+    u = calib_data["u"]
+    v = calib_data["v"]
+    errs_deg = calib_data["errs_deg"]
+    predicted_points = calib_data["predicted_points"]
+    valid_mask = calib_data["valid_mask"]
+
     fig = plt.figure(figsize=(24, 10))
     interactive_eye = copy.deepcopy(eye)
 
-    mean_x = sum(pt.x for pt in et.calib_points) / len(et.calib_points)
-    mean_z = sum(pt.z for pt in et.calib_points) / len(et.calib_points)
+    mean_x = sum(pt.x for pt in calibration_points) / len(calibration_points)
+    mean_z = sum(pt.z for pt in calibration_points) / len(calibration_points)
     current_target = Point3D(mean_x, 0, mean_z)
 
     controls = InteractiveControls(interactive_eye, current_target, step_size=10e-3)
@@ -58,14 +134,14 @@ def create_interactive_calibration_plot(
 
         target_3d = Point3D(controls.target_point.x, 0, controls.target_point.z)
 
-        # Convert calibration points to list format using plane mapping
-        calib_points_list: list[Point2D] = []
-        for pt in et.calib_points:
-            calib_points_list.append(Point2D(*plane_info.extract_2d_coords(pt)))
+        # Convert calibration points to 2D list for plot overlay
+        calib_points_2d: list[Point2D] = []
+        for pt in calibration_points:
+            calib_points_2d.append(Point2D(*plane_info.extract_2d_coords(pt)))
 
         # Prepare eye data
         prepared_data = prepare_eye_data_for_plots(
-            [interactive_eye], [target_3d], et.lights, et.cameras, et.use_legacy_look_at
+            [interactive_eye], [target_3d], lights, cameras, use_legacy_look_at
         )
 
         # Plot 3D setup
@@ -73,10 +149,10 @@ def create_interactive_calibration_plot(
             ax_3d,
             prepared_data["eyes_data"],
             [target_3d],
-            et.lights,
-            et.cameras,
+            lights,
+            cameras,
             prepared_data["cr_3d_lists"],
-            calib_points=calib_points_list,
+            calib_points=calib_points_2d,
         )
 
         ax_3d.scatter(
@@ -89,8 +165,6 @@ def create_interactive_calibration_plot(
             label="Current Target",
         )
         ax_3d.legend()
-
-        # Add title to 3D subplot
         ax_3d.set_title("Eye Tracking Setup", fontsize=14, fontweight="bold", pad=20)
 
         # Right subplot: 2D calibration analysis with real-time prediction
@@ -99,8 +173,8 @@ def create_interactive_calibration_plot(
 
         # Plot all calibration points
         ax.scatter(
-            X * 1000,
-            Y * 1000,
+            x * 1000,
+            y * 1000,
             marker="+",
             s=30,
             c="blue",
@@ -119,19 +193,17 @@ def create_interactive_calibration_plot(
             if isinstance(pred_point, Point3D) and not (
                 np.isnan(pred_point.x) or np.isnan(pred_point.y) or np.isnan(pred_point.z)
             ):
-                # Check if Point3D has valid coordinates (not NaN)
-                x_valid.append(X[i] * 1000)
-                y_valid.append(Y[i] * 1000)
-                u_valid.append(U[i] * 1000)
-                v_valid.append(V[i] * 1000)
-                # Use plane coordinates for consistent mapping
-                pred_pos = Point3D(pred_point.x, pred_point.y, pred_point.z)
-                pred_coord1, pred_coord2 = plane_info.extract_2d_coords(pred_pos)
+                x_valid.append(x[i] * 1000)
+                y_valid.append(y[i] * 1000)
+                u_valid.append(u[i] * 1000)
+                v_valid.append(v[i] * 1000)
+                pred_coord1, pred_coord2 = plane_info.extract_2d_coords(
+                    Point3D(pred_point.x, pred_point.y, pred_point.z)
+                )
                 pred_x.append(pred_coord1 * 1000)
                 pred_y.append(pred_coord2 * 1000)
 
         if len(x_valid) > 0:
-            # Draw arrows from calibration points to predicted gaze points
             for i in range(len(x_valid)):
                 ax.arrow(
                     x_valid[i],
@@ -157,17 +229,15 @@ def create_interactive_calibration_plot(
                 zorder=4,
             )
 
-        current_prediction = et.estimate_gaze_at(interactive_eye, controls.target_point)
+        current_prediction = predict_fn(interactive_eye, controls.target_point)
 
         if current_prediction is not None and current_prediction.gaze_point is not None:
-            # Extract coordinates using plane mapping for consistent display
             target_coord1, target_coord2 = plane_info.extract_2d_coords(controls.target_point)
             pred_pos = Point3D(
                 current_prediction.gaze_point.x, current_prediction.gaze_point.y, current_prediction.gaze_point.z
             )
             pred_coord1, pred_coord2 = plane_info.extract_2d_coords(pred_pos)
 
-            # Plot current target and prediction
             ax.scatter(
                 [target_coord1 * 1000],
                 [target_coord2 * 1000],
@@ -187,7 +257,6 @@ def create_interactive_calibration_plot(
                 zorder=5,
             )
 
-            # Draw error arrow for current prediction
             error_x = (pred_coord1 - target_coord1) * 1000
             error_y = (pred_coord2 - target_coord2) * 1000
             ax.arrow(
@@ -204,21 +273,17 @@ def create_interactive_calibration_plot(
                 linestyle="--",
             )
 
-            # Calculate current error
             current_error_mm = np.sqrt(error_x**2 + error_y**2)
-            # Calculate angular error using full 3D coordinates
             current_error_deg = calculate_angular_error_degrees(
                 controls.target_point, pred_pos, interactive_eye.position
             )
 
-            # Create calibration error summary for title
             valid_errors = errs_deg[valid_mask]
             if len(valid_errors) > 0:
                 calib_errors_text = f"Avg: {np.mean(valid_errors):.3f}° | Max: {np.max(valid_errors):.3f}°"
             else:
                 calib_errors_text = "No valid calibration points"
 
-            # Update title with current error and calibration errors
             ax.set_title(
                 f"Calibration Analysis\n"
                 f"Current gaze error: {current_error_mm:.2f}mm ({current_error_deg:.4f}°)\n"
@@ -228,7 +293,6 @@ def create_interactive_calibration_plot(
                 pad=20,
             )
         else:
-            # Extract coordinates using plane mapping for failed prediction case
             target_coord1, target_coord2 = plane_info.extract_2d_coords(controls.target_point)
             ax.scatter(
                 [target_coord1 * 1000],
@@ -240,7 +304,6 @@ def create_interactive_calibration_plot(
                 zorder=5,
             )
 
-            # Create calibration error summary for title
             valid_errors = errs_deg[valid_mask]
             if len(valid_errors) > 0:
                 calib_errors_text = f"Avg: {np.mean(valid_errors):.3f}° | Max: {np.max(valid_errors):.3f}°"
@@ -262,7 +325,6 @@ def create_interactive_calibration_plot(
         ax.legend()
         ax.set_aspect("equal")
 
-        # Use constrained_layout for better spacing and prevent title cutoff
         plt.subplots_adjust(top=0.9, bottom=0.1, left=0.05, right=0.95, wspace=0.3)
         fig.canvas.draw()
 

@@ -11,7 +11,7 @@ from tabulate import tabulate
 from ..core import Eye, EyeTracker
 from ..geometry.conversions import calculate_angular_error_degrees
 from ..types import Point3D, Position3D
-from ..visualization.interactive_calibration import create_interactive_calibration_plot
+from ..visualization.interactive_gaze_plot import create_interactive_gaze_plot
 from ..visualization.interactive_controls import InteractiveControls
 from .analysis_utils import calculate_error_statistics
 from .calibration_utils import pprint_polynomial_parameters
@@ -70,17 +70,16 @@ class CalibrationResults:
         if self._plot_data is None:
             raise ValueError("No valid calibration data available for plotting.")
 
-        fig = create_interactive_calibration_plot(
-            self._plot_data["et"],
-            self._plot_data["eye"],
-            self._plot_data["x"],
-            self._plot_data["y"],
-            self._plot_data["u"],
-            self._plot_data["v"],
-            self._plot_data["predicted_points"],
-            self._plot_data["valid_mask"],
-            self._plot_data["errs_deg"],
-            self._plot_data["plane_info"],
+        et = self._plot_data["et"]
+        eye = self._plot_data["eye"]
+        fig = create_interactive_gaze_plot(
+            eye,
+            et.estimate_gaze_at,
+            et.calib_points,
+            et.plane_info,
+            et.cameras,
+            et.lights,
+            et.use_legacy_look_at,
         )
 
         if show:
@@ -224,19 +223,8 @@ def accuracy_at_calibration_points(et: EyeTracker, eye: Eye) -> CalibrationResul
         print(f"Mean error {errors['mtr']['mean'] * 1e3:.3g} mm ({errors['deg']['mean']:.4f}°)")
         print(f"Standard deviation {errors['mtr']['std'] * 1e3:.3g} mm ({errors['deg']['std']:.4f}°)")
 
-        # Store data for on-demand plot creation via interactive_plot()
-        plot_data = {
-            "et": et,
-            "eye": eye,
-            "x": x,
-            "y": y,
-            "u": u,
-            "v": v,
-            "predicted_points": predicted_points,
-            "valid_mask": valid_mask,
-            "errs_deg": errs_deg,
-            "plane_info": plane_info,
-        }
+        # Store minimal data for on-demand plot creation via interactive_plot()
+        plot_data = {"et": et, "eye": eye}
     else:
         print(f"\nCalibration Analysis Results: ALL {n_total} POINTS FAILED")
         errors = {
