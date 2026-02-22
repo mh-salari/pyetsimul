@@ -5,7 +5,7 @@ semantic meaning while supporting arithmetic operations and numpy integration.
 """
 
 from dataclasses import dataclass
-from typing import Union, overload
+from typing import Self, Union, overload
 
 import numpy as np
 
@@ -674,7 +674,7 @@ class IntersectionResult:
 class RotationMatrix(np.ndarray):
     """A 3x3 rotation matrix that validates its mathematical properties."""
 
-    def __new__(cls, input_array: np.ndarray | list, validate_handedness: bool = True) -> "RotationMatrix":
+    def __new__(cls, input_array: np.ndarray | list, validate_handedness: bool = True) -> Self:
         """Create a new rotation matrix from input array or list with validation.
 
         Args:
@@ -742,7 +742,7 @@ class RotationMatrix(np.ndarray):
 class TransformationMatrix(np.ndarray):
     """A 4x4 homogeneous transformation matrix with convenient factory methods."""
 
-    def __new__(cls, input_array: np.ndarray | list) -> "TransformationMatrix":
+    def __new__(cls, input_array: np.ndarray | list) -> Self:
         """Create a new transformation matrix from input array."""
         obj = np.asarray(input_array).view(cls)
         if obj.shape != (4, 4):
