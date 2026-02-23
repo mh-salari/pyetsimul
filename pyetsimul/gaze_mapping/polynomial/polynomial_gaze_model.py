@@ -78,6 +78,88 @@ class PolynomialGazeModel(EyeTracker):
             use_refraction=use_refraction,
         )
 
+    def _compute_glint_features(self, measurement: EyeMeasurement) -> np.ndarray | None:
+        """Compute polynomial features for all available glints and concatenate them.
+
+        Applies the same polynomial to each P-CR vector (pupil center minus each
+        corneal reflection) and concatenates the feature vectors. This allows any
+        single-glint polynomial to automatically leverage multiple light sources.
+
+        For example, with Cerrolaza [x², y², xy, x, y, 1] and 2 glints, the
+        concatenated feature vector becomes:
+        [x1², y1², x1y1, x1, y1, 1, x2², y2², x2y2, x2, y2, 1]
+
+        Args:
+            measurement: EyeMeasurement with pupil data and corneal reflections
+
+        Returns:
+            Concatenated feature array for same_xy polynomials, or None if
+            pupil center or any corneal reflection is missing.
+
+        """
+        pc = measurement.pupil_data.center
+        if pc is None:
+            return None
+
+        corneal_reflections = measurement.camera_image.corneal_reflections
+        if not corneal_reflections:
+            return None
+
+        # Apply polynomial to each P-CR vector and collect feature arrays
+        all_features = []
+        for cr in corneal_reflections:
+            if cr is None:
+                return None
+            pcr = pc - cr
+            poly_features = self.polynomial_func(pcr.x, pcr.y)
+            all_features.append(poly_features.features)
+
+        return np.concatenate(all_features)
+
+    def _compute_glint_features_different_xy(
+        self, measurement: EyeMeasurement
+    ) -> tuple[np.ndarray, np.ndarray] | None:
+        """Compute polynomial features for all glints with different X/Y feature sets.
+
+        Same as _compute_glint_features but handles polynomials that use independent
+        feature sets for X and Y gaze coordinates. Concatenates X features and Y
+        features separately across all glints.
+
+        Args:
+            measurement: EyeMeasurement with pupil data and corneal reflections
+
+        Returns:
+            Tuple of (x_features, y_features) concatenated across all glints,
+            or None if pupil center or any corneal reflection is missing.
+
+        """
+        pc = measurement.pupil_data.center
+        if pc is None:
+            return None
+
+        corneal_reflections = measurement.camera_image.corneal_reflections
+        if not corneal_reflections:
+            return None
+
+        # Apply polynomial to each P-CR vector and collect per-coordinate features
+        all_x_features = []
+        all_y_features = []
+        for cr in corneal_reflections:
+            if cr is None:
+                return None
+            pcr = pc - cr
+            poly_features = self.polynomial_func(pcr.x, pcr.y)
+            if poly_features.features.dtype == object:
+                # Handle object arrays (mixed-length coordinates)
+                all_x_features.append(poly_features.features[0])
+                all_y_features.append(poly_features.features[1])
+            else:
+                # Handle regular 2D arrays
+                all_x_features.append(poly_features.features[0, :])
+                all_y_features.append(poly_features.features[1, :])
+
+        return np.concatenate(all_x_features), np.concatenate(all_y_features)
+
     def calibrate(self, calibration_measurements: list[EyeMeasurement]) -> None:
         """Calibration function for pupil-CR polynomial gaze model.
 
@@ -104,20 +186,14 @@ class PolynomialGazeModel(EyeTracker):
         """Calibrate with polynomial using same features for both coordinates.
 
         Uses single polynomial for both X and Y gaze components.
+        Features are computed per-glint and concatenated across all available glints.
         """
         # Determine feature vector size from first valid measurement
         feature_size = None
         for measurement in calibration_measurements:
-            pc = measurement.pupil_data.center
-            cr = (
-                measurement.camera_image.corneal_reflections[0]
-                if measurement.camera_image.corneal_reflections
-                else None
-            )
-            if pc is not None and cr is not None:
-                pcr = pc - cr
-                poly_features = self.polynomial_func(pcr.x, pcr.y)
-                feature_size = poly_features.feature_count
+            features = self._compute_glint_features(measurement)
+            if features is not None:
+                feature_size = len(features)
                 break
 
         if feature_size is None:
@@ -127,17 +203,9 @@ class PolynomialGazeModel(EyeTracker):
         feature_matrix = np.zeros((feature_size, len(self.calib_points)))
 
         for i, measurement in enumerate(calibration_measurements):
-            pc = measurement.pupil_data.center
-            cr = (
-                measurement.camera_image.corneal_reflections[0]
-                if measurement.camera_image.corneal_reflections
-                else None
-            )
-
-            if pc is not None and cr is not None:
-                pcr = pc - cr
-                poly_features = self.polynomial_func(pcr.x, pcr.y)
-                feature_matrix[:, i] = poly_features.features
+            features = self._compute_glint_features(measurement)
+            if features is not None:
+                feature_matrix[:, i] = features
 
         # Map 3D calibration points to 2D plane coordinates
         calib_coords_2d = [self.plane_info.extract_2d_coords(pt) for pt in self.calib_points]
@@ -155,56 +223,33 @@ class PolynomialGazeModel(EyeTracker):
         """Calibrate with polynomial using different features for each coordinate.
 
         Uses independent polynomials for X and Y gaze components.
+        Features are computed per-glint and concatenated across all available glints,
+        with X and Y feature sets concatenated separately.
         """
-        # Determine polynomial structure from first valid measurement
-        poly_features = None
+        # Determine feature sizes from first valid measurement
+        x_feature_size = None
+        y_feature_size = None
         for measurement in calibration_measurements:
-            pc = measurement.pupil_data.center
-            cr = (
-                measurement.camera_image.corneal_reflections[0]
-                if measurement.camera_image.corneal_reflections
-                else None
-            )
-            if pc is not None and cr is not None:
-                pcr = pc - cr
-                poly_features = self.polynomial_func(pcr.x, pcr.y)
+            result = self._compute_glint_features_different_xy(measurement)
+            if result is not None:
+                x_features, y_features = result
+                x_feature_size = len(x_features)
+                y_feature_size = len(y_features)
                 break
 
-        if poly_features is None:
+        if x_feature_size is None:
             raise ValueError("No valid calibration data found")
 
         # Build separate feature matrices for X and Y coordinates
-        if poly_features.features.dtype == object:
-            # Handle object arrays (mixed-length coordinates)
-            coord_x_size = len(poly_features.features[0])
-            coord_y_size = len(poly_features.features[1])
-            feature_matrix_x = np.zeros((coord_x_size, len(self.calib_points)))
-            feature_matrix_y = np.zeros((coord_y_size, len(self.calib_points)))
-        else:
-            # Handle regular 2D arrays
-            _, feature_size = poly_features.features.shape
-            feature_matrix_x = np.zeros((feature_size, len(self.calib_points)))
-            feature_matrix_y = np.zeros((feature_size, len(self.calib_points)))
+        feature_matrix_x = np.zeros((x_feature_size, len(self.calib_points)))
+        feature_matrix_y = np.zeros((y_feature_size, len(self.calib_points)))
 
         for i, measurement in enumerate(calibration_measurements):
-            pc = measurement.pupil_data.center
-            cr = (
-                measurement.camera_image.corneal_reflections[0]
-                if measurement.camera_image.corneal_reflections
-                else None
-            )
-
-            if pc is not None and cr is not None:
-                pcr = pc - cr
-                poly_features = self.polynomial_func(pcr.x, pcr.y)
-                if poly_features.features.dtype == object:
-                    # Handle object arrays (mixed-length coordinates)
-                    feature_matrix_x[:, i] = poly_features.features[0]  # X coordinate features
-                    feature_matrix_y[:, i] = poly_features.features[1]  # Y coordinate features
-                else:
-                    # Handle regular 2D arrays
-                    feature_matrix_x[:, i] = poly_features.features[0, :]  # X coordinate features
-                    feature_matrix_y[:, i] = poly_features.features[1, :]  # Y coordinate features
+            result = self._compute_glint_features_different_xy(measurement)
+            if result is not None:
+                x_features, y_features = result
+                feature_matrix_x[:, i] = x_features  # X coordinate features
+                feature_matrix_y[:, i] = y_features  # Y coordinate features
 
         # Map 3D calibration points to 2D plane coordinates
         calib_coords_2d = [self.plane_info.extract_2d_coords(pt) for pt in self.calib_points]
@@ -220,9 +265,11 @@ class PolynomialGazeModel(EyeTracker):
         self.algorithm_state.is_calibrated = True
 
     def predict_gaze(self, measurement: EyeMeasurement) -> GazePrediction:
-        """Predict gaze from pupil-corneal reflection vector.
+        """Predict gaze from pupil-corneal reflection vectors.
 
         Applies calibrated polynomial model to predict screen gaze coordinates.
+        Computes P-CR vectors for all available glints and concatenates the
+        polynomial features before applying the calibrated coefficients.
         Handles missing data with appropriate confidence scoring.
 
         Args:
@@ -234,34 +281,86 @@ class PolynomialGazeModel(EyeTracker):
         """
         start_time = time.time()
 
-        # Extract pupil center and corneal reflection from measurement
+        # Extract pupil center and corneal reflections from measurement
         pc = measurement.pupil_data.center
-        cr = measurement.camera_image.corneal_reflections[0] if measurement.camera_image.corneal_reflections else None
+        corneal_reflections = measurement.camera_image.corneal_reflections
         polynomial_name = self.polynomial_name
 
         # Prepare intermediate results for debugging and analysis
-        intermediate_results = {"pc": pc, "cr": cr, "polynomial_name": polynomial_name}
+        intermediate_results = {
+            "pc": pc,
+            "corneal_reflections": corneal_reflections,
+            "polynomial_name": polynomial_name,
+        }
 
-        if pc is not None and cr is not None:
-            # Calculate pupil-corneal reflection vector
-            pcr_vector = pc - cr
-            intermediate_results["pcr_vector"] = pcr_vector
-
-            # Generate polynomial features and predict gaze coordinates
-            poly_features = self.polynomial_func(pcr_vector.x, pcr_vector.y)
-            intermediate_results["feature_vector"] = poly_features.features
-            intermediate_results["polynomial_info"] = poly_features
-
-            # Apply calibrated polynomial model with plane coordinate system
-            gaze_point = poly_features.predict(
-                self.algorithm_state.x_coefficients, self.algorithm_state.y_coefficients, self.plane_info
-            )
-
-            confidence = 1.0  # High confidence for successful polynomial prediction
-        else:
+        if pc is None or not corneal_reflections:
             # Handle missing pupil or corneal reflection data
             gaze_point = Point3D(0.0, 0.0, 0.0)
             confidence = 0.0
+
+        else:
+            # Calculate P-CR vectors for all glints and collect polynomial features
+            pcr_vectors = []
+            all_features = []
+            has_missing_cr = False
+
+            for cr in corneal_reflections:
+                if cr is None:
+                    has_missing_cr = True
+                    break
+                pcr_vector = pc - cr
+                pcr_vectors.append(pcr_vector)
+                poly_features = self.polynomial_func(pcr_vector.x, pcr_vector.y)
+                all_features.append(poly_features)
+
+            intermediate_results["pcr_vectors"] = pcr_vectors
+
+            if has_missing_cr or not all_features:
+                # Handle missing corneal reflection in one of the glints
+                gaze_point = Point3D(0.0, 0.0, 0.0)
+                confidence = 0.0
+            else:
+                intermediate_results["polynomial_info"] = all_features[0]
+
+                # Determine polynomial feature type and predict gaze coordinates
+                if all_features[0].uses_same_xy_features:
+                    # Same features for X and Y — single concatenated vector
+                    concatenated_features = np.concatenate([f.features for f in all_features])
+                    intermediate_results["feature_vector"] = concatenated_features
+
+                    # Apply calibrated polynomial model with plane coordinate system
+                    coefficient_matrix = np.vstack([
+                        self.algorithm_state.x_coefficients,
+                        self.algorithm_state.y_coefficients,
+                    ])
+                    gaze_2d = coefficient_matrix @ concatenated_features
+                else:
+                    # Different features for X and Y — concatenate per-coordinate
+                    all_x_features = []
+                    all_y_features = []
+                    for f in all_features:
+                        if f.features.dtype == object:
+                            # Handle object arrays (mixed-length coordinates)
+                            all_x_features.append(f.features[0])
+                            all_y_features.append(f.features[1])
+                        else:
+                            # Handle regular 2D arrays
+                            all_x_features.append(f.features[0, :])
+                            all_y_features.append(f.features[1, :])
+                    concat_x = np.concatenate(all_x_features)
+                    concat_y = np.concatenate(all_y_features)
+                    intermediate_results["feature_vector_x"] = concat_x
+                    intermediate_results["feature_vector_y"] = concat_y
+
+                    # Apply separate calibrated coefficients for X and Y coordinates
+                    gaze_2d = np.array([
+                        self.algorithm_state.x_coefficients @ concat_x,
+                        self.algorithm_state.y_coefficients @ concat_y,
+                    ])
+
+                gaze_point = self.plane_info.reconstruct_3d_point(gaze_2d[0], gaze_2d[1])
+
+                confidence = 1.0  # High confidence for successful polynomial prediction
 
         processing_time = time.time() - start_time
 
