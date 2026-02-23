@@ -18,9 +18,6 @@ supporting non-circular pupil shapes, size-dependent pupil decentration, eyelid 
 and camera lens distortion. It also supports systematic data generation and principled comparison
 of gaze estimation algorithms across calibrated and uncalibrated settings.
 
-By generating fully synthetic data, PyEtSimul removes privacy concerns and the need for
-costly hardware, making it practical for both educational and research applications.
-
 .. toctree::
    :maxdepth: 2
    :caption: Contents

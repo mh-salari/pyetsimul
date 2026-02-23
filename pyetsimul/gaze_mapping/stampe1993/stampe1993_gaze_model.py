@@ -1,7 +1,8 @@
 """Gaze model based on Stampe (1993): biquadratic polynomial + per-quadrant corner correction.
 
 Polynomial:
-    A biquadratic with 5 terms and no cross-term, fit via least-squares:
+    A biquadratic with 5 terms and no cross-term, fit via least-squares::
+
         gaze = a + b*x + c*y + d*x² + e*y²
 
     where (x, y) are the pupil-minus-corneal-reflection (P-CR) feature coordinates.
@@ -9,7 +10,8 @@ Polynomial:
 Corner correction:
     After the polynomial fit, a per-quadrant multiplicative correction removes residual
     nonlinearity at the screen corners. The screen is divided into 4 quadrants relative
-    to the centroid (Xc, Yc) of the calibration grid. For each quadrant q:
+    to the centroid (Xc, Yc) of the calibration grid. For each quadrant q::
+
         X_final = X_poly + cx[q] * (X_poly - Xc) * (Y_poly - Yc)
         Y_final = Y_poly + cy[q] * (X_poly - Xc) * (Y_poly - Yc)
 
