@@ -66,7 +66,8 @@ class DataGenerationStrategy(VariationStrategy):
     - Variations are the experimental parameters to test
     - The same setup can be reused to test multiple variations efficiently
 
-    Example Usage:
+    Example Usage::
+
         # Create strategy with complete setup
         strategy = DataGenerationStrategy(
             eyes=[eye],

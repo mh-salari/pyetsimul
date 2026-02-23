@@ -318,8 +318,10 @@ def refract_ray_conic(
 
     Returns:
         Tuple of (intersection_result, refracted_ray) where:
+
         - intersection_result: Contains intersection point on conic surface
         - refracted_ray: Refracted ray
+
         Returns (None, None) if no intersection or total internal reflection.
 
     """
@@ -377,9 +379,11 @@ def refract_ray_dual_surface(
 
     Returns:
         Tuple of (anterior_point, posterior_point, final_direction) where:
+
         - anterior_point: Point where ray strikes anterior corneal surface
         - posterior_point: Point where ray strikes posterior corneal surface
         - final_direction: Direction of ray after exiting posterior surface
+
         Returns (None, None, None) if ray doesn't intersect with cornea.
 
     """

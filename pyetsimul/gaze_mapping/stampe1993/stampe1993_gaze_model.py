@@ -3,6 +3,7 @@
 Polynomial:
     A biquadratic with 5 terms and no cross-term, fit via least-squares:
         gaze = a + b*x + c*y + d*x² + e*y²
+
     where (x, y) are the pupil-minus-corneal-reflection (P-CR) feature coordinates.
 
 Corner correction:
@@ -11,6 +12,7 @@ Corner correction:
     to the centroid (Xc, Yc) of the calibration grid. For each quadrant q:
         X_final = X_poly + cx[q] * (X_poly - Xc) * (Y_poly - Yc)
         Y_final = Y_poly + cy[q] * (X_poly - Xc) * (Y_poly - Yc)
+
     cx[q] and cy[q] are fit via least-squares over all calibration points in that quadrant.
     Quadrant assignment is based on the sign of (X_poly - Xc, Y_poly - Yc).
 

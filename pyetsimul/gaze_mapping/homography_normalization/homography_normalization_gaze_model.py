@@ -88,12 +88,15 @@ class HomographyNormalizationGazeModel(EyeTracker):
         """Calibrate homography gaze model.
 
         Implements Hansen et al. (2010) homography normalization calibration:
+
         1. Detect calibration plane for coordinate system.
         2. Define a canonical reference pattern for the N light sources.
         3. For each calibration point:
+
            - Order the detected glints and reference points.
            - Compute H^n_i: glints_image → normalized space using a best-fit method.
            - Normalize the pupil center: pc^n = H^n_i @ pc^i.
+
         4. Solve for H^s_n: normalized_pupil → screen_coordinates.
         5. (Optional) Train Gaussian Process on residual errors.
         """

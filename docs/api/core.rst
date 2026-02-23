@@ -58,3 +58,4 @@ Default Configs
    :members:
    :undoc-members:
    :show-inheritance:
+   :no-index:

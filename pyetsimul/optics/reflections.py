@@ -296,8 +296,10 @@ def reflect_ray_conic(
 
     Returns:
         Tuple of (intersection_result, reflected_ray) where:
+
         - intersection_result: Contains intersection point on conic surface
         - reflected_ray: Reflected ray
+
         Returns (None, None) if no intersection.
 
     """

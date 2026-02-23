@@ -156,6 +156,7 @@ ignore = [
     "N803", # PEP8-naming - Argument name should be lowercase
     "C901", # McCabe - Function is too complex
     "PLR0912", # Pylint - Too many branches
+    "INP001", # Flake8-no-pep420 - Implicit namespace package (requires __init__.py)
 ]
 
 [tool.ruff.lint.per-file-ignores]
