@@ -6,8 +6,8 @@ by generating synthetic eye features through geometric modeling. The framework a
 flexible positioning of eyes, cameras, and light sources in 3D space, with controlled
 variation of eye anatomical features and camera properties.
 
-.. image:: _static/images/eye_model_schematic.png
-   :alt: Schematic of a video-based eye-tracking setup showing light source, eye anatomy, and camera
+.. image:: _static/images/eye_tracking_setup.png
+   :alt: 3D eye tracking setup visualization with calibration analysis
    :align: center
 
 |
@@ -17,10 +17,6 @@ but extends it by generalizing corneal modeling to conic surfaces rather than th
 supporting non-circular pupil shapes, size-dependent pupil decentration, eyelid occlusion,
 and camera lens distortion. It also supports systematic data generation and principled comparison
 of gaze estimation algorithms across calibrated and uncalibrated settings.
-
-.. image:: _static/images/eye_tracking_setup.png
-   :alt: 3D eye tracking setup visualization with calibration analysis
-   :align: center
 
 By generating fully synthetic data, PyEtSimul removes privacy concerns and the need for
 costly hardware, making it practical for both educational and research applications.

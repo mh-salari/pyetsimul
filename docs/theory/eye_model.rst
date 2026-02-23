@@ -8,6 +8,12 @@ optical geometry by using a single nodal point located at the center of corneal 
 and extends the model by representing the cornea as conic. Default anatomical dimensions
 (corneal radii, axial length, etc.) follow Boff (1986) [2].
 
+.. image:: /_static/images/eye_model_schematic.png
+   :alt: Schematic of the eye model showing cornea surfaces, pupil, fovea, and optical geometry
+   :align: center
+
+|
+
 Eye Rotation
 ------------
 
