@@ -12,22 +12,6 @@ import matplotlib.pyplot as plt
 
 if TYPE_CHECKING:
     from pyetsimul.geometry.plane_detection import PlaneInfo
-from eyelink1000plus_physical_setup import (
-    CAMERA_TO_SCREEN,
-    CAMERA_X,
-    CAMERA_Z,
-    EYE_TO_SCREEN,
-    EYE_X_LEFT,
-    EYE_X_RIGHT,
-    EYE_Z,
-    HV9_CALIBRATION_POINTS,
-    LIGHT_X,
-    LIGHT_Z,
-    SCREEN_HALF_H,
-    SCREEN_HALF_W,
-    SCREEN_HEIGHT,
-    SCREEN_WIDTH,
-)
 
 from pyetsimul.core import Camera, Eye, Light
 from pyetsimul.core.cornea import ConicCornea
@@ -42,7 +26,71 @@ from pyetsimul.visualization.gaze_accuracy_plots import GazeAccuracyPlotter
 from pyetsimul.visualization.interactive_gaze_plot import create_interactive_gaze_plot
 from pyetsimul.visualization.setup_plots import plot_setup
 
+# ---------------------------------------------------------------------------
+# EyeLink 1000 Plus physical setup dimensions
+# ---------------------------------------------------------------------------
+# All distances in meters. Coordinate system centered on the screen:
+#   x — horizontal (positive = right)
+#   y — depth from screen (positive = away from screen toward the eye)
+#   z — vertical (positive = up)
+#
+# Layout (side view, not to scale):
+#   Screen (y=0)  <-475mm->  Camera  <-505mm->  Eye (y=980mm)
+#                              (below screen center)
 
+# Screen dimensions
+SCREEN_WIDTH = 376e-3
+SCREEN_HEIGHT = 301e-3
+SCREEN_HALF_W = SCREEN_WIDTH / 2
+SCREEN_HALF_H = SCREEN_HEIGHT / 2
+
+# EyeLink HV9 calibration area (88% x 83% of screen)
+CAL_AREA_X = 0.88
+CAL_AREA_Y = 0.83
+CAL_HALF_W = SCREEN_WIDTH * CAL_AREA_X / 2
+CAL_HALF_H = SCREEN_HEIGHT * CAL_AREA_Y / 2
+
+# Camera and eye distances from screen plane
+EYE_TO_SCREEN = 980e-3
+CAMERA_TO_SCREEN = 475e-3
+
+# Real-world heights from ground
+SCREEN_BOTTOM_FROM_GROUND = 0.12
+CAMERA_FROM_GROUND = 0.15
+LIGHT_FROM_GROUND = 0.15
+EYE_FROM_GROUND = 0.42
+
+# Horizontal offsets from screen center
+# The IR light is mounted on the camera arm, so it always moves with the camera.
+# LIGHT_X = CAMERA_X + LIGHT_CAMERA_OFFSET (26.5 cm to the right of camera)
+CAMERA_X = -0.18
+LIGHT_X = CAMERA_X + 0.265  # IR light: 26.5 cm to the right of camera
+EYE_X_RIGHT = 0.03
+EYE_X_LEFT = -0.03
+
+# Vertical offsets derived from ground heights (screen center is z=0 reference)
+SCREEN_CENTER_FROM_GROUND = SCREEN_BOTTOM_FROM_GROUND + SCREEN_HALF_H
+CAMERA_Z = CAMERA_FROM_GROUND - SCREEN_CENTER_FROM_GROUND
+LIGHT_Z = LIGHT_FROM_GROUND - SCREEN_CENTER_FROM_GROUND
+EYE_Z = EYE_FROM_GROUND - SCREEN_CENTER_FROM_GROUND
+
+# HV9 calibration grid: 9 targets on a cross + corners pattern
+HV9_CALIBRATION_POINTS: list[Position3D] = [
+    Position3D(0.0, 0.0, 0.0),  # Center
+    Position3D(0.0, 0.0, CAL_HALF_H),  # Top center
+    Position3D(0.0, 0.0, -CAL_HALF_H),  # Bottom center
+    Position3D(-CAL_HALF_W, 0.0, 0.0),  # Left center
+    Position3D(CAL_HALF_W, 0.0, 0.0),  # Right center
+    Position3D(-CAL_HALF_W, 0.0, CAL_HALF_H),  # Top-left
+    Position3D(CAL_HALF_W, 0.0, CAL_HALF_H),  # Top-right
+    Position3D(-CAL_HALF_W, 0.0, -CAL_HALF_H),  # Bottom-left
+    Position3D(CAL_HALF_W, 0.0, -CAL_HALF_H),  # Bottom-right
+]
+
+
+# ---------------------------------------------------------------------------
+# Visualization helper
+# ---------------------------------------------------------------------------
 def plot_physical_setup(
     eyes: list[Eye],
     look_at: Position3D,
@@ -73,6 +121,9 @@ def plot_physical_setup(
     plt.close(fig)
 
 
+# ---------------------------------------------------------------------------
+# Main
+# ---------------------------------------------------------------------------
 def main() -> None:
     """Calibrate Stampe (1993) model and evaluate gaze accuracy."""
     # --- Setup: both eyes ---
@@ -105,26 +156,8 @@ def main() -> None:
     # --- Physical setup visualization ---
     eyes = [right_eye, left_eye]
     look_at = Position3D(0.0, 0.0, 0.0)
-    prepared = prepare_eye_data_for_plots(eyes, [look_at] * len(eyes), [light], [camera])
-    calib_points_2d = [Point2D(*et_right.plane_info.extract_2d_coords(pt)) for pt in HV9_CALIBRATION_POINTS]
     screen = ScreenGeometry(width=SCREEN_WIDTH, height=SCREEN_HEIGHT, plane="xz")
-
-    fig = plt.figure(figsize=(10, 8))
-    ax_3d = fig.add_subplot(1, 1, 1, projection="3d")
-    plot_setup(
-        ax_3d,
-        prepared["eyes_data"],
-        [look_at] * len(eyes),
-        [light],
-        [camera],
-        prepared["cr_3d_lists"],
-        calib_points=calib_points_2d,
-        screen=screen,
-    )
-    ax_3d.legend(fontsize=7)
-    ax_3d.set_title("EyeLink 1000 Plus — Physical Setup", fontsize=12, fontweight="bold")
-    plt.show()
-    plt.close(fig)
+    plot_physical_setup(eyes, look_at, camera, light, et_right.plane_info, screen)
 
     # --- Calibration accuracy ---
     calib_right = accuracy_at_calibration_points(et_right, eye=right_eye)
