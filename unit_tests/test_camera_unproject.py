@@ -13,15 +13,15 @@ def test_single_point_unprojection() -> None:
 
     # Single 2D point on image plane
     x = Point2D(100.0, 50.0)
-    d = 200.0  # Distance from camera
+    d = 200000.0  # Distance from camera (mm)
 
     pos = c.unproject(x, d)
 
-    # MATLAB reference values
+    # MATLAB reference values (scaled to mm)
     expected_pos = np.array([
-        [6.9444444444444446],
-        [3.4722222222222223],
-        [-200.0],
+        [6944.4444444444446],
+        [3472.2222222222223],
+        [-200000.0],
         [1.0],
     ])
 
@@ -36,29 +36,29 @@ def test_multiple_points_unprojection() -> None:
 
     # Multiple 2D points on image plane
     x = [Point2D(0.0, 0.0), Point2D(100.0, 50.0), Point2D(-150.0, -75.0), Point2D(200.0, 100.0)]
-    d = 300.0  # Distance from camera
+    d = 300000.0  # Distance from camera (mm)
 
     pos = c.unproject(x, d)
 
-    # MATLAB reference values
+    # MATLAB reference values (scaled to mm)
     expected_pos = np.array([
         [
             0.0,
-            10.4166666666666679,
-            -15.6250,
-            20.8333333333333357,
+            10416.6666666666679,
+            -15625.0,
+            20833.3333333333357,
         ],
         [
             0.0,
-            5.2083333333333339,
-            -7.8125,
-            10.4166666666666679,
+            5208.3333333333339,
+            -7812.5,
+            10416.6666666666679,
         ],
         [
-            -300.0,
-            -300.0,
-            -300.0,
-            -300.0,
+            -300000.0,
+            -300000.0,
+            -300000.0,
+            -300000.0,
         ],
         [
             1.0,
@@ -79,15 +79,15 @@ def test_image_center_unprojection() -> None:
 
     # Point at image center
     x = Point2D(0.0, 0.0)  # Center of image plane
-    d = 150.0
+    d = 150000.0
 
     pos = c.unproject(x, d)
 
-    # MATLAB reference values
+    # MATLAB reference values (scaled to mm)
     expected_pos = np.array([
         [0.0],
         [0.0],
-        [-150.0],
+        [-150000.0],
         [1.0],
     ])
 
@@ -103,15 +103,15 @@ def test_different_focal_length() -> None:
 
     # 2D point
     x = Point2D(50.0, -25.0)
-    d = 500.0
+    d = 500000.0
 
     pos = c.unproject(x, d)
 
-    # MATLAB reference values
+    # MATLAB reference values (scaled to mm)
     expected_pos = np.array([
-        [25.0],
-        [-12.5000],
-        [-500.0],
+        [25000.0],
+        [-12500.0],
+        [-500000.0],
         [1.0],
     ])
 
@@ -126,15 +126,15 @@ def test_large_coordinates() -> None:
 
     # Large 2D coordinates
     x = [Point2D(500.0, 300.0), Point2D(-800.0, -600.0)]
-    d = 1000.0  # Large distance
+    d = 1000000.0  # Large distance (mm)
 
     pos = c.unproject(x, d)
 
-    # MATLAB reference values
+    # MATLAB reference values (scaled to mm)
     expected_pos = np.array([
-        [173.6111111111111143, -277.7777777777777715],
-        [104.1666666666666714, -208.3333333333333428],
-        [-1000.0, -1000.0],
+        [173611.1111111111143, -277777.7777777777715],
+        [104166.6666666666714, -208333.3333333333428],
+        [-1000000.0, -1000000.0],
         [1.0, 1.0],
     ])
 
@@ -150,7 +150,7 @@ def test_projection_unprojection_roundtrip() -> None:
     c.err = 0  # No noise for exact roundtrip
 
     # Start with 3D points
-    original_3d = [Position3D(50.0, 25.0, -400.0), Position3D(-30.0, -15.0, -600.0)]
+    original_3d = [Position3D(50000.0, 25000.0, -400000.0), Position3D(-30000.0, -15000.0, -600000.0)]
 
     # Project to 2D
     result = c.project(original_3d)
@@ -181,7 +181,7 @@ def test_output_properties() -> None:
 
     # Single point test
     x = Point2D(100.0, 50.0)
-    d = 200.0
+    d = 200000.0
 
     pos = c.unproject(x, d)
 

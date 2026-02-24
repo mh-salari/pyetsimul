@@ -33,7 +33,7 @@ class CalibrationResults:
 
     def __str__(self) -> str:
         """Basic string representation of calibration results."""
-        mean_error_mm = self.errors["mtr"]["mean"] * 1e3
+        mean_error_mm = self.errors["mm"]["mean"]
         mean_error_deg = self.errors["deg"]["mean"]
         return f"CalibrationResults(mean_error={mean_error_deg:.3f}° / {mean_error_mm:.2f}mm)"
 
@@ -43,10 +43,10 @@ class CalibrationResults:
 
         headers = ["Statistic", "Error (degrees)", "Error (mm)"]
         data = [
-            ["Mean", f"{self.errors['deg']['mean']:.4f}", f"{self.errors['mtr']['mean'] * 1e3:.4f}"],
-            ["Std", f"{self.errors['deg']['std']:.4f}", f"{self.errors['mtr']['std'] * 1e3:.4f}"],
-            ["Median", f"{self.errors['deg']['median']:.4f}", f"{self.errors['mtr']['median'] * 1e3:.4f}"],
-            ["Max", f"{self.errors['deg']['max']:.4f}", f"{self.errors['mtr']['max'] * 1e3:.4f}"],
+            ["Mean", f"{self.errors['deg']['mean']:.4f}", f"{self.errors['mm']['mean']:.4f}"],
+            ["Std", f"{self.errors['deg']['std']:.4f}", f"{self.errors['mm']['std']:.4f}"],
+            ["Median", f"{self.errors['deg']['median']:.4f}", f"{self.errors['mm']['median']:.4f}"],
+            ["Max", f"{self.errors['deg']['max']:.4f}", f"{self.errors['mm']['max']:.4f}"],
         ]
 
         table(data, headers=headers, tablefmt="grid")
@@ -120,8 +120,8 @@ def accuracy_at_calibration_points(et: EyeTracker, eye: Eye) -> CalibrationResul
     apecornea_surface_x_dist = np.linalg.norm(apex_pos - eye.cornea.center)
     cornea_pupil_dist = np.linalg.norm(eye.cornea.center - eye.pupil.pos_pupil)
 
-    info(f"Corneal radius: {apecornea_surface_x_dist * 1e3:.3g} mm")
-    info(f"Pupil radius:   {cornea_pupil_dist * 1e3:.3g} mm")
+    info(f"Corneal radius: {apecornea_surface_x_dist:.3g} mm")
+    info(f"Pupil radius:   {cornea_pupil_dist:.3g} mm")
 
     # Initialize result arrays
     actual_points = []
@@ -169,9 +169,9 @@ def accuracy_at_calibration_points(et: EyeTracker, eye: Eye) -> CalibrationResul
             error_mm = np.sqrt(u[i] ** 2 + v[i] ** 2)
             table_data.append([
                 i + 1,
-                f"({actual_coord1 * 1000:6.1f}, {actual_coord2 * 1000:6.1f})",
-                f"({predicted_coord1 * 1000:6.1f}, {predicted_coord2 * 1000:6.1f})",
-                f"{error_mm * 1000:8.2f}",
+                f"({actual_coord1:6.1f}, {actual_coord2:6.1f})",
+                f"({predicted_coord1:6.1f}, {predicted_coord2:6.1f})",
+                f"{error_mm:8.2f}",
                 f"{errs_deg[i]:8.4f}",
             ])
         else:
@@ -181,7 +181,7 @@ def accuracy_at_calibration_points(et: EyeTracker, eye: Eye) -> CalibrationResul
             errs_deg[i] = np.nan
             table_data.append([
                 i + 1,
-                f"({actual_coord1 * 1000:6.1f}, {actual_coord2 * 1000:6.1f})",
+                f"({actual_coord1:6.1f}, {actual_coord2:6.1f})",
                 "FAILED",
                 "--",
                 "--",
@@ -206,16 +206,16 @@ def accuracy_at_calibration_points(et: EyeTracker, eye: Eye) -> CalibrationResul
 
         # Display statistics
         info(f"\nCalibration Analysis Results ({n_valid}/{n_total} points successful):")
-        info(f"Mean error {errors['deg']['mean']:.4f}° ({errors['mtr']['mean'] * 1e3:.3g} mm)")
-        info(f"Standard deviation {errors['deg']['std']:.4f}° ({errors['mtr']['std'] * 1e3:.3g} mm)")
-        info(f"Maximum error {errors['deg']['max']:.4f}° ({errors['mtr']['max'] * 1e3:.3g} mm)")
+        info(f"Mean error {errors['deg']['mean']:.4f}° ({errors['mm']['mean']:.3g} mm)")
+        info(f"Standard deviation {errors['deg']['std']:.4f}° ({errors['mm']['std']:.3g} mm)")
+        info(f"Maximum error {errors['deg']['max']:.4f}° ({errors['mm']['max']:.3g} mm)")
 
         # Store minimal data for on-demand plot creation via interactive_plot()
         plot_data = {"et": et, "eye": eye}
     else:
         error(f"\nCalibration Analysis Results: ALL {n_total} POINTS FAILED")
         errors = {
-            "mtr": {"max": np.nan, "mean": np.nan, "std": np.nan, "median": np.nan},
+            "mm": {"max": np.nan, "mean": np.nan, "std": np.nan, "median": np.nan},
             "deg": {"max": np.nan, "mean": np.nan, "std": np.nan, "median": np.nan},
         }
         plot_data = None

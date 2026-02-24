@@ -18,11 +18,11 @@ def run_setup_demo() -> None:
     rest_orientation = RotationMatrix([[-1, 0, 0], [0, 0, 1], [0, 1, 0]])
     e_base.set_rest_orientation(rest_orientation)
 
-    e_base.position = Position3D(0, 250e-3, 100e-3)
+    e_base.position = Position3D(0, 250, 100)
 
     # Create two light sources
-    l1 = Light(position=Position3D(100e-3, 0, 0))
-    l2 = Light(position=Position3D(-100e-3, 0, 0))
+    l1 = Light(position=Position3D(100, 0, 0))
+    l2 = Light(position=Position3D(-100, 0, 0))
     lights = [l1, l2]
 
     # Setup camera pointing at eye
@@ -30,7 +30,7 @@ def run_setup_demo() -> None:
     c.point_at(e_base.position)
 
     # Start target point
-    target_point = Point3D(-50e-3, 0, 50e-3)
+    target_point = Point3D(-50, 0, 50)
 
     # Create and run setup visualization
     plot_interactive_setup(e_base, lights, c, target_point)

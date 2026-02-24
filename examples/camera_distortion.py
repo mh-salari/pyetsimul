@@ -153,7 +153,7 @@ def main() -> None:
     eye.set_rest_orientation(rest_orientation)
 
     target_point = Position3D(0, 0, 0)
-    eye.position = Position3D(0, 30e-3, 0)
+    eye.position = Position3D(0, 30, 0)
     eye.look_at(target_point)
 
     # Point cameras at eye

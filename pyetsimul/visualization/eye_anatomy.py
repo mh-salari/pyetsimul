@@ -135,7 +135,7 @@ def plot_eye_anatomy(eye: Eye, ax: "Axes | None" = None) -> "Axes":
     z_eye_world[~mask] = np.nan
 
     # Calculate axes using vector arithmetic
-    axis_length = 0.02  # 20mm axis length
+    axis_length = 20  # 20mm axis length
 
     # Optical axis using structured types
     optical_axis_vec = Direction3D.from_array(optical_axis_unit[:3])
@@ -313,9 +313,9 @@ def plot_eye_anatomy(eye: Eye, ax: "Axes | None" = None) -> "Axes":
     )
 
     # Set labels and title
-    ax.set_xlabel("X (m)")
-    ax.set_ylabel("Y (m)")
-    ax.set_zlabel("Z (m)")
+    ax.set_xlabel("X (mm)")
+    ax.set_ylabel("Y (mm)")
+    ax.set_zlabel("Z (mm)")
     ax.set_title("Eye Anatomy")
     # Overlay eye openness percentage (top-left)
     if eye.eyelid is not None:

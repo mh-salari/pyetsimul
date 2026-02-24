@@ -11,18 +11,19 @@ def _format_error_statistics(errors: dict[str, dict[str, float]], unit_str: str)
     """Format error statistics for plot titles.
 
     Automatically picks mm, cm, or m based on max error magnitude.
+    Values in errors["mm"] are already in mm.
     """
-    max_mm = errors["mtr"]["max"] * 1e3
+    max_mm = errors["mm"]["max"]
     if max_mm > 1000:
-        scale, unit = 1, "m"
+        scale, unit = 1e-3, "m"
     elif max_mm > 100:
-        scale, unit = 1e2, "cm"
+        scale, unit = 0.1, "cm"
     else:
-        scale, unit = 1e3, unit_str
+        scale, unit = 1, unit_str
     return (
-        f"Mean: {errors['deg']['mean']:.3f}° ({errors['mtr']['mean'] * scale:.2f} {unit}), "
-        f"Std: {errors['deg']['std']:.3f}° ({errors['mtr']['std'] * scale:.2f} {unit}), "
-        f"Max: {errors['deg']['max']:.3f}° ({errors['mtr']['max'] * scale:.2f} {unit})"
+        f"Mean: {errors['deg']['mean']:.3f}° ({errors['mm']['mean'] * scale:.2f} {unit}), "
+        f"Std: {errors['deg']['std']:.3f}° ({errors['mm']['std'] * scale:.2f} {unit}), "
+        f"Max: {errors['deg']['max']:.3f}° ({errors['mm']['max'] * scale:.2f} {unit})"
     )
 
 
@@ -33,7 +34,6 @@ def plot_error_vectors_2d(
     V: np.ndarray,
     errors: dict[str, dict[str, float]],
     title_prefix: str = "",
-    convert_to_mm: bool = True,
     width: float = 0.002,
     max_arrow_ratio: float = 0.3,
     mark_target_positions: bool = False,
@@ -56,7 +56,6 @@ def plot_error_vectors_2d(
         V: Error components in Y direction
         errors: dictionary with error statistics (from calculate_error_statistics)
         title_prefix: Prefix text for plot title
-        convert_to_mm: Convert coordinates and vectors to mm
         width: Arrow width
         max_arrow_ratio: Maximum arrow length as fraction of plot range
         mark_target_positions: Show blue crosses at target positions
@@ -72,15 +71,10 @@ def plot_error_vectors_2d(
         The matplotlib Figure.
 
     """
-    # Apply unit conversion if requested
-    if convert_to_mm:
-        x_plot, y_plot = X * 1000, Y * 1000
-        u_plot, v_plot = U * 1000, V * 1000
-        unit_str = "mm"
-    else:
-        x_plot, y_plot = X, Y
-        u_plot, v_plot = U, V
-        unit_str = "m"
+    # Values are already in mm — no conversion needed
+    x_plot, y_plot = X, Y
+    u_plot, v_plot = U, V
+    unit_str = "mm"
 
     # Compute scaling factor for arrows, filtering out NaN/Inf values
     u_flat = u_plot.flatten()
@@ -209,7 +203,6 @@ def plot_error_vectors_3d(
     angular_errors: np.ndarray,
     errors: dict[str, dict[str, float]],
     title_prefix: str = "",
-    convert_to_mm: bool = True,
     max_arrow_ratio: float = 0.2,
     show_grid: bool = True,
     figure_size: tuple[int, int] = (12, 10),
@@ -226,7 +219,6 @@ def plot_error_vectors_3d(
         angular_errors: Array of shape (N,) with angular errors in degrees
         errors: dictionary with error statistics (from calculate_error_statistics)
         title_prefix: Prefix text for plot title
-        convert_to_mm: Convert coordinates and vectors to mm
         max_arrow_ratio: Maximum arrow length as fraction of plot range
         show_grid: Show grid lines
         figure_size: Figure size tuple
@@ -245,15 +237,10 @@ def plot_error_vectors_3d(
     positions_valid = positions[valid_mask]
     error_vectors_valid = error_vectors[valid_mask]
 
-    # Apply unit conversion if requested
-    if convert_to_mm:
-        positions_plot = positions_valid * 1000
-        error_vectors_plot = error_vectors_valid * 1000
-        unit_str = "mm"
-    else:
-        positions_plot = positions_valid
-        error_vectors_plot = error_vectors_valid
-        unit_str = "m"
+    # Values are already in mm — no conversion needed
+    positions_plot = positions_valid
+    error_vectors_plot = error_vectors_valid
+    unit_str = "mm"
 
     # Compute scaling factor for arrows
     magnitudes = np.linalg.norm(error_vectors_plot, axis=1)

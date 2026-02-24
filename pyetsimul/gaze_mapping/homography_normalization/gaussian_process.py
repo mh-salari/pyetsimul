@@ -21,22 +21,22 @@ class GaussianProcessErrorCorrection:
 
     def __init__(
         self,
-        length_scale: float = 0.1,
-        noise_level: float = 0.001,
-        length_scale_bounds: tuple[float, float] = (0.01, 0.5),
-        noise_level_bounds: tuple[float, float] = (1e-5, 0.01),
+        length_scale: float = 100.0,
+        noise_level: float = 1.0,
+        length_scale_bounds: tuple[float, float] = (10.0, 500.0),
+        noise_level_bounds: tuple[float, float] = (0.01, 10.0),
     ) -> None:
         """Initialize the GP error correction model.
 
         Args:
-            length_scale: Initial length scale of the RBF kernel (meters).
-                         Default 0.1 (100mm) is suitable for screen-scale coordinates.
-            noise_level: Initial noise level (meters).
-                        Default 0.001 (1mm) matches typical calibration error scales.
-            length_scale_bounds: Min/max bounds for length scale optimization (meters).
-                                Default (0.01, 0.5) = 10mm to 500mm.
-            noise_level_bounds: Min/max bounds for noise level optimization (meters).
-                               Default (1e-5, 0.01) = 0.01mm to 10mm.
+            length_scale: Initial length scale of the RBF kernel (mm).
+                         Default 100 mm is suitable for screen-scale coordinates.
+            noise_level: Initial noise level (mm).
+                        Default 1 mm matches typical calibration error scales.
+            length_scale_bounds: Min/max bounds for length scale optimization (mm).
+                                Default (10, 500) mm.
+            noise_level_bounds: Min/max bounds for noise level optimization (mm).
+                               Default (0.01, 10) mm.
 
         """
         kernel = RBF(length_scale=length_scale, length_scale_bounds=length_scale_bounds) + WhiteKernel(

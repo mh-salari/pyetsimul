@@ -9,25 +9,25 @@ from pyetsimul.types import Point3D, Position3D
 def test_specific_reflection_case() -> None:
     """Test reflection calculation with MATLAB reference values."""
     # Test parameters from MATLAB
-    light_pos = Position3D(0.25, 0, 0)  # Light position
-    camera_pos = Position3D(0.1, -0.1, 0)  # Camera position
-    sphere_center = Position3D(0.05, 0, 1.0)  # Sphere center
-    sphere_radius = 0.8  # Sphere radius
+    light_pos = Position3D(250, 0, 0)  # Light position
+    camera_pos = Position3D(100, -100, 0)  # Camera position
+    sphere_center = Position3D(50, 0, 1000)  # Sphere center
+    sphere_radius = 800  # Sphere radius
 
     glint_pos = find_reflection_sphere(light_pos, camera_pos, sphere_center, sphere_radius)
 
     # MATLAB reference values
-    expected_glint_pos = Point3D(0.1472592734935877, -0.0408954315633531, 0.2069878958069135)
+    expected_glint_pos = Point3D(147.2592734935877, -40.8954315633531, 206.9878958069135)
 
     glint_pos.assert_close(expected_glint_pos, rtol=1e-14, atol=1e-15)
 
 
 def test_output_properties() -> None:
     """Test that output has correct properties."""
-    light_pos = Position3D(0.25, 0, 0)
-    camera_pos = Position3D(0.1, -0.1, 0)
-    sphere_center = Position3D(0.05, 0, 1.0)
-    sphere_radius = 0.8
+    light_pos = Position3D(250, 0, 0)
+    camera_pos = Position3D(100, -100, 0)
+    sphere_center = Position3D(50, 0, 1000)
+    sphere_radius = 800
 
     glint_pos = find_reflection_sphere(light_pos, camera_pos, sphere_center, sphere_radius)
 

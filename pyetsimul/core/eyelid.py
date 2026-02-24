@@ -14,7 +14,7 @@ class Eyelid:
 
     Attributes:
         center: Sphere center (eye rotation center in eye coordinates).
-        sphere_radius: Sphere radius (typically eye axial_length/2 in meters).
+        sphere_radius: Sphere radius (typically eye axial_length/2 in mm).
         phi_max: Aperture half-angle defining anatomical footprint (mapped from limbus if needed).
         openness: Fraction of the spherical-cap area that is open (0..1). Used to size the ellipse.
         lower_cap_fraction: Fraction of the spherical-cap area allocated to the lower eyelid (for reference).
@@ -119,7 +119,7 @@ class Eyelid:
         of the maximum vertical opening height. Only the upper edge moves.
 
         Returns:
-            y_offset of the ellipse center in the rotated ellipse frame (meters).
+            y_offset of the ellipse center in the rotated ellipse frame (mm).
 
         """
         r_xy = self._max_xy_radius()

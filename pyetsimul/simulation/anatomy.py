@@ -19,7 +19,7 @@ class PupilSizeVariation(GenericEyeVariation):
         """Initialize pupil diameter variation.
 
         Args:
-            diameter_range: Range of pupil diameters in meters
+            diameter_range: Range of pupil diameters in mm
             num_steps: Number of steps in variation
 
         """
@@ -27,9 +27,7 @@ class PupilSizeVariation(GenericEyeVariation):
 
     def describe(self) -> str:
         """Return a human-readable description of the pupil diameter variation."""
-        min_mm = self.value_range[0] * 1000
-        max_mm = self.value_range[1] * 1000
-        return f"pupil diameter {min_mm:.1f}-{max_mm:.1f}mm ({self.num_steps} steps)"
+        return f"pupil diameter {self.value_range[0]:.1f}-{self.value_range[1]:.1f}mm ({self.num_steps} steps)"
 
 
 class AngleKappaAlphaVariation(GenericEyeVariation):
@@ -82,41 +80,37 @@ def AngleKappaVariation(  # noqa: N802
 class CorneaRadiusVariation(GenericEyeVariation):
     """Corneal anterior radius variation with proper unit display."""
 
-    def __init__(self, radius_range_m: list[float], num_steps: int) -> None:
+    def __init__(self, radius_range_mm: list[float], num_steps: int) -> None:
         """Initialize corneal radius variation.
 
         Args:
-            radius_range_m: Range of anterior radii in meters
+            radius_range_mm: Range of anterior radii in mm
             num_steps: Number of steps in variation
 
         """
-        super().__init__("cornea.anterior_radius", radius_range_m, num_steps)
+        super().__init__("cornea.anterior_radius", radius_range_mm, num_steps)
 
     def describe(self) -> str:
         """Return a human-readable description of the corneal radius variation."""
-        min_mm = self.value_range[0] * 1000
-        max_mm = self.value_range[1] * 1000
-        return f"corneal radius {min_mm:.1f}-{max_mm:.1f}mm ({self.num_steps} steps)"
+        return f"corneal radius {self.value_range[0]:.1f}-{self.value_range[1]:.1f}mm ({self.num_steps} steps)"
 
 
 class CorneaThicknessVariation(GenericEyeVariation):
     """Corneal thickness variation that works with both SphericalCornea and ConicCornea."""
 
-    def __init__(self, thickness_range_m: list[float], num_steps: int) -> None:
+    def __init__(self, thickness_range_mm: list[float], num_steps: int) -> None:
         """Initialize corneal thickness variation.
 
         Args:
-            thickness_range_m: [min_thickness, max_thickness] in meters
+            thickness_range_mm: [min_thickness, max_thickness] in mm
             num_steps: Number of thickness steps
 
         """
-        super().__init__("cornea_thickness", thickness_range_m, num_steps)
+        super().__init__("cornea_thickness", thickness_range_mm, num_steps)
 
     def describe(self) -> str:
         """Return a human-readable description of the corneal thickness variation."""
-        min_mm = self.value_range[0] * 1000
-        max_mm = self.value_range[1] * 1000
-        return f"corneal thickness {min_mm:.2f}-{max_mm:.2f}mm ({self.num_steps} steps)"
+        return f"corneal thickness {self.value_range[0]:.2f}-{self.value_range[1]:.2f}mm ({self.num_steps} steps)"
 
     def apply_to_eye(self, eye: "Eye", value: float) -> None:  # noqa: PLR6301
         """Apply thickness value by setting appropriate cornea parameter."""
@@ -144,7 +138,7 @@ class PupilSizeWithDecentrationVariation(GenericEyeVariation):
         """Initialize pupil size variation with decentration.
 
         Args:
-            diameter_range: Range of pupil diameters in meters
+            diameter_range: Range of pupil diameters in mm
             decentration_config: PupilDecentrationConfig to apply
             num_steps: Number of steps in variation
 
@@ -154,11 +148,11 @@ class PupilSizeWithDecentrationVariation(GenericEyeVariation):
 
     def describe(self) -> str:
         """Return description of pupil size variation with decentration."""
-        min_mm = self.value_range[0] * 1000
-        max_mm = self.value_range[1] * 1000
+        min_mm = self.value_range[0]
+        max_mm = self.value_range[1]
 
         config = self.decentration_config
-        baseline_mm = config.baseline_diameter * 1000 if config.baseline_diameter else "auto"
+        baseline_mm = config.baseline_diameter or "auto"
 
         decentration_details = f"{config.model_name}, baseline={baseline_mm}mm"
         if config.use_individual_variation:
@@ -194,9 +188,9 @@ class PupilDecentrationVariation(GenericEyeVariation):
         """Initialize pupil decentration variation.
 
         Args:
-            dx_range: [min_dx, max_dx] range for x offset in meters
-            dy_range: [min_dy, max_dy] range for y offset in meters
-            dz_range: [min_dz, max_dz] range for z offset in meters
+            dx_range: [min_dx, max_dx] range for x offset in mm
+            dy_range: [min_dy, max_dy] range for y offset in mm
+            dz_range: [min_dz, max_dz] range for z offset in mm
             num_steps: Number of steps in variation
 
         """
@@ -216,13 +210,13 @@ class PupilDecentrationVariation(GenericEyeVariation):
         ranges_desc = []
         if self.dx_range:
             min_dx, max_dx = self.dx_range
-            ranges_desc.append(f"dx: {min_dx * 1000:.2f}-{max_dx * 1000:.2f}mm")
+            ranges_desc.append(f"dx: {min_dx:.2f}-{max_dx:.2f}mm")
         if self.dy_range:
             min_dy, max_dy = self.dy_range
-            ranges_desc.append(f"dy: {min_dy * 1000:.2f}-{max_dy * 1000:.2f}mm")
+            ranges_desc.append(f"dy: {min_dy:.2f}-{max_dy:.2f}mm")
         if self.dz_range:
             min_dz, max_dz = self.dz_range
-            ranges_desc.append(f"dz: {min_dz * 1000:.2f}-{max_dz * 1000:.2f}mm")
+            ranges_desc.append(f"dz: {min_dz:.2f}-{max_dz:.2f}mm")
 
         ranges_str = ", ".join(ranges_desc)
         return f"pupil decentration {ranges_str} ({self.num_steps} steps)"

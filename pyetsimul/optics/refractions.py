@@ -137,7 +137,7 @@ def _refraction_objective_conic(
         camera_pos: Camera position
         object_pos: Object position
         conic_center: Conic center position (typically corneal apex)
-        radius: Radius of curvature at apex (meters)
+        radius: Radius of curvature at apex (mm)
         conic_constant: Conic constant (k < 0 for prolate, k = 0 for sphere, k > 0 for oblate)
         n_outside: Refractive index outside conic
         n_conic: Refractive index of conic
@@ -201,7 +201,7 @@ def find_refraction_conic(
         camera_pos: Camera/observer position
         object_pos: Object position inside conic
         conic_center: Conic center position (typically corneal apex)
-        radius: Radius of curvature at apex (meters)
+        radius: Radius of curvature at apex (mm)
         conic_constant: Conic constant (k < 0 for prolate, k = 0 for sphere, k > 0 for oblate)
         n_outside: Refractive index outside conic
         n_conic: Refractive index of conic
@@ -311,7 +311,7 @@ def refract_ray_conic(
     Args:
         ray: Input ray with origin and direction
         conic_center: Conic center position (typically corneal apex)
-        radius: Radius parameter (R in the formula, meters)
+        radius: Radius parameter (R in the formula, mm)
         conic_constant: Conic constant (k < 0 for prolate, k = 0 for sphere, k > 0 for oblate)
         n_outside: Refractive index outside conic (e.g., air = 1.0)
         n_conic: Refractive index of conic (e.g., cornea = 1.376)

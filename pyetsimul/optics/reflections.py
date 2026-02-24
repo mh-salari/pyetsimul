@@ -168,7 +168,7 @@ def find_reflection_conic(
         light_pos: Light source position
         camera_pos: Camera position
         conic_center: Conic center position (typically corneal apex)
-        radius: Radius of curvature at apex (meters)
+        radius: Radius of curvature at apex (mm)
         conic_constant: Conic constant (k < 0 for prolate, k = 0 for sphere, k > 0 for oblate)
 
     Returns:
@@ -291,7 +291,7 @@ def reflect_ray_conic(
     Args:
         ray: Input ray with origin and direction
         conic_center: Conic center position (typically corneal apex)
-        radius: Radius parameter (R in the formula, meters)
+        radius: Radius parameter (R in the formula, mm)
         conic_constant: Conic constant (k < 0 for prolate, k = 0 for sphere, k > 0 for oblate)
 
     Returns:

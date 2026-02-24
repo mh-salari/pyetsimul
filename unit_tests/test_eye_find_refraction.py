@@ -11,18 +11,18 @@ def test_basic_refraction() -> None:
     e = Eye()
 
     # Camera position (50mm in front, slightly offset)
-    center_point = Position3D(1.0, 0.5, 50.0)
+    center_point = Position3D(1000.0, 500.0, 50000.0)
 
     # Object position inside eye (slightly off-center)
-    origin_point = Position3D(0.5, 0.2, -4.0)
+    origin_point = Position3D(500.0, 200.0, -4000.0)
 
     intersection_point = e.find_refracted_position(center_point, origin_point)
 
     # MATLAB reference values
     expected_i = np.array([
-        0.0036221057296969,
-        0.0014867621985687,
-        -0.0113034371535094,
+        3.6221057296969,
+        1.4867621985687,
+        -11.3034371535094,
         1.0,
     ])
 
@@ -35,18 +35,18 @@ def test_close_camera() -> None:
     e = Eye()
 
     # Camera very close (15mm instead of 50mm)
-    center_point = Position3D(1.0, 0.5, 15.0)
+    center_point = Position3D(1000.0, 500.0, 15000.0)
 
     # Object position inside eye
-    origin_point = Position3D(0.5, 0.2, -4.0)
+    origin_point = Position3D(500.0, 200.0, -4000.0)
 
     intersection_point = e.find_refracted_position(center_point, origin_point)
 
     # MATLAB reference values
     expected_i = np.array([
-        0.0042042117071795,
-        0.0017993479882829,
-        -0.0108896751248267,
+        4.2042117071795,
+        1.7993479882829,
+        -10.8896751248267,
         1.0,
     ])
 
@@ -60,8 +60,8 @@ def test_refraction_impossible_geometry() -> None:
 
     # Put object outside the eye sphere entirely (beyond cornea radius)
     # This causes the underlying find_refraction to succeed but point_within_cornea to fail
-    center_point = Position3D(1.0, 0.5, 50.0)  # Normal camera position
-    origin_point = Position3D(0.0, 0.0, 5.0)  # Object in front of eye (outside)
+    center_point = Position3D(1000.0, 500.0, 50000.0)  # Normal camera position
+    origin_point = Position3D(0.0, 0.0, 5000.0)  # Object in front of eye (outside)
 
     intersection_point = e.find_refracted_position(center_point, origin_point)
 
@@ -72,8 +72,8 @@ def test_refraction_impossible_geometry() -> None:
 def test_output_properties() -> None:
     """Test that output has correct properties when valid."""
     e = Eye()
-    center_point = Position3D(1.0, 0.5, 50.0)
-    origin_point = Position3D(0.5, 0.2, -4.0)
+    center_point = Position3D(1000.0, 500.0, 50000.0)
+    origin_point = Position3D(500.0, 200.0, -4000.0)
 
     intersection_point = e.find_refracted_position(center_point, origin_point)
     assert isinstance(intersection_point, Position3D), "intersection_point should not be None for these inputs"

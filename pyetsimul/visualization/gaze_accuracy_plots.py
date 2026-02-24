@@ -152,7 +152,6 @@ class GazeAccuracyPlotter:
             angular_errors=angular_errors,
             errors=gaze_result.error_stats,
             title_prefix=title_prefix,
-            convert_to_mm=True,
             position_labels=("X position", "Y position", "Z position"),
             ax=ax,
         )
@@ -225,7 +224,6 @@ class GazeAccuracyPlotter:
             V=v,
             errors=gaze_result.error_stats,
             title_prefix=title_prefix,
-            convert_to_mm=True,
             xlabel=f"{primary_label} (mm)",
             ylabel=f"{secondary_label} (mm)",
             ax=ax,

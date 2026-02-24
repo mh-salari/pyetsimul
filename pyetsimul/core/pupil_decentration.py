@@ -27,8 +27,8 @@ class PupilDecentrationModel(ABC):
         """Calculate decentration offset based on pupil diameter change.
 
         Args:
-            current_diameter: Current pupil diameter in meters
-            baseline_diameter: Baseline diameter (zero decentration point) in meters
+            current_diameter: Current pupil diameter in mm
+            baseline_diameter: Baseline diameter (zero decentration point) in mm
             **kwargs: Model-specific parameters
 
         Returns:
@@ -121,10 +121,10 @@ class WildenmannModel(PupilDecentrationModel):
         """Calculate Wildenmann linear decentration offset.
 
         Args:
-            current_diameter: Current pupil diameter in meters
-            baseline_diameter: Baseline diameter (zero decentration) in meters
-            x_coeff: X coefficient (m/m)
-            y_coeff: Y coefficient (m/m)
+            current_diameter: Current pupil diameter in mm
+            baseline_diameter: Baseline diameter (zero decentration) in mm
+            x_coeff: X coefficient (mm/mm)
+            y_coeff: Y coefficient (mm/mm)
 
         Returns:
             Position3D offset for pupil decentration

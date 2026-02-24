@@ -69,7 +69,7 @@ class Eye:
     _rest_orientation: RotationMatrix = field(init=False)
     _rest_orientation_explicitly_set: bool = field(init=False, default=False)  # Track if user set rest orientation
     _current_target_point: Position3D | None = field(init=False, default=None)  # Updated by look_at()
-    axial_length: float = field(init=False)  # Total axial length of eye (m)
+    axial_length: float = field(init=False)  # Total axial length of eye (mm)
     n_aqueous_humor: float = field(init=False)
     pupil: Pupil = field(init=False)  # Pupil object that handles all pupil calculations
     eyelid: Eyelid | None = field(init=False, default=None)
@@ -370,7 +370,7 @@ class Eye:
         Delegates to pupil object for radius information.
 
         Returns:
-            Tuple of (x_radius, y_radius) in meters
+            Tuple of (x_radius, y_radius) in mm
 
         """
         return self.pupil.get_radii()
@@ -381,7 +381,7 @@ class Eye:
         Delegates to pupil object for diameter information.
 
         Returns:
-            Pupil diameter in meters
+            Pupil diameter in mm
 
         """
         return self.pupil.get_diameter()
@@ -393,8 +393,8 @@ class Eye:
         decentration based on the new average diameter if decentration is enabled.
 
         Args:
-            x_radius: Pupil radius in X direction (meters)
-            y_radius: Pupil radius in Y direction (meters)
+            x_radius: Pupil radius in X direction (mm)
+            y_radius: Pupil radius in Y direction (mm)
 
         """
         self.pupil.set_radii(x_radius, y_radius)
@@ -407,7 +407,7 @@ class Eye:
         decentration based on the new diameter if decentration is enabled.
 
         Args:
-            diameter: Pupil diameter in meters
+            diameter: Pupil diameter in mm
 
         """
         self.pupil.set_diameter(diameter)
@@ -417,9 +417,9 @@ class Eye:
         """Move pupil position by given offset.
 
         Args:
-            dx: X offset in meters
-            dy: Y offset in meters
-            dz: Z offset in meters
+            dx: X offset in mm
+            dy: Y offset in mm
+            dz: Z offset in mm
 
         """
         current_pos = self.pupil.pos_pupil
@@ -430,9 +430,9 @@ class Eye:
         """Set pupil position to absolute coordinates.
 
         Args:
-            x: Absolute X position in meters
-            y: Absolute Y position in meters
-            z: Absolute Z position in meters
+            x: Absolute X position in mm
+            y: Absolute Y position in mm
+            z: Absolute Z position in mm
 
         """
         self.pupil.pos_pupil = Position3D(x, y, z)
@@ -452,7 +452,7 @@ class Eye:
         """Calculate pupil decentration offset based on current diameter.
 
         Args:
-            current_diameter: Current pupil diameter in meters
+            current_diameter: Current pupil diameter in mm
 
         Returns:
             Position3D offset for pupil decentration
@@ -706,7 +706,7 @@ class Eye:
     def __str__(self) -> str:
         """Basic string representation of the eye."""
         pos = self.position
-        return f"Eye(pos=({pos.x * 1000:.1f}, {pos.y * 1000:.1f}, {pos.z * 1000:.1f})mm, axial_length={self.axial_length * 1000:.1f}mm)"
+        return f"Eye(pos=({pos.x:.1f}, {pos.y:.1f}, {pos.z:.1f})mm, axial_length={self.axial_length:.1f}mm)"
 
     def pprint(self) -> None:
         """Print detailed eye anatomy parameters in a formatted table."""
@@ -716,15 +716,15 @@ class Eye:
         x_radius, _ = self.get_pupil_radii()
 
         data = [
-            ["Anterior corneal radius R_a (mm)", f"{self.cornea.anterior_radius * 1000:.3f}"],
-            ["Posterior corneal radius R_p (mm)", f"{self.cornea.posterior_radius * 1000:.3f}"],
-            ["Axial length L (mm)", f"{self.axial_length * 1000:.3f}"],
+            ["Anterior corneal radius R_a (mm)", f"{self.cornea.anterior_radius:.3f}"],
+            ["Posterior corneal radius R_p (mm)", f"{self.cornea.posterior_radius:.3f}"],
+            ["Axial length L (mm)", f"{self.axial_length:.3f}"],
             [
                 "Cornea center to rotation center (mm)",
-                f"{self.cornea.cornea_center_to_rotation_center_default * 1000:.3f}",
+                f"{self.cornea.cornea_center_to_rotation_center_default:.3f}",
             ],
-            ["Thickness offset t_offset (mm)", f"{self.cornea.thickness_offset * 1000:.3f}"],
-            ["Corneal depth d_c (mm)", f"{self.cornea.get_corneal_depth() * 1000:.3f}"],
+            ["Thickness offset t_offset (mm)", f"{self.cornea.thickness_offset:.3f}"],
+            ["Corneal depth d_c (mm)", f"{self.cornea.get_corneal_depth():.3f}"],
             ["Refractive index n_cornea", f"{self.cornea.refractive_index:.3f}"],
             ["Refractive index n_aqueous", f"{self.n_aqueous_humor:.3f}"],
             ["Fovea α (deg)", f"{self.fovea_alpha_deg:.1f}"],
@@ -732,17 +732,17 @@ class Eye:
             ["Angle κ (deg)", f"{self.angle_kappa:.3f}"],
             [
                 "Cornea center (x,y,z) mm",
-                f"({cornea_center.x * 1000:.3f}, {cornea_center.y * 1000:.3f}, {cornea_center.z * 1000:.3f})",
+                f"({cornea_center.x:.3f}, {cornea_center.y:.3f}, {cornea_center.z:.3f})",
             ],
             [
                 "Anterior apex (x,y,z) mm",
-                f"({apex_pos.x * 1000:.3f}, {apex_pos.y * 1000:.3f}, {apex_pos.z * 1000:.3f})",
+                f"({apex_pos.x:.3f}, {apex_pos.y:.3f}, {apex_pos.z:.3f})",
             ],
             [
                 "Pupil center (x,y,z) mm",
-                f"({pupil_pos.x * 1000:.3f}, {pupil_pos.y * 1000:.3f}, {pupil_pos.z * 1000:.3f})",
+                f"({pupil_pos.x:.3f}, {pupil_pos.y:.3f}, {pupil_pos.z:.3f})",
             ],
-            ["Pupil radius r_p (mm)", f"{x_radius * 1000:.3f}"],
+            ["Pupil radius r_p (mm)", f"{x_radius:.3f}"],
         ]
 
         headers = ["Parameter", "Value"]

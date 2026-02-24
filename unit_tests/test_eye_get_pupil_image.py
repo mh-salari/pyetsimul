@@ -15,7 +15,7 @@ def test_camera_pointed_at_eye() -> None:
     c = Camera()
 
     # Position eye at [0, 500mm, 200mm]
-    eye_pos = Position3D(x=0, y=500e-3, z=200e-3)
+    eye_pos = Position3D(x=0, y=500, z=200)
     e.position = eye_pos
 
     # Set up camera with proper orientation and point at eye
@@ -79,7 +79,7 @@ def test_output_properties() -> None:
     c = Camera()
 
     # Basic setup for visible pupil
-    eye_pos = Position3D(x=0, y=500e-3, z=200e-3)
+    eye_pos = Position3D(x=0, y=500, z=200)
     e.position = eye_pos
 
     c.trans[0:3, 0:3] = np.array([[1, 0, 0], [0, 0, -1], [0, 1, 0]])
@@ -110,7 +110,7 @@ def test_eye_facing_away_from_camera() -> None:
     c = Camera()
 
     # Position eye at [0, 500mm, 200mm]
-    eye_pos = Position3D(x=0, y=500e-3, z=200e-3)
+    eye_pos = Position3D(x=0, y=500, z=200)
     e.position = eye_pos
 
     # Set up camera with proper orientation pointing at eye
@@ -157,7 +157,7 @@ def test_eye_behind_camera() -> None:
     # Position eye behind camera (negative y direction if camera looks in +y)
     c.trans[0:3, 0:3] = np.array([[1, 0, 0], [0, 0, -1], [0, 1, 0]])
     c.rest_trans = c.trans.copy()
-    eye_pos = Position3D(x=0, y=-500e-3, z=0)  # Behind camera
+    eye_pos = Position3D(x=0, y=-500, z=0)  # Behind camera
     e.position = eye_pos
 
     # Set eye rest orientation
@@ -187,7 +187,7 @@ def test_eye_rotated_90_degrees() -> None:
     c = Camera()
 
     # Position eye at [0, 500mm, 200mm]
-    eye_pos = Position3D(x=0, y=500e-3, z=200e-3)
+    eye_pos = Position3D(x=0, y=500, z=200)
     e.position = eye_pos
 
     # Set up camera with proper orientation pointing at eye

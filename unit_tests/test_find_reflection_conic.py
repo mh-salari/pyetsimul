@@ -9,9 +9,9 @@ from pyetsimul.types import Point3D, Position3D
 def test_conic_equals_sphere_reflection() -> None:
     """Test conic reflection with k=0 gives sphere behavior."""
     # Realistic eye tracking geometry based on example.py
-    light_pos = Position3D(200e-3, 0, 0)  # Light position (200mm in x)
-    camera_pos = Position3D(0, 0, -50e-3)  # Camera position (50mm in front, facing -z)
-    radius = 7.98e-3  # Realistic corneal radius
+    light_pos = Position3D(200, 0, 0)  # Light position (200mm in x)
+    camera_pos = Position3D(0, 0, -50)  # Camera position (50mm in front, facing -z)
+    radius = 7.98  # Realistic corneal radius
 
     # For k=0 conic to match sphere at origin, conic center must be at (0,0,-R)
     sphere_center = Position3D(0.0, 0.0, 0.0)  # Sphere at origin
@@ -33,10 +33,10 @@ def test_conic_equals_sphere_reflection() -> None:
 
 def test_conic_output_properties() -> None:
     """Test that conic reflection output has correct properties."""
-    light_pos = Position3D(200e-3, 0, 0)  # Realistic light position
-    camera_pos = Position3D(0, 0, -50e-3)  # Realistic camera position
-    conic_center = Position3D(0.0, 0.0, -10e-3)  # Conic center at realistic cornea position
-    r_param = 7.98e-3  # Radius parameter
+    light_pos = Position3D(200, 0, 0)  # Realistic light position
+    camera_pos = Position3D(0, 0, -50)  # Realistic camera position
+    conic_center = Position3D(0.0, 0.0, -10)  # Conic center at realistic cornea position
+    r_param = 7.98  # Radius parameter
     k = -0.18  # Typical prolate cornea
 
     glint_pos = find_reflection_conic(light_pos, camera_pos, conic_center, r_param, k)
@@ -51,10 +51,10 @@ def test_conic_output_properties() -> None:
 
 def test_prolate_vs_oblate_conic() -> None:
     """Test that prolate and oblate conics give different results."""
-    light_pos = Position3D(200e-3, 0, 0)  # Realistic light position
-    camera_pos = Position3D(0, 0, -50e-3)  # Realistic camera position
-    conic_center = Position3D(0.0, 0.0, -10e-3)  # Conic center at realistic cornea position
-    r_param = 7.98e-3  # Radius parameter
+    light_pos = Position3D(200, 0, 0)  # Realistic light position
+    camera_pos = Position3D(0, 0, -50)  # Realistic camera position
+    conic_center = Position3D(0.0, 0.0, -10)  # Conic center at realistic cornea position
+    r_param = 7.98  # Radius parameter
 
     # Prolate conic (typical cornea)
     k_prolate = -0.18

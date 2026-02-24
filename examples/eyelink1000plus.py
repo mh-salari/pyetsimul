@@ -29,7 +29,7 @@ from pyetsimul.visualization.setup_plots import plot_setup
 # ---------------------------------------------------------------------------
 # EyeLink 1000 Plus physical setup dimensions
 # ---------------------------------------------------------------------------
-# All distances in meters. Coordinate system centered on the screen:
+# All distances in mm. Coordinate system centered on the screen:
 #   x — horizontal (positive = right)
 #   y — depth from screen (positive = away from screen toward the eye)
 #   z — vertical (positive = up)
@@ -39,8 +39,8 @@ from pyetsimul.visualization.setup_plots import plot_setup
 #                              (below screen center)
 
 # Screen dimensions
-SCREEN_WIDTH = 376e-3
-SCREEN_HEIGHT = 301e-3
+SCREEN_WIDTH = 376
+SCREEN_HEIGHT = 301
 SCREEN_HALF_W = SCREEN_WIDTH / 2
 SCREEN_HALF_H = SCREEN_HEIGHT / 2
 
@@ -51,22 +51,22 @@ CAL_HALF_W = SCREEN_WIDTH * CAL_AREA_X / 2
 CAL_HALF_H = SCREEN_HEIGHT * CAL_AREA_Y / 2
 
 # Camera and eye distances from screen plane
-EYE_TO_SCREEN = 980e-3
-CAMERA_TO_SCREEN = 475e-3
+EYE_TO_SCREEN = 980
+CAMERA_TO_SCREEN = 475
 
 # Real-world heights from ground
-SCREEN_BOTTOM_FROM_GROUND = 0.12
-CAMERA_FROM_GROUND = 0.15
-LIGHT_FROM_GROUND = 0.15
-EYE_FROM_GROUND = 0.42
+SCREEN_BOTTOM_FROM_GROUND = 120
+CAMERA_FROM_GROUND = 150
+LIGHT_FROM_GROUND = 150
+EYE_FROM_GROUND = 420
 
 # Horizontal offsets from screen center
 # The IR light is mounted on the camera arm, so it always moves with the camera.
-# LIGHT_X = CAMERA_X + LIGHT_CAMERA_OFFSET (26.5 cm to the right of camera)
-CAMERA_X = -0.18
-LIGHT_X = CAMERA_X + 0.265  # IR light: 26.5 cm to the right of camera
-EYE_X_RIGHT = 0.03
-EYE_X_LEFT = -0.03
+# LIGHT_X = CAMERA_X + LIGHT_CAMERA_OFFSET (265 mm to the right of camera)
+CAMERA_X = -180
+LIGHT_X = CAMERA_X + 265  # IR light: 265 mm to the right of camera
+EYE_X_RIGHT = 30
+EYE_X_LEFT = -30
 
 # Vertical offsets derived from ground heights (screen center is z=0 reference)
 SCREEN_CENTER_FROM_GROUND = SCREEN_BOTTOM_FROM_GROUND + SCREEN_HALF_H
@@ -204,8 +204,8 @@ def main() -> None:
     # --- Head movement test: both eyes, side by side ---
     eye_position_variation = EyePositionVariation(
         center=right_eye.position,
-        dx=[-50e-3, 50e-3],
-        dy=[-50e-3, 50e-3],
+        dx=[-50, 50],
+        dy=[-50, 50],
         dz=[0.0, 0.0],
         grid_size=[16, 16, 1],
     )

@@ -21,7 +21,7 @@ class InteractiveControls:
         self,
         eyes: list["Eye"],
         target_point: Point3D,
-        step_size: float = 2.5e-3,
+        step_size: float = 2.5,
         initial_eye_positions: list[Position3D] | None = None,
         initial_target_position: Point3D | None = None,
         custom_handlers: dict[str, Callable] | None = None,
@@ -31,7 +31,7 @@ class InteractiveControls:
         Args:
             eyes: List of Eye objects to control (IJKL moves all together).
             target_point: Target point for gaze.
-            step_size: Movement step size in meters.
+            step_size: Movement step size in mm.
             initial_eye_positions: Initial positions for each eye (defaults to current).
             initial_target_position: Initial target position (defaults to current).
             custom_handlers: Additional key handlers.

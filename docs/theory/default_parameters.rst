@@ -2,7 +2,7 @@ Default Parameters
 ==================
 
 PyEtSimul uses default anatomical and hardware parameters drawn from the literature.
-All spatial measurements use **meters** as the base unit.
+All spatial measurements use **millimeters (mm)** as the base unit.
 
 The values below are auto-generated from the source code.
 

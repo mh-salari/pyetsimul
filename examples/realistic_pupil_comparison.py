@@ -16,12 +16,12 @@ from pyetsimul.types import Direction3D, Position3D, RotationMatrix
 
 def main() -> None:
     """Compare realistic vs circular pupil shapes across different pupil sizes."""
-    # Create three different pupil sizes (diameters in meters)
+    # Create three different pupil sizes (diameters in mm)
     # Default comes from our code's default pupil radius (3mm radius = 6mm diameter)
     # Research-based extremes: ~2mm (bright light) to ~8mm (dark adaptation)
-    small_diameter = 2.5e-3  # Research: bright light condition (constricted)
-    default_diameter = 6.0e-3  # Our code's default: 3mm radius = 6mm diameter
-    large_diameter = 7.5e-3  # Research: dark adaptation (dilated)
+    small_diameter = 2.5  # Research: bright light condition (constricted)
+    default_diameter = 6.0  # Our code's default: 3mm radius = 6mm diameter
+    large_diameter = 7.5  # Research: dark adaptation (dilated)
 
     pupil_sizes = [("Small", small_diameter), ("Default", default_diameter), ("Large", large_diameter)]
 
@@ -52,7 +52,7 @@ def main() -> None:
 
         # Position eyes and look at target
         target_point = Position3D(0, 0, 0)
-        eye_position = Position3D(0, 50e-3, 0)
+        eye_position = Position3D(0, 50, 0)
 
         eye_realistic.position = eye_position
         eye_circular.position = eye_position
@@ -64,11 +64,11 @@ def main() -> None:
         realistic_boundary = eye_realistic.pupil.get_boundary_points()
         circular_boundary = eye_circular.pupil.get_boundary_points()
 
-        # Convert to mm for plotting (4xN matrix, take x and y rows)
-        realistic_x = realistic_boundary[0, :] * 1000  # X coordinates of all points
-        realistic_y = realistic_boundary[1, :] * 1000  # Y coordinates of all points
-        circular_x = circular_boundary[0, :] * 1000
-        circular_y = circular_boundary[1, :] * 1000
+        # Boundary points in mm (4xN matrix, take x and y rows)
+        realistic_x = realistic_boundary[0, :]  # X coordinates of all points
+        realistic_y = realistic_boundary[1, :]  # Y coordinates of all points
+        circular_x = circular_boundary[0, :]
+        circular_y = circular_boundary[1, :]
 
         # Close the boundaries for plotting
         realistic_x = np.append(realistic_x, realistic_x[0])
@@ -85,10 +85,10 @@ def main() -> None:
         ax.grid(True, alpha=0.3)
         ax.set_xlabel("x (mm)", fontsize=10)
         ax.set_ylabel("y (mm)", fontsize=10)
-        ax.set_title(f"{size_name} pupil\n(d = {diameter * 1000:.1f} mm)", fontsize=12, fontweight="bold")
+        ax.set_title(f"{size_name} pupil\n(d = {diameter:.1f} mm)", fontsize=12, fontweight="bold")
 
         # Set consistent axis limits based on the largest pupil
-        max_radius_mm = (large_diameter * 1000 / 2) * 1.2  # Add some margin
+        max_radius_mm = (large_diameter / 2) * 1.2  # Add some margin
         ax.set_xlim(-max_radius_mm, max_radius_mm)
         ax.set_ylim(-max_radius_mm, max_radius_mm)
 
@@ -111,9 +111,9 @@ def main() -> None:
     print("\nRealistic Pupil Comparison")
     print("Generated comparison showing realistic vs circular pupil shapes")
     print("across pupil sizes:")
-    print(f"  Small (research - bright light): {small_diameter * 1000:.1f}mm")
-    print(f"  Default (code default): {default_diameter * 1000:.1f}mm")
-    print(f"  Large (research - dark adaptation): {large_diameter * 1000:.1f}mm")
+    print(f"  Small (research - bright light): {small_diameter:.1f}mm")
+    print(f"  Default (code default): {default_diameter:.1f}mm")
+    print(f"  Large (research - dark adaptation): {large_diameter:.1f}mm")
 
 
 if __name__ == "__main__":

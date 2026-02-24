@@ -16,17 +16,17 @@ from pyetsimul.types import Position3D, RotationMatrix
 
 def main() -> None:
     """Demonstrate pupil decentration across different pupil sizes and variation profiles."""
-    # Five different pupil sizes (diameters in meters)
+    # Five different pupil sizes (diameters in mm)
     # Range from bright light constriction to dark adaptation dilation
     pupil_sizes = [
-        ("Very Small", 2.5e-3),  # Bright light (constricted)
-        ("Small", 3.5e-3),  # Indoor lighting
-        ("Baseline", 4.75e-3),  # Wildenmann baseline (800 lux)
-        ("Large", 6.0e-3),  # Dim lighting
-        ("Very Large", 7.5e-3),  # Dark adaptation (dilated)
+        ("Very Small", 2.5),  # Bright light (constricted)
+        ("Small", 3.5),  # Indoor lighting
+        ("Baseline", 4.75),  # Wildenmann baseline (800 lux)
+        ("Large", 6.0),  # Dim lighting
+        ("Very Large", 7.5),  # Dark adaptation (dilated)
     ]
 
-    baseline_diameter = 4.75e-3  # Baseline from Wildenmann & Schaeffel (2013)
+    baseline_diameter = 4.75  # Baseline from Wildenmann & Schaeffel (2013)
 
     # Four decentration configurations: right eye, individual right, left eye, individual left
     eye_configs = [
@@ -116,7 +116,7 @@ def main() -> None:
 
             # Position eyes and look at target
             target_point = Position3D(0, 0, 0)
-            eye_position = Position3D(0, 50e-3, 0)
+            eye_position = Position3D(0, 50, 0)
 
             eye.position = eye_position
             ref_eye.position = eye_position
@@ -128,11 +128,11 @@ def main() -> None:
             eye_boundary = eye.pupil.get_boundary_points()
             centered_boundary = ref_eye.pupil.get_boundary_points()
 
-            # Convert to mm for plotting (4xN matrix, take x and y rows)
-            eye_x = eye_boundary[0, :] * 1000  # X coordinates
-            eye_y = eye_boundary[1, :] * 1000  # Y coordinates
-            centered_x = centered_boundary[0, :] * 1000
-            centered_y = centered_boundary[1, :] * 1000
+            # Boundary points in mm (4xN matrix, take x and y rows)
+            eye_x = eye_boundary[0, :]  # X coordinates
+            eye_y = eye_boundary[1, :]  # Y coordinates
+            centered_x = centered_boundary[0, :]
+            centered_y = centered_boundary[1, :]
 
             # Close the boundaries for plotting
             eye_x = np.append(eye_x, eye_x[0])
@@ -156,16 +156,16 @@ def main() -> None:
             ax.plot(eye_x, eye_y, "r-", linewidth=2, label="Decentered" if row == 0 and col == 0 else "")
 
             # Mark pupil centers
-            ax.plot(centered_center.x * 1000, centered_center.y * 1000, "bo", markersize=4, alpha=0.7)
-            ax.plot(eye_center.x * 1000, eye_center.y * 1000, "ro", markersize=4)
+            ax.plot(centered_center.x, centered_center.y, "bo", markersize=4, alpha=0.7)
+            ax.plot(eye_center.x, eye_center.y, "ro", markersize=4)
 
             # Draw arrow showing decentration vector
-            dx = (eye_center.x - centered_center.x) * 1000
-            dy = (eye_center.y - centered_center.y) * 1000
+            dx = eye_center.x - centered_center.x
+            dy = eye_center.y - centered_center.y
             if abs(dx) > 0.001 or abs(dy) > 0.001:  # Only draw if significant offset
                 ax.arrow(
-                    centered_center.x * 1000,
-                    centered_center.y * 1000,
+                    centered_center.x,
+                    centered_center.y,
                     dx,
                     dy,
                     head_width=0.15,
@@ -183,14 +183,14 @@ def main() -> None:
             diameter_change = diameter - baseline_diameter
             params = config.get_model_params()
             if params and "x_coeff" in params:
-                expected_x_offset = params["x_coeff"] * diameter_change * 1000
-                expected_y_offset = params["y_coeff"] * diameter_change * 1000
+                expected_x_offset = params["x_coeff"] * diameter_change
+                expected_y_offset = params["y_coeff"] * diameter_change
                 offset_text = f"Δx={expected_x_offset:.2f}, Δy={expected_y_offset:.2f} mm"
             else:
                 offset_text = "No decentration"
 
             # Create title - show size name only on top row
-            title = f"{size_name} ({diameter * 1000:.1f} mm)\n{offset_text}" if row == 0 else f"{offset_text}"
+            title = f"{size_name} ({diameter:.1f} mm)\n{offset_text}" if row == 0 else f"{offset_text}"
             ax.set_title(title, fontsize=9, fontweight="bold")
 
             # Set consistent axis limits

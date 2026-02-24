@@ -10,20 +10,20 @@ def test_basic_refraction() -> None:
     """Test basic refraction scenario with MATLAB reference values."""
     # Define sphere
     sphere_center = Position3D(0.0, 0.0, 0.0)  # Sphere center
-    sphere_radius = 10.0  # Sphere radius
+    sphere_radius = 10000.0  # Sphere radius
     n_outside = 1.0  # Air
     n_sphere = 1.5  # Glass
 
     # Object inside sphere, camera outside
-    object_pos = Position3D(2.0, 1.0, 3.0)
-    camera_pos = Position3D(15.0, 8.0, 12.0)
+    object_pos = Position3D(2000.0, 1000.0, 3000.0)
+    camera_pos = Position3D(15000.0, 8000.0, 12000.0)
 
     intersection_point = find_refraction_sphere(
         camera_pos, object_pos, sphere_center, sphere_radius, n_outside, n_sphere
     )
 
     # MATLAB reference values
-    expected_point = Point3D(6.6936966464330183, 3.5132501989855691, 6.5461055784992670)
+    expected_point = Point3D(6693.6966464330183, 3513.2501989855691, 6546.1055784992670)
 
     assert intersection_point is not None
     intersection_point.assert_close(expected_point, rtol=1e-10, atol=1e-10)
@@ -37,20 +37,20 @@ def test_different_refractive_indices() -> None:
     """Test refraction with different refractive indices and MATLAB reference values."""
     # Define sphere
     sphere_center = Position3D(0.0, 0.0, 0.0)
-    sphere_radius = 10.0
+    sphere_radius = 10000.0
     n_outside = 1.33  # Water
     n_sphere = 1.4  # Different glass
 
     # Different positions
-    object_pos = Position3D(-1.0, 2.0, -2.0)
-    camera_pos = Position3D(-8.0, 10.0, -15.0)
+    object_pos = Position3D(-1000.0, 2000.0, -2000.0)
+    camera_pos = Position3D(-8000.0, 10000.0, -15000.0)
 
     intersection_point = find_refraction_sphere(
         camera_pos, object_pos, sphere_center, sphere_radius, n_outside, n_sphere
     )
 
     # MATLAB reference values
-    expected_point = Point3D(-3.9369221058636397, 5.3748224021012501, -7.4573405767896075)
+    expected_point = Point3D(-3936.9221058636397, 5374.8224021012501, -7457.3405767896075)
 
     assert intersection_point is not None
     intersection_point.assert_close(expected_point, rtol=1e-10, atol=1e-10)
@@ -64,20 +64,20 @@ def test_large_sphere() -> None:
     """Test refraction with large sphere and MATLAB reference values."""
     # Define large sphere
     sphere_center = Position3D(0.0, 0.0, 0.0)
-    sphere_radius = 50.0  # Large radius
+    sphere_radius = 50000.0  # Large radius
     n_outside = 1.0
     n_sphere = 1.5
 
     # Scaled positions
-    object_pos = Position3D(5.0, -3.0, 8.0)
-    camera_pos = Position3D(80.0, -20.0, 60.0)
+    object_pos = Position3D(5000.0, -3000.0, 8000.0)
+    camera_pos = Position3D(80000.0, -20000.0, 60000.0)
 
     intersection_point = find_refraction_sphere(
         camera_pos, object_pos, sphere_center, sphere_radius, n_outside, n_sphere
     )
 
     # MATLAB reference values
-    expected_point = Point3D(37.3698407698170811, -10.7448391945206190, 31.4331581538096536)
+    expected_point = Point3D(37369.8407698170811, -10744.8391945206190, 31433.1581538096536)
 
     assert intersection_point is not None
     intersection_point.assert_close(expected_point, rtol=1e-10, atol=1e-10)
@@ -91,11 +91,11 @@ def test_snells_law_verification() -> None:
     """Test that solution satisfies Snell's law with MATLAB reference values."""
     # Use same setup as basic test
     sphere_center = Position3D(0.0, 0.0, 0.0)
-    sphere_radius = 10.0
+    sphere_radius = 10000.0
     n_outside = 1.0
     n_sphere = 1.5
-    object_pos = Position3D(2.0, 1.0, 3.0)
-    camera_pos = Position3D(15.0, 8.0, 12.0)
+    object_pos = Position3D(2000.0, 1000.0, 3000.0)
+    camera_pos = Position3D(15000.0, 8000.0, 12000.0)
 
     intersection_point = find_refraction_sphere(
         camera_pos, object_pos, sphere_center, sphere_radius, n_outside, n_sphere
@@ -139,11 +139,11 @@ def test_snells_law_verification() -> None:
 def test_output_properties() -> None:
     """Test that output has correct properties."""
     sphere_center = Position3D(0.0, 0.0, 0.0)
-    sphere_radius = 10.0
+    sphere_radius = 10000.0
     n_outside = 1.0
     n_sphere = 1.5
-    object_pos = Position3D(2.0, 1.0, 3.0)
-    camera_pos = Position3D(15.0, 8.0, 12.0)
+    object_pos = Position3D(2000.0, 1000.0, 3000.0)
+    camera_pos = Position3D(15000.0, 8000.0, 12000.0)
 
     intersection_point = find_refraction_sphere(
         camera_pos, object_pos, sphere_center, sphere_radius, n_outside, n_sphere
