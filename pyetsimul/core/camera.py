@@ -13,6 +13,7 @@ import numpy as np
 from pyetsimul.log import info, table
 
 from ..camera_noise import GlintNoiseConfig, apply_glint_noise
+from ..optics.glint_size import compute_glint_diameter
 from ..types import (
     CameraImage,
     CameraMatrix,
@@ -373,6 +374,8 @@ class Camera:
         """
         # Find the corneal reflections for each light (if lights provided)
         corneal_reflections: list[Point2D | None] = []
+        glint_sizes_px: list[float | None] = []
+        has_any_glint_size = False
         if lights is not None:
             for light in lights:
                 # Find 3D corneal reflection position
@@ -380,11 +383,13 @@ class Camera:
 
                 if cr_3d is None:
                     corneal_reflections.append(None)
+                    glint_sizes_px.append(None)
                 else:
                     # Project to camera image coordinates using refactored interface
                     projection_result = self.project(cr_3d)
                     if np.any(np.isnan(projection_result.image_points)):
                         corneal_reflections.append(None)
+                        glint_sizes_px.append(None)
                     else:
                         # Convert to Point2D
                         cr_2d = Point2D(
@@ -398,6 +403,18 @@ class Camera:
                             cr_2d_noisy = cr_2d
                         corneal_reflections.append(cr_2d_noisy)
 
+                        # Compute glint size if the light has a physical diameter
+                        if light.diameter is not None:
+                            glint_diameter_3d = compute_glint_diameter(
+                                light.position, cr_3d, eye.cornea, eye.trans, light.diameter
+                            )
+                            distance_to_cr = float(projection_result.distances[0])
+                            glint_size = self.camera_matrix.focal_length * glint_diameter_3d / distance_to_cr
+                            glint_sizes_px.append(glint_size)
+                            has_any_glint_size = True
+                        else:
+                            glint_sizes_px.append(None)
+
         # Get pupil boundary and center
         pupil_boundary, pupil_center = eye.get_pupil_in_camera_image(
             self, use_refraction=use_refraction, center_method=center_method
@@ -408,6 +425,7 @@ class Camera:
             pupil_boundary=pupil_boundary,
             pupil_center=pupil_center,
             resolution=self.camera_matrix.resolution,
+            glint_sizes_px=glint_sizes_px if has_any_glint_size else None,
         )
 
     def __str__(self) -> str:

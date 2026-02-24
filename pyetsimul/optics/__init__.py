@@ -3,6 +3,6 @@
 Exports modules for light reflection and refraction physics, supporting ray tracing and pupil/corneal imaging.
 """
 
-from . import reflections, refractions
+from . import glint_size, reflections, refractions
 
-__all__ = ["reflections", "refractions"]
+__all__ = ["glint_size", "reflections", "refractions"]
