@@ -196,21 +196,21 @@ def main() -> None:
 
     # Create 3x3 calibration grid on XZ plane
     calibration_points = [
-        Position3D(-200e-3, 0.0, 50e-3),
-        Position3D(0, 0.0, 50e-3),
-        Position3D(200e-3, 0.0, 50e-3),
-        Position3D(-200e-3, 0.0, 200e-3),
-        Position3D(0, 0.0, 200e-3),
-        Position3D(200e-3, 0.0, 200e-3),
-        Position3D(-200e-3, 0.0, 350e-3),
-        Position3D(0, 0.0, 350e-3),
-        Position3D(200e-3, 0.0, 350e-3),
+        Position3D(-200, 0.0, 50),
+        Position3D(0, 0.0, 50),
+        Position3D(200, 0.0, 50),
+        Position3D(-200, 0.0, 200),
+        Position3D(0, 0.0, 200),
+        Position3D(200, 0.0, 200),
+        Position3D(-200, 0.0, 350),
+        Position3D(0, 0.0, 350),
+        Position3D(200, 0.0, 350),
     ]
 
     # Eye setup: looking along -Y axis towards camera
     eye = Eye()
     eye.set_rest_orientation(RotationMatrix([[1, 0, 0], [0, 0, 1], [0, -1, 0]]))
-    eye.position = Position3D(0.0, 550e-3, 350e-3)
+    eye.position = Position3D(0.0, 550, 350)
 
     # Camera setup: facing along +Y axis towards eye
     camera = Camera(err=0.0, err_type="gaussian")
@@ -218,7 +218,7 @@ def main() -> None:
     camera.point_at(eye.position)
 
     # Light setup
-    light = Light(position=Position3D(200e-3, 0, 350e-3))
+    light = Light(position=Position3D(200, 0, 350))
 
     # Create and configure tracker
     et = SimpleLinearGazeModel.create([camera], [light], calibration_points)

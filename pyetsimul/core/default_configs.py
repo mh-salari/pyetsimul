@@ -12,8 +12,8 @@ from pyetsimul.log import info
 class EyeAnatomyDefaults:
     """Anatomical parameters based on Böhme et al. 2008, Boff & Lincoln 1988."""
 
-    AXIAL_LENGTH: float = 24.75e-3  # m
-    PUPIL_RADIUS: float = 3.0e-3  # m
+    AXIAL_LENGTH: float = 24.75  # mm
+    PUPIL_RADIUS: float = 3.0  # mm
     N_AQUEOUS_HUMOR: float = 1.336
     FOVEA_ALPHA_DEG: float = 6.0  # deg
     FOVEA_BETA_DEG: float = 2.0  # deg
@@ -25,19 +25,19 @@ class CorneaDefaults:
     """Corneal parameters from Böhme et al. 2008, Goncharov & Dainty 2007."""
 
     # Spherical model
-    ANTERIOR_RADIUS: float = 7.98e-3  # m
-    POSTERIOR_RADIUS: float = 6.22e-3  # m
+    ANTERIOR_RADIUS: float = 7.98  # mm
+    POSTERIOR_RADIUS: float = 6.22  # mm
     REFRACTIVE_INDEX: float = 1.376
-    THICKNESS_OFFSET: float = 1.15e-3  # m
-    CORNEA_DEPTH: float = 3.54e-3  # m
-    CENTER_TO_ROTATION: float = 10.20e-3  # m
+    THICKNESS_OFFSET: float = 1.15  # mm
+    CORNEA_DEPTH: float = 3.54  # mm
+    CENTER_TO_ROTATION: float = 10.20  # mm
 
     # Conic model (30-year subject)
-    CONIC_ANTERIOR_RADIUS: float = 7.76e-3  # m
+    CONIC_ANTERIOR_RADIUS: float = 7.76  # mm
     CONIC_ANTERIOR_K: float = -0.10
-    CONIC_POSTERIOR_RADIUS: float = 6.52e-3  # m
+    CONIC_POSTERIOR_RADIUS: float = 6.52  # mm
     CONIC_POSTERIOR_K: float = -0.30
-    CONIC_THICKNESS_OFFSET: float = 0.55e-3  # m
+    CONIC_THICKNESS_OFFSET: float = 0.55  # mm
 
 
 @dataclass
@@ -47,11 +47,11 @@ class PupilDefaults:
     BOUNDARY_POINTS_ELLIPTICAL: int = 100
     BOUNDARY_POINTS_FACTORY: int = 20
     BOUNDARY_POINTS_REALISTIC: int = 360
-    BASE_RADIUS: float = 2.5e-3  # m
+    BASE_RADIUS: float = 2.5  # mm
     NONCIRCULARITY: float = 0.0166
     ELLIPSE_CONTRIBUTION: float = 0.5
     MAJOR_AXIS_ANGLE: float = 0.0  # rad
-    OFFSET_FROM_LIMBUS: tuple[float, float] = (0.27e-3, 0.20e-3)  # m
+    OFFSET_FROM_LIMBUS: tuple[float, float] = (0.27, 0.20)  # mm
     N_HARMONICS: int = 6
     REFERENCE_AGE: float = 35.8  # years
 
@@ -105,23 +105,23 @@ class PupilDecentrationDefaults:
     LEFT_EYE_Y_STD: float = 0.12  # mm/mm
 
     # Baseline diameter used in the original study
-    BASELINE_DIAMETER: float = 4.75e-3  # m (4.75±0.52 mm at 800 lux)
+    BASELINE_DIAMETER: float = 4.75  # mm (4.75±0.52 mm at 800 lux)
 
 
 def pprint_anatomical_defaults() -> None:
     """Print anatomical default values in formatted table."""
     info("Eye Anatomy:")
-    info(f"  Axial Length: {EyeAnatomyDefaults.AXIAL_LENGTH * 1000:.2f} mm")
-    info(f"  Pupil Radius: {EyeAnatomyDefaults.PUPIL_RADIUS * 1000:.1f} mm")
+    info(f"  Axial Length: {EyeAnatomyDefaults.AXIAL_LENGTH:.2f} mm")
+    info(f"  Pupil Radius: {EyeAnatomyDefaults.PUPIL_RADIUS:.1f} mm")
     info(f"  Aqueous Humor n: {EyeAnatomyDefaults.N_AQUEOUS_HUMOR:.3f}")
     info(f"  Fovea α: {EyeAnatomyDefaults.FOVEA_ALPHA_DEG:.1f}°")
     info(f"  Fovea β: {EyeAnatomyDefaults.FOVEA_BETA_DEG:.1f}°")
 
     info("Cornea:")
-    info(f"  Anterior Radius: {CorneaDefaults.ANTERIOR_RADIUS * 1000:.2f} mm")
-    info(f"  Posterior Radius: {CorneaDefaults.POSTERIOR_RADIUS * 1000:.2f} mm")
+    info(f"  Anterior Radius: {CorneaDefaults.ANTERIOR_RADIUS:.2f} mm")
+    info(f"  Posterior Radius: {CorneaDefaults.POSTERIOR_RADIUS:.2f} mm")
     info(f"  Refractive Index: {CorneaDefaults.REFRACTIVE_INDEX:.3f}")
-    info(f"  Thickness: {CorneaDefaults.THICKNESS_OFFSET * 1000:.2f} mm")
+    info(f"  Thickness: {CorneaDefaults.THICKNESS_OFFSET:.2f} mm")
 
 
 def pprint_hardware_defaults() -> None:
@@ -132,7 +132,7 @@ def pprint_hardware_defaults() -> None:
     info(f"  Principal Point: ({CameraDefaults.PRINCIPAL_POINT_X:.0f}, {CameraDefaults.PRINCIPAL_POINT_Y:.0f})")
 
     info("Pupil:")
-    info(f"  Base Radius: {PupilDefaults.BASE_RADIUS * 1000:.1f} mm")
+    info(f"  Base Radius: {PupilDefaults.BASE_RADIUS:.1f} mm")
     info(f"  Noncircularity: {PupilDefaults.NONCIRCULARITY:.4f}")
     info(f"  Boundary Points: {PupilDefaults.BOUNDARY_POINTS_REALISTIC}")
 

@@ -12,7 +12,7 @@ def test_get_pupil_radii_default() -> None:
     x_radius, y_radius = e.get_pupil_radii()
 
     # Default pupil radius is 3mm for both axes
-    expected_radius = 3e-3
+    expected_radius = 3
     assert np.isclose(x_radius, expected_radius, rtol=1e-12)
     assert np.isclose(y_radius, expected_radius, rtol=1e-12)
 
@@ -22,16 +22,16 @@ def test_set_get_pupil_radii() -> None:
     e = Eye()
 
     # Test setting both radii
-    e.set_pupil_radii(x_radius=3e-3, y_radius=2e-3)
+    e.set_pupil_radii(x_radius=3, y_radius=2)
     x_radius, y_radius = e.get_pupil_radii()
-    assert np.isclose(x_radius, 3e-3, rtol=1e-12)
-    assert np.isclose(y_radius, 2e-3, rtol=1e-12)
+    assert np.isclose(x_radius, 3, rtol=1e-12)
+    assert np.isclose(y_radius, 2, rtol=1e-12)
 
     # Test setting different radii
-    e.set_pupil_radii(x_radius=4e-3, y_radius=1e-3)
+    e.set_pupil_radii(x_radius=4, y_radius=1)
     x_radius, y_radius = e.get_pupil_radii()
-    assert np.isclose(x_radius, 4e-3, rtol=1e-12)
-    assert np.isclose(y_radius, 1e-3, rtol=1e-12)
+    assert np.isclose(x_radius, 4, rtol=1e-12)
+    assert np.isclose(y_radius, 1, rtol=1e-12)
 
 
 def test_set_pupil_diameter() -> None:
@@ -39,17 +39,17 @@ def test_set_pupil_diameter() -> None:
     e = Eye()
 
     # Test setting diameter
-    e.set_pupil_diameter(diameter=6e-3)  # 6mm diameter = 3mm radius
+    e.set_pupil_diameter(diameter=6)  # 6mm diameter = 3mm radius
     x_radius, y_radius = e.get_pupil_radii()
-    assert np.isclose(x_radius, 3e-3, rtol=1e-12)
-    assert np.isclose(y_radius, 3e-3, rtol=1e-12)
+    assert np.isclose(x_radius, 3, rtol=1e-12)
+    assert np.isclose(y_radius, 3, rtol=1e-12)
 
 
 def test_set_pupil_radii_updates_vectors() -> None:
     """Test that set_pupil_radii correctly updates x_pupil and y_pupil vectors."""
     e = Eye()
-    x_radius = 3e-3  # 3mm
-    y_radius = 2e-3  # 2mm
+    x_radius = 3  # 3mm
+    y_radius = 2  # 2mm
 
     e.set_pupil_radii(x_radius=x_radius, y_radius=y_radius)
 

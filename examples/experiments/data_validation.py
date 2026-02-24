@@ -194,7 +194,7 @@ def validate_parameter_values(data: dict[str, Any]) -> bool:
                         print(f"Invalid pupil size parameter: {param_value}")
                         return False
                     # Check reasonable range (1mm to 10mm)
-                    if not (0.001 <= pupil_data <= 0.010):
+                    if not (1.0 <= pupil_data <= 10.0):
                         print(f"Pupil size out of range: {param_value}")
                         return False
 
@@ -211,7 +211,7 @@ def _validate_eye_position(eye_position: dict[str, Any]) -> bool:
 
     # Check for NaN or extreme values
     for coord in coords:
-        if abs(coord) > 1.0:  # More than 1 meter seems unreasonable
+        if abs(coord) > 1000:  # More than 1000mm seems unreasonable
             print(f"Extreme eye coordinate: {coord}")
             return False
     return True

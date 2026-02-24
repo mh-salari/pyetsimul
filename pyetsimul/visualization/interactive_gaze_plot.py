@@ -143,7 +143,7 @@ def create_interactive_gaze_plot(
     mean_z = sum(pt.z for pt in calibration_points) / len(calibration_points)
     current_target = Point3D(mean_x, 0, mean_z)
 
-    controls = InteractiveControls(interactive_eyes, current_target, step_size=10e-3)
+    controls = InteractiveControls(interactive_eyes, current_target, step_size=10)
 
     def update_display() -> None:
         """Update both 3D and 2D plots with current target position."""
@@ -193,8 +193,8 @@ def create_interactive_gaze_plot(
         calib_x = all_calib_data[0]["x"]
         calib_y = all_calib_data[0]["y"]
         ax.scatter(
-            calib_x * 1000,
-            calib_y * 1000,
+            calib_x,
+            calib_y,
             marker="x",
             s=40,
             c="dimgray",
@@ -224,15 +224,15 @@ def create_interactive_gaze_plot(
                 if isinstance(pred_point, Point3D) and not (
                     np.isnan(pred_point.x) or np.isnan(pred_point.y) or np.isnan(pred_point.z)
                 ):
-                    x_valid.append(x[i] * 1000)
-                    y_valid.append(y[i] * 1000)
-                    u_valid.append(u[i] * 1000)
-                    v_valid.append(v[i] * 1000)
+                    x_valid.append(x[i])
+                    y_valid.append(y[i])
+                    u_valid.append(u[i])
+                    v_valid.append(v[i])
                     pred_coord1, pred_coord2 = plane_info.extract_2d_coords(
                         Point3D(pred_point.x, pred_point.y, pred_point.z)
                     )
-                    pred_x.append(pred_coord1 * 1000)
-                    pred_y.append(pred_coord2 * 1000)
+                    pred_x.append(pred_coord1)
+                    pred_y.append(pred_coord2)
 
             if len(x_valid) > 0:
                 for i in range(len(x_valid)):
@@ -271,8 +271,8 @@ def create_interactive_gaze_plot(
                     pred_coord1, pred_coord2 = plane_info.extract_2d_coords(pred_pos)
 
                     ax.scatter(
-                        [pred_coord1 * 1000],
-                        [pred_coord2 * 1000],
+                        [pred_coord1],
+                        [pred_coord2],
                         marker="x",
                         s=40,
                         c=color,
@@ -280,11 +280,11 @@ def create_interactive_gaze_plot(
                         zorder=5,
                     )
 
-                    error_x = (pred_coord1 - target_coord1) * 1000
-                    error_y = (pred_coord2 - target_coord2) * 1000
+                    error_x = pred_coord1 - target_coord1
+                    error_y = pred_coord2 - target_coord2
                     ax.plot(
-                        [target_coord1 * 1000, pred_coord1 * 1000],
-                        [target_coord2 * 1000, pred_coord2 * 1000],
+                        [target_coord1, pred_coord1],
+                        [target_coord2, pred_coord2],
                         color=color,
                         linewidth=1.5,
                         alpha=0.8,
@@ -301,8 +301,8 @@ def create_interactive_gaze_plot(
         # Target marker (shared)
         target_coord1, target_coord2 = plane_info.extract_2d_coords(controls.target_point)
         ax.scatter(
-            [target_coord1 * 1000],
-            [target_coord2 * 1000],
+            [target_coord1],
+            [target_coord2],
             marker="+",
             s=60,
             c=target_color,

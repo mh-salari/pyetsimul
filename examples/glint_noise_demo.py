@@ -20,10 +20,10 @@ def main() -> None:
     rotation_matrix = RotationMatrix(np.array([[1, 0, 0], [0, 0, 1], [0, -1, 0]]))
     e = Eye(fovea_displacement=False, pupil_boundary_points=100)
     e.set_rest_orientation(rotation_matrix)
-    e.position = Position3D(0, 500e-3, 200e-3)
+    e.position = Position3D(0, 500, 200)
 
     # Create a light
-    l = Light(position=Position3D(200e-3, 0, 0))
+    l = Light(position=Position3D(200, 0, 0))
 
     # Create cameras with different noise levels
     cameras = {

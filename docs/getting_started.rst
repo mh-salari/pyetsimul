@@ -21,7 +21,7 @@ Setting Up the Components
 ~~~~~~~~~~~~~~~~~~~~~~~~~
 
 Every simulation requires three core components: an **Eye**, a **Camera**, and one or more
-**Light** sources. All spatial measurements use **meters**.
+**Light** sources. All spatial measurements use **millimeters (mm)**.
 
 .. code-block:: python
 
@@ -37,10 +37,10 @@ Every simulation requires three core components: an **Eye**, a **Camera**, and o
    # In the eye's local frame, the optical axis points along -z.
    rest_orientation = RotationMatrix([[-1, 0, 0], [0, 0, 1], [0, 1, 0]])
    eye.set_rest_orientation(rest_orientation)
-   eye.position = Position3D(0, 150e-3, 50e-3)
+   eye.position = Position3D(0, 150, 50)
 
    # Create a light source
-   light = Light(position=Position3D(50e-3, 0, 0))
+   light = Light(position=Position3D(50, 0, 0))
 
    # Create a camera and point it at the eye
    camera = Camera()
@@ -54,7 +54,7 @@ Once the setup is in place, direct the eye toward a target and capture an image:
 .. code-block:: python
 
    # Define a gaze target and direct the eye toward it
-   target_point = Position3D(0, 0, 50e-3)
+   target_point = Position3D(0, 0, 50)
    eye.look_at(target_point)
 
    # Capture camera image of the eye
@@ -71,7 +71,7 @@ Key Concepts
 ------------
 
 - **Structured types**: PyEtSimul uses ``Position3D``, ``Direction3D``, ``Point3D`` instead of raw numpy arrays for type safety and clarity.
-- **All spatial measurements use meters** as the base unit.
+- **All spatial measurements use millimeters (mm)** as the base unit.
 - **Eye coordinate system**: Origin at center of rotation, optical axis along negative z-axis.
 - **Camera coordinate system**: Pinhole model with optical axis along negative z-axis.
 - **Corneal models**: Both spherical and conic cornea models are supported (see :doc:`theory/eye_model`).

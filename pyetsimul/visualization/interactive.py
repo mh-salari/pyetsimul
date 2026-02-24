@@ -55,8 +55,8 @@ def plot_interactive_setup(eye_base: Eye, lights: list[Light], camera: Camera, t
 
         eye_pos = eye_base.position
         fig.suptitle(
-            f"Target X={controls.target_point.x * 1000:.1f} mm, Y={controls.target_point.y * 1000:.1f} mm, Z={controls.target_point.z * 1000:.1f} mm\n"
-            f"Eye X={eye_pos.x * 1000:.1f} mm, Y={eye_pos.y * 1000:.1f} mm, Z={eye_pos.z * 1000:.1f} mm",
+            f"Target X={controls.target_point.x:.1f} mm, Y={controls.target_point.y:.1f} mm, Z={controls.target_point.z:.1f} mm\n"
+            f"Eye X={eye_pos.x:.1f} mm, Y={eye_pos.y:.1f} mm, Z={eye_pos.z:.1f} mm",
             fontsize=config.fonts.title,
         )
         fig.canvas.draw_idle()
@@ -83,7 +83,7 @@ def plot_interactive_cameras(cameras: list[Camera], eye: Eye, target_point: Posi
     info("=" * 50)
 
     config = create_plot_config()
-    controls = InteractiveControls([eye], target_point, step_size=1e-3)
+    controls = InteractiveControls([eye], target_point, step_size=1)
 
     # Create figure with 3D view and camera comparison subplot
     fig = plt.figure(figsize=config.layout.wide_comparison)
@@ -209,9 +209,9 @@ def plot_interactive_cameras(cameras: list[Camera], eye: Eye, target_point: Posi
                 )
 
                 fig.suptitle(
-                    f"Target: ({controls.target_point.x * 1000:.0f}, {controls.target_point.y * 1000:.0f}, {controls.target_point.z * 1000:.0f})mm, "
-                    f"Eye: ({eye_pos.x * 1000:.0f}, {eye_pos.y * 1000:.0f}, {eye_pos.z * 1000:.0f})mm, "
-                    f"Distance: {distance * 1000:.0f}mm\n"
+                    f"Target: ({controls.target_point.x:.0f}, {controls.target_point.y:.0f}, {controls.target_point.z:.0f})mm, "
+                    f"Eye: ({eye_pos.x:.0f}, {eye_pos.y:.0f}, {eye_pos.z:.0f})mm, "
+                    f"Distance: {distance:.0f}mm\n"
                     f"Pupil center differences: {', '.join(differences)}",
                     fontsize=config.fonts.subtitle,
                 )
@@ -247,14 +247,14 @@ def plot_interactive_pupil_comparison(
     def handle_pupil_size_decrease(_event: object, _controls: InteractiveControls) -> None:
         """Handle [ key - make pupil smaller."""
         current_radii = eye_elliptical.get_pupil_radii()
-        new_radius = max(0.5e-3, current_radii[0] - 0.5e-3)
+        new_radius = max(0.5, current_radii[0] - 0.5)
         eye_elliptical.set_pupil_radii(new_radius, new_radius)
         eye_realistic.set_pupil_radii(new_radius, new_radius)
 
     def handle_pupil_size_increase(_event: object, _controls: InteractiveControls) -> None:
         """Handle ] key - make pupil bigger."""
         current_radii = eye_elliptical.get_pupil_radii()
-        new_radius = min(5e-3, current_radii[0] + 0.5e-3)
+        new_radius = min(5, current_radii[0] + 0.5)
         eye_elliptical.set_pupil_radii(new_radius, new_radius)
         eye_realistic.set_pupil_radii(new_radius, new_radius)
 
@@ -274,7 +274,7 @@ def plot_interactive_pupil_comparison(
         " ": handle_reset_with_pupil,
     }
 
-    controls = InteractiveControls([eye_elliptical], target_point, step_size=2.5e-3, custom_handlers=custom_handlers)
+    controls = InteractiveControls([eye_elliptical], target_point, step_size=2.5, custom_handlers=custom_handlers)
 
     # Create figure with 3D view and camera comparison subplot
     fig = plt.figure(figsize=config.layout.wide_comparison)
@@ -395,10 +395,10 @@ def plot_interactive_pupil_comparison(
         # Update title with current positions and pupil size
         eye_pos = eye_elliptical.position
         pupil_radii = eye_elliptical.get_pupil_radii()
-        pupil_diameter = pupil_radii[0] * 2000  # Convert to mm
+        pupil_diameter = pupil_radii[0] * 2  # diameter in mm
         fig.suptitle(
-            f"Target X={controls.target_point.x * 1000:.1f} mm, Y={controls.target_point.y * 1000:.1f} mm, Z={controls.target_point.z * 1000:.1f} mm\n"
-            f"Eye X={eye_pos.x * 1000:.1f} mm, Y={eye_pos.y * 1000:.1f} mm, Z={eye_pos.z * 1000:.1f} mm, Pupil diameter: {pupil_diameter:.1f}mm",
+            f"Target X={controls.target_point.x:.1f} mm, Y={controls.target_point.y:.1f} mm, Z={controls.target_point.z:.1f} mm\n"
+            f"Eye X={eye_pos.x:.1f} mm, Y={eye_pos.y:.1f} mm, Z={eye_pos.z:.1f} mm, Pupil diameter: {pupil_diameter:.1f}mm",
             fontsize=config.fonts.title,
         )
         fig.canvas.draw_idle()

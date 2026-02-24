@@ -14,7 +14,7 @@ def test_mixed_points_in_out_bounds() -> None:
     c.camera_matrix.resolution = Point2D(640, 480)
 
     # Define test points using Position3D
-    pos = [Position3D(0, 100, -200), Position3D(0, -100, -200), Position3D(50, 50, -300)]
+    pos = [Position3D(0, 100000, -200000), Position3D(0, -100000, -200000), Position3D(50000, 50000, -300000)]
 
     result = c.project(pos)
     x = result.image_points
@@ -22,7 +22,7 @@ def test_mixed_points_in_out_bounds() -> None:
     valid_condition = result.valid_mask
 
     # Expected distances
-    expected_dist = np.array([200.0, 200.0, 300.0])
+    expected_dist = np.array([200000.0, 200000.0, 300000.0])
 
     # Check that invalid points are set to NaN (points 1 and 2 are out of bounds)
     assert np.isnan(x[0, 0])
@@ -50,14 +50,14 @@ def test_all_points_outside_bounds() -> None:
     c.camera_matrix.resolution = Point2D(640, 480)
 
     # Define test points that are clearly out of bounds
-    pos = [Position3D(1000, 0, -200), Position3D(0, 1000, -200), Position3D(-1000, -1000, -200)]
+    pos = [Position3D(1000000, 0, -200000), Position3D(0, 1000000, -200000), Position3D(-1000000, -1000000, -200000)]
 
     result = c.project(pos)
     x = result.image_points
     dist = result.distances
     valid_condition = result.valid_mask
 
-    expected_dist = np.array([200.0, 200.0, 200.0])
+    expected_dist = np.array([200000.0, 200000.0, 200000.0])
 
     # Check that all points are set to NaN
     assert np.isnan(x).all()
@@ -79,7 +79,7 @@ def test_boundary_points() -> None:
     # Calculate boundary points
     boundary_x = c.camera_matrix.resolution.x / 2  # 320
     boundary_y = c.camera_matrix.resolution.y / 2  # 240
-    z_depth = -200
+    z_depth = -200000
 
     x_right = boundary_x * z_depth / c.camera_matrix.focal_length
     y_top = boundary_y * z_depth / c.camera_matrix.focal_length
@@ -117,7 +117,7 @@ def test_center_point() -> None:
     c.camera_matrix.resolution = Point2D(640, 480)
 
     # Point at center
-    pos = Position3D(0, 0, -200)
+    pos = Position3D(0, 0, -200000)
 
     result = c.project(pos)
     x = result.image_points
@@ -128,8 +128,8 @@ def test_center_point() -> None:
     np.testing.assert_allclose(x[0, 0], 0.0, rtol=1e-12, atol=1e-15)
     np.testing.assert_allclose(x[1, 0], 0.0, rtol=1e-12, atol=1e-15)
 
-    # Distance should be 200
-    np.testing.assert_allclose(dist[0], 200.0, rtol=1e-12, atol=1e-15)
+    # Distance should be 200000
+    np.testing.assert_allclose(dist[0], 200000.0, rtol=1e-12, atol=1e-15)
 
     # Should be valid
     assert valid_condition[0]
@@ -142,7 +142,7 @@ def test_output_properties() -> None:
     c.camera_matrix.resolution = Point2D(640, 480)
 
     # Simple test points
-    pos = [Position3D(0, 0, -200), Position3D(100, 0, -300)]
+    pos = [Position3D(0, 0, -200000), Position3D(100000, 0, -300000)]
 
     result = c.project(pos)
     x = result.image_points

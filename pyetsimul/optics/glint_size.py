@@ -35,11 +35,11 @@ def compute_glint_diameter_sphere(
     Args:
         light_pos: 3D position of the light source.
         cr_pos: 3D position of the corneal reflection on the surface.
-        anterior_radius: Radius of curvature of the anterior corneal surface (meters).
-        led_diameter: Physical diameter of the LED light source (meters).
+        anterior_radius: Radius of curvature of the anterior corneal surface (mm).
+        led_diameter: Physical diameter of the LED light source (mm).
 
     Returns:
-        Glint diameter on the corneal surface (meters).
+        Glint diameter on the corneal surface (mm).
 
     """
     u = light_pos.distance_to(cr_pos)
@@ -61,11 +61,11 @@ def _local_sagittal_radius(
     Args:
         cr_pos: 3D position of the reflection point (world coordinates).
         cornea_center: 3D position of the cornea center (world coordinates).
-        anterior_radius: Apical radius of curvature (meters).
+        anterior_radius: Apical radius of curvature (mm).
         anterior_k: Conic constant (k=0 sphere, k<0 prolate ellipsoid).
 
     Returns:
-        Local sagittal radius of curvature at the reflection point (meters).
+        Local sagittal radius of curvature at the reflection point (mm).
 
     """
     # Radial distance squared from optical axis (x and y offsets from center)
@@ -88,12 +88,12 @@ def compute_glint_diameter_conic(
         light_pos: 3D position of the light source.
         cr_pos: 3D position of the corneal reflection on the surface.
         cornea_center: 3D position of the cornea center (world coordinates).
-        anterior_radius: Apical radius of curvature (meters).
+        anterior_radius: Apical radius of curvature (mm).
         anterior_k: Conic constant.
-        led_diameter: Physical diameter of the LED light source (meters).
+        led_diameter: Physical diameter of the LED light source (mm).
 
     Returns:
-        Glint diameter on the corneal surface (meters).
+        Glint diameter on the corneal surface (mm).
 
     """
     radius = _local_sagittal_radius(cr_pos, cornea_center, anterior_radius, anterior_k)
@@ -117,10 +117,10 @@ def compute_glint_diameter(
         cr_pos: 3D position of the corneal reflection on the surface.
         cornea: Cornea object (SphericalCornea or ConicCornea).
         eye_transform: 4x4 eye transformation matrix (for cornea center in world coords).
-        led_diameter: Physical diameter of the LED light source (meters).
+        led_diameter: Physical diameter of the LED light source (mm).
 
     Returns:
-        Glint diameter on the corneal surface (meters).
+        Glint diameter on the corneal surface (mm).
 
     """
     if cornea.cornea_type == "spherical":

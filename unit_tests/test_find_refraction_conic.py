@@ -9,13 +9,13 @@ from pyetsimul.types import Point3D, Position3D
 def test_conic_equals_sphere_refraction() -> None:
     """Test conic refraction with k=0 gives sphere behavior."""
     # Realistic eye tracking geometry based on example.py
-    radius = 7.98e-3  # Realistic corneal radius
+    radius = 7.98  # Realistic corneal radius
     n_outside = 1.0  # Air
     n_inside = 1.376  # Cornea
 
     # Object behind cornea (pupil), camera in front
-    object_pos = Position3D(0.0, 0.0, -6e-3)  # Object 6mm behind origin (pupil)
-    camera_pos = Position3D(0.0, 0.0, 50e-3)  # Camera 50mm in front
+    object_pos = Position3D(0.0, 0.0, -6)  # Object 6mm behind origin (pupil)
+    camera_pos = Position3D(0.0, 0.0, 50)  # Camera 50mm in front
 
     # For k=0 conic to match sphere at origin, conic center must be at (0,0,-R)
     sphere_center = Position3D(0.0, 0.0, 0.0)  # Sphere at origin
@@ -39,14 +39,14 @@ def test_conic_refraction_basic() -> None:
     """Test basic conic refraction scenario."""
     # Realistic conic parameters
     conic_center = Position3D(0.0, 0.0, 0.0)  # Conic center at origin
-    r_param = 7.98e-3  # Radius parameter
+    r_param = 7.98  # Radius parameter
     k = -0.18  # Typical prolate cornea
     n_outside = 1.0  # Air
     n_conic = 1.376  # Cornea
 
     # Realistic eye tracking geometry
-    object_pos = Position3D(0.0, 0.0, -6e-3)  # Object behind cornea (pupil)
-    camera_pos = Position3D(0.0, 0.0, 50e-3)  # Camera in front
+    object_pos = Position3D(0.0, 0.0, -6)  # Object behind cornea (pupil)
+    camera_pos = Position3D(0.0, 0.0, 50)  # Camera in front
 
     intersection_point = find_refraction_conic(camera_pos, object_pos, conic_center, r_param, k, n_outside, n_conic)
     assert intersection_point is not None, "intersection_point should not be None for this basic refraction scenario"
@@ -64,11 +64,11 @@ def test_conic_refraction_basic() -> None:
 def test_different_k_values() -> None:
     """Test that different k values give different refraction results."""
     conic_center = Position3D(0.0, 0.0, 0.0)  # Conic center at origin
-    r_param = 7.98e-3  # Radius parameter
+    r_param = 7.98  # Radius parameter
     n_outside = 1.0
     n_conic = 1.376
-    object_pos = Position3D(0.0, 0.0, -6e-3)  # Realistic object position (pupil)
-    camera_pos = Position3D(0.0, 0.0, 50e-3)  # Realistic camera position
+    object_pos = Position3D(0.0, 0.0, -6)  # Realistic object position (pupil)
+    camera_pos = Position3D(0.0, 0.0, 50)  # Realistic camera position
 
     # Prolate conic (typical cornea)
     k_prolate = -0.18
@@ -98,12 +98,12 @@ def test_different_k_values() -> None:
 def test_conic_output_properties() -> None:
     """Test that conic refraction output has correct properties."""
     conic_center = Position3D(0.0, 0.0, 0.0)  # Conic center at origin
-    r_param = 7.98e-3  # Radius parameter
+    r_param = 7.98  # Radius parameter
     k = -0.18
     n_outside = 1.0
     n_conic = 1.376
-    object_pos = Position3D(0.0, 0.0, -6e-3)  # Realistic object position
-    camera_pos = Position3D(0.0, 0.0, 50e-3)  # Realistic camera position
+    object_pos = Position3D(0.0, 0.0, -6)  # Realistic object position
+    camera_pos = Position3D(0.0, 0.0, 50)  # Realistic camera position
 
     intersection_point = find_refraction_conic(camera_pos, object_pos, conic_center, r_param, k, n_outside, n_conic)
     assert intersection_point is not None, "intersection_point should not be None for these inputs"
@@ -122,14 +122,14 @@ def test_realistic_corneal_parameters() -> None:
     """Test with realistic corneal parameters."""
     # Realistic corneal geometry
     conic_center = Position3D(0.0, 0.0, 0.0)  # Conic center at origin
-    r_param = 7.98e-3  # 7.98mm radius parameter
+    r_param = 7.98  # 7.98mm radius parameter
     k = -0.18  # Typical anterior cornea conic constant
     n_outside = 1.0  # Air
     n_cornea = 1.376  # Cornea
 
     # Object behind cornea (pupil), camera in front
-    object_pos = Position3D(0.0, 0.0, -0.006)  # Object 6mm behind origin
-    camera_pos = Position3D(0.0, 0.0, 0.05)  # Camera 5cm in front
+    object_pos = Position3D(0.0, 0.0, -6)  # Object 6mm behind origin
+    camera_pos = Position3D(0.0, 0.0, 50)  # Camera 50mm in front
 
     intersection_point = find_refraction_conic(camera_pos, object_pos, conic_center, r_param, k, n_outside, n_cornea)
     assert intersection_point is not None, "intersection_point should not be None for realistic corneal parameters"
@@ -144,6 +144,6 @@ def test_realistic_corneal_parameters() -> None:
     # For original conic equation, vertex is at z = R/(1+k) from center
     vertex_z = conic_center.z + r_param / (1 + k)  # Expected vertex position
     # The intersection should be reasonably close to the corneal surface
-    assert abs(intersection_point.z - vertex_z) < 0.05  # Within 5cm of vertex (very loose bounds)
+    assert abs(intersection_point.z - vertex_z) < 50  # Within 50mm of vertex (very loose bounds)
     # For typical corneal parameters, intersection should be in positive z range
-    assert -0.02 < intersection_point.z < 0.05  # Reasonable bounds for corneal surface
+    assert -20 < intersection_point.z < 50  # Reasonable bounds for corneal surface

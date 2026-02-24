@@ -18,8 +18,8 @@ class Light:
     Used to create corneal reflections (glints).
 
     Args:
-        position: 3D position in world coordinates (meters)
-        diameter: Physical diameter of the light source in meters (e.g., 0.005 for a 5mm LED).
+        position: 3D position in world coordinates (mm)
+        diameter: Physical diameter of the light source in mm (e.g., 5 for a 5mm LED).
             None means point source (default, backward compatible).
 
     """
@@ -36,9 +36,9 @@ class Light:
     def __str__(self) -> str:
         """Basic string representation of the light."""
         pos = self.position
-        base = f"Light(pos=({pos.x * 1000:.1f}, {pos.y * 1000:.1f}, {pos.z * 1000:.1f})mm"
+        base = f"Light(pos=({pos.x:.1f}, {pos.y:.1f}, {pos.z:.1f})mm"
         if self.diameter is not None:
-            base += f", d={self.diameter * 1000:.1f}mm"
+            base += f", d={self.diameter:.1f}mm"
         return base + ")"
 
     def pprint(self) -> None:
@@ -46,13 +46,12 @@ class Light:
         pos = self.position
 
         if self.diameter is not None:
-            light_type = f"Extended source (diameter: {self.diameter * 1000:.3f} mm)"
+            light_type = f"Extended source (diameter: {self.diameter:.3f} mm)"
         else:
             light_type = "Point source"
 
         data = [
-            ["Position (x,y,z) mm", f"({pos.x * 1000:.3f}, {pos.y * 1000:.3f}, {pos.z * 1000:.3f})"],
-            ["Position (x,y,z) m", f"({pos.x:.6f}, {pos.y:.6f}, {pos.z:.6f})"],
+            ["Position (x,y,z) mm", f"({pos.x:.3f}, {pos.y:.3f}, {pos.z:.3f})"],
             ["Light type", light_type],
         ]
 

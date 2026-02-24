@@ -151,12 +151,12 @@ def summarize_plane_detection(calib_points: list[Position3D], plane_info: PlaneI
 
     # Extract coordinate ranges
     coords_2d = np.array([plane_info.extract_2d_coords(p) for p in calib_points])
-    ranges = np.ptp(coords_2d, axis=0) * 1000  # Convert to mm
+    ranges = np.ptp(coords_2d, axis=0)
 
     summary = [
         f"Calibration plane: {plane_info.plane_type.upper()}",
         f"  Varying: {primary_label}, {secondary_label}",
-        f"  Fixed: {constant_label} = {plane_info.constant_value * 1000:.1f}mm",
+        f"  Fixed: {constant_label} = {plane_info.constant_value:.1f}mm",
         f"  Coverage: {ranges[0]:.1f}mm x {ranges[1]:.1f}mm",
     ]
 

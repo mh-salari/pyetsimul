@@ -25,12 +25,12 @@ def main() -> None:
     e = Eye(fovea_displacement=False)
     e.set_rest_orientation(rotation_matrix)
 
-    e.position = Position3D(0, 500e-3, 200e-3)
+    e.position = Position3D(0, 500, 200)
 
     # Create a light. Because lights are modelled as perfect point light sources, they do not have
     # an orientation, and hence they do not need a full transformation matrix; only
     # the position has to be specified.
-    l = Light(position=Position3D(200e-3, 0, 0))
+    l = Light(position=Position3D(200, 0, 0))
 
     # Create a camera. In its local coordinate system, the camera points out along the negative
     # z-axis. We use point_at() to orient the camera towards the eye.
@@ -66,7 +66,7 @@ def main() -> None:
             "pixels",
         ],
         ["Refraction offset magnitude", f"{offset_magnitude:.2f}", "pixels"],
-        ["CR position (3D)", f"({cr.x:.6g}, {cr.y:.6g}, {cr.z:.6g})", "meters"],
+        ["CR position (3D)", f"({cr.x:.6g}, {cr.y:.6g}, {cr.z:.6g})", "mm"],
         [
             "CR position (image)",
             f"({cr_projection.image_points[0, 0]:.6g}, {cr_projection.image_points[1, 0]:.6g})",

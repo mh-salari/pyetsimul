@@ -169,12 +169,14 @@ class Camera:
             raise ValueError(f"Unknown error type: {self.err_type}")
 
         # Check which points are within image bounds and in front of camera
+        # Small tolerance for floating-point boundary comparisons
         resolution = self.camera_matrix.resolution
+        boundary_tol = 1e-10
         condition = (
-            (x[0, :] >= -resolution.x / 2)
-            & (x[0, :] <= resolution.x / 2)
-            & (x[1, :] >= -resolution.y / 2)
-            & (x[1, :] <= resolution.y / 2)
+            (x[0, :] >= -resolution.x / 2 - boundary_tol)
+            & (x[0, :] <= resolution.x / 2 + boundary_tol)
+            & (x[1, :] >= -resolution.y / 2 - boundary_tol)
+            & (x[1, :] <= resolution.y / 2 + boundary_tol)
             & (dist > 0)  # Points must be in front of camera
         )
 
@@ -432,7 +434,7 @@ class Camera:
         """Basic string representation of the camera."""
         res = self.camera_matrix.resolution
         pos = self.position
-        return f"Camera(pos=({pos.x * 1000:.1f}, {pos.y * 1000:.1f}, {pos.z * 1000:.1f})mm, f={self.camera_matrix.focal_length:.0f}px, {res.x}x{res.y})"
+        return f"Camera(pos=({pos.x:.1f}, {pos.y:.1f}, {pos.z:.1f})mm, f={self.camera_matrix.focal_length:.0f}px, {res.x}x{res.y})"
 
     def pprint(self) -> None:
         """Print detailed camera parameters in a formatted table."""
@@ -454,7 +456,7 @@ class Camera:
             ["Focal length (px)", f"{self.camera_matrix.focal_length:.1f}"],
             ["Resolution", f"{res.x} x {res.y}"],
             ["Principal point (px)", f"({matrix[0, 2]:.1f}, {matrix[1, 2]:.1f})"],
-            ["Position (x,y,z) mm", f"({pos.x * 1000:.1f}, {pos.y * 1000:.1f}, {pos.z * 1000:.1f})"],
+            ["Position (x,y,z) mm", f"({pos.x:.1f}, {pos.y:.1f}, {pos.z:.1f})"],
             ["Distortion coefficients", dist_info],
             ["Measurement error", f"{self.err:.4f}"],
             ["Error type", self.err_type],

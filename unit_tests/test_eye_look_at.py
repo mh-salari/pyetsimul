@@ -10,7 +10,7 @@ from pyetsimul.types import Position3D, RotationMatrix
 def test_look_at_with_foveal_displacement() -> None:
     """Test look_at with foveal displacement enabled (default)."""
     e = Eye()
-    target = Position3D(x=12.0, y=-7.0, z=-30.0)
+    target = Position3D(x=12000, y=-7000, z=-30000)
     initial_position = np.array(e.position)
 
     e.look_at(target, legacy=True)
@@ -35,7 +35,7 @@ def test_look_at_with_foveal_displacement() -> None:
 def test_look_at_with_no_foveal_displacement() -> None:
     """Test look_at with foveal displacement disabled."""
     e = Eye(fovea_displacement=False)  # Disable foveal displacement
-    target = Position3D(x=12.0, y=-7.0, z=-30.0)
+    target = Position3D(x=12000, y=-7000, z=-30000)
     initial_position = np.array(e.position)
 
     e.look_at(target)
@@ -60,7 +60,7 @@ def test_look_at_with_no_foveal_displacement() -> None:
 def test_output_properties() -> None:
     """Test that look_at output has correct properties."""
     e = Eye()
-    target = Position3D(x=10.0, y=5.0, z=-30.0)
+    target = Position3D(x=10000, y=5000, z=-30000)
 
     # look_at doesn't return anything (void method)
     e.look_at(target)

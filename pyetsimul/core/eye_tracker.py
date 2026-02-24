@@ -152,7 +152,7 @@ class EyeTracker(ABC):
         if failed_points:
             warning(f"\n{len(failed_points)}/{n_points} calibration points failed:")
             for point_num, point, reason in failed_points:
-                warning(f"  Point {point_num} ({point.x * 1000:.0f}mm, {point.z * 1000:.0f}mm): {reason}")
+                warning(f"  Point {point_num} ({point.x:.0f}mm, {point.z:.0f}mm): {reason}")
             warning(f"  Calibration will proceed with {n_points - len(failed_points)} valid points.\n")
 
         return measurements
@@ -195,14 +195,14 @@ class EyeTracker(ABC):
         """Calculate gaze estimation error.
 
         Evaluates gaze tracking accuracy by comparing prediction to known target.
-        Returns error in meters or NaN if estimation fails.
+        Returns error in mm or NaN if estimation fails.
 
         Args:
             eye: Eye object
             look_at_pos: 3D position where eye should look
 
         Returns:
-            Tuple of (u, v) gaze error in meters, or (NaN, NaN) if estimation fails
+            Tuple of (u, v) gaze error in mm, or (NaN, NaN) if estimation fails
 
         """
         gaze_prediction = self.estimate_gaze_at(eye, look_at_pos)
@@ -306,7 +306,7 @@ class EyeTracker(ABC):
         # Add eye position if provided
         if eye is not None:
             pos = eye.position
-            data.append(["Eye position (mm)", f"({pos.x * 1000:.1f}, {pos.y * 1000:.1f}, {pos.z * 1000:.1f})"])
+            data.append(["Eye position (mm)", f"({pos.x:.1f}, {pos.y:.1f}, {pos.z:.1f})"])
 
         data.extend([
             ["Algorithm", self.algorithm_name],
@@ -332,7 +332,7 @@ class EyeTracker(ABC):
                 pos = cam.position
                 data.append([
                     f"Camera {i + 1} position (mm)",
-                    f"({pos.x * 1000:.1f}, {pos.y * 1000:.1f}, {pos.z * 1000:.1f})",
+                    f"({pos.x:.1f}, {pos.y:.1f}, {pos.z:.1f})",
                 ])
 
         # Add light details
@@ -341,7 +341,7 @@ class EyeTracker(ABC):
                 pos = light.position
                 data.append([
                     f"Light {i + 1} position (mm)",
-                    f"({pos.x * 1000:.1f}, {pos.y * 1000:.1f}, {pos.z * 1000:.1f})",
+                    f"({pos.x:.1f}, {pos.y:.1f}, {pos.z:.1f})",
                 ])
 
         headers = ["Parameter", "Value"]

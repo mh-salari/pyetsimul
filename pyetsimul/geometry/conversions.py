@@ -91,9 +91,9 @@ def calculate_angular_error_degrees(
     between them using the dot product formula. Handles numerical precision issues.
 
     Args:
-        actual_point: Actual target point [x, y, z] in meters
-        predicted_point: Predicted gaze point [x, y, z] in meters
-        observer_pos: Observer position [x, y, z] in meters
+        actual_point: Actual target point [x, y, z] in mm
+        predicted_point: Predicted gaze point [x, y, z] in mm
+        observer_pos: Observer position [x, y, z] in mm
 
     Returns:
         Angular error in degrees

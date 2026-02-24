@@ -110,7 +110,7 @@ class Stampe1993GazeModel(PolynomialGazeModel):
         coords_array = np.array(calib_coords_2d)
         self.screen_center_2d = (float(np.mean(coords_array[:, 0])), float(np.mean(coords_array[:, 1])))
         cx_center, cy_center = self.screen_center_2d
-        info(f"\nCalibration grid center (2D): ({cx_center * 1000:.1f}, {cy_center * 1000:.1f}) mm")
+        info(f"\nCalibration grid center (2D): ({cx_center:.1f}, {cy_center:.1f}) mm")
 
         # Group points by quadrant relative to calibration center
         quadrant_data: dict[int, list[tuple[float, float, float, float]]] = {0: [], 1: [], 2: [], 3: []}

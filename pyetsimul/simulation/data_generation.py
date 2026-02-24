@@ -73,13 +73,13 @@ class DataGenerationStrategy(VariationStrategy):
             eyes=[eye],
             cameras=[camera],
             lights=[light],
-            gaze_target=Position3D(0, 0, 200e-3)
+            gaze_target=Position3D(0, 0, 200)
         )
 
         # Test multiple parameter variations on same setup
-        pupil_data = strategy.execute(PupilSizeVariation([3e-3, 7e-3], 10))
+        pupil_data = strategy.execute(PupilSizeVariation([3, 7], 10))
         kappa_data = strategy.execute(AngleKappaVariation([4, 8], [1, 3], 10))
-        radius_data = strategy.execute(CorneaRadiusVariation([7.5e-3, 8.5e-3], 10))
+        radius_data = strategy.execute(CorneaRadiusVariation([7.5, 8.5], 10))
     """
 
     def __init__(

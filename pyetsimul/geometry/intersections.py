@@ -158,7 +158,7 @@ def intersect_ray_conic(
     Args:
         ray: Ray with origin and direction
         conic_center: Conic center position
-        radius: Radius parameter (R in the formula, meters)
+        radius: Radius parameter (R in the formula, mm)
         conic_constant: Conic constant (k < 0 for prolate, k = 0 for sphere, k > 0 for oblate)
 
     Returns:
@@ -221,7 +221,7 @@ def conic_surface_normal(
     Args:
         point: Point on conic surface
         conic_center: Conic center position
-        radius: Radius parameter (R in the formula, meters)
+        radius: Radius parameter (R in the formula, mm)
         conic_constant: Conic constant (k < 0 for prolate, k = 0 for sphere, k > 0 for oblate)
 
     Returns:

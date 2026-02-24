@@ -12,7 +12,7 @@ def test_camera_take_image_with_refraction() -> None:
     """Test camera take_image with refraction using actual MATLAB reference values."""
     # Create eye and camera setup (matching MATLAB test)
     e = Eye(fovea_displacement=False)
-    e.position = Position3D(0, 500e-3, 200e-3)  # Eye at [0, 500mm, 200mm]
+    e.position = Position3D(0, 500, 200)  # Eye at [0, 500mm, 200mm]
 
     # Camera at origin pointing at eye
     c = Camera()
@@ -29,11 +29,11 @@ def test_camera_take_image_with_refraction() -> None:
     lights = []
 
     # Light 1: right side, low (4D homogeneous)
-    light1 = Light(position=Position3D(200e-3, 0, 50e-3))
+    light1 = Light(position=Position3D(200, 0, 50))
     lights.append(light1)
 
     # Light 2: right side, high (4D homogeneous)
-    light2 = Light(position=Position3D(200e-3, 0, 300e-3))
+    light2 = Light(position=Position3D(200, 0, 300))
     lights.append(light2)
 
     # Take image with refraction
@@ -88,7 +88,7 @@ def test_camera_take_image_without_refraction() -> None:
     """Test camera take_image without refraction using actual MATLAB reference values."""
     # Same setup as refraction test
     e = Eye(fovea_displacement=False)
-    e.position = Position3D(0, 500e-3, 200e-3)
+    e.position = Position3D(0, 500, 200)
 
     c = Camera()
     c.trans[0:3, 0:3] = np.array([[1, 0, 0], [0, 0, -1], [0, 1, 0]])
@@ -101,10 +101,10 @@ def test_camera_take_image_without_refraction() -> None:
 
     # Same light sources (4D homogeneous)
     lights = []
-    light1 = Light(position=Position3D(200e-3, 0, 50e-3))
+    light1 = Light(position=Position3D(200, 0, 50))
     lights.append(light1)
 
-    light2 = Light(position=Position3D(200e-3, 0, 300e-3))
+    light2 = Light(position=Position3D(200, 0, 300))
     lights.append(light2)
 
     # Take image without refraction
@@ -156,7 +156,7 @@ def test_camera_take_image_output_structure() -> None:
     """Test that camera take_image returns correct output structure."""
     # Minimal setup
     e = Eye(fovea_displacement=False)
-    e.position = Position3D(0, 500e-3, 200e-3)
+    e.position = Position3D(0, 500, 200)
 
     c = Camera()
     c.trans[0:3, 0:3] = np.array([[1, 0, 0], [0, 0, -1], [0, 1, 0]])
@@ -168,7 +168,7 @@ def test_camera_take_image_output_structure() -> None:
     e.look_at(Position3D(0, 0, 0))
 
     # Single light source (4D homogeneous)
-    light = Light(position=Position3D(200e-3, 0, 50e-3))
+    light = Light(position=Position3D(200, 0, 50))
     lights = [light]
 
     camimg = c.take_image(e, lights, use_refraction=True)

@@ -34,14 +34,14 @@ def main() -> None:
     # Create an Eye object. The system supports multiple eyes, but for this example, we use one.
     eye = Eye()
     eye.set_rest_orientation(RotationMatrix([[1, 0, 0], [0, 0, 1], [0, -1, 0]]))
-    eye.position = Position3D(0.0, 550e-3, 350e-3)
+    eye.position = Position3D(0.0, 550, 350)
 
     # Create a Camera object. The system supports multiple cameras.
     camera = Camera()
     camera.point_at(eye.position)  # Pointing this camera at the single eye for simplicity.
 
     # Create a Light object. The system supports multiple lights.
-    light = Light(position=Position3D(200e-3, 0, 350e-3))
+    light = Light(position=Position3D(200, 0, 350))
 
     # 2. Configure the data generation strategy.
     # The strategy takes lists of eyes, cameras, and lights.
@@ -49,7 +49,7 @@ def main() -> None:
         eyes=[eye],
         cameras=[camera],
         lights=[light],
-        gaze_target=Position3D(0.0, 0.0, 200e-3),
+        gaze_target=Position3D(0.0, 0.0, 200),
         experiment_name="",
         output_dir=Path(__file__).parent / "outputs",
     )
@@ -58,10 +58,10 @@ def main() -> None:
 
     # First variation: Change the gaze target position (e.g., simulating looking at a screen).
     target_position_variation = TargetPositionVariation(
-        grid_center=Position3D(0, 0, 200e-3),
-        dx=[-200e-3, 200e-3],
+        grid_center=Position3D(0, 0, 200),
+        dx=[-200, 200],
         dy=[0.0, 0.0],
-        dz=[-150e-3, 150e-3],
+        dz=[-150, 150],
         grid_size=[16, 1, 16],
     )
 
@@ -70,9 +70,9 @@ def main() -> None:
 
     # Second variation: Change the eye's position (e.g., simulating head movement).
     eye_position_variation = EyePositionVariation(
-        center=Position3D(0.0, 550e-3, 350e-3),
-        dx=[-50e-3, 50e-3],
-        dy=[-50e-3, 50e-3],
+        center=Position3D(0.0, 550, 350),
+        dx=[-50, 50],
+        dy=[-50, 50],
         dz=[0.0, 0.0],
         grid_size=[16, 16, 1],
     )

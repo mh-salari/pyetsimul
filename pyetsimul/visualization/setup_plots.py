@@ -242,10 +242,10 @@ def plot_setup(
     ax1.set_title("Eye Tracking Setup")
     ax1.legend(**config.layout.legend_upper_left, fontsize=config.fonts.annotation)
 
-    # Convert axes to mm for better readability
-    ax1.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x, _: f"{x * 1000:.0f}"))
-    ax1.yaxis.set_major_formatter(ticker.FuncFormatter(lambda x, _: f"{x * 1000:.0f}"))
-    ax1.zaxis.set_major_formatter(ticker.FuncFormatter(lambda x, _: f"{x * 1000:.0f}"))
+    # Format axes as integers for readability (values already in mm)
+    ax1.xaxis.set_major_formatter(ticker.FuncFormatter(lambda x, _: f"{x:.0f}"))
+    ax1.yaxis.set_major_formatter(ticker.FuncFormatter(lambda x, _: f"{x:.0f}"))
+    ax1.zaxis.set_major_formatter(ticker.FuncFormatter(lambda x, _: f"{x:.0f}"))
 
     # Calculate bounds that include all eyes, cameras, and targets
     all_points = []
@@ -275,7 +275,7 @@ def plot_setup(
         max_coords = np.max(all_points_array, axis=0)
 
         # Add padding and make all axes have same range
-        padding = 0.02  # 20mm padding
+        padding = 20  # 20mm padding
         ranges = max_coords - min_coords + 2 * padding
         max_range = np.max(ranges)
 
@@ -354,7 +354,7 @@ def plot_axis(
     axis_idx: int,
     label: str,
     color: str,
-    length: float = 0.003,
+    length: float = 3,
 ) -> None:
     """Plot a single axis with arrow and label"""
     config = create_plot_config()

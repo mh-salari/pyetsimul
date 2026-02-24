@@ -109,11 +109,7 @@ class Cornea(ABC):
 
     def __str__(self) -> str:
         """Basic string representation of the cornea."""
-        center_str = (
-            f"({self.center.x * 1000:.1f}, {self.center.y * 1000:.1f}, {self.center.z * 1000:.1f})mm"
-            if self.center
-            else "unset"
-        )
+        center_str = f"({self.center.x:.1f}, {self.center.y:.1f}, {self.center.z:.1f})mm" if self.center else "unset"
         return f"{self.__class__.__name__}(center={center_str}, type={self.cornea_type})"
 
     def pprint(self) -> None:
@@ -123,27 +119,25 @@ class Cornea(ABC):
             ["Cornea type", self.cornea_type],
             [
                 "Center (x,y,z) mm",
-                f"({self.center.x * 1000:.3f}, {self.center.y * 1000:.3f}, {self.center.z * 1000:.3f})"
-                if self.center
-                else "unset",
+                f"({self.center.x:.3f}, {self.center.y:.3f}, {self.center.z:.3f})" if self.center else "unset",
             ],
         ]
 
         # SphericalCornea and ConicCornea parameters
         if isinstance(self, (SphericalCornea, ConicCornea)):
             data.extend([
-                ["Anterior radius (mm)", f"{self.anterior_radius * 1000:.3f}"],
-                ["Posterior radius (mm)", f"{self.posterior_radius * 1000:.3f}"],
+                ["Anterior radius (mm)", f"{self.anterior_radius:.3f}"],
+                ["Posterior radius (mm)", f"{self.posterior_radius:.3f}"],
                 ["Refractive index", f"{self.refractive_index:.3f}"],
-                ["Thickness offset (mm)", f"{self.thickness_offset * 1000:.3f}"],
-                ["Corneal depth (mm)", f"{self.get_corneal_depth() * 1000:.3f}"],
+                ["Thickness offset (mm)", f"{self.thickness_offset:.3f}"],
+                ["Corneal depth (mm)", f"{self.get_corneal_depth():.3f}"],
             ])
 
             if self.center:
                 apex = self.get_apex_position()
                 data.append([
                     "Apex position (x,y,z) mm",
-                    f"({apex.x * 1000:.3f}, {apex.y * 1000:.3f}, {apex.z * 1000:.3f})",
+                    f"({apex.x:.3f}, {apex.y:.3f}, {apex.z:.3f})",
                 ])
 
         # ConicCornea-specific parameters
@@ -193,7 +187,7 @@ class SphericalCornea(Cornea):
         """Calculate the scaled posterior corneal radius.
 
         Returns:
-            Posterior corneal radius in meters (scaled from reference)
+            Posterior corneal radius in mm (scaled from reference)
 
         """
         scale = self.get_scale_factor()
@@ -204,7 +198,7 @@ class SphericalCornea(Cornea):
         """Calculate the scaled thickness offset.
 
         Returns:
-            Thickness offset in meters (scaled from reference)
+            Thickness offset in mm (scaled from reference)
 
         """
         scale = self.get_scale_factor()
@@ -218,7 +212,7 @@ class SphericalCornea(Cornea):
         between the anterior and posterior surfaces along the optical axis.
 
         Returns:
-            Central corneal thickness in meters
+            Central corneal thickness in mm
 
         """
         # Distance between surface centers along optical axis
@@ -240,8 +234,8 @@ class SphericalCornea(Cornea):
 
         Args:
             scale: Scaling factor based on corneal radius
-            axial_length: Total axial length of eye (m)
-            cornea_center_to_rotation_center: Distance from corneal center to rotation center (m)
+            axial_length: Total axial length of eye (mm)
+            cornea_center_to_rotation_center: Distance from corneal center to rotation center (mm)
 
         Returns:
             Cornea center position
@@ -277,7 +271,7 @@ class SphericalCornea(Cornea):
         """Calculate the scaled corneal depth for this spherical cornea.
 
         Returns:
-            Corneal depth in meters (scaled from reference depth)
+            Corneal depth in mm (scaled from reference depth)
 
         """
         scale = self.get_scale_factor()
@@ -377,9 +371,9 @@ class ConicCornea(Cornea):
 
     Attributes:
         center (Point4D): The 4D homogeneous coordinate of the conic center.
-        anterior_radius (float): Anterior surface radius of curvature at apex in meters.
+        anterior_radius (float): Anterior surface radius of curvature at apex in mm.
         anterior_k (float): Anterior surface conic constant.
-        posterior_radius (float): Posterior surface radius of curvature at apex in meters.
+        posterior_radius (float): Posterior surface radius of curvature at apex in mm.
         posterior_k (float): Posterior surface conic constant.
         thickness (float): Central corneal thickness.
         refractive_index (float): Refractive index of cornea.
@@ -452,7 +446,7 @@ class ConicCornea(Cornea):
         This ensures that point_within_cornea behaves consistently between models.
 
         Returns:
-            Corneal depth in meters
+            Corneal depth in mm
 
         """
         return self._cornea_depth_default
@@ -473,8 +467,8 @@ class ConicCornea(Cornea):
         """Calculate the center position for conic cornea based on anatomical parameters (no scaling).
 
         Args:
-            axial_length: Total axial length of eye (m)
-            cornea_center_to_rotation_center: Distance from corneal center to rotation center (m)
+            axial_length: Total axial length of eye (mm)
+            cornea_center_to_rotation_center: Distance from corneal center to rotation center (mm)
 
         Returns:
             Cornea center position

@@ -10,7 +10,7 @@ def test_point_at_basic() -> None:
     """Test basic point_at functionality."""
     c = Camera()
     original_trans = c.trans.copy()
-    target = Position3D(x=5.0, y=3.0, z=-10.0)
+    target = Position3D(x=5000, y=3000, z=-10000)
 
     c.point_at(target)
 
@@ -30,7 +30,7 @@ def test_point_at_vs_pan_tilt() -> None:
     """Test difference between point_at and pan_tilt regarding rest_trans."""
     c1 = Camera()
     c2 = Camera()
-    target = Position3D(x=2.0, y=4.0, z=-8.0)
+    target = Position3D(x=2000, y=4000, z=-8000)
 
     # Test pan_tilt (should not change rest_trans)
     original_rest = c1.rest_trans.copy()
@@ -49,7 +49,7 @@ def test_output_properties() -> None:
     """Test that point_at maintains proper camera properties."""
     c = Camera()
     original_focal_length = c.camera_matrix.focal_length
-    target = Position3D(x=1.0, y=-2.0, z=-5.0)
+    target = Position3D(x=1000, y=-2000, z=-5000)
 
     c.point_at(target)
 

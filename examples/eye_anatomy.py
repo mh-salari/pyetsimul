@@ -12,7 +12,7 @@ from pyetsimul.visualization import plot_eye_anatomy
 
 # Define target point for consistent gaze direction
 # Use Z-forward target to keep eyelid properly oriented in the plot view
-target_point = Position3D(10e-3, 10e-3, -10e-3)
+target_point = Position3D(10, 10, -10)
 
 # Create two eyes: spherical vs conic cornea (both with default parameters)
 e_spherical = Eye(cornea=SphericalCornea(), eyelid_enabled=True)
@@ -44,9 +44,9 @@ plot_eye_anatomy(e_spherical, ax=ax1)
 ax1.set_title("Spherical Cornea", fontsize=14, fontweight="bold")
 # Add spherical parameters
 spherical_params = (
-    f"R_a = {e_spherical.cornea.anterior_radius * 1000:.2f} mm\n"
-    f"R_p = {e_spherical.cornea.posterior_radius * 1000:.2f} mm\n"
-    f"d_c = {e_spherical.cornea.get_corneal_depth() * 1000:.2f} mm"
+    f"R_a = {e_spherical.cornea.anterior_radius:.2f} mm\n"
+    f"R_p = {e_spherical.cornea.posterior_radius:.2f} mm\n"
+    f"d_c = {e_spherical.cornea.get_corneal_depth():.2f} mm"
 )
 ax1.text2D(0.02, 0.95, spherical_params, transform=ax1.transAxes, fontsize=9, verticalalignment="top")
 
@@ -55,8 +55,8 @@ plot_eye_anatomy(e_conic, ax=ax2)
 ax2.set_title("Conic Cornea", fontsize=14, fontweight="bold")
 # Add conic parameters
 conic_params = (
-    f"R_a = {e_conic.cornea.anterior_radius * 1000:.2f} mm, k_a = {e_conic.cornea.anterior_k:.2f}\n"
-    f"R_p = {e_conic.cornea.posterior_radius * 1000:.2f} mm, k_p = {e_conic.cornea.posterior_k:.2f}"
+    f"R_a = {e_conic.cornea.anterior_radius:.2f} mm, k_a = {e_conic.cornea.anterior_k:.2f}\n"
+    f"R_p = {e_conic.cornea.posterior_radius:.2f} mm, k_p = {e_conic.cornea.posterior_k:.2f}"
 )
 ax2.text2D(0.02, 0.95, conic_params, transform=ax2.transAxes, fontsize=9, verticalalignment="top")
 

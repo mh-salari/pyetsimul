@@ -27,8 +27,8 @@ def main() -> None:
     eye_conic.set_rest_orientation(rest_orientation)
 
     # Setup: Eye looking slightly left of camera (off-axis)
-    target_point = Position3D(-20e-3, 0, 0)  # 20mm left of camera
-    eye_position = Position3D(0, 50e-3, 0)
+    target_point = Position3D(-20, 0, 0)  # 20mm left of camera
+    eye_position = Position3D(0, 50, 0)
 
     eye_spherical.position = eye_position
     eye_conic.position = eye_position
@@ -43,12 +43,12 @@ def main() -> None:
     print("\nCornea Comparison Setup")
     headers = ["Component", "Position (x, y, z)", "Unit"]
     data = [
-        ["Eye", f"({eye_position.x:.3f}, {eye_position.y:.3f}, {eye_position.z:.3f})", "meters"],
-        ["Camera", f"({camera.position.x:.3f}, {camera.position.y:.3f}, {camera.position.z:.3f})", "meters"],
+        ["Eye", f"({eye_position.x:.1f}, {eye_position.y:.1f}, {eye_position.z:.1f})", "mm"],
+        ["Camera", f"({camera.position.x:.1f}, {camera.position.y:.1f}, {camera.position.z:.1f})", "mm"],
         [
             "Target",
-            f"({target_point.x:.3f}, {target_point.y:.3f}, {target_point.z:.3f})",
-            "meters",
+            f"({target_point.x:.1f}, {target_point.y:.1f}, {target_point.z:.1f})",
+            "mm",
         ],
     ]
     print(tabulate(data, headers=headers, tablefmt="grid"))

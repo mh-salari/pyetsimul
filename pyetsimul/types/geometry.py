@@ -809,8 +809,8 @@ class ScreenGeometry:
     Defines a screen centered at the origin on the specified plane.
     """
 
-    width: float  # full screen width in meters
-    height: float  # full screen height in meters
+    width: float  # full screen width in mm
+    height: float  # full screen height in mm
     plane: str  # "xz", "xy", or "yz"
 
     def __post_init__(self) -> None:

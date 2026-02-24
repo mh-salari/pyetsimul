@@ -65,7 +65,7 @@ class Pupil(ABC):
         """Get pupil radii from both axes.
 
         Returns:
-            Tuple of (x_radius, y_radius) in meters
+            Tuple of (x_radius, y_radius) in mm
 
         """
 
@@ -74,8 +74,8 @@ class Pupil(ABC):
         """Set pupil radii and update geometry.
 
         Args:
-            x_radius: Pupil radius in X direction (meters)
-            y_radius: Pupil radius in Y direction (meters)
+            x_radius: Pupil radius in X direction (mm)
+            y_radius: Pupil radius in Y direction (mm)
 
         """
 
@@ -84,7 +84,7 @@ class Pupil(ABC):
         """Set pupil diameter and update geometry.
 
         Args:
-            diameter: Pupil diameter in meters
+            diameter: Pupil diameter in mm
 
         """
 
@@ -93,7 +93,7 @@ class Pupil(ABC):
         """Get pupil diameter.
 
         Returns:
-            Pupil diameter in meters
+            Pupil diameter in mm
 
         """
 
@@ -132,7 +132,7 @@ class Pupil(ABC):
         """Basic string representation of the pupil."""
         pos = self.pos_pupil
         x_radius, y_radius = self.get_radii()
-        return f"{self.__class__.__name__}(pos=({pos.x * 1000:.1f}, {pos.y * 1000:.1f}, {pos.z * 1000:.1f})mm, r=({x_radius * 1000:.1f}, {y_radius * 1000:.1f})mm)"
+        return f"{self.__class__.__name__}(pos=({pos.x:.1f}, {pos.y:.1f}, {pos.z:.1f})mm, r=({x_radius:.1f}, {y_radius:.1f})mm)"
 
     def pprint(self) -> None:
         """Print detailed pupil parameters in a formatted table."""
@@ -142,9 +142,9 @@ class Pupil(ABC):
         # Base parameters
         data = [
             ["Pupil type", self.__class__.__name__],
-            ["Position (x,y,z) mm", f"({pos.x * 1000:.3f}, {pos.y * 1000:.3f}, {pos.z * 1000:.3f})"],
-            ["X-axis radius (mm)", f"{x_radius * 1000:.3f}"],
-            ["Y-axis radius (mm)", f"{y_radius * 1000:.3f}"],
+            ["Position (x,y,z) mm", f"({pos.x:.3f}, {pos.y:.3f}, {pos.z:.3f})"],
+            ["X-axis radius (mm)", f"{x_radius:.3f}"],
+            ["Y-axis radius (mm)", f"{y_radius:.3f}"],
             ["Boundary points", str(self.n)],
             ["Noncircularity", f"{self.get_noncircularity():.6f}"],
         ]
@@ -152,7 +152,7 @@ class Pupil(ABC):
         # Add RealisticPupil-specific parameters
         if isinstance(self, RealisticPupil):
             data.extend([
-                ["Base radius (mm)", f"{self.params.base_radius * 1000:.3f}"],
+                ["Base radius (mm)", f"{self.params.base_radius:.3f}"],
                 ["Random seed", str(self.params.random_seed) if self.params.random_seed else "Random"],
             ])
 
@@ -205,7 +205,7 @@ class EllipticalPupil(Pupil):
         """Get pupil radii from both axes.
 
         Returns:
-            Tuple of (x_radius, y_radius) in meters
+            Tuple of (x_radius, y_radius) in mm
 
         """
         x_radius = self.x_pupil.magnitude()
@@ -216,8 +216,8 @@ class EllipticalPupil(Pupil):
         """Set pupil radii and update geometry.
 
         Args:
-            x_radius: Pupil radius in X direction (meters)
-            y_radius: Pupil radius in Y direction (meters)
+            x_radius: Pupil radius in X direction (mm)
+            y_radius: Pupil radius in Y direction (mm)
 
         """
         self.x_pupil = Direction3D(x_radius, 0, 0)
@@ -227,7 +227,7 @@ class EllipticalPupil(Pupil):
         """Set pupil diameter and update geometry.
 
         Args:
-            diameter: Pupil diameter in meters
+            diameter: Pupil diameter in mm
 
         """
         radius = diameter / 2
@@ -239,7 +239,7 @@ class EllipticalPupil(Pupil):
         For elliptical pupils, returns average diameter.
 
         Returns:
-            Pupil diameter in meters
+            Pupil diameter in mm
 
         """
         x_radius, y_radius = self.get_radii()
@@ -283,18 +283,18 @@ class RealisticPupilParams:
     Vision Research, 35(14), 2021-2036.
 
     Attributes:
-        base_radius: Average pupil radius in meters
+        base_radius: Average pupil radius in mm
         noncircularity: Measure of deviation from circularity (0 = perfect circle)
         ellipse_contribution: Fraction of noncircularity from elliptical component
         major_axis_angle: Orientation of ellipse major axis in radians (0=vertical)
-        pupil_offset_from_limbus: (nasal, superior) displacement from limbus center in meters
+        pupil_offset_from_limbus: (nasal, superior) displacement from limbus center in mm
         n_harmonics: Number of Fourier harmonics to include in shape generation
         age: Subject age in years (affects noncircularity and pupil size)
         random_seed: Random seed for reproducible shape generation (None for random)
 
     """
 
-    base_radius: float = PupilDefaults.BASE_RADIUS  # meters
+    base_radius: float = PupilDefaults.BASE_RADIUS  # mm
     noncircularity: float = PupilDefaults.NONCIRCULARITY
     ellipse_contribution: float = PupilDefaults.ELLIPSE_CONTRIBUTION
     major_axis_angle: float = PupilDefaults.MAJOR_AXIS_ANGLE
@@ -402,14 +402,14 @@ class RealisticPupil(Pupil):
         """Update dilated/constricted condition and major axis orientation based on pupil size.
 
         Args:
-            diameter: Pupil diameter in meters
+            diameter: Pupil diameter in mm
 
         """
         rng = np.random.default_rng(self.params.random_seed)
         # Determine orientation based on size (using paper's reference values)
         # Large pupils (dilated) tend to have vertical ellipse orientation
         # Small pupils (constricted) tend to have horizontal ellipse orientation
-        if diameter >= 0.004:  # Closer to dilated condition size (4.93mm = 0.00493m)
+        if diameter >= 4.0:  # Closer to dilated condition size (4.93mm)
             self._is_dilated = True
             # Major axis orientation: clusters around vertical (0°)
             concentration = 3.0  # Controls spread (~±30° for this value)
@@ -425,7 +425,7 @@ class RealisticPupil(Pupil):
         """Set pupil diameter and automatically determine shape characteristics.
 
         Args:
-            diameter: Pupil diameter in meters
+            diameter: Pupil diameter in mm
 
         """
         self.params.base_radius = diameter / 2
@@ -454,7 +454,7 @@ class RealisticPupil(Pupil):
         n_points = self.n if n is None else n
         theta = np.linspace(0, 2 * np.pi, n_points, endpoint=False)
 
-        # Start with average radius (in meters)
+        # Start with average radius (in mm)
         radius = np.full_like(theta, self.params.base_radius)
 
         # Add 2nd harmonic (elliptical component)
@@ -485,7 +485,7 @@ class RealisticPupil(Pupil):
         For realistic pupil, returns effective radii based on current parameters.
 
         Returns:
-            Tuple of (x_radius, y_radius) in meters
+            Tuple of (x_radius, y_radius) in mm
 
         """
         return self.params.base_radius, self.params.base_radius
@@ -494,8 +494,8 @@ class RealisticPupil(Pupil):
         """Set pupil radii and update geometry.
 
         Args:
-            x_radius: Pupil radius in X direction (meters)
-            y_radius: Pupil radius in Y direction (meters)
+            x_radius: Pupil radius in X direction (mm)
+            y_radius: Pupil radius in Y direction (mm)
 
         """
         # For realistic pupil, use average radius and update realistic parameters
@@ -507,7 +507,7 @@ class RealisticPupil(Pupil):
         """Get pupil diameter.
 
         Returns:
-            Pupil diameter in meters (2 * base_radius)
+            Pupil diameter in mm (2 * base_radius)
 
         """
         return self.params.base_radius * 2

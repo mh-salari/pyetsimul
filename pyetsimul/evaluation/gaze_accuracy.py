@@ -18,7 +18,7 @@ from .analysis_utils import _compute_stats
 class GazeAccuracyResult:
     """Results from gaze accuracy evaluation."""
 
-    errors_3d: list[float]  # 3D distances in meters
+    errors_3d: list[float]  # 3D distances in mm
     errors_angular: list[float]  # Angular errors in degrees
     predicted_points: list[Position3D | None]  # Predicted gaze points
     ground_truth_points: list[Position3D]  # Ground truth gaze points
@@ -42,11 +42,11 @@ class GazeAccuracyResult:
 
         if self.successful_predictions > 0:
             # Display both mm and degrees together
-            max_mm = self.error_stats["mtr"]["max"] * 1e3
+            max_mm = self.error_stats["mm"]["max"]
             max_deg = self.error_stats["deg"]["max"]
-            mean_mm = self.error_stats["mtr"]["mean"] * 1e3
+            mean_mm = self.error_stats["mm"]["mean"]
             mean_deg = self.error_stats["deg"]["mean"]
-            std_mm = self.error_stats["mtr"]["std"] * 1e3
+            std_mm = self.error_stats["mm"]["std"]
             std_deg = self.error_stats["deg"]["std"]
 
             info(f"Mean error {mean_deg:.2f}° ({mean_mm:.2f} mm)")
@@ -254,9 +254,9 @@ def _calculate_error_statistics(errors_3d: list[float], errors_angular: list[flo
     nan_stats = {"mean": np.nan, "max": np.nan, "std": np.nan, "median": np.nan}
 
     if not valid_errors_3d:
-        return {"mtr": nan_stats, "deg": nan_stats}
+        return {"mm": nan_stats, "deg": nan_stats}
 
     return {
-        "mtr": _compute_stats(np.array(valid_errors_3d)),
+        "mm": _compute_stats(np.array(valid_errors_3d)),
         "deg": _compute_stats(np.array(valid_errors_angular)) if valid_errors_angular else nan_stats,
     }

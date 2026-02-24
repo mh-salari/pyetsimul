@@ -19,17 +19,17 @@ eye.eyelid.openness = 0.65
 
 rest_orientation = RotationMatrix([[-1, 0, 0], [0, 0, 1], [0, 1, 0]])
 eye.set_rest_orientation(rest_orientation)
-eye.position = Position3D(0, 150e-3, 50e-3)
+eye.position = Position3D(0, 150, 50)
 
-# Create single light source (5mm LED)
-light = Light(position=Position3D(50e-3, 0, 0), diameter=25e-3)
+# Create single light source (25mm LED)
+light = Light(position=Position3D(50, 0, 0), diameter=25)
 
 # Setup camera pointing at eye
 camera = Camera()
 camera.point_at(eye.position)
 
 # Start target point
-target_point = Position3D(0, 0, 50e-3)
+target_point = Position3D(0, 0, 50)
 
 # Make eye look at target
 eye.look_at(target_point)

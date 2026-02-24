@@ -13,7 +13,7 @@ from pyetsimul.types import Position3D
 from pyetsimul.visualization import plot_eye_anatomy
 
 # Define target point for consistent gaze direction
-target_point = Position3D(10e-3, 10e-3, -10e-3)
+target_point = Position3D(10, 10, -10)
 
 # Create three eyes with spherical corneas and different eyelid openness
 eye_25 = Eye(cornea=SphericalCornea(), eyelid_enabled=True)

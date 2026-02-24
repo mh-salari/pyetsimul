@@ -143,9 +143,9 @@ def _prepare_single_eye_data(eye: Eye, look_at_target: Position3D, use_legacy_lo
     optical_axis_direction_local = np.array([0, 0, -1, 0])  # negative z in homogeneous coordinates
     optical_axis_direction_world = transform_point(optical_axis_direction_local)
     optical_axis_end = Position3D(
-        cornea_center_world.x + optical_axis_direction_world.x * 0.02,
-        cornea_center_world.y + optical_axis_direction_world.y * 0.02,
-        cornea_center_world.z + optical_axis_direction_world.z * 0.02,
+        cornea_center_world.x + optical_axis_direction_world.x * 20,
+        cornea_center_world.y + optical_axis_direction_world.y * 20,
+        cornea_center_world.z + optical_axis_direction_world.z * 20,
     )
 
     return {
