@@ -8,11 +8,21 @@ import numpy as np
 
 
 def _format_error_statistics(errors: dict[str, dict[str, float]], unit_str: str) -> str:
-    """Format error statistics for plot titles."""
+    """Format error statistics for plot titles.
+
+    Automatically picks mm, cm, or m based on max error magnitude.
+    """
+    max_mm = errors["mtr"]["max"] * 1e3
+    if max_mm > 1000:
+        scale, unit = 1, "m"
+    elif max_mm > 100:
+        scale, unit = 1e2, "cm"
+    else:
+        scale, unit = 1e3, unit_str
     return (
-        f"Max: {errors['deg']['max']:.3f}° ({errors['mtr']['max'] * 1e3:.2f} {unit_str}), "
-        f"Mean: {errors['deg']['mean']:.3f}° ({errors['mtr']['mean'] * 1e3:.2f} {unit_str}), "
-        f"Std: {errors['deg']['std']:.3f}° ({errors['mtr']['std'] * 1e3:.2f} {unit_str})"
+        f"Mean: {errors['deg']['mean']:.3f}° ({errors['mtr']['mean'] * scale:.2f} {unit}), "
+        f"Std: {errors['deg']['std']:.3f}° ({errors['mtr']['std'] * scale:.2f} {unit}), "
+        f"Max: {errors['deg']['max']:.3f}° ({errors['mtr']['max'] * scale:.2f} {unit})"
     )
 
 

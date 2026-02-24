@@ -43,10 +43,10 @@ class CalibrationResults:
 
         headers = ["Statistic", "Error (degrees)", "Error (mm)"]
         data = [
-            ["Max", f"{self.errors['deg']['max']:.4f}", f"{self.errors['mtr']['max'] * 1e3:.4f}"],
             ["Mean", f"{self.errors['deg']['mean']:.4f}", f"{self.errors['mtr']['mean'] * 1e3:.4f}"],
             ["Std", f"{self.errors['deg']['std']:.4f}", f"{self.errors['mtr']['std'] * 1e3:.4f}"],
             ["Median", f"{self.errors['deg']['median']:.4f}", f"{self.errors['mtr']['median'] * 1e3:.4f}"],
+            ["Max", f"{self.errors['deg']['max']:.4f}", f"{self.errors['mtr']['max'] * 1e3:.4f}"],
         ]
 
         table(data, headers=headers, tablefmt="grid")
@@ -206,9 +206,9 @@ def accuracy_at_calibration_points(et: EyeTracker, eye: Eye) -> CalibrationResul
 
         # Display statistics
         info(f"\nCalibration Analysis Results ({n_valid}/{n_total} points successful):")
-        info(f"Maximum error {errors['deg']['max']:.4f}° ({errors['mtr']['max'] * 1e3:.3g} mm)")
         info(f"Mean error {errors['deg']['mean']:.4f}° ({errors['mtr']['mean'] * 1e3:.3g} mm)")
         info(f"Standard deviation {errors['deg']['std']:.4f}° ({errors['mtr']['std'] * 1e3:.3g} mm)")
+        info(f"Maximum error {errors['deg']['max']:.4f}° ({errors['mtr']['max'] * 1e3:.3g} mm)")
 
         # Store minimal data for on-demand plot creation via interactive_plot()
         plot_data = {"et": et, "eye": eye}
