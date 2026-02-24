@@ -20,6 +20,7 @@ class CameraImage:
     pupil_boundary: list[Point2D] | None  # Pupil boundary points as structured types
     pupil_center: Point2D | None  # Pupil center position
     resolution: Point2D  # Camera resolution
+    glint_sizes_px: list[float | None] | None = None  # Glint diameters in pixels for each light
 
     @classmethod
     def empty(cls, resolution: Point2D, num_lights: int) -> "CameraImage":

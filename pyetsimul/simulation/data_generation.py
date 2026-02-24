@@ -238,7 +238,7 @@ class DataGenerationStrategy(VariationStrategy):
         for cr in img.corneal_reflections:
             glints.append([float(cr.x), float(cr.y)] if cr is not None else None)
 
-        return {
+        measurement = {
             "measurement_id": index,
             "parameter_value": self._serialize_param_value(param_value),
             "pupil_center": pupil_center,
@@ -250,6 +250,12 @@ class DataGenerationStrategy(VariationStrategy):
             "lights_state": [light.serialize() for light in self.lights],
             "gaze_target": gaze_target.serialize() if gaze_target else None,
         }
+
+        # Save glint sizes if available (when lights have physical diameter)
+        if img.glint_sizes_px is not None:
+            measurement["glint_sizes_px"] = [float(s) if s is not None else None for s in img.glint_sizes_px]
+
+        return measurement
 
     def _save_data(self, data: dict, experiment_name: str) -> list[str]:
         """Save dataset to JSON file."""

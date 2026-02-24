@@ -207,6 +207,7 @@ def _process_single_measurement(
         pupil_boundary=None,  # Not needed for prediction
         pupil_center=pupil_data.center,
         resolution=camera_resolution,
+        glint_sizes_px=measurement.get("glint_sizes_px"),
     )
 
     eye_measurement = EyeMeasurement(camera_image=camera_image, pupil_data=pupil_data)

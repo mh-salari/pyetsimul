@@ -6,6 +6,8 @@ Shows pupil detection, corneal reflections, and camera image coordinates.
 
 from typing import TYPE_CHECKING, Any
 
+import matplotlib.lines as mlines
+import matplotlib.patches as mpatches
 import matplotlib.pyplot as plt
 import numpy as np
 
@@ -128,13 +130,43 @@ def plot_camera_view_of_eye(
                     )
 
         if cr_3d_lists:
+            # Get glint sizes from camera image if available
+            glint_sizes = camera_image.glint_sizes_px if camera_image.glint_sizes_px is not None else None
+
             for eye_idx, cr_3d_list in enumerate(cr_3d_lists):
                 for cr_idx, cr_3d in enumerate(cr_3d_list):
-                    if cr_3d is not None:
-                        has_valid_data = True
-                        projection_result = camera.project(cr_3d)
-                        cr_img = projection_result.image_points
+                    if cr_3d is None:
+                        continue
+                    has_valid_data = True
+                    projection_result = camera.project(cr_3d)
+                    cr_img = projection_result.image_points
+                    label = f"Camera {cam_idx + 1} - Eye {eye_idx + 1} CR {cr_idx + 1}"
 
+                    # Draw as circle with physical size if available
+                    glint_size = glint_sizes[cr_idx] if glint_sizes is not None and cr_idx < len(glint_sizes) else None
+                    if glint_size is not None:
+                        circle = mpatches.Circle(
+                            (cr_img[0, 0], cr_img[1, 0]),
+                            radius=glint_size / 2,
+                            facecolor=config.colors.corneal_reflection,
+                            edgecolor=cam_color,
+                            linewidth=config.elements.corneal_reflection_width,
+                        )
+                        ax2.add_patch(circle)
+                        # Proxy handle so the legend shows a scatter-style marker
+                        proxy = mlines.Line2D(
+                            [],
+                            [],
+                            marker="o",
+                            color="none",
+                            markerfacecolor=config.colors.corneal_reflection,
+                            markeredgecolor=cam_color,
+                            markeredgewidth=config.elements.corneal_reflection_width,
+                            markersize=config.markers.corneal_reflections**0.5,
+                            label=label,
+                        )
+                        ax2.add_line(proxy)
+                    else:
                         ax2.scatter(
                             cr_img[0, 0],
                             cr_img[1, 0],
@@ -143,7 +175,7 @@ def plot_camera_view_of_eye(
                             marker="o",
                             edgecolor=cam_color,
                             linewidth=config.elements.corneal_reflection_width,
-                            label=f"Camera {cam_idx + 1} - Eye {eye_idx + 1} CR {cr_idx + 1}",
+                            label=label,
                         )
 
     if not has_valid_data:
