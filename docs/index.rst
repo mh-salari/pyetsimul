@@ -46,6 +46,7 @@ of gaze estimation algorithms across calibrated and uncalibrated settings.
    :maxdepth: 2
    :caption: Theory
 
+   theory/coordinate_systems
    theory/eye_model
    theory/optical_calculations
    theory/camera_and_lights

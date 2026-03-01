@@ -72,8 +72,7 @@ Key Concepts
 
 - **Structured types**: PyEtSimul uses ``Position3D``, ``Direction3D``, ``Point3D`` instead of raw numpy arrays for type safety and clarity.
 - **All spatial measurements use millimeters (mm)** as the base unit.
-- **Eye coordinate system**: Origin at center of rotation, optical axis along negative z-axis.
-- **Camera coordinate system**: Pinhole model with optical axis along negative z-axis.
+- **Coordinate systems**: Eye and camera optical axes point along :math:`-Z` in their local frames. See :doc:`theory/coordinate_systems` for full details.
 - **Corneal models**: Both spherical and conic cornea models are supported (see :doc:`theory/eye_model`).
 - **Gaze estimation**: Polynomial and homography normalization methods are available (see :doc:`theory/gaze_estimation_models`).
 
