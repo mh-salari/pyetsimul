@@ -1,13 +1,7 @@
-"""EyeLink 1000 Plus gaze model: HREF + Stampe (1993) calibration and accuracy evaluation.
+"""Stampe (1993) gaze model: calibration and gaze accuracy evaluation.
 
-Uses the EyeLink 1000 Plus physical setup with HREF (Head-Referenced Eye Angle)
-preprocessing before the Stampe (1993) biquadratic polynomial + corner correction.
-
-EyeLink 1000 Plus HREF parameters (BTABLER desktop config):
-- elcl_camera_orientation = 142 deg (camera sensor rotation)
-- camera_to_eye_distance = 600 mm
-- camera_lens_focal_length = 38 mm
-- crd_scaler = 1.01, 1.01
+Uses the EyeLink 1000 Plus physical setup to calibrate a Stampe (1993) biquadratic
+polynomial gaze model and evaluate its accuracy.
 """
 
 from __future__ import annotations
@@ -23,7 +17,7 @@ from pyetsimul.core import Camera, Eye, Light
 from pyetsimul.core.cornea import ConicCornea
 from pyetsimul.evaluation import accuracy_at_calibration_points
 from pyetsimul.evaluation.gaze_accuracy import evaluate_gaze_accuracy
-from pyetsimul.gaze_mapping.eyelink1000plus import EyeLink1000PlusGazeModel
+from pyetsimul.gaze_mapping.stampe1993 import Stampe1993GazeModel
 from pyetsimul.simulation import DataGenerationStrategy, EyePositionVariation, TargetPositionVariation
 from pyetsimul.types import Position3D, ScreenGeometry
 from pyetsimul.types.geometry import Point2D
@@ -80,12 +74,6 @@ CAMERA_Z = CAMERA_FROM_GROUND - SCREEN_CENTER_FROM_GROUND
 LIGHT_Z = LIGHT_FROM_GROUND - SCREEN_CENTER_FROM_GROUND
 EYE_Z = EYE_FROM_GROUND - SCREEN_CENTER_FROM_GROUND
 
-# EyeLink 1000 Plus HREF parameters (BTABLER desktop config)
-ELCL_CAMERA_ORIENTATION = 142.0  # degrees
-CAMERA_TO_EYE_DISTANCE = 600.0  # mm
-CAMERA_LENS_FOCAL_LENGTH = 38.0  # mm
-CRD_SCALER = (1.01, 1.01)
-
 # HV9 calibration grid: 9 targets on a cross + corners pattern
 HV9_CALIBRATION_POINTS: list[Position3D] = [
     Position3D(0.0, 0.0, 0.0),  # Center
@@ -137,7 +125,7 @@ def plot_physical_setup(
 # Main
 # ---------------------------------------------------------------------------
 def main() -> None:
-    """Calibrate EyeLink 1000 Plus model (HREF + Stampe 1993) and evaluate gaze accuracy."""
+    """Calibrate Stampe (1993) model and evaluate gaze accuracy."""
     # --- Setup: both eyes ---
     right_eye = Eye(cornea=ConicCornea())
     right_eye.position = Position3D(EYE_X_RIGHT, EYE_TO_SCREEN, EYE_Z)
@@ -158,27 +146,11 @@ def main() -> None:
     # IR light is mounted on the camera arm
     light = Light(position=Position3D(LIGHT_X, CAMERA_TO_SCREEN, LIGHT_Z))
 
-    # --- Calibrate: EyeLink 1000 Plus with HREF, one tracker per eye ---
-    et_right = EyeLink1000PlusGazeModel.create(
-        [camera],
-        [light],
-        HV9_CALIBRATION_POINTS,
-        camera_orientation_deg=ELCL_CAMERA_ORIENTATION,
-        camera_to_eye_distance=CAMERA_TO_EYE_DISTANCE,
-        camera_lens_focal_length=CAMERA_LENS_FOCAL_LENGTH,
-        crd_scaler=CRD_SCALER,
-    )
+    # --- Calibrate: one tracker per eye ---
+    et_right = Stampe1993GazeModel.create([camera], [light], HV9_CALIBRATION_POINTS)
     et_right.run_calibration(right_eye)
 
-    et_left = EyeLink1000PlusGazeModel.create(
-        [camera],
-        [light],
-        HV9_CALIBRATION_POINTS,
-        camera_orientation_deg=ELCL_CAMERA_ORIENTATION,
-        camera_to_eye_distance=CAMERA_TO_EYE_DISTANCE,
-        camera_lens_focal_length=CAMERA_LENS_FOCAL_LENGTH,
-        crd_scaler=CRD_SCALER,
-    )
+    et_left = Stampe1993GazeModel.create([camera], [light], HV9_CALIBRATION_POINTS)
     et_left.run_calibration(left_eye)
 
     # --- Physical setup visualization ---
@@ -189,10 +161,10 @@ def main() -> None:
 
     # --- Calibration accuracy ---
     calib_right = accuracy_at_calibration_points(et_right, eye=right_eye)
-    calib_right.pprint("EyeLink 1000 Plus — Right Eye Calibration")
+    calib_right.pprint("Stampe 1993 — Right Eye Calibration")
 
     calib_left = accuracy_at_calibration_points(et_left, eye=left_eye)
-    calib_left.pprint("EyeLink 1000 Plus — Left Eye Calibration")
+    calib_left.pprint("Stampe 1993 — Left Eye Calibration")
 
     # --- Screen test: both eyes, side by side ---
     screen_variation = TargetPositionVariation(
@@ -221,10 +193,10 @@ def main() -> None:
         )
         dataset = data_gen.execute(screen_variation)
         results = evaluate_gaze_accuracy(eye_tracker=et, dataset=dataset, description=f"Screen test — {label}")
-        results.pprint(f"EyeLink 1000 Plus — Screen Test ({label})")
+        results.pprint(f"Stampe 1993 — Screen Test ({label})")
         plotter.plot(results, et, f"Screen Test — {label}", ax=ax)
 
-    fig_screen.suptitle("EyeLink 1000 Plus — Screen Test", fontsize=14, fontweight="bold")
+    fig_screen.suptitle("Stampe 1993 — Screen Test", fontsize=14, fontweight="bold")
     plt.tight_layout()
     plt.show()
     plt.close(fig_screen)
@@ -255,10 +227,10 @@ def main() -> None:
         )
         dataset = data_gen.execute(eye_position_variation)
         results = evaluate_gaze_accuracy(eye_tracker=et, dataset=dataset, description=f"Head movement — {label}")
-        results.pprint(f"EyeLink 1000 Plus — Head Movement Test ({label})")
+        results.pprint(f"Stampe 1993 — Head Movement Test ({label})")
         plotter.plot(results, et, f"Head Movement — {label}", ax=ax)
 
-    fig_head.suptitle("EyeLink 1000 Plus — Head Movement Test", fontsize=14, fontweight="bold")
+    fig_head.suptitle("Stampe 1993 — Head Movement Test", fontsize=14, fontweight="bold")
     plt.tight_layout()
     plt.show()
     plt.close(fig_head)
