@@ -536,12 +536,24 @@ class ConicCornea(Cornea):
     def find_reflection(
         self, light_pos: Position3D, camera_pos: Position3D, eye_transform: TransformationMatrix
     ) -> Point3D | None:
-        """Finds position of a glint on the anterior conic surface."""
-        world_center_homogeneous = eye_transform @ np.array(self.center)
-        world_center = Position3D.from_array(world_center_homogeneous)
-        return reflections.find_reflection_conic(
-            light_pos, camera_pos, world_center, self.anterior_radius, self.anterior_k
+        """Finds position of a glint on the anterior conic surface.
+
+        Transforms light and camera positions into eye-local coordinates where
+        the conic axis is aligned with the Z-axis, runs the reflection solver,
+        then transforms the result back to world coordinates.
+        """
+        inv_transform = np.linalg.inv(eye_transform)
+        local_light = Position3D.from_array(inv_transform @ np.array([light_pos.x, light_pos.y, light_pos.z, 1.0]))
+        local_camera = Position3D.from_array(inv_transform @ np.array([camera_pos.x, camera_pos.y, camera_pos.z, 1.0]))
+
+        local_glint = reflections.find_reflection_conic(
+            local_light, local_camera, self.center, self.anterior_radius, self.anterior_k
         )
+        if local_glint is None:
+            return None
+
+        world_glint = eye_transform @ np.array([local_glint.x, local_glint.y, local_glint.z, 1.0])
+        return Point3D(world_glint[0], world_glint[1], world_glint[2])
 
     def find_refraction(
         self,
@@ -551,12 +563,24 @@ class ConicCornea(Cornea):
         n_cornea: float,
         eye_transform: TransformationMatrix,
     ) -> Point3D | None:
-        """Finds position where refraction occurs on the anterior conic surface."""
-        world_center_homogeneous = eye_transform @ np.array(self.center)
-        world_center = Position3D.from_array(world_center_homogeneous)
-        return refractions.find_refraction_conic(
-            camera_pos, object_pos, world_center, self.anterior_radius, self.anterior_k, n_outside, n_cornea
+        """Finds position where refraction occurs on the anterior conic surface.
+
+        Transforms positions into eye-local coordinates where the conic axis
+        is aligned with the Z-axis, runs the refraction solver, then
+        transforms the result back to world coordinates.
+        """
+        inv_transform = np.linalg.inv(eye_transform)
+        local_camera = Position3D.from_array(inv_transform @ np.array([camera_pos.x, camera_pos.y, camera_pos.z, 1.0]))
+        local_object = Position3D.from_array(inv_transform @ np.array([object_pos.x, object_pos.y, object_pos.z, 1.0]))
+
+        local_refraction = refractions.find_refraction_conic(
+            local_camera, local_object, self.center, self.anterior_radius, self.anterior_k, n_outside, n_cornea
         )
+        if local_refraction is None:
+            return None
+
+        world_refraction = eye_transform @ np.array([local_refraction.x, local_refraction.y, local_refraction.z, 1.0])
+        return Point3D(world_refraction[0], world_refraction[1], world_refraction[2])
 
     def serialize(self) -> dict:
         """Serialize to dictionary representation."""
