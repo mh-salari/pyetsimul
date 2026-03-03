@@ -351,6 +351,45 @@ class Camera:
         # Update rest position to the new orientation
         self.rest_trans = self.trans.copy()
 
+    def point_at_binocular(self, left_eye_pos: Position3D, right_eye_pos: Position3D) -> None:
+        """Point camera at the midpoint between two eyes, rolled so the inter-eye axis is horizontal.
+
+        Computes the correct camera roll from the inter-eye vector so that both eyes
+        appear horizontally aligned in the camera image. Delegates to point_at().
+
+        Args:
+            left_eye_pos: Position of the left eye in world coordinates.
+            right_eye_pos: Position of the right eye in world coordinates.
+
+        Raises:
+            ValueError: If the camera lies on the inter-eye line (roll is undefined).
+
+        """
+        midpoint = left_eye_pos + (right_eye_pos - left_eye_pos) * 0.5
+
+        # Inter-eye vector defines the camera's horizontal axis
+        inter_eye = np.array(right_eye_pos)[:3] - np.array(left_eye_pos)[:3]
+        inter_eye /= np.linalg.norm(inter_eye)
+
+        # Viewing direction: camera to midpoint
+        view_dir = np.array(midpoint)[:3] - np.array(self.position)[:3]
+        view_dir /= np.linalg.norm(view_dir)
+
+        # Camera "up" is perpendicular to both inter-eye axis and viewing direction
+        up = np.cross(inter_eye, view_dir)
+        up_norm = np.linalg.norm(up)
+        if up_norm < 1e-10:
+            msg = "Camera lies on the inter-eye line — roll is undefined for point_at_binocular."
+            raise ValueError(msg)
+        up /= up_norm
+
+        # Build world frame: inter-eye as x, derived forward as y, -up as z
+        forward = np.cross(-up, inter_eye)
+        forward /= np.linalg.norm(forward)
+        world_frame = RotationMatrix(np.column_stack([inter_eye, forward, -up]))
+
+        self.point_at(midpoint, world_frame)
+
     def take_image(
         self,
         eye: "Eye",
