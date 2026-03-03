@@ -67,10 +67,10 @@ LIGHT_FROM_GROUND = 150
 EYE_FROM_GROUND = 420
 
 # Horizontal offsets from screen center
-# The IR light is mounted on the camera arm, so it always moves with the camera.
-# LIGHT_X = CAMERA_X + LIGHT_CAMERA_OFFSET (265 mm to the right of camera)
-CAMERA_X = -180
-LIGHT_X = CAMERA_X + 265  # IR light: 265 mm to the right of camera
+# Camera and IR LED are on opposite sides, 180 mm apart
+CAMERA_LED_DISTANCE = 180
+CAMERA_X = -CAMERA_LED_DISTANCE / 2  # Camera on the left
+LIGHT_X = CAMERA_LED_DISTANCE / 2  # IR LED on the right
 EYE_X_RIGHT = 30
 EYE_X_LEFT = -30
 
@@ -145,15 +145,10 @@ def main() -> None:
     left_eye = Eye(cornea=ConicCornea())
     left_eye.position = Position3D(EYE_X_LEFT, EYE_TO_SCREEN, EYE_Z)
 
-    # Camera points at the midpoint between the two eyes
+    # Camera points at the midpoint between the two eyes, rolled so inter-eye axis is horizontal
     camera = Camera()
     camera.position = Position3D(CAMERA_X, CAMERA_TO_SCREEN, CAMERA_Z)
-    midpoint = Position3D(
-        (right_eye.position.x + left_eye.position.x) / 2,
-        right_eye.position.y,
-        right_eye.position.z,
-    )
-    camera.point_at(midpoint)
+    camera.point_at_binocular(left_eye.position, right_eye.position)
 
     # IR light is mounted on the camera arm
     light = Light(position=Position3D(LIGHT_X, CAMERA_TO_SCREEN, LIGHT_Z))
