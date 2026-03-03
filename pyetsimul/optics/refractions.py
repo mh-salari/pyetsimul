@@ -6,7 +6,7 @@ Implements Snell's law, ray-surface intersection, and optimization for refractio
 from typing import TYPE_CHECKING, cast
 
 import numpy as np
-from scipy.optimize import brentq
+from scipy.optimize import brentq, fsolve
 
 from ..geometry.intersections import (
     conic_surface_normal,
@@ -14,7 +14,7 @@ from ..geometry.intersections import (
     intersect_ray_sphere,
     point_on_conic_surface,
 )
-from ..types import Direction3D, IntersectionResult, Point3D, Position3D, Ray, TransformationMatrix, Vector3D
+from ..types import Direction3D, IntersectionResult, Point3D, Position3D, Ray, TransformationMatrix
 
 if TYPE_CHECKING:
     from ..core.cornea import Cornea
@@ -116,8 +116,10 @@ def find_refraction_sphere(
         return None
 
 
-def _refraction_objective_conic(
+def _refraction_snell_conic_1d(
     alpha: float,
+    to_camera: np.ndarray,
+    to_object: np.ndarray,
     camera_pos: Position3D,
     object_pos: Position3D,
     conic_center: Position3D,
@@ -125,62 +127,103 @@ def _refraction_objective_conic(
     conic_constant: float,
     n_outside: float,
     n_conic: float,
-) -> tuple[float, Point3D | None]:
-    """Objective function for refraction finding on conic surface.
+) -> float:
+    """1D Snell's law residual on conic surface for in-plane search (beta=0).
 
-    Uses interpolation between camera and object directions to find refraction point.
-    Projects to conic surface using proper conic section geometry.
-    Returns Snell's law difference for optimization.
-
-    Args:
-        alpha: Interpolation parameter between camera and object directions
-        camera_pos: Camera position
-        object_pos: Object position
-        conic_center: Conic center position (typically corneal apex)
-        radius: Radius of curvature at apex (mm)
-        conic_constant: Conic constant (k < 0 for prolate, k = 0 for sphere, k > 0 for oblate)
-        n_outside: Refractive index outside conic
-        n_conic: Refractive index of conic
-
-    Returns:
-        Tuple of (diff, intersection) where diff is Snell's law difference and intersection is surface point
+    Evaluates n_outside * sin(theta_cam) - n_conic * sin(theta_obj) at the conic
+    surface point determined by alpha. Used with brentq on [0, 1] to find the
+    in-plane refraction point directly on the conic (not spherical approximation).
 
     """
-    # Calculate directions from conic center to camera and object
-    to_camera = (camera_pos - conic_center).normalize()
-    to_object = (object_pos - conic_center).normalize()
+    direction = to_camera * alpha + to_object * (1 - alpha)
+    norm = np.linalg.norm(direction)
+    if norm < 1e-15:
+        return 1e10
+    direction /= norm
 
-    # Interpolate direction
-    interpolated = to_camera * alpha + to_object * (1 - alpha)
-    if interpolated.magnitude() == 0:
-        # Handle collinear case: camera and object are on opposite sides of conic center
-        # Use perpendicular direction to break symmetry
-        direction = Vector3D(1.0, 0.0, 0.0) if abs(to_camera.x) < 0.9 else Vector3D(0.0, 1.0, 0.0)
-    else:
-        direction = interpolated.normalize()
-
-    # Find intersection with conic surface along this direction
-    intersection = point_on_conic_surface(conic_center, direction, radius, conic_constant)
+    n_vec = Direction3D(direction[0], direction[1], direction[2])
+    intersection = point_on_conic_surface(conic_center, n_vec, radius, conic_constant)
     if intersection is None:
-        return float("inf"), None
+        return 1e10
 
-    # Get surface normal at intersection point
-    normal = conic_surface_normal(intersection, conic_center, radius, conic_constant)
+    surface_normal = conic_surface_normal(intersection, conic_center, radius, conic_constant)
+    n = np.array([surface_normal.x, surface_normal.y, surface_normal.z])
 
-    # Compute angles with surface normal
-    camera_to_intersection = (camera_pos - intersection).normalize()
-    intersection_to_object = (intersection - object_pos).normalize()
+    d_obj = np.array([intersection.x - object_pos.x, intersection.y - object_pos.y, intersection.z - object_pos.z])
+    d_obj /= np.linalg.norm(d_obj)
 
-    cos_angle_c = normal.dot(camera_to_intersection)
-    cos_angle_o = normal.dot(intersection_to_object)
+    d_cam = np.array([camera_pos.x - intersection.x, camera_pos.y - intersection.y, camera_pos.z - intersection.z])
+    d_cam /= np.linalg.norm(d_cam)
 
-    sin_angle_c = np.sqrt(max(0, 1 - cos_angle_c**2))
-    sin_angle_o = np.sqrt(max(0, 1 - cos_angle_o**2))
+    cos_cam = np.dot(n, d_cam)
+    cos_obj = -np.dot(n, d_obj)
+    sin_cam = np.sqrt(max(0, 1 - cos_cam**2))
+    sin_obj = np.sqrt(max(0, 1 - cos_obj**2))
 
-    # Snell's law difference
-    diff = n_outside * sin_angle_c - n_conic * sin_angle_o
+    return n_outside * sin_cam - n_conic * sin_obj
 
-    return diff, intersection
+
+def _refraction_residuals_conic(
+    params: np.ndarray,
+    to_camera: np.ndarray,
+    to_object: np.ndarray,
+    perp: np.ndarray,
+    camera_pos: Position3D,
+    object_pos: Position3D,
+    conic_center: Position3D,
+    radius: float,
+    conic_constant: float,
+    n_outside: float,
+    n_conic: float,
+) -> np.ndarray:
+    """Residual function for 2D refraction finding on conic surface.
+
+    Uses (alpha, beta) parameterization where alpha interpolates between camera
+    and object directions, and beta adds an out-of-plane component. This 2D
+    search is necessary because aspherical conic surfaces (k != 0) can have
+    refraction points outside the camera-center-object plane.
+
+    Returns a 2-element residual vector:
+        [0]: Snell's law condition (n_outside * sin_camera - n_conic * sin_object)
+        [1]: Coplanarity condition (N dot (d_object x d_camera))
+
+    """
+    alpha, beta = params
+
+    # Search direction: in-plane interpolation + out-of-plane offset
+    direction = to_camera * alpha + to_object * (1 - alpha) + perp * beta
+    norm = np.linalg.norm(direction)
+    if norm < 1e-15:
+        return np.array([1e10, 1e10])
+    direction /= norm
+
+    n_vec = Direction3D(direction[0], direction[1], direction[2])
+    intersection = point_on_conic_surface(conic_center, n_vec, radius, conic_constant)
+    if intersection is None:
+        return np.array([1e10, 1e10])
+
+    surface_normal = conic_surface_normal(intersection, conic_center, radius, conic_constant)
+    n = np.array([surface_normal.x, surface_normal.y, surface_normal.z])
+
+    # Direction from object to refraction point (incident ray inside conic)
+    d_obj = np.array([intersection.x - object_pos.x, intersection.y - object_pos.y, intersection.z - object_pos.z])
+    d_obj /= np.linalg.norm(d_obj)
+
+    # Direction from refraction point to camera (outgoing ray)
+    d_cam = np.array([camera_pos.x - intersection.x, camera_pos.y - intersection.y, camera_pos.z - intersection.z])
+    d_cam /= np.linalg.norm(d_cam)
+
+    # Condition 1: Snell's law — n_outside * sin(θ_cam) = n_conic * sin(θ_obj)
+    cos_cam = np.dot(n, d_cam)
+    cos_obj = -np.dot(n, d_obj)  # negate because d_obj points away from interior
+    sin_cam = np.sqrt(max(0, 1 - cos_cam**2))
+    sin_obj = np.sqrt(max(0, 1 - cos_obj**2))
+    residual_snell = n_outside * sin_cam - n_conic * sin_obj
+
+    # Condition 2: coplanarity — N · (d_obj x d_cam) = 0
+    residual_coplanar = np.dot(n, np.cross(d_obj, d_cam))
+
+    return np.array([residual_snell, residual_coplanar])
 
 
 def find_refraction_conic(
@@ -194,8 +237,20 @@ def find_refraction_conic(
 ) -> Point3D | None:
     """Find refraction point on conic surface.
 
-    Uses optimization to find point where object ray refracts to camera position.
-    Implements Snell's law using numerical root finding on conic geometry.
+    Uses a two-stage approach to find the point where an object ray refracts
+    toward the camera through the conic surface:
+
+    Stage 1 (brentq): Solve the 1D in-plane Snell's law residual with beta=0.
+    The Snell residual is monotonic and sign-changing in alpha ∈ [0, 1], so
+    brentq is guaranteed to find the unique correct root. This works directly
+    on the conic surface — no spherical approximation needed.
+
+    Stage 2 (fsolve): Starting from (alpha_brentq, 0), refine with the full
+    2D system (Snell + coplanarity) to find the small out-of-plane beta
+    correction needed for aspherical surfaces (k != 0).
+
+    This approach works for any conic constant k because Stage 1 is bounded
+    (no wrong roots) and Stage 2 starts very close to the solution (won't drift).
 
     Args:
         camera_pos: Camera/observer position
@@ -210,41 +265,64 @@ def find_refraction_conic(
         Position on conic surface where refraction occurs, or None if not found.
 
     """
-    # Calculate directions from conic center
-    to_camera = (camera_pos - conic_center).normalize()
-    to_object = (object_pos - conic_center).normalize()
-
-    if abs(to_camera.z - to_object.z) < 1e-9:
-        if to_camera.z >= 0:
-            return None
-        upper_bound = 1.0
-    else:
-        alpha_zero = -to_object.z / (to_camera.z - to_object.z)
-        upper_bound = min(1.0, max(0.5, alpha_zero - 1e-9))  # Ensure minimum search interval
-
-    f0, _ = _refraction_objective_conic(
-        0, camera_pos, object_pos, conic_center, radius, conic_constant, n_outside, n_conic
-    )
-    f1, _ = _refraction_objective_conic(
-        upper_bound, camera_pos, object_pos, conic_center, radius, conic_constant, n_outside, n_conic
-    )
-
-    if np.isinf(f0) or np.isinf(f1) or f0 * f1 > 0:
-        return None
-
     try:
-        alpha = brentq(
-            lambda x: _refraction_objective_conic(
-                x, camera_pos, object_pos, conic_center, radius, conic_constant, n_outside, n_conic
-            )[0],
-            0,
-            upper_bound,
+        to_camera_dir = (camera_pos - conic_center).normalize()
+        to_object_dir = (object_pos - conic_center).normalize()
+        to_camera = np.array([to_camera_dir.x, to_camera_dir.y, to_camera_dir.z])
+        to_object = np.array([to_object_dir.x, to_object_dir.y, to_object_dir.z])
+
+        # Stage 1: Find in-plane solution using brentq on the conic Snell residual.
+        # alpha ∈ [0, 1] interpolates between object and camera directions —
+        # the residual changes sign across this interval, guaranteeing a unique root.
+        args_1d = (
+            to_camera,
+            to_object,
+            camera_pos,
+            object_pos,
+            conic_center,
+            radius,
+            conic_constant,
+            n_outside,
+            n_conic,
         )
-        _, intersection = _refraction_objective_conic(
-            cast("float", alpha), camera_pos, object_pos, conic_center, radius, conic_constant, n_outside, n_conic
+        alpha_0 = brentq(_refraction_snell_conic_1d, 0, 1, args=args_1d)
+
+        # Stage 2: Refine with 2D fsolve for the small out-of-plane (beta) correction.
+        # For aspherical surfaces the refraction point may deviate slightly from
+        # the camera-center-object plane, captured by the beta parameter.
+        perp = np.cross(to_camera, to_object)
+        perp_norm = np.linalg.norm(perp)
+        if perp_norm < 1e-15:
+            arb = np.array([1.0, 0.0, 0.0]) if abs(to_camera[0]) < 0.9 else np.array([0.0, 1.0, 0.0])
+            perp = np.cross(to_camera, arb)
+            perp /= np.linalg.norm(perp)
+        else:
+            perp /= perp_norm
+
+        args_2d = (
+            to_camera,
+            to_object,
+            perp,
+            camera_pos,
+            object_pos,
+            conic_center,
+            radius,
+            conic_constant,
+            n_outside,
+            n_conic,
         )
-        return intersection
-    except (ValueError, RuntimeError):
+        solution, info, ier, _msg = fsolve(_refraction_residuals_conic, [alpha_0, 0.0], args=args_2d, full_output=True)
+
+        if ier != 1 and np.max(np.abs(info["fvec"])) > 1e-8:
+            return None
+
+        alpha, beta = solution
+        direction = to_camera * alpha + to_object * (1 - alpha) + perp * beta
+        direction /= np.linalg.norm(direction)
+        n_vec = Direction3D(direction[0], direction[1], direction[2])
+        return point_on_conic_surface(conic_center, n_vec, radius, conic_constant)
+
+    except (ValueError, TypeError):
         return None
 
 

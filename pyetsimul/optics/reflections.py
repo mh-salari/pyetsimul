@@ -7,7 +7,7 @@ import warnings
 from typing import TYPE_CHECKING, cast
 
 import numpy as np
-from scipy.optimize import brentq
+from scipy.optimize import brentq, fsolve
 
 from ..geometry.intersections import (
     conic_surface_normal,
@@ -101,59 +101,61 @@ def find_reflection_sphere(
         return None
 
 
-def _reflection_objective_conic(
-    alpha: float,
+def _reflection_residuals_conic(
+    params: np.ndarray,
+    to_camera: np.ndarray,
+    to_light: np.ndarray,
+    perp: np.ndarray,
     light_pos: Position3D,
     camera_pos: Position3D,
     conic_center: Position3D,
     radius: float,
     conic_constant: float,
-) -> tuple[float, Point3D | None]:
-    """Objective function for reflection finding on conic surface.
+) -> np.ndarray:
+    """Residual function for 2D reflection finding on conic surface.
 
-    Uses interpolation between light and camera directions to find reflection point.
-    Projects to conic surface using proper conic section geometry.
-    Returns angle difference between incident and reflected rays for optimization.
+    Uses (alpha, beta) parameterization where alpha interpolates between light
+    and camera directions, and beta adds an out-of-plane component. This 2D
+    search is necessary because aspherical conic surfaces (k != 0) can have
+    reflection points outside the light-center-camera plane.
 
-    Args:
-        alpha: Interpolation parameter between light and camera directions
-        light_pos: Light source position
-        camera_pos: Camera position
-        conic_center: Conic center position
-        radius: Radius parameter of the conic (R)
-        conic_constant: Conic constant (k < 0 for prolate, k = 0 for sphere, k > 0 for oblate)
-
-    Returns:
-        Tuple of (angle_diff, glint_pos) where angle_diff is the reflection angle error
-        and glint_pos is the potential glint position. Returns (inf, None) if no valid point.
+    Returns a 2-element residual vector:
+        [0]: Equal angles condition (N dot d_incident + N dot d_camera)
+        [1]: Coplanarity condition (N dot (d_incident x d_camera))
 
     """
-    # Suppress numpy warnings to provide cleaner reflection error messages
-    with np.errstate(invalid="ignore", divide="ignore"):
-        # Calculate directions from conic center to light and camera
-        to_camera = (camera_pos - conic_center).normalize()
-        to_light = (light_pos - conic_center).normalize()
+    alpha, beta = params
 
-        # Interpolate between directions and normalize
-        n_vec = (to_camera * alpha + to_light * (1 - alpha)).normalize()
+    # Search direction: in-plane interpolation + out-of-plane offset
+    direction = to_camera * alpha + to_light * (1 - alpha) + perp * beta
+    norm = np.linalg.norm(direction)
+    if norm < 1e-15:
+        return np.array([1e10, 1e10])
+    direction /= norm
 
-        # Find point on conic surface using proper conic geometry
-        glint_pos = point_on_conic_surface(conic_center, n_vec, radius, conic_constant)
-        if glint_pos is None:
-            return float("inf"), None
+    n_vec = Direction3D(direction[0], direction[1], direction[2])
+    glint_pos = point_on_conic_surface(conic_center, n_vec, radius, conic_constant)
+    if glint_pos is None:
+        return np.array([1e10, 1e10])
 
-        # Calculate surface normal at reflection point
-        surface_normal = conic_surface_normal(glint_pos, conic_center, radius, conic_constant)
+    surface_normal = conic_surface_normal(glint_pos, conic_center, radius, conic_constant)
+    n = np.array([surface_normal.x, surface_normal.y, surface_normal.z])
 
-        # Calculate angle differences for reflection law validation
-        camera_to_glint = (camera_pos.to_point3d() - glint_pos).normalize()
-        light_to_glint = (light_pos.to_point3d() - glint_pos).normalize()
+    # Incident direction: light -> glint (pointing inward)
+    d_in = np.array([glint_pos.x - light_pos.x, glint_pos.y - light_pos.y, glint_pos.z - light_pos.z])
+    d_in /= np.linalg.norm(d_in)
 
-        angle_c = np.arccos(np.clip(surface_normal.dot(camera_to_glint), -1, 1))
-        angle_l = np.arccos(np.clip(surface_normal.dot(light_to_glint), -1, 1))
-        angle_diff = angle_c - angle_l
+    # Camera direction: glint -> camera (pointing outward)
+    d_cam = np.array([camera_pos.x - glint_pos.x, camera_pos.y - glint_pos.y, camera_pos.z - glint_pos.z])
+    d_cam /= np.linalg.norm(d_cam)
 
-        return angle_diff, glint_pos
+    # Condition 1: equal angles — N·d_in = -(N·d_cam)
+    residual_angle = np.dot(n, d_in) + np.dot(n, d_cam)
+
+    # Condition 2: coplanarity — N·(d_in x d_cam) = 0
+    residual_coplanar = np.dot(n, np.cross(d_in, d_cam))
+
+    return np.array([residual_angle, residual_coplanar])
 
 
 def find_reflection_conic(
@@ -161,8 +163,11 @@ def find_reflection_conic(
 ) -> Point3D | None:
     """Find reflection point on conic surface.
 
-    Uses optimization to find point where light ray reflects to camera position.
-    Implements reflection law using numerical root finding on conic geometry.
+    Uses 2D root-finding to find the point where light ray reflects to camera.
+    The search is parameterized by (alpha, beta) where alpha interpolates between
+    light and camera directions and beta adds an out-of-plane component, necessary
+    for aspherical surfaces where the reflection point may not lie in the
+    light-center-camera plane.
 
     Args:
         light_pos: Light source position
@@ -176,17 +181,36 @@ def find_reflection_conic(
 
     """
     try:
-        alpha = brentq(
-            lambda alpha: _reflection_objective_conic(
-                alpha, light_pos, camera_pos, conic_center, radius, conic_constant
-            )[0],
-            0,
-            1,
+        to_camera_dir = (camera_pos - conic_center).normalize()
+        to_light_dir = (light_pos - conic_center).normalize()
+        to_camera = np.array([to_camera_dir.x, to_camera_dir.y, to_camera_dir.z])
+        to_light = np.array([to_light_dir.x, to_light_dir.y, to_light_dir.z])
+
+        # Perpendicular to the light-center-camera plane
+        perp = np.cross(to_camera, to_light)
+        perp_norm = np.linalg.norm(perp)
+        if perp_norm < 1e-15:
+            # Light and camera are collinear from center — degenerate
+            return None
+        perp /= perp_norm
+
+        solution, _info, ier, _msg = fsolve(
+            _reflection_residuals_conic,
+            x0=np.array([0.5, 0.0]),
+            args=(to_camera, to_light, perp, light_pos, camera_pos, conic_center, radius, conic_constant),
+            full_output=True,
         )
-        _, glint_pos = _reflection_objective_conic(
-            cast("float", alpha), light_pos, camera_pos, conic_center, radius, conic_constant
-        )
-        return glint_pos
+
+        if ier != 1:
+            return None
+
+        # Reconstruct the glint position from the solution
+        alpha, beta = solution
+        direction = to_camera * alpha + to_light * (1 - alpha) + perp * beta
+        direction /= np.linalg.norm(direction)
+        n_vec = Direction3D(direction[0], direction[1], direction[2])
+        return point_on_conic_surface(conic_center, n_vec, radius, conic_constant)
+
     except (ValueError, TypeError):
         warnings.warn(
             f"No glint found on conic surface: Light={light_pos}, Camera={camera_pos}, Conic center={conic_center}",
