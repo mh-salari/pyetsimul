@@ -8,7 +8,9 @@ dynamic = ["version"]
 description = "PyEtSimul: An Open-Source Python Software Framework for Eye Tracking Simulation"
 authors = [{name = "Mohammadhossein Salari", email = "Mohammadhossein.Salari@gmail.com"}]
 license = {text = "GPL-3.0-or-later"}
-readme = {text = "PyEtSimul: Based on pyetsimul — © 2008 Martin Böhme, University of Lübeck\nPython port © 2025 Mohammadhossein Salari", content-type = "text/plain"}
+readme = "README.md"
+keywords = ["eye-tracking", "simulation", "eye-tracker", "gaze-estimation"]
+requires-python = ">=3.11"
 dependencies = [
     "matplotlib~=3.10",
     "numpy>=1.24,<3",
@@ -19,7 +21,12 @@ dependencies = [
     "tqdm>=4.67",
     "scikit-learn>=1.7",
 ]
-requires-python = ">=3.11"
+
+[project.urls]
+Homepage = "https://github.com/mh-salari/pyetsimul"
+Repository = "https://github.com/mh-salari/pyetsimul"
+Documentation = "https://pyetsimul.readthedocs.io/"
+Issues = "https://github.com/mh-salari/pyetsimul/issues"
 
 [tool.setuptools.packages.find]
 where = ["."]
