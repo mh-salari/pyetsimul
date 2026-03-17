@@ -4,7 +4,9 @@ Main package API for the eye tracking simulation framework.
 Exports core modules and common structured types for user convenience.
 """
 
-__version__ = "1.0.0"
+from importlib.metadata import version
+
+__version__ = version("pyetsimul")
 
 # Make core modules easily accessible
 from . import core, gaze_mapping, geometry, optics, simulation, types
