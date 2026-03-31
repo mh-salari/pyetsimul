@@ -4,7 +4,7 @@
 [![Downloads](https://static.pepy.tech/badge/pyetsimul)](https://pepy.tech/project/pyetsimul)
 [![License](https://img.shields.io/badge/License-GPL--3.0-green)](https://github.com/mh-salari/pyetsimul/blob/main/LICENSE)
 [![Documentation](https://readthedocs.org/projects/pyetsimul/badge/?version=latest)](https://pyetsimul.readthedocs.io/)
-[![DOI](https://img.shields.io/badge/DOI-coming_soon-blue)](#citation)
+[![DOI](https://img.shields.io/badge/DOI-10.1145%2F3806023-blue)](https://doi.org/10.1145/3806023)
 
 PyEtSimul is an open-source Python framework for simulating video-based eye trackers
 by generating synthetic eye features through geometric modeling. The framework allows
@@ -64,13 +64,12 @@ After installation, explore the various examples in the `examples/` directory to
 
 ## Citation
 
-This work has been accepted for publication at ETRA 2026. The DOI will be added when the proceedings are published.
-
 **Cite as:**
 ```
 Salari, M., Niehorster, D. C., Hansen, D. W., & Bednarik, R. (2026).
 PyEtSimul: An Open-Source Python Framework for Eye-Tracking Simulation.
-In Proceedings of the 2026 Eye Tracking Research & Applications (ETRA 2026). ACM.
+Proceedings of the ACM on Human-Computer Interaction (PACMHCI), ETRA 2026. ACM.
+DOI: 10.1145/3806023
 ```
 
 **Also cite the original work:**
