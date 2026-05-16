@@ -87,20 +87,70 @@ class Stampe1993GazeModel(PolynomialGazeModel):
         )
 
     def calibrate(self, calibration_measurements: list[EyeMeasurement]) -> None:
-        """Two-stage calibration: biquadratic polynomial, then corner correction."""
-        # Stage 1: Fit the biquadratic polynomial
+        """Two-stage calibration matching Stampe (1993) / EyeLink: biquadratic polynomial
+        on the **inner** cal points (centre + edges, no corners), then corner correction on
+        the **outer** (corner) cal points.
+
+        Splitting by inner/outer reproduces EyeLink's stored !CAL polynomial coefficients;
+        the previous joint-least-squares-on-all-9 fit pulled the polynomial toward the
+        corners and produced visibly different coefficients.
+        """
         self.plane_info = detect_calibration_plane(self.calib_points)
         info(summarize_plane_detection(self.calib_points, self.plane_info))
-        self._calibrate_same_xy(calibration_measurements)
 
-        # Stage 2: Fit corner correction from residuals
-        self._fit_corner_correction(calibration_measurements)
+        # Identify inner (centre+edges) vs outer (corner) calibration points by their
+        # 2-D target positions: a "corner" target is off both cardinal axes relative
+        # to the calibration-grid centroid (large |Δx · Δy|). For HV9 this picks the
+        # 4 corners and leaves the 5 inner points (centre + 4 edges) for the polynomial fit.
+        calib_coords_2d = np.array([self.plane_info.extract_2d_coords(pt) for pt in self.calib_points])
+        centroid = calib_coords_2d.mean(axis=0)
+        off_axis = np.abs((calib_coords_2d[:, 0] - centroid[0]) * (calib_coords_2d[:, 1] - centroid[1]))
+        n = len(self.calib_points)
+        n_corners = min(4, n - 1)
+        if n_corners <= 0 or n <= n_corners:
+            inner_idx = list(range(n))
+            corner_idx: list[int] = []
+        else:
+            order = np.argsort(off_axis)
+            inner_idx = order[:-n_corners].tolist()
+            corner_idx = order[-n_corners:].tolist()
 
-    def _fit_corner_correction(self, calibration_measurements: list[EyeMeasurement]) -> None:
+        # Stage 1: polynomial fit on inner cal points only. Temporarily restrict
+        # self.calib_points + the measurement list so the parent fitter sees only the inner subset.
+        saved_calib_points = self.calib_points
+        try:
+            self.calib_points = [saved_calib_points[i] for i in inner_idx]
+            inner_measurements = [calibration_measurements[i] for i in inner_idx]
+            self._calibrate_same_xy(inner_measurements)
+        finally:
+            self.calib_points = saved_calib_points
+
+        # Stage 2: corner correction on the 4 outer cal points (1 per quadrant for HV9).
+        if corner_idx:
+            self._fit_corner_correction(
+                [calibration_measurements[i] for i in corner_idx],
+                indices=corner_idx,
+            )
+        else:
+            # No corners (e.g. HV5 monocular geometry): zero out corner correction.
+            self.corner_coefficients = np.zeros((4, 2))
+            coords_array = np.array([self.plane_info.extract_2d_coords(pt) for pt in self.calib_points])
+            self.screen_center_2d = (float(coords_array[:, 0].mean()), float(coords_array[:, 1].mean()))
+
+    def _fit_corner_correction(
+        self,
+        calibration_measurements: list[EyeMeasurement],
+        indices: list[int] | None = None,
+    ) -> None:
         """Fit per-quadrant corner correction coefficients from polynomial residuals.
 
         The screen is divided into 4 quadrants relative to the calibration grid center.
         Corner correction: X_final = X_poly + cx[q] * (X_poly - Xc) * (Y_poly - Yc)
+
+        When ``indices`` is provided, position ``i`` in ``calibration_measurements`` is
+        paired with target coordinates from ``self.calib_points[indices[i]]``. This lets
+        the caller pass only a subset (the outer cal points) while the grid centroid is
+        still computed from the full ``self.calib_points`` set.
         """
         self.corner_coefficients = np.zeros((4, 2))  # [quadrant][cx, cy]
 
@@ -111,6 +161,9 @@ class Stampe1993GazeModel(PolynomialGazeModel):
         self.screen_center_2d = (float(np.mean(coords_array[:, 0])), float(np.mean(coords_array[:, 1])))
         cx_center, cy_center = self.screen_center_2d
         info(f"\nCalibration grid center (2D): ({cx_center:.1f}, {cy_center:.1f}) mm")
+
+        if indices is None:
+            indices = list(range(len(calibration_measurements)))
 
         # Group points by quadrant relative to calibration center
         quadrant_data: dict[int, list[tuple[float, float, float, float]]] = {0: [], 1: [], 2: [], 3: []}
@@ -134,7 +187,7 @@ class Stampe1993GazeModel(PolynomialGazeModel):
             gaze_2d = coefficient_matrix @ poly_features.features
             poly_x, poly_y = gaze_2d[0], gaze_2d[1]
 
-            target_x, target_y = calib_coords_2d[i]
+            target_x, target_y = calib_coords_2d[indices[i]]
 
             # Quadrant relative to calibration center
             dx = poly_x - cx_center
