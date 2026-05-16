@@ -183,7 +183,7 @@ class TestVector3D:
 
         # Magnitude
         mag = v.magnitude()
-        assert mag == 5.0
+        assert mag == pytest.approx(5.0)
 
         # Normalize
         normalized = v.normalize()
@@ -253,7 +253,7 @@ class TestPosition3D:
         pos2 = Position3D(3, 4, 0)
 
         distance = pos1.distance_to(pos2)
-        assert distance == 5.0
+        assert distance == pytest.approx(5.0)
 
 
 class TestDirection3D:

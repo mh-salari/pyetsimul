@@ -4,6 +4,7 @@ Provides type-safe dataclasses that improve code readability and maintain
 semantic meaning while supporting arithmetic operations and numpy integration.
 """
 
+import math
 from dataclasses import dataclass
 from typing import Self, Union, overload
 
@@ -49,7 +50,7 @@ class Point2D:
                 error_msg = f"{msg}: {error_msg}"
             raise AssertionError(error_msg)
 
-    def __sub__(self, other: "Point2D | float | int") -> "Point2D":
+    def __sub__(self, other: "Point2D | float") -> "Point2D":
         """Subtract point or scalar from point."""
         if isinstance(other, Point2D):
             return Point2D(self.x - other.x, self.y - other.y)
@@ -57,7 +58,7 @@ class Point2D:
             return Point2D(self.x - other, self.y - other)
         return NotImplemented
 
-    def __add__(self, other: "Point2D | float | int") -> "Point2D":
+    def __add__(self, other: "Point2D | float") -> "Point2D":
         """Add two points/vectors or add scalar to point."""
         if isinstance(other, Point2D):
             return Point2D(self.x + other.x, self.y + other.y)
@@ -161,7 +162,7 @@ class Point3D:
             return Point3D(self.x - other, self.y - other, self.z - other)
         return NotImplemented
 
-    def __add__(self, other: "Vector3D | float | int") -> "Point3D":
+    def __add__(self, other: "Vector3D | float") -> "Point3D":
         """Add a vector or scalar to a point to get a new point."""
         if isinstance(other, Vector3D):
             return Point3D(self.x + other.x, self.y + other.y, self.z + other.z)
@@ -278,7 +279,7 @@ class Vector3D:
             return Vector3D.from_array(result)
         return NotImplemented
 
-    def __add__(self, other: "Vector3D | float | int") -> "Vector3D":
+    def __add__(self, other: "Vector3D | float") -> "Vector3D":
         """Add two vectors or add scalar to vector."""
         if isinstance(other, Vector3D):
             return Vector3D(self.x + other.x, self.y + other.y, self.z + other.z)
@@ -286,7 +287,7 @@ class Vector3D:
             return Vector3D(self.x + other, self.y + other, self.z + other)
         return NotImplemented
 
-    def __sub__(self, other: "Vector3D | float | int") -> "Vector3D":
+    def __sub__(self, other: "Vector3D | float") -> "Vector3D":
         """Subtract vector or scalar from vector."""
         if isinstance(other, Vector3D):
             return Vector3D(self.x - other.x, self.y - other.y, self.z - other.z)
@@ -364,9 +365,10 @@ class Position3D:
     def from_array(cls, arr: np.ndarray) -> "Position3D":
         """Create from 4D homogeneous array [x,y,z,1] or 3D array [x,y,z]."""
         if arr.shape == (4,):
-            if arr[3] != 1.0 and arr[3] != 0.0:
-                # De-homogenize if needed
-                return cls(arr[0] / arr[3], arr[1] / arr[3], arr[2] / arr[3])
+            w = float(arr[3])
+            # w == 1 (point) or w == 0 (direction) → take xyz directly; otherwise de-homogenize.
+            if not math.isclose(w, 1.0) and not math.isclose(w, 0.0):
+                return cls(arr[0] / w, arr[1] / w, arr[2] / w)
             return cls(arr[0], arr[1], arr[2])
         if arr.shape == (3,):
             return cls(arr[0], arr[1], arr[2])
@@ -422,7 +424,7 @@ class Position3D:
             return Position3D(self.x - other, self.y - other, self.z - other)
         return NotImplemented
 
-    def __add__(self, other: "Vector3D | Direction3D | Point3D | float | int") -> "Position3D":
+    def __add__(self, other: "Vector3D | Direction3D | Point3D | float") -> "Position3D":
         """Add a vector, direction, point, or scalar to a position to get a new position."""
         if isinstance(other, (Vector3D, Direction3D, Point3D)):
             return Position3D(self.x + other.x, self.y + other.y, self.z + other.z)
@@ -438,7 +440,7 @@ class Position3D:
         """Multiply position by a scalar (reverse order)."""
         return self.__mul__(scalar)
 
-    def __radd__(self, other: "Vector3D | Direction3D | Point3D | float | int") -> "Position3D":
+    def __radd__(self, other: "Vector3D | Direction3D | Point3D | float") -> "Position3D":
         """Add position to a scalar (reverse order)."""
         return self.__add__(other)
 
@@ -601,7 +603,7 @@ class Direction3D:
         # For other operations, defer to numpy
         return NotImplemented
 
-    def __add__(self, other: "Direction3D | float | int") -> "Direction3D":
+    def __add__(self, other: "Direction3D | float") -> "Direction3D":
         """Add two directions or add scalar to direction."""
         if isinstance(other, Direction3D):
             return Direction3D(self.x + other.x, self.y + other.y, self.z + other.z)
@@ -609,7 +611,7 @@ class Direction3D:
             return Direction3D(self.x + other, self.y + other, self.z + other)
         return NotImplemented
 
-    def __sub__(self, other: "Direction3D | float | int") -> "Direction3D":
+    def __sub__(self, other: "Direction3D | float") -> "Direction3D":
         """Subtract direction or scalar from direction."""
         if isinstance(other, Direction3D):
             return Direction3D(self.x - other.x, self.y - other.y, self.z - other.z)

@@ -116,13 +116,16 @@ class EyeTracker(ABC):
         failed_points = []
 
         info(f"Collecting calibration data at {n_points} points...")
+        if len(self.cameras) > 1:
+            warning(
+                f"calibrate() uses only the first of {len(self.cameras)} configured cameras; "
+                "multi-camera calibration is not implemented."
+            )
 
         for i, calib_point in enumerate(self.calib_points):
             # Make eye look at calibration point
             eye.look_at(calib_point, legacy=self.use_legacy_look_at)
 
-            # Take images from all cameras (currently uses first camera)
-            # TODO: Multi-camera support requires algorithm-specific implementation
             if not self.cameras:
                 raise ValueError("No cameras available for calibration")
 

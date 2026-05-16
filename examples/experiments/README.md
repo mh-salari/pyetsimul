@@ -7,6 +7,7 @@ Create a custom parameter variation in 3 steps:
 ```python
 from pyetsimul.simulation import GenericEyeVariation
 
+
 class MyCustomVariation(GenericEyeVariation):
     """Custom variation that changes any eye parameter."""
 
@@ -31,6 +32,7 @@ class MyCustomVariation(GenericEyeVariation):
 ```python
 from pyetsimul.core.cornea import ConicCornea
 
+
 class ConicCorneaKVariation(GenericEyeVariation):
     def __init__(self, k_range: list[float], num_steps: int = 10):
         super().__init__("cornea.anterior_k", k_range, num_steps)
@@ -41,6 +43,7 @@ class ConicCorneaKVariation(GenericEyeVariation):
 
     def apply_to_eye(self, eye, value: float) -> None:
         eye.cornea.anterior_k = value
+
 
 # Usage
 variation = ConicCorneaKVariation([-0.05, -0.15], 5)
@@ -58,7 +61,7 @@ config = ExperimentConfig(
     eyes=[Eye()],  # Add your custom eye setup if needed
     cameras=[Camera()],
     lights=[Light()],
-    output_dir="outputs"
+    output_dir="outputs",
 )
 
 # Generate data

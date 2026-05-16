@@ -55,19 +55,19 @@ def test_constant_offset_noise() -> None:
 
 def test_config_validation() -> None:
     """Test that GlintNoiseConfig raises errors for invalid configurations."""
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=r"requires 'std' to be specified"):
         GlintNoiseConfig(noise_type="gaussian")  # Missing std
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=r"requires 'std' to be specified"):
         GlintNoiseConfig(noise_type="uniform")  # Missing std
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=r"requires 'offset_x' and 'offset_y'"):
         GlintNoiseConfig(noise_type="constant_offset", offset_x=1.0)  # Missing offset_y
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=r"requires 'offset_x' and 'offset_y'"):
         GlintNoiseConfig(noise_type="constant_offset", offset_y=1.0)  # Missing offset_x
 
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=r"Unknown noise type"):
         GlintNoiseConfig(noise_type="unknown_noise")  # Unknown noise type
 
 
@@ -88,21 +88,21 @@ def test_advanced_noise() -> None:
 def test_advanced_mode_validation() -> None:
     """Test validation for advanced mode parameters."""
     # Missing covariance
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=r"requires both 'mean' and 'covariance'"):
         GlintNoiseConfig(mean=[0.0, 0.0])
 
     # Missing mean
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=r"requires both 'mean' and 'covariance'"):
         GlintNoiseConfig(covariance=[[1.0, 0.0], [0.0, 1.0]])
 
     # Wrong mean size
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=r"'mean' must be a 2-element list"):
         GlintNoiseConfig(mean=[0.0], covariance=[[1.0, 0.0], [0.0, 1.0]])
 
     # Wrong covariance size
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=r"'covariance' must be a 2x2 matrix"):
         GlintNoiseConfig(mean=[0.0, 0.0], covariance=[[1.0]])
 
     # Negative definite covariance
-    with pytest.raises(ValueError):
+    with pytest.raises(ValueError, match=r"positive semidefinite"):
         GlintNoiseConfig(mean=[0.0, 0.0], covariance=[[-1.0, 0.0], [0.0, 1.0]])

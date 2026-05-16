@@ -1,6 +1,7 @@
 """Unit tests for Eye.find_cr method."""
 
 import numpy as np
+import pytest
 
 from pyetsimul.core.camera import Camera
 from pyetsimul.core.eye import Eye
@@ -104,4 +105,4 @@ def test_output_properties() -> None:
     # Check types and shapes
     arr = np.array(cr)
     assert arr.shape == (4,)
-    assert arr[3] == 1.0  # Homogeneous coordinate
+    assert arr[3] == pytest.approx(1.0)  # Homogeneous coordinate

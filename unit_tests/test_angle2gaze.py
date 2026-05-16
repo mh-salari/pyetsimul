@@ -1,6 +1,7 @@
 """Unit tests for angle2gaze function."""
 
 import numpy as np
+import pytest
 
 from pyetsimul.geometry.conversions import angle2gaze
 from pyetsimul.types import Direction3D, Point2D, RotationMatrix
@@ -51,4 +52,4 @@ def test_output_properties() -> None:
     # The to_array() method should return a 4D homogeneous vector with the last component as 0
     result_array = np.array(result)
     assert result_array.shape == (4,)
-    assert result_array[3] == 0.0
+    assert result_array[3] == pytest.approx(0.0, abs=1e-9)

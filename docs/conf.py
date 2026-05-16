@@ -1,13 +1,14 @@
 """Sphinx configuration for PyEtSimul documentation."""
 
 import sys
+from datetime import UTC, datetime
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 project = "PyEtSimul"
 author = "Mohammadhossein Salari"
-copyright = "2025, Mohammadhossein Salari"  # noqa: A001
+copyright = f"2025-{datetime.now(tz=UTC).year}, {author}"  # noqa: A001
 
 extensions = [
     "sphinx.ext.autodoc",

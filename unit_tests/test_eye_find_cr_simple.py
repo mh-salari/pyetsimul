@@ -1,6 +1,7 @@
 """Unit tests for Eye.find_cr_simple method."""
 
 import numpy as np
+import pytest
 
 from pyetsimul.core.camera import Camera
 from pyetsimul.core.eye import Eye
@@ -29,7 +30,7 @@ def test_basic_simple_corneal_reflex() -> None:
     # Test 4D homogeneous coordinates
     arr = np.array(cr)
     assert arr.shape == (4,)
-    assert arr[3] == 1.0
+    assert arr[3] == pytest.approx(1.0)
 
 
 def test_angled_positions() -> None:
@@ -52,7 +53,7 @@ def test_angled_positions() -> None:
     # Test 4D homogeneous coordinates
     arr = np.array(cr)
     assert arr.shape == (4,)
-    assert arr[3] == 1.0
+    assert arr[3] == pytest.approx(1.0)
 
 
 def test_reflex_outside_cornea_boundary() -> None:
@@ -85,4 +86,4 @@ def test_output_properties() -> None:
     # Check types and shapes
     arr = np.array(cr)
     assert arr.shape == (4,)
-    assert arr[3] == 1.0  # Homogeneous coordinate
+    assert arr[3] == pytest.approx(1.0)  # Homogeneous coordinate

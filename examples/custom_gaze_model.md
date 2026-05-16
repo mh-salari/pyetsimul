@@ -24,7 +24,7 @@ PyEtSimul gaze estimation models follow a simple pattern:
 ### Placeholder Code
 
 ```python
-class MyAlgorithmState(AlgorithmState): # Inherit from pyetsimul.types.algorithms.AlgorithmState
+class MyAlgorithmState(AlgorithmState):  # Inherit from pyetsimul.types.algorithms.AlgorithmState
     """
     State for your custom gaze model.
     TODO: Add fields to store your calibration parameters.
@@ -34,7 +34,7 @@ class MyAlgorithmState(AlgorithmState): # Inherit from pyetsimul.types.algorithm
         """Serialize the state to a dictionary for saving."""
         # TODO: Add your custom parameters to the dictionary.
         # Ensure they are JSON-serializable.
-        return {} # Return a dictionary of your state
+        return {}  # Return a dictionary of your state
 
     @classmethod
     def deserialize(cls, data: dict) -> "MyAlgorithmState":
@@ -58,7 +58,7 @@ class MyAlgorithmState(AlgorithmState): # Inherit from pyetsimul.types.algorithm
 ### Placeholder Code
 
 ```python
-class MyGazeModel(EyeTracker): # Inherit from pyetsimul.core.EyeTracker
+class MyGazeModel(EyeTracker):  # Inherit from pyetsimul.core.EyeTracker
     """
     A template for a custom gaze estimation model.
     TODO: Describe what your model does.
@@ -66,7 +66,7 @@ class MyGazeModel(EyeTracker): # Inherit from pyetsimul.core.EyeTracker
 
     def __init__(self, **kwargs):
         super().__init__(**kwargs)
-        self.algorithm_state = MyAlgorithmState() # Instance of your custom AlgorithmState
+        self.algorithm_state = MyAlgorithmState()  # Instance of your custom AlgorithmState
 
     @property
     def algorithm_name(self) -> str:
@@ -80,13 +80,13 @@ class MyGazeModel(EyeTracker): # Inherit from pyetsimul.core.EyeTracker
         # TODO: Add any specific parameters your model needs for instantiation
     ) -> "MyGazeModel":
         """A factory method for clean instantiation."""
-        return cls() # Return an instance of your model
+        return cls()  # Return an instance of your model
 
     # --- Block 3: Calibration Logic ---
     # Purpose: Learn the mapping from eye features to world coordinates.
     # This method modifies the internal state of the tracker, specifically `self.algorithm_state`.
     # It does not return a value.
-    def calibrate(self, calibration_measurements: list[EyeMeasurement]) -> None: # EyeMeasurement from pyetsimul.types
+    def calibrate(self, calibration_measurements: list[EyeMeasurement]) -> None:  # EyeMeasurement from pyetsimul.types
         """Calibrate the model by learning the mapping from eye features to gaze."""
         # TODO: Implement your calibration logic here.
         # This method should update `self.algorithm_state` with learned parameters.
@@ -96,7 +96,7 @@ class MyGazeModel(EyeTracker): # Inherit from pyetsimul.core.EyeTracker
     # --- Block 4: Prediction Logic ---
     # Purpose: Estimate gaze from a single eye measurement using the learned model.
     # This method returns a `GazePrediction` object.
-    def predict_gaze(self, measurement: EyeMeasurement) -> GazePrediction: # GazePrediction from pyetsimul.types
+    def predict_gaze(self, measurement: EyeMeasurement) -> GazePrediction:  # GazePrediction from pyetsimul.types
         """Predict gaze position from a single eye measurement."""
         # TODO: Implement your gaze prediction logic here.
         # Extract features from `measurement`.
@@ -105,7 +105,7 @@ class MyGazeModel(EyeTracker): # Inherit from pyetsimul.core.EyeTracker
 
         # Return a GazePrediction object
         return GazePrediction(
-            gaze_point=Point3D(0.0, 0.0, 0.0), # Point3D from pyetsimul.types
+            gaze_point=Point3D(0.0, 0.0, 0.0),  # Point3D from pyetsimul.types
             confidence=0.0,
             algorithm_name=self.algorithm_name,
             processing_time=0.0,

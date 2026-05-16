@@ -119,7 +119,7 @@ def validate_measurements(data: dict[str, Any]) -> bool:
     return valid_measurements == total_measurements
 
 
-def compare_values(actual: Any, expected: Any, field_name: str, tolerance: float = 1e-10) -> bool:  # noqa: ANN401, PLR0911
+def compare_values(actual: Any, expected: Any, field_name: str, tolerance: float = 1e-10) -> bool:  # noqa: ANN401
     """Compare actual vs expected values with tolerance."""
     if actual is None and expected is None:
         return True

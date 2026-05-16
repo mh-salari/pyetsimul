@@ -94,5 +94,4 @@ class SequentialVariation(ParameterVariation):
         """Generate sequential values from all variations."""
         for i, variation in enumerate(self.variations):
             for value in variation.generate_values():
-                combination = {"variation_index": i, "variation_name": variation.param_name, "value": value}
-                yield combination
+                yield {"variation_index": i, "variation_name": variation.param_name, "value": value}

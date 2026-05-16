@@ -87,13 +87,12 @@ class Stampe1993GazeModel(PolynomialGazeModel):
         )
 
     def calibrate(self, calibration_measurements: list[EyeMeasurement]) -> None:
-        """Two-stage calibration matching Stampe (1993) / EyeLink: biquadratic polynomial
-        on the **inner** cal points (centre + edges, no corners), then corner correction on
-        the **outer** (corner) cal points.
+        """Two-stage calibration matching Stampe (1993) / EyeLink 1000 Plus.
 
-        Splitting by inner/outer reproduces EyeLink's stored !CAL polynomial coefficients;
-        the previous joint-least-squares-on-all-9 fit pulled the polynomial toward the
-        corners and produced visibly different coefficients.
+        Fits the biquadratic polynomial on the **inner** cal points (centre + edges,
+        no corners), then a per-quadrant corner correction on the **outer** (corner)
+        cal points. This staged split reproduces the EyeLink 1000 Plus stored !CAL
+        polynomial coefficients.
         """
         self.plane_info = detect_calibration_plane(self.calib_points)
         info(summarize_plane_detection(self.calib_points, self.plane_info))

@@ -11,10 +11,10 @@ def test_default_scaling() -> None:
     cornea = SphericalCornea()
     cornea.center = Position3D(x=0.0, y=0.0, z=-4.35)  # Set center for testing
 
-    assert cornea.get_scale_factor() == 1.0
-    assert cornea.anterior_radius == 7.98
-    assert cornea.posterior_radius == 6.22
-    assert cornea.thickness_offset == 1.15
+    assert cornea.get_scale_factor() == pytest.approx(1.0)
+    assert cornea.anterior_radius == pytest.approx(7.98)
+    assert cornea.posterior_radius == pytest.approx(6.22)
+    assert cornea.thickness_offset == pytest.approx(1.15)
 
 
 def test_custom_radius_scaling() -> None:
@@ -154,11 +154,11 @@ def test_reference_values() -> None:
     cornea = SphericalCornea()
 
     # Check that reference values match Boff and Lincoln [1988] constants
-    assert cornea._r_cornea_default == 7.98  # noqa: SLF001
-    assert cornea._posterior_radius_default == 6.22  # noqa: SLF001
-    assert cornea._thickness_offset_default == 1.15  # noqa: SLF001
-    assert cornea._cornea_depth_default == 3.54  # noqa: SLF001
-    assert cornea._cornea_center_to_rotation_center_default == 10.20  # noqa: SLF001
+    assert cornea._r_cornea_default == pytest.approx(7.98)  # noqa: SLF001
+    assert cornea._posterior_radius_default == pytest.approx(6.22)  # noqa: SLF001
+    assert cornea._thickness_offset_default == pytest.approx(1.15)  # noqa: SLF001
+    assert cornea._cornea_depth_default == pytest.approx(3.54)  # noqa: SLF001
+    assert cornea._cornea_center_to_rotation_center_default == pytest.approx(10.20)  # noqa: SLF001
 
 
 @pytest.mark.parametrize("radius", [5, 6.5, 7.98, 9, 12])
