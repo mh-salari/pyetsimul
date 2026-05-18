@@ -1648,7 +1648,7 @@ requires-dist = [
     { name = "scikit-image", specifier = "~=0.25" },
     { name = "scikit-learn", specifier = ">=1.7" },
     { name = "scipy", specifier = "~=1.16" },
-    { name = "stampe1993-gaze-mapping", editable = "../stampe1993-gaze-mapping" },
+    { name = "stampe1993-gaze-mapping", specifier = ">=1.0.0" },
     { name = "tabulate", specifier = ">=0.9" },
     { name = "tqdm", specifier = ">=4.67" },
 ]
@@ -2454,18 +2454,15 @@ wheels = [
 
 [[package]]
 name = "stampe1993-gaze-mapping"
-source = { editable = "../stampe1993-gaze-mapping" }
+version = "1.0.1"
+source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "numpy" },
 ]
-
-[package.metadata]
-requires-dist = [
-    { name = "numpy" },
-    { name = "pytest", marker = "extra == 'dev'" },
-    { name = "ruff", marker = "extra == 'dev'", specifier = ">=0.13.0" },
+sdist = { url = "https://files.pythonhosted.org/packages/f5/f6/33862b5f1f1d45a58400aae42293ba2b98a2cad3b04009941ac15046129d/stampe1993_gaze_mapping-1.0.1.tar.gz", hash = "sha256:21a9fee83c3bc8d2005a76770c97f89444ff0d7c01d6b42afd5a91cc5f45079e", size = 425124, upload-time = "2026-05-18T22:08:58.531Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/55/81/6d9002fde41d60d4bb791847e3963f3e4f9e57203b91c11a9ed9bbaca655/stampe1993_gaze_mapping-1.0.1-py3-none-any.whl", hash = "sha256:81566ae2ea4efd38cdb430db6a6454cdad1789aff2c3d371508bb421f4fd4a00", size = 9255, upload-time = "2026-05-18T22:08:57.345Z" },
 ]
-provides-extras = ["dev"]
 
 [[package]]
 name = "tabulate"
