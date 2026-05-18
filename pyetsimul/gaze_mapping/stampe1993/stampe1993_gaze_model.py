@@ -1,30 +1,18 @@
-"""Gaze model based on Stampe (1993): biquadratic polynomial + per-quadrant corner correction.
+"""Gaze model from Stampe (1993): biquadratic polynomial + per-quadrant corner correction.
 
-Polynomial:
-    A biquadratic with 5 terms and no cross-term, fit via least-squares::
+Thin wrapper around :class:`stampe1993_gaze_mapping.StampeModel`. Calibration
+points are passed in HV9 paper order — first 5 inner (centre + cardinal edges),
+last 4 outer (corners). Layouts with fewer than 9 points fit polynomial-only.
 
-        gaze = a + b*x + c*y + d*x² + e*y²
-
-    where (x, y) are the pupil-minus-corneal-reflection (P-CR) feature coordinates.
-
-Corner correction:
-    After the polynomial fit, a per-quadrant multiplicative correction removes residual
-    nonlinearity at the screen corners. The screen is divided into 4 quadrants relative
-    to the centroid (Xc, Yc) of the calibration grid. For each quadrant q::
-
-        X_final = X_poly + cx[q] * (X_poly - Xc) * (Y_poly - Yc)
-        Y_final = Y_poly + cy[q] * (X_poly - Xc) * (Y_poly - Yc)
-
-    cx[q] and cy[q] are fit via least-squares over all calibration points in that quadrant.
-    Quadrant assignment is based on the sign of (X_poly - Xc, Y_poly - Yc).
-
-Reference: Stampe, D. M. (1993). Heuristic filtering and reliable calibration methods
-for video-based pupil-tracking systems. Behavior Research Methods, 25(2), 137-142.
+Reference: Stampe, D. M. (1993). Heuristic filtering and reliable calibration
+methods for video-based pupil-tracking systems. Behavior Research Methods,
+25(2), 137-142.
 """
 
 import time
 
 import numpy as np
+from stampe1993_gaze_mapping import StampeModel
 
 from pyetsimul.gaze_mapping.polynomial import PolynomialGazeModel
 from pyetsimul.gaze_mapping.polynomial.polynomial_descriptor import PolynomialDescriptor
@@ -36,8 +24,9 @@ from pyetsimul.types.algorithms import GazePrediction
 from pyetsimul.types.geometry import Point3D
 from pyetsimul.types.imaging import EyeMeasurement
 
-# Stampe (1993) biquadratic: gaze = a + b*x + c*y + d*x² + e*y²
-# 5 terms, no xy cross-term — each axis fit independently by least-squares.
+# Pyetsimul polynomial descriptor for the Stampe biquadratic shape.
+# The polynomial math itself is delegated to StampeModel; this descriptor
+# is registered so the parent class can be initialised by name.
 STAMPE1993_BIQUADRATIC = PolynomialDescriptor(
     name="stampe1993_biquadratic",
     description="Stampe (1993) biquadratic: a + bx + cy + dx² + ey²",
@@ -48,22 +37,12 @@ register_polynomial(STAMPE1993_BIQUADRATIC)
 
 
 class Stampe1993GazeModel(PolynomialGazeModel):
-    """Gaze model from Stampe (1993): biquadratic polynomial + per-quadrant corner correction.
-
-    Two-stage calibration:
-    1. Fit biquadratic polynomial via least-squares on P-CR features.
-    2. Fit per-quadrant corner correction coefficients from calibration residuals.
-
-    Corner correction (per quadrant q, relative to calibration grid centroid (Xc, Yc)):
-        X_final = X_poly + cx[q] * (X_poly - Xc) * (Y_poly - Yc)
-        Y_final = Y_poly + cy[q] * (X_poly - Xc) * (Y_poly - Yc)
-    """
+    """Stampe (1993) gaze model — biquadratic polynomial with per-quadrant corner correction."""
 
     def __init__(self, **kwargs: object) -> None:
-        """Initialize with the Stampe (1993) biquadratic polynomial."""
+        """Initialise with the Stampe biquadratic polynomial."""
         super().__init__(polynomial="stampe1993_biquadratic", **kwargs)
-        self.corner_coefficients: np.ndarray | None = None
-        self.screen_center_2d: tuple[float, float] = (0.0, 0.0)
+        self._stampe: StampeModel | None = None
 
     @property
     def algorithm_name(self) -> str:
@@ -78,7 +57,7 @@ class Stampe1993GazeModel(PolynomialGazeModel):
         calib_points: list[Position3D],
         use_refraction: bool = True,
     ) -> "Stampe1993GazeModel":
-        """Create a Stampe1993GazeModel with the given cameras, lights, calibration points, and refraction option."""
+        """Create a Stampe1993GazeModel with cameras, lights, calibration points, and refraction option."""
         return cls(
             cameras=cameras,
             lights=lights,
@@ -87,201 +66,65 @@ class Stampe1993GazeModel(PolynomialGazeModel):
         )
 
     def calibrate(self, calibration_measurements: list[EyeMeasurement]) -> None:
-        """Two-stage calibration matching Stampe (1993) / EyeLink 1000 Plus.
+        """Fit StampeModel on the calibration measurements.
 
-        Fits the biquadratic polynomial on the **inner** cal points (centre + edges,
-        no corners), then a per-quadrant corner correction on the **outer** (corner)
-        cal points. This staged split reproduces the EyeLink 1000 Plus stored !CAL
-        polynomial coefficients.
+        Inner = first 5 points (HV9 centre + cardinal edges).
+        Outer = last 4 points (HV9 corners) when 9 points are supplied; otherwise
+        the polynomial alone is fit and no corner correction is applied.
         """
         self.plane_info = detect_calibration_plane(self.calib_points)
         info(summarize_plane_detection(self.calib_points, self.plane_info))
 
-        # Identify inner (centre+edges) vs outer (corner) calibration points by their
-        # 2-D target positions: a "corner" target is off both cardinal axes relative
-        # to the calibration-grid centroid (large |Δx · Δy|). For HV9 this picks the
-        # 4 corners and leaves the 5 inner points (centre + 4 edges) for the polynomial fit.
-        calib_coords_2d = np.array([self.plane_info.extract_2d_coords(pt) for pt in self.calib_points])
-        centroid = calib_coords_2d.mean(axis=0)
-        off_axis = np.abs((calib_coords_2d[:, 0] - centroid[0]) * (calib_coords_2d[:, 1] - centroid[1]))
-        n = len(self.calib_points)
-        n_corners = min(4, n - 1)
-        if n_corners <= 0 or n <= n_corners:
-            inner_idx = list(range(n))
-            corner_idx: list[int] = []
+        pcr = np.array([_pcr_xy(m) for m in calibration_measurements])
+        targets = np.array([self.plane_info.extract_2d_coords(pt) for pt in self.calib_points])
+
+        if len(pcr) >= 9:
+            inner_pcr, inner_targets = pcr[:5], targets[:5]
+            outer_pcr, outer_targets = pcr[5:9], targets[5:9]
         else:
-            order = np.argsort(off_axis)
-            inner_idx = order[:-n_corners].tolist()
-            corner_idx = order[-n_corners:].tolist()
+            inner_pcr, inner_targets = pcr, targets
+            outer_pcr, outer_targets = None, None
 
-        # Stage 1: polynomial fit on inner cal points only. Temporarily restrict
-        # self.calib_points + the measurement list so the parent fitter sees only the inner subset.
-        saved_calib_points = self.calib_points
-        try:
-            self.calib_points = [saved_calib_points[i] for i in inner_idx]
-            inner_measurements = [calibration_measurements[i] for i in inner_idx]
-            self._calibrate_same_xy(inner_measurements)
-        finally:
-            self.calib_points = saved_calib_points
+        self._stampe = StampeModel(degree=2)
+        self._stampe.fit(inner_pcr, inner_targets, outer_pcr, outer_targets)
+        self.algorithm_state.is_calibrated = True
 
-        # Stage 2: corner correction on the 4 outer cal points (1 per quadrant for HV9).
-        if corner_idx:
-            self._fit_corner_correction(
-                [calibration_measurements[i] for i in corner_idx],
-                indices=corner_idx,
-            )
-        else:
-            # No corners (e.g. HV5 monocular geometry): zero out corner correction.
-            self.corner_coefficients = np.zeros((4, 2))
-            coords_array = np.array([self.plane_info.extract_2d_coords(pt) for pt in self.calib_points])
-            self.screen_center_2d = (float(coords_array[:, 0].mean()), float(coords_array[:, 1].mean()))
-
-    def _fit_corner_correction(
-        self,
-        calibration_measurements: list[EyeMeasurement],
-        indices: list[int] | None = None,
-    ) -> None:
-        """Fit per-quadrant corner correction coefficients from polynomial residuals.
-
-        The screen is divided into 4 quadrants relative to the calibration grid center.
-        Corner correction: X_final = X_poly + cx[q] * (X_poly - Xc) * (Y_poly - Yc)
-
-        When ``indices`` is provided, position ``i`` in ``calibration_measurements`` is
-        paired with target coordinates from ``self.calib_points[indices[i]]``. This lets
-        the caller pass only a subset (the outer cal points) while the grid centroid is
-        still computed from the full ``self.calib_points`` set.
-        """
-        self.corner_coefficients = np.zeros((4, 2))  # [quadrant][cx, cy]
-
-        calib_coords_2d = [self.plane_info.extract_2d_coords(pt) for pt in self.calib_points]
-
-        # Screen center = center of calibration grid (mean of all calibration points)
-        coords_array = np.array(calib_coords_2d)
-        self.screen_center_2d = (float(np.mean(coords_array[:, 0])), float(np.mean(coords_array[:, 1])))
-        cx_center, cy_center = self.screen_center_2d
-        info(f"\nCalibration grid center (2D): ({cx_center:.1f}, {cy_center:.1f}) mm")
-
-        if indices is None:
-            indices = list(range(len(calibration_measurements)))
-
-        # Group points by quadrant relative to calibration center
-        quadrant_data: dict[int, list[tuple[float, float, float, float]]] = {0: [], 1: [], 2: [], 3: []}
-
-        for i, measurement in enumerate(calibration_measurements):
-            pc = measurement.pupil_data.center
-            cr = (
-                measurement.camera_image.corneal_reflections[0]
-                if measurement.camera_image.corneal_reflections
-                else None
-            )
-            if pc is None or cr is None:
-                continue
-
-            pcr = pc - cr
-            poly_features = self.polynomial_func(pcr.x, pcr.y)
-            coefficient_matrix = np.vstack([
-                self.algorithm_state.x_coefficients,
-                self.algorithm_state.y_coefficients,
-            ])
-            gaze_2d = coefficient_matrix @ poly_features.features
-            poly_x, poly_y = gaze_2d[0], gaze_2d[1]
-
-            target_x, target_y = calib_coords_2d[indices[i]]
-
-            # Quadrant relative to calibration center
-            dx = poly_x - cx_center
-            dy = poly_y - cy_center
-            q = 0 if dx < 0 else 1
-            if dy >= 0:
-                q += 2
-
-            quadrant_data[q].append((poly_x, poly_y, target_x, target_y))
-
-        # Fit cx, cy per quadrant via least-squares on centered coordinates:
-        # target_x = poly_x + cx * (poly_x - Xc) * (poly_y - Yc)
-        for q in range(4):
-            points = quadrant_data[q]
-            if not points:
-                continue
-
-            products = []
-            residuals_x = []
-            residuals_y = []
-
-            for poly_x, poly_y, target_x, target_y in points:
-                product = (poly_x - cx_center) * (poly_y - cy_center)
-                if abs(product) < 1e-12:
-                    continue
-                products.append(product)
-                residuals_x.append(target_x - poly_x)
-                residuals_y.append(target_y - poly_y)
-
-            if products:
-                products_arr = np.array(products)
-                dot_pp = np.dot(products_arr, products_arr)
-                self.corner_coefficients[q, 0] = np.dot(residuals_x, products_arr) / dot_pp
-                self.corner_coefficients[q, 1] = np.dot(residuals_y, products_arr) / dot_pp
-
-        quadrant_names = ["Q0 (top-left)", "Q1 (top-right)", "Q2 (bottom-left)", "Q3 (bottom-right)"]
-        info("\nCorner Correction Coefficients:")
-        for q in range(4):
-            cx, cy = self.corner_coefficients[q]
-            n_points = len(quadrant_data[q])
-            info(f"  {quadrant_names[q]}: cx={cx:.6e}, cy={cy:.6e}  ({n_points} points)")
-
-    def predict_gaze(self, measurement: EyeMeasurement) -> GazePrediction | None:
-        """Predict gaze: biquadratic polynomial + corner correction."""
+    def predict_gaze(self, measurement: EyeMeasurement) -> GazePrediction:
+        """Predict gaze for one EyeMeasurement using the fitted StampeModel."""
         start_time = time.time()
 
         pc = measurement.pupil_data.center
         cr = measurement.camera_image.corneal_reflections[0] if measurement.camera_image.corneal_reflections else None
+        intermediate: dict = {"pc": pc, "cr": cr, "polynomial_name": self.polynomial_name}
 
-        intermediate_results = {"pc": pc, "cr": cr, "polynomial_name": self.polynomial_name}
+        if pc is None or cr is None or self._stampe is None:
+            return GazePrediction(
+                gaze_point=Point3D(0.0, 0.0, 0.0),
+                confidence=0.0,
+                algorithm_name=self.algorithm_name,
+                processing_time=time.time() - start_time,
+                intermediate_results=intermediate,
+            )
 
-        if pc is not None and cr is not None:
-            pcr_vector = pc - cr
-            intermediate_results["pcr_vector"] = pcr_vector
+        pcr_vector = pc - cr
+        intermediate["pcr_vector"] = pcr_vector
 
-            # Stage 1: Biquadratic polynomial
-            poly_features = self.polynomial_func(pcr_vector.x, pcr_vector.y)
-            coefficient_matrix = np.vstack([
-                self.algorithm_state.x_coefficients,
-                self.algorithm_state.y_coefficients,
-            ])
-            gaze_2d = coefficient_matrix @ poly_features.features
-            poly_x, poly_y = gaze_2d[0], gaze_2d[1]
+        gaze_xy = self._stampe.predict(np.array([pcr_vector.x, pcr_vector.y]))
+        final_x, final_y = float(gaze_xy[0]), float(gaze_xy[1])
+        intermediate["final_gaze"] = (final_x, final_y)
 
-            # Stage 2: Corner correction (quadrants relative to calibration center)
-            if self.corner_coefficients is not None:
-                cx_center, cy_center = self.screen_center_2d
-                dx = poly_x - cx_center
-                dy = poly_y - cy_center
-                q = 0 if dx < 0 else 1
-                if dy >= 0:
-                    q += 2
-
-                cc_x, cc_y = self.corner_coefficients[q]
-                product = dx * dy
-                final_x = poly_x + cc_x * product
-                final_y = poly_y + cc_y * product
-            else:
-                final_x, final_y = poly_x, poly_y
-
-            intermediate_results["poly_gaze"] = (poly_x, poly_y)
-            intermediate_results["final_gaze"] = (final_x, final_y)
-
-            gaze_point = self.plane_info.reconstruct_3d_point(final_x, final_y)
-            confidence = 1.0
-        else:
-            gaze_point = Point3D(0.0, 0.0, 0.0)
-            confidence = 0.0
-
-        processing_time = time.time() - start_time
-
+        gaze_point = self.plane_info.reconstruct_3d_point(final_x, final_y)
         return GazePrediction(
             gaze_point=gaze_point,
-            confidence=confidence,
+            confidence=1.0,
             algorithm_name=self.algorithm_name,
-            processing_time=processing_time,
-            intermediate_results=intermediate_results,
+            processing_time=time.time() - start_time,
+            intermediate_results=intermediate,
         )
+
+
+def _pcr_xy(measurement: EyeMeasurement) -> tuple[float, float]:
+    pc = measurement.pupil_data.center
+    cr = measurement.camera_image.corneal_reflections[0]
+    pcr = pc - cr
+    return pcr.x, pcr.y

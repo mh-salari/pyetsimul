@@ -20,6 +20,7 @@ dependencies = [
     "tabulate>=0.9",
     "tqdm>=4.67",
     "scikit-learn>=1.7",
+    "stampe1993-gaze-mapping",
 ]
 
 [project.urls]
@@ -35,6 +36,9 @@ include = ["pyetsimul*"]
 [tool.hatch.version]
 source = "vcs"
 tag-regex = "^(?P<version>\\d+\\.\\d+\\.\\d+)$"
+
+[tool.uv.sources]
+stampe1993-gaze-mapping = { path = "../stampe1993-gaze-mapping", editable = true }
 
 [dependency-groups]
 dev = [
@@ -57,8 +61,8 @@ line-length = 119
 preview = true
 
 [tool.ruff.lint]
-# Allow Greek letters used in mathematical notation in this codebase
-allowed-confusables = ["α", "β", "κ"]
+# Allow Greek letters and math symbols used in mathematical notation in this codebase
+allowed-confusables = ["α", "β", "γ", "δ", "Δ", "ε", "θ", "κ", "λ", "μ", "π", "ρ", "σ", "φ", "ψ", "ω", "×"]
 
 # RUFF DEFAULTS
 # (These are all the default groups, even if you don't currently select them)
