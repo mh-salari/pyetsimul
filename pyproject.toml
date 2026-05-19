@@ -39,7 +39,7 @@ tag-regex = "^(?P<version>\\d+\\.\\d+\\.\\d+)$"
 
 [dependency-groups]
 dev = [
-    "ruff>=0.13.0",
+    "ruff>=0.15.13",
     "jupyterlab>=4.4.7",
     "pytest>=8.4.1",
     "scipy-stubs>=1.16.2.0",
