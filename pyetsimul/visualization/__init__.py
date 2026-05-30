@@ -22,13 +22,18 @@ from .eye_anatomy import plot_eye_anatomy
 from .gaze_accuracy_plots import GazeAccuracyPlotter
 from .integrated_plots import plot_setup_and_camera_view
 from .interactive import plot_interactive_cameras, plot_interactive_pupil_comparison, plot_interactive_setup
-from .interactive_gaze_plot import create_interactive_gaze_plot
+from .interactive_gaze_plot import (
+    compute_calibration_errors,
+    create_interactive_gaze_plot,
+    render_calibration_view,
+)
 from .setup_plots import plot_axis, plot_setup, transform_surface
 
 __all__ = [
     "GazeAccuracyPlotter",
     "analysis_plots",
     "camera_view",
+    "compute_calibration_errors",
     "coordinate_utils",
     "create_interactive_gaze_plot",
     "gaze_accuracy_plots",
@@ -46,6 +51,7 @@ __all__ = [
     "plot_setup",
     "plot_setup_and_camera_view",
     "prepare_eye_data_for_plots",
+    "render_calibration_view",
     "setup_plots",
     "transform_surface",
 ]
