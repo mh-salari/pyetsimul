@@ -175,11 +175,11 @@ def _fit_ellipse_center(pupil_boundary: np.ndarray) -> Point2D | None:
 
     # Convert 2xN array to Nx2 array for ellipse fitting
     points = pupil_boundary.T
-    ellipse = EllipseModel()
+    ellipse = EllipseModel.from_estimate(points)
 
-    if ellipse.estimate(points):
+    if ellipse:
         # Extract center coordinates
-        center_x, center_y = ellipse.params[:2]
+        center_x, center_y = ellipse.center
         return Point2D(x=float(center_x), y=float(center_y))
     # Fallback to simple centroid if ellipse fitting fails
     center_x = np.mean(pupil_boundary[0, :])
