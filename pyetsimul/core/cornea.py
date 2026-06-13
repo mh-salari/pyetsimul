@@ -34,6 +34,10 @@ class Cornea(ABC):
     _cornea_depth_default: float = CorneaDefaults.CORNEA_DEPTH
     _cornea_center_to_rotation_center_default: float = CorneaDefaults.CENTER_TO_ROTATION
 
+    # When True, find_refraction models refraction at both corneal surfaces (posterior aqueous->cornea and
+    # anterior cornea->air) instead of the anterior surface alone.
+    use_posterior_surface: bool = False
+
     def __post_init__(self, center_init: Position3D | None) -> None:
         """Initialize cornea center if provided."""
         if center_init is not None:
@@ -104,6 +108,7 @@ class Cornea(ABC):
         n_outside: float,
         n_cornea: float,
         eye_transform: TransformationMatrix,
+        n_aqueous: float,
     ) -> Point3D | None:
         """Finds position where refraction occurs on the corneal surface."""
 
@@ -334,10 +339,27 @@ class SphericalCornea(Cornea):
         n_outside: float,
         n_cornea: float,
         eye_transform: TransformationMatrix,
+        n_aqueous: float,
     ) -> Point3D | None:
-        """Finds position where refraction occurs on the spherical corneal surface."""
-        world_center_homogeneous = eye_transform @ np.array(self.center)
-        world_center = Position3D.from_array(world_center_homogeneous)
+        """Finds position where refraction occurs on the spherical corneal surface.
+
+        When use_posterior_surface is enabled, both the posterior (aqueous->cornea) and anterior
+        (cornea->air) spherical surfaces refract the ray.
+        """
+        world_center = Position3D.from_array(eye_transform @ np.array(self.center))
+        if self.use_posterior_surface:
+            world_posterior_center = Position3D.from_array(eye_transform @ np.array(self.get_posterior_center()))
+            return refractions.find_refraction_dual_sphere(
+                camera_pos,
+                object_pos,
+                world_center,
+                self.anterior_radius,
+                world_posterior_center,
+                self.posterior_radius,
+                n_outside,
+                n_cornea,
+                n_aqueous,
+            )
         return refractions.find_refraction_sphere(
             camera_pos, object_pos, world_center, self.anterior_radius, n_outside, n_cornea
         )
@@ -562,20 +584,37 @@ class ConicCornea(Cornea):
         n_outside: float,
         n_cornea: float,
         eye_transform: TransformationMatrix,
+        n_aqueous: float,
     ) -> Point3D | None:
-        """Finds position where refraction occurs on the anterior conic surface.
+        """Finds position where refraction occurs on the conic corneal surface.
 
-        Transforms positions into eye-local coordinates where the conic axis
-        is aligned with the Z-axis, runs the refraction solver, then
-        transforms the result back to world coordinates.
+        Transforms positions into eye-local coordinates where the conic axis is aligned with the Z-axis,
+        runs the refraction solver, then transforms the result back to world coordinates. When
+        use_posterior_surface is enabled, both the posterior (aqueous->cornea) and anterior (cornea->air)
+        conic surfaces refract the ray.
         """
         inv_transform = np.linalg.inv(eye_transform)
         local_camera = Position3D.from_array(inv_transform @ np.array([camera_pos.x, camera_pos.y, camera_pos.z, 1.0]))
         local_object = Position3D.from_array(inv_transform @ np.array([object_pos.x, object_pos.y, object_pos.z, 1.0]))
 
-        local_refraction = refractions.find_refraction_conic(
-            local_camera, local_object, self.center, self.anterior_radius, self.anterior_k, n_outside, n_cornea
-        )
+        if self.use_posterior_surface:
+            local_refraction = refractions.find_refraction_dual_conic(
+                local_camera,
+                local_object,
+                self.center,
+                self.anterior_radius,
+                self.anterior_k,
+                self.get_posterior_center(),
+                self.posterior_radius,
+                self.posterior_k,
+                n_outside,
+                n_cornea,
+                n_aqueous,
+            )
+        else:
+            local_refraction = refractions.find_refraction_conic(
+                local_camera, local_object, self.center, self.anterior_radius, self.anterior_k, n_outside, n_cornea
+            )
         if local_refraction is None:
             return None
 

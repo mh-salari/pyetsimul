@@ -507,7 +507,9 @@ class Eye:
 
         """
         # Call pure refraction function
-        refraction_point = find_refraction_point(self.cornea, self.trans, camera_position, object_position)
+        refraction_point = find_refraction_point(
+            self.cornea, self.trans, camera_position, object_position, self.n_aqueous_humor
+        )
 
         # Check if point is on visible cornea (within boundaries and not occluded by eyelid)
         if refraction_point is not None and not self.point_on_visible_cornea(refraction_point):

@@ -3,10 +3,11 @@
 Implements Snell's law, ray-surface intersection, and optimization for refraction on spherical and conic surfaces.
 """
 
+from collections.abc import Callable
 from typing import TYPE_CHECKING, cast
 
 import numpy as np
-from scipy.optimize import brentq, fsolve
+from scipy.optimize import brentq, fsolve, least_squares
 
 from ..geometry.intersections import (
     conic_surface_normal,
@@ -326,6 +327,214 @@ def find_refraction_conic(
         return None
 
 
+def _refract_direction(
+    incident: Direction3D, surface_normal: Direction3D, n_from: float, n_to: float
+) -> Direction3D | None:
+    """Refract a unit direction at a surface using Snell's law in vector form.
+
+    Direction-agnostic: the surface normal is oriented to face the incident medium before the law is
+    applied, so the same routine is correct whether the ray enters or leaves the surface. The two-surface
+    exit path needs the leaving case, which the single-surface refract_ray_* helpers (inward-only normal)
+    do not handle.
+
+    Args:
+        incident: Incident unit direction.
+        surface_normal: Surface unit normal (either orientation accepted).
+        n_from: Refractive index of the medium the ray is leaving.
+        n_to: Refractive index of the medium the ray is entering.
+
+    Returns:
+        Refracted unit direction, or None on total internal reflection.
+
+    """
+    i = np.array([incident.x, incident.y, incident.z])
+    n = np.array([surface_normal.x, surface_normal.y, surface_normal.z])
+    cos_incidence = -float(np.dot(i, n))
+    if cos_incidence < 0.0:  # normal points along the ray; flip it to face the incident medium
+        n = -n
+        cos_incidence = -cos_incidence
+    eta = n_from / n_to
+    cos_transmission_squared = 1.0 - eta * eta * (1.0 - cos_incidence * cos_incidence)
+    if cos_transmission_squared < 0.0:
+        return None  # total internal reflection
+    refracted = eta * i + (eta * cos_incidence - np.sqrt(cos_transmission_squared)) * n
+    return Direction3D(refracted[0], refracted[1], refracted[2]).normalize()
+
+
+def _solve_two_surface_launch(
+    camera_pos: Position3D,
+    object_pos: Position3D,
+    trace_outward: Callable[[np.ndarray], tuple[Point3D, Direction3D] | None],
+) -> Point3D | None:
+    """Find the object launch direction whose doubly-refracted ray passes through the camera.
+
+    Generic to the corneal shape: trace_outward(launch_direction) performs the surface-specific double
+    refraction and returns (exit_point, exit_direction) of the ray leaving the cornea, or None if it does
+    not get through. The launch direction is searched (least-squares) in the plane around the straight
+    object->camera line until the exit ray's perpendicular miss to the camera vanishes.
+
+    Args:
+        camera_pos: Camera position.
+        object_pos: Intraocular object position.
+        trace_outward: Callable mapping a launch direction (length-3 array) to (exit Point3D, exit
+            Direction3D) or None.
+
+    Returns:
+        Anterior exit point of the converged ray, or None if no direction reaches the camera.
+
+    """
+    camera = np.array([camera_pos.x, camera_pos.y, camera_pos.z])
+    base = camera - np.array([object_pos.x, object_pos.y, object_pos.z])
+    base /= np.linalg.norm(base)
+    perp_a = np.cross(base, [0.0, 0.0, 1.0])
+    if np.linalg.norm(perp_a) < 1e-9:
+        perp_a = np.cross(base, [0.0, 1.0, 0.0])
+    perp_a /= np.linalg.norm(perp_a)
+    perp_b = np.cross(base, perp_a)
+
+    def residual(offset: np.ndarray) -> list[float]:
+        traced = trace_outward(base + offset[0] * perp_a + offset[1] * perp_b)
+        if traced is None:
+            return [1e3, 1e3]
+        exit_point, exit_direction = traced
+        origin = np.array([exit_point.x, exit_point.y, exit_point.z])
+        direction = np.array([exit_direction.x, exit_direction.y, exit_direction.z])
+        miss = (camera - origin) - np.dot(camera - origin, direction) * direction
+        across = np.cross(direction, perp_a)
+        across /= np.linalg.norm(across)
+        return [float(np.dot(miss, across)), float(np.dot(miss, np.cross(direction, across)))]
+
+    solution = least_squares(residual, [0.0, 0.0], xtol=1e-12, ftol=1e-12)
+    if np.max(np.abs(residual(solution.x))) > 1e-6:
+        return None
+    traced = trace_outward(base + solution.x[0] * perp_a + solution.x[1] * perp_b)
+    return traced[0] if traced is not None else None
+
+
+def find_refraction_dual_sphere(
+    camera_pos: Position3D,
+    object_pos: Position3D,
+    anterior_center: Position3D,
+    anterior_radius: float,
+    posterior_center: Position3D,
+    posterior_radius: float,
+    n_outside: float,
+    n_cornea: float,
+    n_aqueous: float,
+) -> Point3D | None:
+    """Anterior exit point of the two-surface refraction through a spherical cornea.
+
+    A ray leaves the object in the aqueous, refracts at the posterior spherical surface (aqueous -> cornea)
+    then the anterior spherical surface (cornea -> air), and reaches the camera. The returned point is
+    where the exiting ray leaves the anterior surface -- the apparent corneal point the camera images. All
+    positions must share one coordinate frame.
+
+    Args:
+        camera_pos: Camera position.
+        object_pos: Intraocular object position (in the aqueous).
+        anterior_center: Center of the anterior spherical surface.
+        anterior_radius: Radius of the anterior spherical surface.
+        posterior_center: Center of the posterior spherical surface.
+        posterior_radius: Radius of the posterior spherical surface.
+        n_outside: Refractive index outside the cornea (air).
+        n_cornea: Refractive index of the cornea.
+        n_aqueous: Refractive index of the aqueous humor.
+
+    Returns:
+        Anterior exit point, or None if no valid path reaches the camera.
+
+    """
+
+    def trace_outward(launch: np.ndarray) -> tuple[Point3D, Direction3D] | None:
+        unit = launch / np.linalg.norm(launch)
+        ray = Ray(origin=object_pos.to_point3d(), direction=Direction3D(unit[0], unit[1], unit[2]))
+        posterior_hit, _ = intersect_ray_sphere(ray, posterior_center, posterior_radius)
+        if posterior_hit is None or not posterior_hit.intersects:
+            return None
+        posterior_point = posterior_hit.point
+        posterior_normal = (posterior_point - posterior_center.to_point3d()).to_direction3d().normalize()
+        cornea_direction = _refract_direction(ray.direction, posterior_normal, n_aqueous, n_cornea)
+        if cornea_direction is None:
+            return None
+        anterior_hit, _ = intersect_ray_sphere(
+            Ray(origin=posterior_point, direction=cornea_direction), anterior_center, anterior_radius
+        )
+        if anterior_hit is None or not anterior_hit.intersects:
+            return None
+        anterior_point = anterior_hit.point
+        anterior_normal = (anterior_point - anterior_center.to_point3d()).to_direction3d().normalize()
+        exit_direction = _refract_direction(cornea_direction, anterior_normal, n_cornea, n_outside)
+        if exit_direction is None:
+            return None
+        return anterior_point, exit_direction
+
+    return _solve_two_surface_launch(camera_pos, object_pos, trace_outward)
+
+
+def find_refraction_dual_conic(
+    camera_pos: Position3D,
+    object_pos: Position3D,
+    anterior_center: Position3D,
+    anterior_radius: float,
+    anterior_k: float,
+    posterior_center: Position3D,
+    posterior_radius: float,
+    posterior_k: float,
+    n_outside: float,
+    n_cornea: float,
+    n_aqueous: float,
+) -> Point3D | None:
+    """Anterior exit point of the two-surface refraction through a conic cornea.
+
+    As find_refraction_dual_sphere, but each corneal surface is an aspheric conic, so intersection and
+    normal use the conic primitives. A ray leaves the object in the aqueous, refracts at the posterior
+    conic surface (aqueous -> cornea) then the anterior conic surface (cornea -> air), and reaches the
+    camera; the returned point is where the exiting ray leaves the anterior surface.
+
+    Args:
+        camera_pos: Camera position.
+        object_pos: Intraocular object position (in the aqueous).
+        anterior_center: Center of the anterior conic surface.
+        anterior_radius: Apex radius of curvature of the anterior surface.
+        anterior_k: Conic constant of the anterior surface.
+        posterior_center: Center of the posterior conic surface.
+        posterior_radius: Apex radius of curvature of the posterior surface.
+        posterior_k: Conic constant of the posterior surface.
+        n_outside: Refractive index outside the cornea (air).
+        n_cornea: Refractive index of the cornea.
+        n_aqueous: Refractive index of the aqueous humor.
+
+    Returns:
+        Anterior exit point, or None if no valid path reaches the camera.
+
+    """
+
+    def trace_outward(launch: np.ndarray) -> tuple[Point3D, Direction3D] | None:
+        unit = launch / np.linalg.norm(launch)
+        ray = Ray(origin=object_pos.to_point3d(), direction=Direction3D(unit[0], unit[1], unit[2]))
+        posterior_hit, _ = intersect_ray_conic(ray, posterior_center, posterior_radius, posterior_k)
+        if posterior_hit is None or not posterior_hit.intersects:
+            return None
+        posterior_point = posterior_hit.point
+        posterior_normal = conic_surface_normal(posterior_point, posterior_center, posterior_radius, posterior_k)
+        cornea_direction = _refract_direction(ray.direction, posterior_normal, n_aqueous, n_cornea)
+        if cornea_direction is None:
+            return None
+        anterior_hit, _ = intersect_ray_conic(
+            Ray(origin=posterior_point, direction=cornea_direction), anterior_center, anterior_radius, anterior_k
+        )
+        if anterior_hit is None or not anterior_hit.intersects:
+            return None
+        anterior_point = anterior_hit.point
+        anterior_normal = conic_surface_normal(anterior_point, anterior_center, anterior_radius, anterior_k)
+        exit_direction = _refract_direction(cornea_direction, anterior_normal, n_cornea, n_outside)
+        if exit_direction is None:
+            return None
+        return anterior_point, exit_direction
+
+    return _solve_two_surface_launch(camera_pos, object_pos, trace_outward)
+
+
 def refract_ray_sphere(
     ray: Ray, sphere_center: Position3D, sphere_radius: float, n_outside: float, n_sphere: float
 ) -> tuple[IntersectionResult | None, Ray | None]:
@@ -506,7 +715,11 @@ def refract_ray_dual_surface(
 
 
 def find_refraction_point(
-    cornea: "Cornea", eye_transform: TransformationMatrix, camera_position: Position3D, object_position: Position3D
+    cornea: "Cornea",
+    eye_transform: TransformationMatrix,
+    camera_position: Position3D,
+    object_position: Position3D,
+    n_aqueous: float,
 ) -> Position3D | None:
     """Computes observed position of intraocular objects through corneal refraction.
 
@@ -521,6 +734,7 @@ def find_refraction_point(
         eye_transform: Eye transformation matrix
         camera_position: Camera position (Position3D)
         object_position: Object position inside eye (Position3D)
+        n_aqueous: Refractive index of the aqueous humor (used only by the two-surface corneal path)
 
     Returns:
         Position3D on corneal surface where refraction occurs, or None if no solution exists
@@ -533,6 +747,7 @@ def find_refraction_point(
         1.0,  # Air refractive index
         cornea.refractive_index,
         eye_transform,
+        n_aqueous,
     )
 
     return None if refraction_point is None else refraction_point.to_position3d()
