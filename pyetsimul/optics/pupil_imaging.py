@@ -8,11 +8,12 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 from scipy import ndimage
+from scipy.optimize import minimize
 from skimage.draw import polygon
 from skimage.measure import EllipseModel
 
 from ..core.camera import Camera
-from ..types.geometry import Point2D
+from ..types.geometry import Point2D, Position3D
 from ..types.imaging import PupilData
 
 if TYPE_CHECKING:
@@ -161,6 +162,112 @@ def calculate_pupil_center_methods(
     if center_method == "center_of_mass":
         return get_pupil_center_mass_image(eye, camera, use_refraction)
     raise ValueError(f"Unknown center_method '{center_method}'. Use 'ellipse' or 'center_of_mass'")
+
+
+def project_point_to_image(
+    eye: "Eye", camera: Camera, point: Position3D, use_refraction: bool = True
+) -> Point2D | None:
+    """Projects a single intraocular point to camera image coordinates.
+
+    Forward of what a camera observes for one point inside the eye: the point is imaged through corneal
+    refraction (the apparent, entrance-side position) and then projected to the image plane. With
+    use_refraction disabled the point is projected directly, ignoring the cornea.
+
+    Args:
+        eye: Eye object providing the corneal refraction.
+        camera: Camera object to project into.
+        point: Intraocular point in world coordinates.
+        use_refraction: Whether to apply corneal refraction (default True).
+
+    Returns:
+        Point2D image coordinates, or None if the point does not refract to the camera or projects to NaN.
+
+    """
+    observed = eye.find_refracted_position(camera.position, point) if use_refraction else point
+    if observed is None:
+        return None
+    image_points = camera.project([observed]).image_points
+    if np.any(np.isnan(image_points[:, 0])):
+        return None
+    return Point2D(x=float(image_points[0, 0]), y=float(image_points[1, 0]))
+
+
+def reverse_project_to_pupil_plane(eye: "Eye", camera: Camera, image_points: list[Point2D]) -> np.ndarray:
+    """Recovers eye-frame points in the pupil plane that image to the given camera points.
+
+    Inverse of project_point_to_image for points constrained to the pupil plane at the eye's current
+    orientation. For each image point it searches the in-plane offset from the pupil center whose refracted
+    projection matches the target (Nelder-Mead), then expresses the result in eye-frame coordinates. The
+    search is confined to the pupil plane because a single camera cannot resolve the depth of an unconstrained
+    point; recovering the axial component requires combining two cameras (see image_jacobian).
+
+    Args:
+        eye: Eye object providing the corneal refraction and current orientation.
+        camera: Camera object the points were imaged in.
+        image_points: Camera-image points to invert.
+
+    Returns:
+        Nx3 array of eye-frame coordinates, one row per input point.
+
+    """
+    transform = np.asarray(eye.trans)
+    x_axis, y_axis = transform[:3, 0], transform[:3, 1]
+    pupil_center = np.asarray(eye.get_pupil().boundary_points)[:3].mean(axis=1)
+
+    def residual(offset: np.ndarray, target: np.ndarray) -> float:
+        world = pupil_center + offset[0] * x_axis + offset[1] * y_axis
+        projected = project_point_to_image(eye, camera, Position3D(float(world[0]), float(world[1]), float(world[2])))
+        if projected is None:
+            return 1e9
+        return float((projected.x - target[0]) ** 2 + (projected.y - target[1]) ** 2)
+
+    eye_frame_points = []
+    for image_point in image_points:
+        target = np.array([image_point.x, image_point.y])
+        solution = minimize(
+            residual, [0.0, 0.0], args=(target,), method="Nelder-Mead", options={"xatol": 1e-5, "fatol": 1e-10}
+        )
+        world = pupil_center + solution.x[0] * x_axis + solution.x[1] * y_axis
+        eye_frame_points.append((np.linalg.inv(transform) @ np.array([world[0], world[1], world[2], 1.0]))[:3])
+    return np.array(eye_frame_points)
+
+
+def image_jacobian(
+    eye: "Eye", camera: Camera, eye_frame_point: np.ndarray, epsilon: float = 0.05
+) -> np.ndarray | None:
+    """Central-difference Jacobian d(image px)/d(eye-frame mm) of the refracted projection at a point.
+
+    Evaluated at the eye's current orientation by displacing the point along each eye-frame axis and
+    re-projecting. The third (axial) column is the depth sensitivity a single camera cannot resolve but
+    that two cameras can jointly invert when their Jacobians are stacked.
+
+    Args:
+        eye: Eye object providing the corneal refraction and current orientation.
+        camera: Camera object to project into.
+        eye_frame_point: Point in eye-frame coordinates at which to evaluate the Jacobian.
+        epsilon: Central-difference step in millimetres (default 0.05).
+
+    Returns:
+        2x3 Jacobian array, or None if any perturbed point fails to project.
+
+    """
+    transform = np.asarray(eye.trans)
+    columns = []
+    for axis in range(3):
+        step = np.zeros(3)
+        step[axis] = epsilon
+        plus_world = (transform @ np.append(eye_frame_point + step, 1.0))[:3]
+        minus_world = (transform @ np.append(eye_frame_point - step, 1.0))[:3]
+        plus = project_point_to_image(
+            eye, camera, Position3D(float(plus_world[0]), float(plus_world[1]), float(plus_world[2]))
+        )
+        minus = project_point_to_image(
+            eye, camera, Position3D(float(minus_world[0]), float(minus_world[1]), float(minus_world[2]))
+        )
+        if plus is None or minus is None:
+            return None
+        columns.append((np.array([plus.x, plus.y]) - np.array([minus.x, minus.y])) / (2 * epsilon))
+    return np.array(columns).T
 
 
 def _fit_ellipse_center(pupil_boundary: np.ndarray) -> Point2D | None:
