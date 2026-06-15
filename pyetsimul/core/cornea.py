@@ -72,6 +72,14 @@ class Cornea(ABC):
     def normal_at(self, point: Point3D) -> Direction3D:
         """Calculates the normal vector at a given point on the cornea's surface."""
 
+    @abstractmethod
+    def intersect_posterior(self, ray: Ray) -> IntersectionResult | None:
+        """Calculates the intersection of a ray with the posterior corneal surface."""
+
+    @abstractmethod
+    def normal_at_posterior(self, point: Point3D) -> Direction3D:
+        """Calculates the normal vector at a given point on the posterior corneal surface."""
+
     def point_within_cornea(self, p: Position3D, eye: "Eye") -> bool:
         """Tests whether a point lies within the cornea boundaries.
 
@@ -111,6 +119,45 @@ class Cornea(ABC):
         n_aqueous: float,
     ) -> Point3D | None:
         """Finds position where refraction occurs on the corneal surface."""
+
+    def refract_ray_inward(self, ray: Ray, n_outside: float, n_cornea: float, n_aqueous: float) -> Ray | None:
+        """Trace a ray arriving from the air inward through the cornea.
+
+        Inverse of find_refraction: a ray is followed from outside the eye, refracted at the anterior
+        surface (air -> cornea) and, when use_posterior_surface is enabled, again at the posterior surface
+        (cornea -> aqueous). The returned ray continues in the medium behind the last refracting surface.
+        Works in eye-local coordinates, where the conic axis is aligned with the Z-axis.
+
+        Args:
+            ray: Incoming ray in eye-local coordinates, with its origin outside the eye.
+            n_outside: Refractive index outside the cornea (air).
+            n_cornea: Refractive index of the cornea.
+            n_aqueous: Refractive index of the aqueous humor.
+
+        Returns:
+            Refracted ray in eye-local coordinates, or None if the ray does not pass through.
+
+        """
+        anterior_hit = self.intersect(ray)
+        if anterior_hit is None or not anterior_hit.intersects:
+            return None
+        into_cornea = refractions.refract_direction(
+            ray.direction, self.normal_at(anterior_hit.point), n_outside, n_cornea
+        )
+        if into_cornea is None:
+            return None
+        if not self.use_posterior_surface:
+            return Ray(origin=anterior_hit.point, direction=into_cornea)
+
+        posterior_hit = self.intersect_posterior(Ray(origin=anterior_hit.point, direction=into_cornea))
+        if posterior_hit is None or not posterior_hit.intersects:
+            return None
+        into_aqueous = refractions.refract_direction(
+            into_cornea, self.normal_at_posterior(posterior_hit.point), n_cornea, n_aqueous
+        )
+        if into_aqueous is None:
+            return None
+        return Ray(origin=posterior_hit.point, direction=into_aqueous)
 
     def __str__(self) -> str:
         """Basic string representation of the cornea."""
@@ -323,6 +370,16 @@ class SphericalCornea(Cornea):
         # Calculate normal vector from center to point
         normal_vec = Direction3D(point.x - self.center.x, point.y - self.center.y, point.z - self.center.z)
         return normal_vec.normalize()
+
+    def intersect_posterior(self, ray: Ray) -> IntersectionResult | None:
+        """Calculates intersection with the posterior spherical surface (closer root)."""
+        result, _ = intersections.intersect_ray_sphere(ray, self.get_posterior_center(), self.posterior_radius)
+        return result
+
+    def normal_at_posterior(self, point: Point3D) -> Direction3D:
+        """Calculates the normal vector on the posterior spherical surface."""
+        center = self.get_posterior_center()
+        return Direction3D(point.x - center.x, point.y - center.y, point.z - center.z).normalize()
 
     def find_reflection(
         self, light_pos: Position3D, camera_pos: Position3D, eye_transform: TransformationMatrix
@@ -554,6 +611,19 @@ class ConicCornea(Cornea):
     def normal_at(self, point: Point3D) -> Direction3D:
         """Calculates the normal vector for the anterior conic surface."""
         return intersections.conic_surface_normal(point, self.center, self.anterior_radius, self.anterior_k)
+
+    def intersect_posterior(self, ray: Ray) -> IntersectionResult | None:
+        """Calculates intersection with the posterior conic surface (closer root)."""
+        result, _ = intersections.intersect_ray_conic(
+            ray, self.get_posterior_center(), self.posterior_radius, self.posterior_k
+        )
+        return result
+
+    def normal_at_posterior(self, point: Point3D) -> Direction3D:
+        """Calculates the normal vector on the posterior conic surface."""
+        return intersections.conic_surface_normal(
+            point, self.get_posterior_center(), self.posterior_radius, self.posterior_k
+        )
 
     def find_reflection(
         self, light_pos: Position3D, camera_pos: Position3D, eye_transform: TransformationMatrix
