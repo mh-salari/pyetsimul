@@ -21,6 +21,7 @@ from .eye_operations import look_at_target, look_at_target_optical_then_kappa
 from .eyelid import Eyelid, create_eyelid
 from .pupil import EllipticalPupil, Pupil, RealisticPupilParams, create_pupil
 from .pupil_decentration import PupilDecentrationConfig, PupilDecentrationRegistry
+from .rotation_center import RotationCenter
 
 if TYPE_CHECKING:
     from .camera import Camera
@@ -63,6 +64,10 @@ class Eye:
     # Pupil decentration configuration
     decentration_config: PupilDecentrationConfig = field(default_factory=PupilDecentrationConfig)
 
+    # Optional gaze-direction-dependent rotation centre. None keeps the single fixed centre at the
+    # geometric centre of the eyeball sphere (the default model behaviour).
+    rotation_center: RotationCenter | None = None
+
     # These fields are calculated in __post_init__
     trans: TransformationMatrix = field(init=False)
     # Eyelid transform (local→world): follows eye position but keeps a fixed orientation
@@ -70,6 +75,8 @@ class Eye:
     _rest_orientation: RotationMatrix = field(init=False)
     _rest_orientation_explicitly_set: bool = field(init=False, default=False)  # Track if user set rest orientation
     _current_target_point: Position3D | None = field(init=False, default=None)  # Updated by look_at()
+    # Rest globe-centre placement; the gaze-dependent rotation centre re-pivots about it.
+    _placement: Position3D = field(init=False)
     n_aqueous_humor: float = field(init=False)
     pupil: Pupil = field(init=False)  # Pupil object that handles all pupil calculations
     eyelid: Eyelid | None = field(init=False, default=None)
@@ -156,6 +163,9 @@ class Eye:
             # Apply initial decentration
             self._update_pupil_position_with_decentration()
 
+        # Capture the rest placement (globe centre) that the gaze-dependent rotation centre pivots about.
+        self._placement = self.position
+
     @property
     def orientation(self) -> RotationMatrix:
         """Get/set the eye's current orientation (3x3 rotation matrix)."""
@@ -196,6 +206,17 @@ class Eye:
         Returns reference orientation for eye rotation calculations.
         """
         return self._rest_orientation.copy()
+
+    @property
+    def placement(self) -> Position3D:
+        """Get the commanded eye position (read-only).
+
+        The pivot anchor for the gaze-direction-dependent rotation centre. It differs from
+        :attr:`position` after a re-pivot: ``position`` is the globe centre in world coordinates, while
+        ``placement`` is the position the eye was commanded to and about which it re-pivots when turning
+        to off-axis targets.
+        """
+        return self._placement
 
     @property
     def current_target_point(self) -> Position3D | None:
@@ -273,6 +294,9 @@ class Eye:
     def position(self, value: Position3D) -> None:
         """Set the eye's position and update transformation matrix."""
         self.trans[:, 3] = np.array(value)
+        # Record the placement as the rest globe centre so look_at can re-pivot about a
+        # gaze-dependent rotation centre relative to it (look_at writes trans directly, not here).
+        self._placement = value
         # Eyelid follows eye translation but not rotation
         if self.eyelid_enabled:
             self.eyelid_trans[0, 3] = value.x
