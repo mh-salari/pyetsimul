@@ -116,7 +116,7 @@ class WildenmannModel(PupilDecentrationModel):
         return "wildenmann_2013"
 
     def calculate_offset(  # noqa: PLR6301
-        self, current_diameter: float, baseline_diameter: float, x_coeff: float, y_coeff: float
+        self, current_diameter: float, baseline_diameter: float, x_coeff: float, y_coeff: float, z_coeff: float = 0.0
     ) -> Position3D:
         """Calculate Wildenmann linear decentration offset.
 
@@ -125,6 +125,7 @@ class WildenmannModel(PupilDecentrationModel):
             baseline_diameter: Baseline diameter (zero decentration) in mm
             x_coeff: X coefficient (mm/mm)
             y_coeff: Y coefficient (mm/mm)
+            z_coeff: Axial (optical-axis) coefficient (mm/mm); 0 keeps the pupil plane fixed
 
         Returns:
             Position3D offset for pupil decentration
@@ -138,8 +139,9 @@ class WildenmannModel(PupilDecentrationModel):
         diameter_change = current_diameter - baseline_diameter
         x_offset = x_coeff * diameter_change
         y_offset = y_coeff * diameter_change
+        z_offset = z_coeff * diameter_change
 
-        return Position3D(x_offset, y_offset, 0.0)
+        return Position3D(x_offset, y_offset, z_offset)
 
 
 @dataclass
@@ -171,6 +173,7 @@ class PupilDecentrationConfig:
     # Common parameters for built-in models
     x_coeff: float | None = None
     y_coeff: float | None = None
+    z_coeff: float = 0.0  # Axial (optical-axis) shift per mm of diameter change; 0 = in-plane decentration only
 
     # Individual variation from Wildenmann & Schaeffel (2013): 0.044-0.179 mm per mm
     use_individual_variation: bool = False
@@ -219,7 +222,7 @@ class PupilDecentrationConfig:
 
     def get_model_params(self) -> dict:
         """Get parameters to pass to model's calculate_offset method."""
-        return {"x_coeff": self.x_coeff, "y_coeff": self.y_coeff}
+        return {"x_coeff": self.x_coeff, "y_coeff": self.y_coeff, "z_coeff": self.z_coeff}
 
 
 def register_custom_decentration(name: str, calculation_func: Callable) -> None:
