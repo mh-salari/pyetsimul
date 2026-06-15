@@ -9,6 +9,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 from scipy import ndimage
 from scipy.optimize import minimize
+from scipy.spatial import ConvexHull
 from skimage.draw import polygon
 from skimage.measure import EllipseModel
 
@@ -130,9 +131,11 @@ def calculate_pupil_center_from_boundary(
 
     if center_method == "ellipse":
         return _fit_ellipse_center(boundary_array)
+    if center_method == "convex_hull":
+        return _fit_convex_hull_center(boundary_array)
     if center_method == "center_of_mass":
         return _calculate_center_of_mass(boundary_array, camera_resolution)
-    raise ValueError(f"Unknown center_method '{center_method}'. Use 'ellipse' or 'center_of_mass'")
+    raise ValueError(f"Unknown center_method '{center_method}'. Use 'ellipse', 'convex_hull', or 'center_of_mass'")
 
 
 def calculate_pupil_center_methods(
@@ -300,6 +303,33 @@ def _fit_ellipse_center(pupil_boundary: np.ndarray) -> Point2D | None:
     return Point2D(x=float(center_x), y=float(center_y))
 
     return None
+
+
+def _fit_convex_hull_center(pupil_boundary: np.ndarray) -> Point2D | None:
+    """Fit an ellipse to the convex hull of the boundary points and return its center.
+
+    The hull fills concavities before the ellipse is fit, so a notch in the boundary (such as one a
+    corneal reflection cuts into a detected pupil contour) does not pull the center toward it. For a
+    smooth, already convex boundary the result matches the plain ellipse-center method.
+
+    Args:
+        pupil_boundary: 2xN numpy array representing pupil boundary points.
+
+    Returns:
+        Point2D with center coordinates, or None if fitting fails.
+
+    """
+    if pupil_boundary.shape[1] < 5:
+        return None
+    points = pupil_boundary.T
+    hull_points = points[ConvexHull(points).vertices]
+    if len(hull_points) < 5:
+        return None
+    ellipse = EllipseModel.from_estimate(hull_points)
+    if ellipse:
+        center_x, center_y = ellipse.center
+        return Point2D(x=float(center_x), y=float(center_y))
+    return Point2D(x=float(np.mean(hull_points[:, 0])), y=float(np.mean(hull_points[:, 1])))
 
 
 def _calculate_center_of_mass(pupil_boundary: np.ndarray, camera_resolution: Point2D) -> Point2D | None:
