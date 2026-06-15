@@ -3,6 +3,7 @@
 Defines abstract and concrete pupil models (elliptical, realistic) for boundary generation and anatomical accuracy.
 """
 
+import math
 from abc import ABC, abstractmethod
 from dataclasses import asdict, dataclass
 
@@ -171,8 +172,25 @@ class EllipticalPupil(Pupil):
         pos_pupil: Center position
         x_pupil: Vector defining X-axis radius/direction
         y_pupil: Vector defining Y-axis radius/direction
+        n: Number of boundary points
+        aspect_ratio: Pupil ellipse major/minor ratio; 1.0 is a circle.
+        aspect_angle: Major-axis orientation in radians; 0 aligns the major axis with +x.
 
     """
+
+    def __init__(
+        self,
+        pos_pupil: Position3D,
+        x_pupil: Direction3D,
+        y_pupil: Direction3D,
+        n: int = PupilDefaults.BOUNDARY_POINTS_ELLIPTICAL,
+        aspect_ratio: float = 1.0,
+        aspect_angle: float = 0.0,
+    ) -> None:
+        """Initialize elliptical pupil with an optional elliptical aspect ratio."""
+        super().__init__(pos_pupil, x_pupil, y_pupil, n)
+        self.aspect_ratio = aspect_ratio  # major/minor; 1.0 = circle
+        self.aspect_angle = aspect_angle  # major-axis orientation (rad); 0 = +x (horizontal)
 
     def get_boundary_points(self, n: int | None = None) -> np.ndarray:
         """Generate elliptical pupil boundary points using parametric representation.
@@ -224,14 +242,20 @@ class EllipticalPupil(Pupil):
         self.y_pupil = Direction3D(0, y_radius, 0)
 
     def set_diameter(self, diameter: float) -> None:
-        """Set pupil diameter and update geometry.
+        """Set pupil diameter, applying the elliptical aspect ratio and orientation.
 
         Args:
             diameter: Pupil diameter in mm
 
         """
-        radius = diameter / 2
-        self.set_radii(x_radius=radius, y_radius=radius)
+        radius = diameter / 2.0
+        # Equal-area semi-axes: major = r*sqrt(A) along aspect_angle, minor = r/sqrt(A)
+        # perpendicular. aspect_ratio == 1 reduces to the circle (the eye-tracking default).
+        major = radius * math.sqrt(self.aspect_ratio)
+        minor = radius / math.sqrt(self.aspect_ratio)
+        cos_a, sin_a = math.cos(self.aspect_angle), math.sin(self.aspect_angle)
+        self.x_pupil = Direction3D(major * cos_a, major * sin_a, 0.0)
+        self.y_pupil = Direction3D(-minor * sin_a, minor * cos_a, 0.0)
 
     def get_diameter(self) -> float:
         """Get pupil diameter.
@@ -252,6 +276,8 @@ class EllipticalPupil(Pupil):
             "x_pupil": self.x_pupil.serialize(),
             "y_pupil": self.y_pupil.serialize(),
             "n": self.n,
+            "aspect_ratio": self.aspect_ratio,
+            "aspect_angle": self.aspect_angle,
         }
 
     @classmethod
@@ -262,6 +288,8 @@ class EllipticalPupil(Pupil):
             x_pupil=Direction3D.deserialize(data["x_pupil"]),
             y_pupil=Direction3D.deserialize(data["y_pupil"]),
             n=data["n"],
+            aspect_ratio=data.get("aspect_ratio", 1.0),
+            aspect_angle=data.get("aspect_angle", 0.0),
         )
 
 
@@ -569,16 +597,88 @@ class RealisticPupil(Pupil):
         return pupil
 
 
+class ContourPupil(Pupil):
+    """Pupil with an explicit, arbitrary boundary -- e.g. a measured pupil contour.
+
+    The boundary is stored as 2-D offsets from the pupil centre in the pupil plane, normalised to unit
+    mean radius; the diameter then scales them. Unlike EllipticalPupil (parametric) and RealisticPupil
+    (Fourier), this accepts any closed outline, so a measured pupil boundary can be used directly.
+
+    Args:
+        pos_pupil: Centre position.
+        contour: (N, 2) boundary points in the pupil plane (any scale/offset; recentred + normalised here).
+        n: Boundary-point count (defaults to len(contour)).
+
+    """
+
+    def __init__(
+        self,
+        pos_pupil: Position3D,
+        contour: np.ndarray,
+        n: int | None = None,
+    ) -> None:
+        """Initialise from an explicit boundary; the contour is recentred and normalised to unit mean radius."""
+        pts = np.asarray(contour, dtype=float).reshape(-1, 2)
+        pts -= pts.mean(axis=0)
+        mean_radius = float(np.hypot(pts[:, 0], pts[:, 1]).mean())
+        self._unit = pts / mean_radius  # shape at unit mean radius
+        self._radius = mean_radius
+        super().__init__(
+            pos_pupil,
+            Direction3D(mean_radius, 0.0, 0.0),
+            Direction3D(0.0, mean_radius, 0.0),
+            len(pts) if n is None else n,
+        )
+
+    def get_boundary_points(self, n: int | None = None) -> np.ndarray:  # noqa: ARG002
+        """4xN homogeneous boundary points (the stored contour at the current diameter); ``n`` is ignored."""
+        pts = self._unit * self._radius
+        out = np.ones((4, pts.shape[0]))
+        out[0, :] = self.pos_pupil.x + pts[:, 0]
+        out[1, :] = self.pos_pupil.y + pts[:, 1]
+        out[2, :] = self.pos_pupil.z
+        return out
+
+    def get_radii(self) -> tuple[float, float]:
+        """Mean radius on both axes (the contour carries the shape, not these)."""
+        return self._radius, self._radius
+
+    def set_radii(self, x_radius: float, y_radius: float) -> None:
+        """Scale the contour to the given mean radius."""
+        self._radius = (x_radius + y_radius) / 2.0
+
+    def set_diameter(self, diameter: float) -> None:
+        """Scale the contour to the given mean diameter (shape preserved)."""
+        self._radius = diameter / 2.0
+
+    def get_diameter(self) -> float:
+        """Mean diameter of the contour."""
+        return 2.0 * self._radius
+
+    def serialize(self) -> dict:
+        """Serialize to dictionary representation."""
+        return {
+            "pos_pupil": self.pos_pupil.serialize(),
+            "contour": (self._unit * self._radius).tolist(),
+            "n": self.n,
+        }
+
+    @classmethod
+    def deserialize(cls, data: dict) -> "ContourPupil":
+        """Deserialize from dictionary representation."""
+        return cls(pos_pupil=Position3D.deserialize(data["pos_pupil"]), contour=np.array(data["contour"]), n=data["n"])
+
+
 def create_pupil(
     pupil_type: str, pos_pupil: Position3D, x_pupil: Direction3D, y_pupil: Direction3D, **kwargs: float
 ) -> Pupil:
     """Factory function to create pupil instances.
 
     Provides unified interface for creating different pupil models.
-    Supports elliptical and realistic pupil geometries.
+    Supports elliptical, realistic, and contour pupil geometries.
 
     Args:
-        pupil_type: Type of pupil ("elliptical" or "realistic")
+        pupil_type: Type of pupil ("elliptical", "realistic", or "contour")
         pos_pupil: Center position
         x_pupil: Vector defining X-axis radius/direction
         y_pupil: Vector defining Y-axis radius/direction
@@ -600,4 +700,6 @@ def create_pupil(
         params = kwargs.get("params")
         n: int = kwargs.get("n", PupilDefaults.BOUNDARY_POINTS_REALISTIC)
         return RealisticPupil(pos_pupil, x_pupil, y_pupil, params, n)
-    raise ValueError(f"Unsupported pupil type: {pupil_type}. Supported types: 'elliptical', 'realistic'")
+    if pupil_type == "contour":
+        return ContourPupil(pos_pupil, kwargs["contour"])
+    raise ValueError(f"Unsupported pupil type: {pupil_type}. Supported types: 'elliptical', 'realistic', 'contour'.")
