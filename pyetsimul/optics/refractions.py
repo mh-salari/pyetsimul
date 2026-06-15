@@ -327,7 +327,7 @@ def find_refraction_conic(
         return None
 
 
-def _refract_direction(
+def refract_direction(
     incident: Direction3D, surface_normal: Direction3D, n_from: float, n_to: float
 ) -> Direction3D | None:
     """Refract a unit direction at a surface using Snell's law in vector form.
@@ -453,7 +453,7 @@ def find_refraction_dual_sphere(
             return None
         posterior_point = posterior_hit.point
         posterior_normal = (posterior_point - posterior_center.to_point3d()).to_direction3d().normalize()
-        cornea_direction = _refract_direction(ray.direction, posterior_normal, n_aqueous, n_cornea)
+        cornea_direction = refract_direction(ray.direction, posterior_normal, n_aqueous, n_cornea)
         if cornea_direction is None:
             return None
         anterior_hit, _ = intersect_ray_sphere(
@@ -463,7 +463,7 @@ def find_refraction_dual_sphere(
             return None
         anterior_point = anterior_hit.point
         anterior_normal = (anterior_point - anterior_center.to_point3d()).to_direction3d().normalize()
-        exit_direction = _refract_direction(cornea_direction, anterior_normal, n_cornea, n_outside)
+        exit_direction = refract_direction(cornea_direction, anterior_normal, n_cornea, n_outside)
         if exit_direction is None:
             return None
         return anterior_point, exit_direction
@@ -517,7 +517,7 @@ def find_refraction_dual_conic(
             return None
         posterior_point = posterior_hit.point
         posterior_normal = conic_surface_normal(posterior_point, posterior_center, posterior_radius, posterior_k)
-        cornea_direction = _refract_direction(ray.direction, posterior_normal, n_aqueous, n_cornea)
+        cornea_direction = refract_direction(ray.direction, posterior_normal, n_aqueous, n_cornea)
         if cornea_direction is None:
             return None
         anterior_hit, _ = intersect_ray_conic(
@@ -527,7 +527,7 @@ def find_refraction_dual_conic(
             return None
         anterior_point = anterior_hit.point
         anterior_normal = conic_surface_normal(anterior_point, anterior_center, anterior_radius, anterior_k)
-        exit_direction = _refract_direction(cornea_direction, anterior_normal, n_cornea, n_outside)
+        exit_direction = refract_direction(cornea_direction, anterior_normal, n_cornea, n_outside)
         if exit_direction is None:
             return None
         return anterior_point, exit_direction
