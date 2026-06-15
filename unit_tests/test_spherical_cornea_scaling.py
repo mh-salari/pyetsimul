@@ -154,11 +154,11 @@ def test_reference_values() -> None:
     cornea = SphericalCornea()
 
     # Check that reference values match Boff and Lincoln [1988] constants
-    assert cornea._r_cornea_default == pytest.approx(7.98)  # noqa: SLF001
-    assert cornea._posterior_radius_default == pytest.approx(6.22)  # noqa: SLF001
-    assert cornea._thickness_offset_default == pytest.approx(1.15)  # noqa: SLF001
-    assert cornea._cornea_depth_default == pytest.approx(3.54)  # noqa: SLF001
-    assert cornea._cornea_center_to_rotation_center_default == pytest.approx(10.20)  # noqa: SLF001
+    assert cornea._r_cornea_default == pytest.approx(7.98)
+    assert cornea._posterior_radius_default == pytest.approx(6.22)
+    assert cornea._thickness_offset_default == pytest.approx(1.15)
+    assert cornea._cornea_depth_default == pytest.approx(3.54)
+    assert cornea._cornea_center_to_rotation_center_default == pytest.approx(10.20)
 
 
 @pytest.mark.parametrize("radius", [5, 6.5, 7.98, 9, 12])
