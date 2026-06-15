@@ -14,7 +14,7 @@ from pyetsimul.log import info, table
 from ..optics.pupil_imaging import calculate_pupil_center_from_boundary
 from ..optics.reflections import find_corneal_reflection
 from ..optics.refractions import find_refraction_point
-from ..types import Direction3D, Point2D, Position3D, PupilData, RotationMatrix, TransformationMatrix
+from ..types import Direction3D, Point2D, Position3D, PupilData, Ray, RotationMatrix, TransformationMatrix
 from .cornea import ConicCornea, SphericalCornea
 from .default_configs import EyeAnatomyDefaults
 from .eye_operations import look_at_target, look_at_target_optical_then_kappa
@@ -49,6 +49,7 @@ class Eye:
     fovea_displacement: bool = True
     fovea_alpha_deg: float = EyeAnatomyDefaults.FOVEA_ALPHA_DEG
     fovea_beta_deg: float = EyeAnatomyDefaults.FOVEA_BETA_DEG
+    axial_length: float = EyeAnatomyDefaults.AXIAL_LENGTH  # Total axial length of eye (mm)
     pupil_type: str = "elliptical"  # Pupil type: "elliptical" (default), "realistic"
     pupil_boundary_points: int | None = None  # Number of points for pupil boundary (uses pupil default if None)
     pupil_random_seed: int | None = None  # Random seed for realistic pupil (None = random, int = deterministic)
@@ -69,10 +70,12 @@ class Eye:
     _rest_orientation: RotationMatrix = field(init=False)
     _rest_orientation_explicitly_set: bool = field(init=False, default=False)  # Track if user set rest orientation
     _current_target_point: Position3D | None = field(init=False, default=None)  # Updated by look_at()
-    axial_length: float = field(init=False)  # Total axial length of eye (mm)
     n_aqueous_humor: float = field(init=False)
     pupil: Pupil = field(init=False)  # Pupil object that handles all pupil calculations
     eyelid: Eyelid | None = field(init=False, default=None)
+    # {pupil diameter (mm): physical eye-local boundary (N x 2)} registered via register_pupil_shape;
+    # set_pupil_diameter swaps to the matching shape when called with a registered size.
+    _size_shapes: dict[float, np.ndarray] = field(init=False, default_factory=dict, repr=False)
 
     def __post_init__(self) -> None:
         """Initializes the eye's anatomical properties based on constructor parameters.
@@ -82,14 +85,13 @@ class Eye:
         """
         pupil_radius_default = EyeAnatomyDefaults.PUPIL_RADIUS
         n_aqueous_humor_default = EyeAnatomyDefaults.N_AQUEOUS_HUMOR
-        axial_length_default = EyeAnatomyDefaults.AXIAL_LENGTH
 
         # Create default cornea if none provided
         if self.cornea is None:
             self.cornea = SphericalCornea()
 
         # Setup cornea-specific geometry (this handles all sphere-specific scaling)
-        self.cornea.setup_eye_geometry(axial_length_default)
+        self.cornea.setup_eye_geometry(self.axial_length)
 
         # Initialize transformation matrix (identity at rest position)
         self._rest_orientation = RotationMatrix.identity()
@@ -99,9 +101,6 @@ class Eye:
         self.eyelid_trans = TransformationMatrix.from_translation_and_rotation(
             self.trans.get_translation(), self._rest_orientation
         )
-
-        # Set general anatomical parameters
-        self.axial_length = axial_length_default
 
         # Refractive indices
         self.n_aqueous_humor = n_aqueous_humor_default
@@ -400,16 +399,62 @@ class Eye:
         self.pupil.set_radii(x_radius, y_radius)
         self._update_pupil_position_with_decentration()
 
-    def set_pupil_diameter(self, diameter: float) -> None:
+    def corneal_magnification(self, camera: "Camera") -> float:
+        """Ratio of the apparent (refracted) to the physical pupil size, for this eye's cornea.
+
+        The pupil boundary is projected to ``camera`` with and without refraction and the size ratio
+        returned. Dimensionless, set by the cornea's radius and conic constant.
+
+        Args:
+            camera: Camera the pupil is viewed through.
+
+        Returns:
+            Apparent / physical pupil-size ratio.
+
+        Raises:
+            ValueError: If the pupil does not project into the camera image with and without refraction.
+
+        """
+        refracted, _ = self.get_pupil_in_camera_image(camera, use_refraction=True)
+        direct, _ = self.get_pupil_in_camera_image(camera, use_refraction=False)
+        if not refracted or not direct:
+            raise ValueError("corneal_magnification: pupil did not project into the camera image.")
+
+        def span(points: list[Point2D]) -> float:
+            xs = [p.x for p in points]
+            ys = [p.y for p in points]
+            return ((max(xs) - min(xs)) + (max(ys) - min(ys))) / 2.0
+
+        return span(refracted) / span(direct)
+
+    def set_pupil_diameter(self, diameter: float, apparent: bool = False, camera: "Camera | None" = None) -> None:
         """Set pupil diameter and update decentration if enabled.
 
         Delegates to pupil object for diameter modification, then applies
         decentration based on the new diameter if decentration is enabled.
 
         Args:
-            diameter: Pupil diameter in mm
+            diameter: Pupil diameter in mm. By default this is the physical pupil behind the cornea.
+            apparent: If True, ``diameter`` is the apparent (camera) pupil size seen *through* the cornea;
+                it is divided by this eye's ``corneal_magnification`` to recover the physical pupil that
+                the cornea then refracts back up to ``diameter``. Requires ``camera``.
+            camera: Camera used to measure the corneal magnification when ``apparent`` is True.
+
+        Raises:
+            ValueError: If ``apparent`` is True but no camera is given.
 
         """
+        # A pupil's shape can vary with its size; if a boundary is registered for this diameter
+        # (register_pupil_shape), adopt it before scaling so the shape matches the size.
+        if diameter in self._size_shapes:
+            self.pupil = create_pupil(
+                "contour", self.get_pupil_position(), None, None, contour=self._size_shapes[diameter]
+            )
+        if apparent:
+            if camera is None:
+                raise ValueError("set_pupil_diameter(apparent=True) requires a camera to un-refract the size.")
+            self.pupil.set_diameter(diameter)  # apparent size as the reference to measure magnification at
+            diameter /= self.corneal_magnification(camera)
         self.pupil.set_diameter(diameter)
         self._update_pupil_position_with_decentration()
 
@@ -516,6 +561,95 @@ class Eye:
             refraction_point = None
 
         return refraction_point
+
+    def _backproject_image_point(self, image_point: Point2D, camera: "Camera") -> tuple[float, float] | None:
+        """Eye-local (x, y) on the pupil plane that a camera image point maps to, through the cornea.
+
+        Inverse of the corneal projection used by get_pupil_in_camera_image for a single point: the image
+        point is unprojected to a 3D ray, refracted inward through the cornea, and intersected with the
+        pupil plane. The ray is carried in eye-local coordinates, where the conic axis is aligned with the
+        Z-axis, so the returned coordinates are directly usable as pupil-plane offsets.
+
+        Args:
+            image_point: Boundary point in the camera image (Point2D, center-origin).
+            camera: Camera that produced the image point.
+
+        Returns:
+            Eye-local (x, y) on the pupil plane, or None if the back-projected ray does not pass through.
+
+        """
+        inv_transform = np.linalg.inv(self.trans)
+        far_world = camera.unproject(image_point, 1.0)  # any positive distance; only the ray direction matters
+        camera_local = Position3D.from_array(
+            inv_transform @ np.array([camera.position.x, camera.position.y, camera.position.z, 1.0])
+        )
+        far_local = inv_transform @ np.array([far_world.x, far_world.y, far_world.z, 1.0])
+        direction = Direction3D(
+            far_local[0] - camera_local.x, far_local[1] - camera_local.y, far_local[2] - camera_local.z
+        ).normalize()
+        ray = Ray(origin=camera_local.to_point3d(), direction=direction)
+
+        refracted = self.cornea.refract_ray_inward(ray, 1.0, self.cornea.refractive_index, self.n_aqueous_humor)
+        if refracted is None:
+            return None
+
+        pupil_z = self.pupil.pos_pupil.z
+        if abs(refracted.direction.z) < 1e-9:
+            return None
+        t = (pupil_z - refracted.origin.z) / refracted.direction.z
+        point = refracted.point_at(t)
+        return point.x, point.y
+
+    def backproject_contour(
+        self, boundary: "list[Point2D] | np.ndarray", camera: "Camera | None" = None, apparent: bool = True
+    ) -> np.ndarray:
+        """Physical eye-local pupil-plane boundary (N x 2) for a measured pupil boundary.
+
+        When apparent is True, each image point is back-projected through this eye's cornea (the inverse
+        of the corneal projection) at the eye's current orientation; when False, the boundary is already
+        eye-local pupil-plane points and is returned unchanged. Raises if any apparent point does not
+        pass back through the cornea (no silent dropping).
+
+        Args:
+            boundary: A list of Point2D in the camera image (apparent), or eye-local (x, y) points (N x 2).
+            camera: Camera that produced the boundary, required when apparent is True.
+            apparent: Whether boundary is in the camera image (True) or already eye-local (False).
+
+        """
+        if not apparent:
+            return np.asarray(boundary, dtype=float).reshape(-1, 2)
+        local = [self._backproject_image_point(p, camera) for p in boundary]
+        if any(point is None for point in local):
+            raise ValueError("Pupil contour back-projection failed for one or more boundary points.")
+        return np.array(local, dtype=float)
+
+    def set_pupil_from_contour(
+        self, boundary: "list[Point2D] | np.ndarray", camera: "Camera | None" = None, apparent: bool = True
+    ) -> None:
+        """Replace the pupil with a ContourPupil built from a measured boundary.
+
+        The shape (boundary relative to its center) is taken from the measurement; pupil size and
+        decentration remain governed by set_pupil_diameter and the decentration config, so a later
+        set_pupil_diameter rescales this contour without changing its shape.
+        """
+        contour = self.backproject_contour(boundary, camera, apparent=apparent)
+        self.pupil = create_pupil("contour", self.get_pupil_position(), None, None, contour=contour)
+
+    def register_pupil_shape(
+        self,
+        diameter: float,
+        boundary: "list[Point2D] | np.ndarray",
+        camera: "Camera | None" = None,
+        apparent: bool = False,
+    ) -> None:
+        """Register a per-size physical pupil shape adopted automatically by set_pupil_diameter(diameter).
+
+        The boundary is back-projected to physical eye-local coordinates (when apparent, at the eye's
+        current orientation) and stored under ``diameter`` -- the size set_pupil_diameter is later called
+        with. When the pupil is set to that size, its shape is taken from this boundary; the shape is
+        eye-fixed and rotates with the eye toward any target.
+        """
+        self._size_shapes[float(diameter)] = self.backproject_contour(boundary, camera, apparent=apparent)
 
     def point_within_eyelid(self, p: Position3D) -> bool:
         """Check if a point lies on eyelid skin (not the opening).
@@ -817,6 +951,7 @@ class Eye:
             fovea_alpha_deg=data["fovea_alpha_deg"],
             fovea_beta_deg=data["fovea_beta_deg"],
             pupil_type=data["pupil_type"],
+            axial_length=data["axial_length"],
             pupil_boundary_points=data["pupil_boundary_points"],
             pupil_random_seed=data["pupil_random_seed"],
             eyelid_enabled=data["eyelid_enabled"],
@@ -834,7 +969,6 @@ class Eye:
             eye._current_target_point = Position3D.deserialize(data["current_target_point"])
 
         # Restore anatomical parameters
-        eye.axial_length = data["axial_length"]
         eye.n_aqueous_humor = data["n_aqueous_humor"]
 
         # Restore cornea
