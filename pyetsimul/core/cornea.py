@@ -12,7 +12,7 @@ import numpy as np
 from pyetsimul.log import info, table, warning
 
 from ..geometry import intersections
-from ..optics import reflections, refractions
+from ..optics import reflections, refraction_batch, refractions
 from ..types import Direction3D, IntersectionResult, Point3D, Position3D, Ray, TransformationMatrix, Vector3D
 from .default_configs import CorneaDefaults
 
@@ -108,7 +108,6 @@ class Cornea(ABC):
     ) -> Point3D | None:
         """Finds position of a glint on the corneal surface."""
 
-    @abstractmethod
     def find_refraction(
         self,
         camera_pos: Position3D,
@@ -118,7 +117,33 @@ class Cornea(ABC):
         eye_transform: TransformationMatrix,
         n_aqueous: float,
     ) -> Point3D | None:
-        """Finds position where refraction occurs on the corneal surface."""
+        """Corneal point where ``object_pos`` refracts toward ``camera_pos``, or None.
+
+        A single-point call into ``find_refraction_batch``, which is the one refraction implementation.
+        """
+        points, valid = self.find_refraction_batch(
+            camera_pos,
+            np.array([[object_pos.x, object_pos.y, object_pos.z]]),
+            n_outside,
+            n_cornea,
+            eye_transform,
+            n_aqueous,
+        )
+        if not valid[0]:
+            return None
+        return Point3D(points[0, 0], points[0, 1], points[0, 2])
+
+    @abstractmethod
+    def find_refraction_batch(
+        self,
+        camera_pos: Position3D,
+        object_points: np.ndarray,
+        n_outside: float,
+        n_cornea: float,
+        eye_transform: TransformationMatrix,
+        n_aqueous: float,
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Corneal points where ``(N, 3)`` object points refract toward ``camera_pos``; returns (points, valid)."""
 
     def refract_ray_inward(self, ray: Ray, n_outside: float, n_cornea: float, n_aqueous: float) -> Ray | None:
         """Trace a ray arriving from the air inward through the cornea.
@@ -389,36 +414,37 @@ class SphericalCornea(Cornea):
         world_center = Position3D.from_array(world_center_homogeneous)
         return reflections.find_reflection_sphere(light_pos, camera_pos, world_center, self.anterior_radius)
 
-    def find_refraction(
+    def find_refraction_batch(
         self,
         camera_pos: Position3D,
-        object_pos: Position3D,
+        object_points: np.ndarray,
         n_outside: float,
         n_cornea: float,
         eye_transform: TransformationMatrix,
         n_aqueous: float,
-    ) -> Point3D | None:
-        """Finds position where refraction occurs on the spherical corneal surface.
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Corneal points where ``(N, 3)`` object points refract toward the camera; returns (points, valid).
 
-        When use_posterior_surface is enabled, both the posterior (aqueous->cornea) and anterior
-        (cornea->air) spherical surfaces refract the ray.
+        Spherical surfaces are searched in world coordinates; invalid rows hold NaN.
         """
-        world_center = Position3D.from_array(eye_transform @ np.array(self.center))
+        et = np.asarray(eye_transform)
+        camera = np.array([camera_pos.x, camera_pos.y, camera_pos.z])
+        world_center = (et @ np.array(self.center))[:3]
         if self.use_posterior_surface:
-            world_posterior_center = Position3D.from_array(eye_transform @ np.array(self.get_posterior_center()))
-            return refractions.find_refraction_dual_sphere(
-                camera_pos,
-                object_pos,
+            world_posterior = (et @ np.array(self.get_posterior_center()))[:3]
+            return refraction_batch.find_refraction_dual_sphere_batch(
+                camera,
+                object_points,
                 world_center,
                 self.anterior_radius,
-                world_posterior_center,
+                world_posterior,
                 self.posterior_radius,
                 n_outside,
                 n_cornea,
                 n_aqueous,
             )
-        return refractions.find_refraction_sphere(
-            camera_pos, object_pos, world_center, self.anterior_radius, n_outside, n_cornea
+        return refraction_batch.find_refraction_sphere_batch(
+            camera, object_points, world_center, self.anterior_radius, n_outside, n_cornea
         )
 
     def serialize(self) -> dict:
@@ -647,34 +673,36 @@ class ConicCornea(Cornea):
         world_glint = eye_transform @ np.array([local_glint.x, local_glint.y, local_glint.z, 1.0])
         return Point3D(world_glint[0], world_glint[1], world_glint[2])
 
-    def find_refraction(
+    def find_refraction_batch(
         self,
         camera_pos: Position3D,
-        object_pos: Position3D,
+        object_points: np.ndarray,
         n_outside: float,
         n_cornea: float,
         eye_transform: TransformationMatrix,
         n_aqueous: float,
-    ) -> Point3D | None:
-        """Finds position where refraction occurs on the conic corneal surface.
+    ) -> tuple[np.ndarray, np.ndarray]:
+        """Corneal points where ``(N, 3)`` object points refract toward the camera; returns (points, valid).
 
-        Transforms positions into eye-local coordinates where the conic axis is aligned with the Z-axis,
-        runs the refraction solver, then transforms the result back to world coordinates. When
-        use_posterior_surface is enabled, both the posterior (aqueous->cornea) and anterior (cornea->air)
-        conic surfaces refract the ray.
+        Camera and objects are taken to eye-local coordinates (conic axis on Z), all points are solved
+        together, and the results are returned to world. Invalid rows hold NaN.
         """
-        inv_transform = np.linalg.inv(eye_transform)
-        local_camera = Position3D.from_array(inv_transform @ np.array([camera_pos.x, camera_pos.y, camera_pos.z, 1.0]))
-        local_object = Position3D.from_array(inv_transform @ np.array([object_pos.x, object_pos.y, object_pos.z, 1.0]))
-
+        et = np.asarray(eye_transform)
+        inv = np.linalg.inv(et)
+        cam_local = (inv @ np.array([camera_pos.x, camera_pos.y, camera_pos.z, 1.0]))[:3]
+        homog = np.column_stack([object_points, np.ones(len(object_points))])
+        obj_local = (homog @ inv.T)[:, :3]
+        center = np.array([self.center.x, self.center.y, self.center.z])
         if self.use_posterior_surface:
-            local_refraction = refractions.find_refraction_dual_conic(
-                local_camera,
-                local_object,
-                self.center,
+            pc = self.get_posterior_center()
+            posterior = np.array([pc.x, pc.y, pc.z])
+            local_points, valid = refraction_batch.find_refraction_dual_conic_batch(
+                cam_local,
+                obj_local,
+                center,
                 self.anterior_radius,
                 self.anterior_k,
-                self.get_posterior_center(),
+                posterior,
                 self.posterior_radius,
                 self.posterior_k,
                 n_outside,
@@ -682,14 +710,12 @@ class ConicCornea(Cornea):
                 n_aqueous,
             )
         else:
-            local_refraction = refractions.find_refraction_conic(
-                local_camera, local_object, self.center, self.anterior_radius, self.anterior_k, n_outside, n_cornea
+            local_points, valid = refraction_batch.find_refraction_conic_batch(
+                cam_local, obj_local, center, self.anterior_radius, self.anterior_k, n_outside, n_cornea
             )
-        if local_refraction is None:
-            return None
-
-        world_refraction = eye_transform @ np.array([local_refraction.x, local_refraction.y, local_refraction.z, 1.0])
-        return Point3D(world_refraction[0], world_refraction[1], world_refraction[2])
+        homog_out = np.column_stack([local_points, np.ones(len(local_points))])
+        world = (homog_out @ et.T)[:, :3]
+        return np.where(valid[:, None], world, np.nan), valid
 
     def serialize(self) -> dict:
         """Serialize to dictionary representation."""

@@ -710,6 +710,32 @@ class Eye:
             return True
         return not self.point_within_eyelid(p)
 
+    def point_within_cornea_batch(self, points: np.ndarray) -> np.ndarray:
+        """Whether each of ``(N, 3)`` world points lies within the corneal boundary; returns an ``(N,)`` mask.
+
+        Carries every point into eye coordinates at once and checks its projected depth from the apex along
+        the apex-to-centre axis against the corneal depth. NaN rows (no refraction) fall through as False.
+        """
+        inv = np.linalg.inv(np.asarray(self.trans))
+        local = (np.column_stack([points, np.ones(len(points))]) @ inv.T)[:, :3]
+        apex = self.cornea.get_apex_position()
+        center = self.cornea.center
+        axis = np.array([center.x - apex.x, center.y - apex.y, center.z - apex.z])
+        diff = local - np.array([apex.x, apex.y, apex.z])
+        projection = diff @ axis / np.linalg.norm(axis)
+        return projection < self.cornea.get_corneal_depth()
+
+    def point_on_visible_cornea_batch(self, points: np.ndarray) -> np.ndarray:
+        """Whether each of ``(N, 3)`` world points is within the cornea and not occluded by the eyelid."""
+        within = self.point_within_cornea_batch(points)
+        if self.eyelid is None:
+            return within
+        # Eyelid present (rare): check occlusion only for the within-cornea points.
+        for i in np.nonzero(within)[0]:
+            if self.point_within_eyelid(Position3D(points[i, 0], points[i, 1], points[i, 2])):
+                within[i] = False
+        return within
+
     @property
     def fovea_position(self) -> Position3D:
         """Calculate the 3D position of the fovea on the retinal surface.
@@ -794,14 +820,17 @@ class Eye:
         pupil_world = pupil_data.boundary_points
 
         if use_refraction:
-            # Apply refraction: for each pupil point, find where it appears due to corneal refraction
-            refracted_points: list[Position3D] = []
-            for i in range(pupil_world.shape[1]):
-                pupil_point = Position3D.from_array(pupil_world[:, i])
-                refracted_point = self.find_refracted_position(camera.position, pupil_point)
-                if refracted_point is not None:
-                    # Convert Point3D result to Position3D for camera projection
-                    refracted_points.append(refracted_point)
+            # Refract the whole pupil boundary at once (vectorised), then keep the points that land on the
+            # visible cornea -- equivalent to per-point find_refracted_position, without the Python loop.
+            objects = pupil_world[:3, :].T  # (N, 3) world pupil-boundary points
+            refracted_world, valid = self.cornea.find_refraction_batch(
+                camera.position, objects, 1.0, self.cornea.refractive_index, self.trans, self.n_aqueous_humor
+            )
+            keep = valid & self.point_on_visible_cornea_batch(refracted_world)
+            refracted_points: list[Position3D] = [
+                Position3D(refracted_world[i, 0], refracted_world[i, 1], refracted_world[i, 2])
+                for i in np.nonzero(keep)[0]
+            ]
 
             # Project refracted points to camera image coordinates
             if refracted_points:
