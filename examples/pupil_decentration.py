@@ -28,56 +28,42 @@ def main() -> None:
 
     baseline_diameter = 4.75  # Baseline from Wildenmann & Schaeffel (2013)
 
-    # Four decentration configurations: right eye, individual right, left eye, individual left
+    # (label, decentration config, eye side). The Eye owns which_eye: it resolves the eye-specific
+    # population coefficients and signs the kappa, so the config no longer carries the side.
     eye_configs = [
         (
-            "Right Eye (Population Average)",
-            PupilDecentrationConfig(
-                enabled=True,
-                model_name="wildenmann_2013",
-                baseline_diameter=baseline_diameter,
-                which_eye="right",  # Uses -0.03, -0.04 mm/mm
-            ),
+            "Right Eye (Population Average)",  # uses -0.03, -0.04 mm/mm
+            PupilDecentrationConfig(enabled=True, model_name="wildenmann_2013", baseline_diameter=baseline_diameter),
+            "right",
         ),
         (
             "Right Eye (Individual Variation)",
             PupilDecentrationConfig(
-                enabled=True,
-                model_name="wildenmann_2013",
-                baseline_diameter=baseline_diameter,
-                which_eye="right",
-                use_individual_variation=True,  # Random around right eye mean
+                enabled=True, model_name="wildenmann_2013", baseline_diameter=baseline_diameter,
+                use_individual_variation=True,
             ),
+            "right",
         ),
         (
-            "Right Eye (Direct Slope)",
+            "Right Eye (Direct Slope)",  # subject 5 right eye, Wildenmann & Schaeffel (2013) fig. 3
             PupilDecentrationConfig(
-                enabled=True,
-                model_name="wildenmann_2013",
-                baseline_diameter=baseline_diameter,
-                which_eye="right",
-                x_coeff=0.0903,  # parameters of right eye of Subject 5 in Wildenmann & Schaeffel (2013), see figure 3
-                y_coeff=-0.1794,
+                enabled=True, model_name="wildenmann_2013", baseline_diameter=baseline_diameter,
+                x_coeff=0.0903, y_coeff=-0.1794,
             ),
+            "right",
         ),
         (
-            "Left Eye (Population Average)",
-            PupilDecentrationConfig(
-                enabled=True,
-                model_name="wildenmann_2013",
-                baseline_diameter=baseline_diameter,
-                which_eye="left",  # Uses +0.03, -0.05 mm/mm
-            ),
+            "Left Eye (Population Average)",  # uses +0.03, -0.05 mm/mm
+            PupilDecentrationConfig(enabled=True, model_name="wildenmann_2013", baseline_diameter=baseline_diameter),
+            "left",
         ),
         (
             "Left Eye (Individual Variation)",
             PupilDecentrationConfig(
-                enabled=True,
-                model_name="wildenmann_2013",
-                baseline_diameter=baseline_diameter,
-                which_eye="left",
-                use_individual_variation=True,  # Random around left eye mean
+                enabled=True, model_name="wildenmann_2013", baseline_diameter=baseline_diameter,
+                use_individual_variation=True,
             ),
+            "left",
         ),
     ]
 
@@ -86,8 +72,9 @@ def main() -> None:
 
     # Print coefficients for reference
     print("Decentration coefficients:")
-    for config_name, config in eye_configs:
-        # Get model parameters to show the actual coefficients being used
+    for config_name, config, which_eye in eye_configs:
+        # resolve_for_eye fills the eye-specific population coefficients so they can be printed
+        config.resolve_for_eye(which_eye)
         params = config.get_model_params()
         if params and "x_coeff" in params:
             print(f"  {config_name}: x_coeff={params['x_coeff']:.6f}, y_coeff={params['y_coeff']:.6f}")
@@ -95,12 +82,12 @@ def main() -> None:
             print(f"  {config_name}: No coefficients available")
     print()
 
-    for row, (config_name, config) in enumerate(eye_configs):
+    for row, (config_name, config, which_eye) in enumerate(eye_configs):
         for col, (size_name, diameter) in enumerate(pupil_sizes):
             ax = axes[row, col]
 
             # Create eye with current decentration config
-            eye = Eye(pupil_type="elliptical", pupil_boundary_points=100, decentration_config=config)
+            eye = Eye(pupil_type="elliptical", pupil_boundary_points=100, decentration_config=config, which_eye=which_eye)
 
             # Create reference eye without decentration for comparison
             ref_eye = Eye(pupil_type="elliptical", pupil_boundary_points=100)

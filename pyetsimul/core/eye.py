@@ -48,8 +48,11 @@ class Eye:
         default_factory=SphericalCornea
     )  # Spherical cornea object by default
     fovea_displacement: bool = True
-    fovea_alpha_deg: float = EyeAnatomyDefaults.FOVEA_ALPHA_DEG
+    fovea_alpha_deg: float = EyeAnatomyDefaults.FOVEA_ALPHA_DEG  # horizontal fovea angle magnitude; sign from which_eye
     fovea_beta_deg: float = EyeAnatomyDefaults.FOVEA_BETA_DEG
+    # "left" or "right": the fovea is temporal in both eyes, so the horizontal angle flips sign between them,
+    # and the population pupil-decentration coefficients are mirrored. Drives both effects.
+    which_eye: str = "right"
     axial_length: float = EyeAnatomyDefaults.AXIAL_LENGTH  # Total axial length of eye (mm)
     pupil_type: str = "elliptical"  # Pupil type: "elliptical" (default), "realistic"
     pupil_boundary_points: int | None = None  # Number of points for pupil boundary (uses pupil default if None)
@@ -157,6 +160,8 @@ class Eye:
 
         # Initialize pupil decentration if enabled
         if self.decentration_config.enabled:
+            # Fill the eye-specific population coefficients (no-op if they were given explicitly)
+            self.decentration_config.resolve_for_eye(self.which_eye)
             # Set baseline diameter to current pupil diameter
             if self.decentration_config.baseline_diameter is None:
                 self.decentration_config.baseline_diameter = self.get_pupil_diameter()
@@ -165,6 +170,13 @@ class Eye:
 
         # Capture the rest placement (globe centre) that the gaze-dependent rotation centre pivots about.
         self._placement = self.position
+
+    @property
+    def _signed_alpha_rad(self) -> float:
+        """Horizontal fovea angle in radians, signed by eye side. The fovea is temporal in both eyes, so the
+        angle points the opposite horizontal way for the left eye; ``fovea_alpha_deg`` carries the magnitude.
+        """
+        return np.radians((-1.0 if self.which_eye == "left" else 1.0) * self.fovea_alpha_deg)
 
     @property
     def orientation(self) -> RotationMatrix:
@@ -244,7 +256,7 @@ class Eye:
 
         # Eye-local visual axis direction (unit, pointing outward toward cornea)
         if self.fovea_displacement:
-            alpha = self.fovea_alpha_deg * np.pi / 180.0
+            alpha = self._signed_alpha_rad
             beta = self.fovea_beta_deg * np.pi / 180.0
             v_local = np.array(
                 [
@@ -752,7 +764,7 @@ class Eye:
 
         if self.fovea_displacement:
             # Convert displacement angles to radians
-            alpha = self.fovea_alpha_deg * np.pi / 180.0  # Horizontal (temporal) displacement
+            alpha = self._signed_alpha_rad  # horizontal (temporal); sign set by eye side
             beta = self.fovea_beta_deg * np.pi / 180.0  # Vertical (upward) displacement
 
             # Calculate fovea position with displacement using spherical coordinates
@@ -961,6 +973,7 @@ class Eye:
             "fovea_displacement": bool(self.fovea_displacement),
             "fovea_alpha_deg": float(self.fovea_alpha_deg),
             "fovea_beta_deg": float(self.fovea_beta_deg),
+            "which_eye": self.which_eye,
             # Pupil configuration
             "pupil_type": self.pupil_type,
             "pupil_boundary_points": self.pupil_boundary_points,
@@ -1003,6 +1016,7 @@ class Eye:
             fovea_displacement=data["fovea_displacement"],
             fovea_alpha_deg=data["fovea_alpha_deg"],
             fovea_beta_deg=data["fovea_beta_deg"],
+            which_eye=data.get("which_eye", "right"),
             pupil_type=data["pupil_type"],
             axial_length=data["axial_length"],
             pupil_boundary_points=data["pupil_boundary_points"],

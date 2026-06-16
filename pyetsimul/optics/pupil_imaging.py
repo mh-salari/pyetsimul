@@ -273,36 +273,43 @@ def image_jacobian(
     return np.array(columns).T
 
 
+def _safe_ellipse_center(points: np.ndarray) -> tuple[float, float] | None:
+    """Centre (x, y) of the least-squares ellipse, or None when the fit is degenerate.
+
+    scikit-image's conic fit can raise or return a complex angle for near-collinear boundary points; in
+    that case the caller falls back to the boundary centroid.
+    """
+    try:
+        ellipse = EllipseModel.from_estimate(points)
+        if not ellipse:
+            return None
+        center_x, center_y = float(ellipse.center[0]), float(ellipse.center[1])
+    except (TypeError, ValueError, np.linalg.LinAlgError):
+        return None
+    if not (np.isfinite(center_x) and np.isfinite(center_y)):
+        return None
+    return center_x, center_y
+
+
 def _fit_ellipse_center(pupil_boundary: np.ndarray) -> Point2D | None:
     """Fit ellipse to pupil boundary points and return center.
 
-    Uses least-squares ellipse fitting for robust center estimation.
-    Falls back to centroid if scikit-image not available.
+    Uses least-squares ellipse fitting for robust center estimation, falling back to the boundary
+    centroid when the fit is degenerate.
 
     Args:
         pupil_boundary: 2xN numpy array representing pupil boundary points
 
     Returns:
-        Point2D with center coordinates, or None if fitting fails
+        Point2D with center coordinates, or None if there are too few points
 
     """
     if pupil_boundary.shape[1] < 5:
         return None
-
-    # Convert 2xN array to Nx2 array for ellipse fitting
-    points = pupil_boundary.T
-    ellipse = EllipseModel.from_estimate(points)
-
-    if ellipse:
-        # Extract center coordinates
-        center_x, center_y = ellipse.center
-        return Point2D(x=float(center_x), y=float(center_y))
-    # Fallback to simple centroid if ellipse fitting fails
-    center_x = np.mean(pupil_boundary[0, :])
-    center_y = np.mean(pupil_boundary[1, :])
-    return Point2D(x=float(center_x), y=float(center_y))
-
-    return None
+    center = _safe_ellipse_center(pupil_boundary.T)
+    if center is not None:
+        return Point2D(x=center[0], y=center[1])
+    return Point2D(x=float(np.mean(pupil_boundary[0, :])), y=float(np.mean(pupil_boundary[1, :])))
 
 
 def _fit_convex_hull_center(pupil_boundary: np.ndarray) -> Point2D | None:
@@ -325,10 +332,9 @@ def _fit_convex_hull_center(pupil_boundary: np.ndarray) -> Point2D | None:
     hull_points = points[ConvexHull(points).vertices]
     if len(hull_points) < 5:
         return None
-    ellipse = EllipseModel.from_estimate(hull_points)
-    if ellipse:
-        center_x, center_y = ellipse.center
-        return Point2D(x=float(center_x), y=float(center_y))
+    center = _safe_ellipse_center(hull_points)
+    if center is not None:
+        return Point2D(x=center[0], y=center[1])
     return Point2D(x=float(np.mean(hull_points[:, 0])), y=float(np.mean(hull_points[:, 1])))
 
 
