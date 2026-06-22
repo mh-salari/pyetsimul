@@ -19,8 +19,8 @@ import numpy as np
 
 # A surface is (center (3,), radius, conic constant) -- the conic constant is None for a sphere.
 _Surface = tuple[np.ndarray, float, float | None]
-# Two-surface stack: posterior, anterior, then the three refractive indices (aqueous, cornea, outside).
-_DualSurfaces = tuple[_Surface, _Surface, float, float, float]
+# A refracting stack from the object side outward: each entry is (surface_params, refractive index behind it).
+_SurfaceStack = list[tuple[tuple, float]]
 
 _EPS_T = 1e-12  # smallest ray parameter accepted as a non-trivial surface crossing
 _FD = 1e-7  # finite-difference step for the Newton Jacobians
@@ -50,30 +50,46 @@ def _cross(a: np.ndarray, b: np.ndarray) -> np.ndarray:
 
 
 def _conic_quadratic(
-    origins: np.ndarray, dirs: np.ndarray, center: np.ndarray, radius: float, k: float
+    origins: np.ndarray,
+    dirs: np.ndarray,
+    center: np.ndarray,
+    radius: float,
+    k: float,
+    axx: float = 1.0,
+    ayy: float = 1.0,
+    axy: float = 0.0,
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Coefficients (a, b, c) and discriminant of the ray-conic intersection quadratic for ``(N, 3)`` rays.
 
-    The rotationally symmetric conic with apex curvature ``radius`` (R) and conic constant ``k`` is
-    ``x^2 + y^2 + (1 + k) z^2 - 2 R z = 0`` about an axis through ``center`` along +z (its centre of
-    curvature sits at z = center_z - R / (1 + k)). Substituting a ray ``origin + t dir`` gives
-    ``a t^2 + b t + c = 0``; the discriminant ``b^2 - 4 a c`` is non-negative where the ray meets it.
+    The conic with apex curvature ``radius`` (R) and conic constant ``k`` is
+    ``axx x^2 + ayy y^2 + 2 axy x y + (1 + k) z^2 - 2 R z = 0`` about an axis through ``center`` along +z (its
+    centre of curvature sits at z = center_z - R / (1 + k)). The lateral coefficients default to
+    ``axx = ayy = 1, axy = 0`` (rotationally symmetric); other values give a toric/astigmatic surface whose two
+    meridian apex radii are R/axx and R/ayy, with the cross term setting the astigmatic axis. Substituting a ray
+    ``origin + t dir`` gives ``a t^2 + b t + c = 0``; the discriminant is non-negative where the ray meets it.
     """
     cz = center[2] - radius / (1.0 + k)
     ox, oy, oz = origins[:, 0] - center[0], origins[:, 1] - center[1], origins[:, 2] - cz
     dx, dy, dz = dirs[:, 0], dirs[:, 1], dirs[:, 2]
-    a = dx * dx + dy * dy + (1.0 + k) * dz * dz
-    b = 2.0 * (ox * dx + oy * dy + (1.0 + k) * oz * dz - radius * dz)
-    c = ox * ox + oy * oy + (1.0 + k) * oz * oz - 2.0 * radius * oz
+    a = axx * dx * dx + ayy * dy * dy + 2.0 * axy * dx * dy + (1.0 + k) * dz * dz
+    b = 2.0 * (axx * ox * dx + ayy * oy * dy + axy * (ox * dy + oy * dx) + (1.0 + k) * oz * dz - radius * dz)
+    c = axx * ox * ox + ayy * oy * oy + 2.0 * axy * ox * oy + (1.0 + k) * oz * oz - 2.0 * radius * oz
     return a, b, c, b * b - 4.0 * a * c
 
 
 def _intersect_ray_conic(
-    origins: np.ndarray, dirs: np.ndarray, center: np.ndarray, radius: float, k: float
+    origins: np.ndarray,
+    dirs: np.ndarray,
+    center: np.ndarray,
+    radius: float,
+    k: float,
+    axx: float = 1.0,
+    ayy: float = 1.0,
+    axy: float = 0.0,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Nearest non-negative-t hit of each ray with the conic: the first surface crossing. Returns (points, valid)."""
     d = _unit(dirs)
-    a, b, _c, disc = _conic_quadratic(origins, d, center, radius, k)
+    a, b, _c, disc = _conic_quadratic(origins, d, center, radius, k, axx, ayy, axy)
     ok = disc >= 0.0
     sq = np.sqrt(np.where(ok, disc, 0.0))
     t1 = (-b - sq) / (2.0 * a)
@@ -85,14 +101,22 @@ def _intersect_ray_conic(
     return origins + t[:, None] * d, valid
 
 
-def _point_on_conic(center: np.ndarray, dirs: np.ndarray, radius: float, k: float) -> tuple[np.ndarray, np.ndarray]:
+def _point_on_conic(
+    center: np.ndarray,
+    dirs: np.ndarray,
+    radius: float,
+    k: float,
+    axx: float = 1.0,
+    ayy: float = 1.0,
+    axy: float = 0.0,
+) -> tuple[np.ndarray, np.ndarray]:
     """Conic surface point reached from ``center`` along each direction in ``dirs``. Returns (points, valid).
 
     A ray from the conic centre crosses the surface twice; the point on the +dirs side is the larger root.
     """
     d = _unit(dirs)
     origins = np.broadcast_to(center, d.shape)
-    a, b, _c, disc = _conic_quadratic(origins, d, center, radius, k)
+    a, b, _c, disc = _conic_quadratic(origins, d, center, radius, k, axx, ayy, axy)
     ok = disc >= 0.0
     sq = np.sqrt(np.where(ok, disc, 0.0))
     t1 = (-b + sq) / (2.0 * a)
@@ -104,16 +128,26 @@ def _point_on_conic(center: np.ndarray, dirs: np.ndarray, radius: float, k: floa
     return center + t[:, None] * d, valid
 
 
-def _conic_normal(points: np.ndarray, center: np.ndarray, radius: float, k: float) -> np.ndarray:
+def _conic_normal(
+    points: np.ndarray,
+    center: np.ndarray,
+    radius: float,
+    k: float,
+    axx: float = 1.0,
+    ayy: float = 1.0,
+    axy: float = 0.0,
+) -> np.ndarray:
     """Outward unit normals at ``(N, 3)`` conic-surface points.
 
-    The normal is the gradient of the conic's implicit function ``f = x^2 + y^2 + (1 + k) z^2 - 2 R z``,
-    i.e. ``(2 x, 2 y, 2 (1 + k) z - 2 R)`` in surface-local coordinates. At the apex the gradient vanishes,
-    so a degenerate normal falls back to the axis direction +z.
+    The normal is the gradient of the conic's implicit function
+    ``f = axx x^2 + ayy y^2 + 2 axy x y + (1 + k) z^2 - 2 R z``, i.e.
+    ``(2 (axx x + axy y), 2 (ayy y + axy x), 2 (1 + k) z - 2 R)`` in surface-local coordinates. At the apex the
+    gradient vanishes, so a degenerate normal falls back to the axis direction +z.
     """
     cz = center[2] - radius / (1.0 + k)
-    nx = 2.0 * (points[:, 0] - center[0])
-    ny = 2.0 * (points[:, 1] - center[1])
+    ox, oy = points[:, 0] - center[0], points[:, 1] - center[1]
+    nx = 2.0 * (axx * ox + axy * oy)
+    ny = 2.0 * (ayy * oy + axy * ox)
     nz = 2.0 * (1.0 + k) * (points[:, 2] - cz) - 2.0 * radius
     normal = np.stack([nx, ny, nz], axis=-1)
     mag = np.linalg.norm(normal, axis=-1, keepdims=True)
@@ -174,43 +208,48 @@ def _refract_direction(
 # ---------------------------------------------------------------------------
 
 
-def _trace_dual(
-    launch: np.ndarray, objects: np.ndarray, surfaces: _DualSurfaces, conic: bool
+def _trace_stack(
+    launch: np.ndarray, objects: np.ndarray, stack: _SurfaceStack, n_start: float, conic: bool
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
-    """Trace ``(N, 3)`` launch directions from ``objects`` out through both corneal surfaces.
+    """Trace ``(N, 3)`` launch directions from ``objects`` out through a stack of refracting surfaces.
 
-    Each ray refracts first at the posterior surface (aqueous -> cornea) and then at the anterior surface
-    (cornea -> air). Returns (anterior exit points, exit directions, valid). ``conic`` selects conic vs
-    spherical primitives.
+    ``stack`` is a list of ``(surface_params, n_after)`` pairs ordered from the object side outward, and
+    ``n_start`` is the refractive index of the medium the objects sit in. Each surface refracts the ray
+    from the current medium into ``n_after``. A two-surface cornea is ``[(posterior, n_cornea), (anterior,
+    n_air)]``; adding a tear film is just one more entry. Returns (final exit points, exit directions,
+    valid); ``conic`` selects conic vs spherical primitives.
     """
-    post, ant, n_aq, n_cor, n_out = surfaces
-    d = _unit(launch)
-    if conic:
-        pp, v1 = _intersect_ray_conic(objects, d, *post)
-        pn = _conic_normal(pp, *post)
-    else:
-        pp, v1 = _intersect_ray_sphere(objects, d, post[0], post[1])
-        pn = _sphere_normal(pp, post[0])
-    cdir, v2 = _refract_direction(d, pn, n_aq, n_cor)
-    if conic:
-        ap, v3 = _intersect_ray_conic(pp, cdir, *ant)
-        an = _conic_normal(ap, *ant)
-    else:
-        ap, v3 = _intersect_ray_sphere(pp, cdir, ant[0], ant[1])
-        an = _sphere_normal(ap, ant[0])
-    edir, v4 = _refract_direction(cdir, an, n_cor, n_out)
-    return ap, edir, v1 & v2 & v3 & v4
+    direction = _unit(launch)
+    point = objects
+    n_from = n_start
+    valid = np.ones(objects.shape[0], dtype=bool)
+    for surface, n_to in stack:
+        if conic:
+            hit, ok_hit = _intersect_ray_conic(point, direction, *surface)
+            normal = _conic_normal(hit, *surface)
+        else:
+            hit, ok_hit = _intersect_ray_sphere(point, direction, surface[0], surface[1])
+            normal = _sphere_normal(hit, surface[0])
+        direction, ok_refraction = _refract_direction(direction, normal, n_from, n_to)
+        point, n_from, valid = hit, n_to, valid & ok_hit & ok_refraction
+    return point, direction, valid
 
 
-def _solve_two_surface_launch(
-    camera: np.ndarray, objects: np.ndarray, surfaces: _DualSurfaces, conic: bool, iters: int = 40, tol: float = 1e-9
+def _solve_launch(
+    camera: np.ndarray,
+    objects: np.ndarray,
+    stack: _SurfaceStack,
+    n_start: float,
+    conic: bool,
+    iters: int = 40,
+    tol: float = 1e-9,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Find, for every object, the launch direction whose doubly refracted ray reaches the camera.
+    """Find, for every object, the launch direction whose refracted ray reaches the camera.
 
-    Two surfaces have no closed-form refraction point, so the launch direction is searched. It is
-    parameterised by a 2D offset in the plane around the straight object->camera line (basis perp_a,
+    A multi-surface refraction has no closed-form refraction point, so the launch direction is searched.
+    It is parameterised by a 2D offset in the plane around the straight object->camera line (basis perp_a,
     perp_b); damped Newton with a finite-difference Jacobian drives the exit ray's perpendicular miss to
-    the camera to zero. Returns (anterior exit points, valid); unconverged rows hold NaN.
+    the camera to zero. Returns (exit points on the last surface, valid); unconverged rows hold NaN.
     """
     n = objects.shape[0]
     base = _unit(camera[None, :] - objects)
@@ -224,12 +263,12 @@ def _solve_two_surface_launch(
 
     def trace(offset: np.ndarray) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
         launch = base + offset[:, 0:1] * perp_a + offset[:, 1:2] * perp_b
-        return _trace_dual(launch, objects, surfaces, conic)
+        return _trace_stack(launch, objects, stack, n_start, conic)
 
     def residual(offset: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
         # Two components of the exit ray's closest-approach miss to the camera, in a frame fixed to the ray.
-        ap, edir, ok = trace(offset)
-        rel = camera[None, :] - ap
+        ep, edir, ok = trace(offset)
+        rel = camera[None, :] - ep
         miss = rel - np.einsum("ij,ij->i", rel, edir)[:, None] * edir
         across = _unit(_cross(edir, perp_a))
         r = np.stack([np.einsum("ij,ij->i", miss, across), np.einsum("ij,ij->i", miss, _cross(edir, across))], -1)
@@ -262,11 +301,11 @@ def _solve_two_surface_launch(
         delta[solvable, 1] = -d1[solvable]
         offset += delta
 
-    ap, _edir, ok = trace(offset)
+    ep, _edir, ok = trace(offset)
     r, _ = residual(offset)
     valid = ok & (np.linalg.norm(r, axis=-1) < 1e-6)
-    ap = np.where(valid[:, None], ap, np.nan)
-    return ap, valid
+    ep = np.where(valid[:, None], ep, np.nan)
+    return ep, valid
 
 
 def find_refraction_dual_conic_batch(
@@ -281,10 +320,53 @@ def find_refraction_dual_conic_batch(
     n_outside: float,
     n_cornea: float,
     n_aqueous: float,
+    ant_axx: float = 1.0,
+    ant_ayy: float = 1.0,
+    ant_axy: float = 0.0,
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Anterior exit points of the two-surface conic refraction for ``(N, 3)`` object points."""
-    surfaces = ((post_center, post_radius, post_k), (ant_center, ant_radius, ant_k), n_aqueous, n_cornea, n_outside)
-    return _solve_two_surface_launch(camera, objects, surfaces, conic=True)
+    """Anterior exit points of the two-surface conic refraction for ``(N, 3)`` object points.
+
+    ``ant_axx``/``ant_ayy``/``ant_axy`` make the anterior surface toric (astigmatic); the defaults keep it
+    rotationally symmetric. The posterior surface stays symmetric.
+    """
+    stack = [
+        ((post_center, post_radius, post_k), n_cornea),
+        ((ant_center, ant_radius, ant_k, ant_axx, ant_ayy, ant_axy), n_outside),
+    ]
+    return _solve_launch(camera, objects, stack, n_aqueous, conic=True)
+
+
+def find_refraction_triple_conic_batch(
+    camera: np.ndarray,
+    objects: np.ndarray,
+    ant_center: np.ndarray,
+    ant_radius: float,
+    ant_k: float,
+    post_center: np.ndarray,
+    post_radius: float,
+    post_k: float,
+    tear_center: np.ndarray,
+    n_outside: float,
+    n_cornea: float,
+    n_aqueous: float,
+    n_tears: float,
+    ant_axx: float = 1.0,
+    ant_ayy: float = 1.0,
+    ant_axy: float = 0.0,
+) -> tuple[np.ndarray, np.ndarray]:
+    """Exit points of the three-surface conic refraction with a tear film, for ``(N, 3)`` object points.
+
+    Surfaces from the aqueous outward: posterior (aqueous -> cornea), anterior (cornea -> tears), and the
+    tear film (tears -> air). The tear surface has the same shape as the anterior with its centre at
+    ``tear_center`` (the anterior centre shifted forward by the tear-film thickness).
+    """
+    shape = (ant_radius, ant_k, ant_axx, ant_ayy, ant_axy)
+    stack = [
+        ((post_center, post_radius, post_k), n_cornea),
+        ((ant_center, *shape), n_tears),
+        ((tear_center, *shape), n_outside),
+    ]
+    return _solve_launch(camera, objects, stack, n_aqueous, conic=True)
 
 
 def find_refraction_dual_sphere_batch(
@@ -299,8 +381,8 @@ def find_refraction_dual_sphere_batch(
     n_aqueous: float,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Anterior exit points of the two-surface spherical refraction for ``(N, 3)`` object points."""
-    surfaces = ((post_center, post_radius, None), (ant_center, ant_radius, None), n_aqueous, n_cornea, n_outside)
-    return _solve_two_surface_launch(camera, objects, surfaces, conic=False)
+    stack = [((post_center, post_radius), n_cornea), ((ant_center, ant_radius), n_outside)]
+    return _solve_launch(camera, objects, stack, n_aqueous, conic=False)
 
 
 # ---------------------------------------------------------------------------
