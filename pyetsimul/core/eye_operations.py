@@ -51,8 +51,8 @@ def look_at_target(eye: "Eye", target_position: Position3D) -> None:
     # position, so it is computed once and reused across the re-pivot iterations.
     if eye.fovea_displacement:
         # Local visual axis direction (unit), pointing anteriorly (toward cornea), derived from the
-        # fovea displacement angles (alpha: horizontal, beta: vertical).
-        alpha = eye.fovea_alpha_deg * np.pi / 180.0
+        # fovea displacement angles (alpha: horizontal, signed by eye side; beta: vertical).
+        alpha = eye._signed_alpha_rad
         beta = eye.fovea_beta_deg * np.pi / 180.0
         v_local = np.array([
             -np.sin(alpha) * np.cos(beta),
@@ -103,7 +103,7 @@ def look_at_target_optical_then_kappa(eye: "Eye", target_position: Position3D) -
 
         # Then apply post-rotations from foveal displacement (kappa) if enabled.
         if eye.fovea_displacement:
-            alpha = eye.fovea_alpha_deg * np.pi / 180.0
+            alpha = eye._signed_alpha_rad  # signed by eye side: the fovea is temporal in both eyes
             beta = eye.fovea_beta_deg * np.pi / 180.0
 
             rotation_matrix_x = np.array([

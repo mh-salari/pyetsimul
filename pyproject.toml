@@ -169,6 +169,7 @@ allow-dunder-method-names = ["__array__", "__array_ufunc__"]
 
 [tool.ruff.lint.per-file-ignores]
 "unit_tests/**/*.py" = ["S101", "SLF001"]  # tests assert (S101) and reach private helpers to recheck the math
+"pyetsimul/core/eye_operations.py" = ["SLF001"]  # Eye's behaviour as free functions; reaches its signed-kappa helper
 "examples/run_all_examples.py" = ["S404", "S603"]
 "pyetsimul/log.py" = ["ANN401"]
 "docs/conf.py" = ["INP001"]  # Sphinx config file, not a package member
