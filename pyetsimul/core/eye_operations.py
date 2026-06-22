@@ -146,7 +146,8 @@ def _apply_orientation(
         new_orientation = orientation_from(eye.position)
         eye.orientation = RotationMatrix(new_orientation, validate_handedness=False)
         return
-    new_orientation, position = _repivot(eye, target_position, orientation_from)
+    repivot = _repivot_fick if eye.rotation_center.fick else _repivot
+    new_orientation, position = repivot(eye, target_position, orientation_from)
     eye.orientation = RotationMatrix(new_orientation, validate_handedness=False)
     # Write the translation directly so the rest placement (used to re-pivot) is not overwritten.
     eye.trans[:3, 3] = position
@@ -191,15 +192,57 @@ def _repivot(
     placement = np.array([eye.placement.x, eye.placement.y, eye.placement.z], dtype=float)
     rest = np.asarray(eye.rest_orientation, dtype=float)
     apex_to_center = abs(eye.cornea.get_apex_position().z)  # current model centre depth (apex -> globe centre)
-    depth = eye.rotation_center.depth_for(_horizontal_fraction(eye, target_position))
-    # Pivot offset along the optical axis in eye-local coordinates (+z toward the retina, i.e. deeper).
-    offset = np.array([0.0, 0.0, depth - apex_to_center], dtype=float)
+    horizontal_fraction = _horizontal_fraction(eye, target_position)
+    gaze_rest = rest.T @ (np.array([target_position.x, target_position.y, target_position.z], dtype=float) - placement)
+    depth = eye.rotation_center.depth_for(horizontal_fraction, gaze_rest[1])  # gaze_rest[1] >= 0 up, < 0 down
+    lateral_x, lateral_y = eye.rotation_center.lateral_for(horizontal_fraction, eye.which_eye)
+    # Pivot offset in eye-local coordinates: lateral (x nasal-signed, y superior) plus axial (+z deeper).
+    offset = np.array([lateral_x, lateral_y, depth - apex_to_center], dtype=float)
 
     position = placement.copy()
     orientation = rest
     for _ in range(_REPIVOT_MAX_ITERS):
         orientation = np.asarray(orientation_from(Position3D(position[0], position[1], position[2])), dtype=float)
         updated = placement + (rest - orientation) @ offset
+        if np.max(np.abs(updated - position)) < _REPIVOT_TOL:
+            position = updated
+            break
+        position = updated
+    return orientation, position
+
+
+def _repivot_fick(
+    eye: "Eye", _target_position: Position3D, orientation_from: Callable[[Position3D], np.ndarray]
+) -> tuple[np.ndarray, np.ndarray]:
+    """Position via separate Fick rotation centres for azimuth and elevation (gkaModelEye / Aguirre 2019).
+
+    Azimuth rotates about the horizontal (azimuth) centre and elevation about the vertical (elevation)
+    centre, applied sequentially, rather than blending both into one pivot. The orientation is the same
+    Listing-law aiming as the single-pivot path; only the translation differs. With both centres equal this
+    reduces to ``_repivot`` exactly.
+    """
+    placement = np.array([eye.placement.x, eye.placement.y, eye.placement.z], dtype=float)
+    rest = np.asarray(eye.rest_orientation, dtype=float)
+    apex_to_center = abs(eye.cornea.get_apex_position().z)
+    rc = eye.rotation_center
+    nasal = -rc.horizontal_nasal_mm if eye.which_eye == "right" else rc.horizontal_nasal_mm
+    c_azi = np.array([nasal, 0.0, rc.horizontal_depth_mm - apex_to_center], dtype=float)
+    identity = np.eye(3)
+
+    position = placement.copy()
+    orientation = rest
+    for _ in range(_REPIVOT_MAX_ITERS):
+        orientation = np.asarray(orientation_from(Position3D(position[0], position[1], position[2])), dtype=float)
+        fwd = (rest.T @ orientation) @ np.array([0.0, 0.0, -1.0])  # rotated optical axis in the rest frame
+        elev = float(np.arcsin(np.clip(fwd[1], -1.0, 1.0)))  # Fick elevation (about the horizontal axis)
+        azim = float(np.arctan2(-fwd[0], -fwd[2]))  # Fick azimuth (about the vertical axis)
+        # Elevation centre depth follows the gaze-varying vertical centre (up vs down) at the current elevation.
+        c_ele = np.array([0.0, rc.vertical_superior_mm, rc.vertical_depth(elev) - apex_to_center], dtype=float)
+        ca, sa, ce, se = np.cos(azim), np.sin(azim), np.cos(elev), np.sin(elev)
+        r_azi = np.array([[ca, 0.0, sa], [0.0, 1.0, 0.0], [-sa, 0.0, ca]])
+        r_ele = np.array([[1.0, 0.0, 0.0], [0.0, ce, -se], [0.0, se, ce]])
+        t_fick = r_azi @ (identity - r_ele) @ c_ele + (identity - r_azi) @ c_azi  # eye-local translation
+        updated = placement + rest @ t_fick
         if np.max(np.abs(updated - position)) < _REPIVOT_TOL:
             position = updated
             break
