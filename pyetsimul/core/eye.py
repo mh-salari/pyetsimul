@@ -18,7 +18,7 @@ from ..optics.refractions import find_refraction_point
 from ..types import Direction3D, Point2D, Position3D, PupilData, Ray, RotationMatrix, TransformationMatrix
 from .cornea import ConicCornea, SphericalCornea
 from .default_configs import EyeAnatomyDefaults
-from .eye_model import EyeModel
+from .eye_model import EyeModel, get_eye_model
 from .eye_operations import look_at_target, look_at_target_line_of_sight, look_at_target_optical_then_kappa
 from .eyelid import Eyelid, create_eyelid
 from .off_axis_pupil import OffAxisPupilConfig
@@ -45,10 +45,11 @@ class Eye:
     - Listing's law: Eye rotation mechanics for realistic torsion
     """
 
-    # The eye-model specification: cornea, pupil, kappa, rotation geometry and gaze conventions. Default
-    # is a fresh EyeModel() (the "PyEtSimul" model). The model is the single source of truth for every
-    # optical/anatomical parameter; read them as ``self.model.<field>``.
-    model: EyeModel = field(default_factory=EyeModel)
+    # The eye-model specification: cornea, pupil, kappa, rotation geometry and gaze conventions. Accepts an
+    # EyeModel or a registered model name (case-insensitive, e.g. "PyEtSimul"); a name is resolved to its
+    # EyeModel in __post_init__. The model is the single source of truth for every optical/anatomical
+    # parameter; read them as ``self.model.<field>``.
+    model: str | EyeModel = field(default_factory=EyeModel)
     # "left" or "right": identity, not a model property. The fovea is temporal in both eyes, so the
     # horizontal kappa flips sign between them and the pupil-decentration coefficients are mirrored;
     # which_eye applies both signs to the model's unsigned magnitudes.
@@ -85,6 +86,9 @@ class Eye:
         eyes built from one model never mutate each other's geometry. Pupil size is scaled by the corneal
         scaling factor.
         """
+        # Resolve a registered model name (case-insensitive) to its EyeModel.
+        if isinstance(self.model, str):
+            self.model = get_eye_model(self.model)
         model = self.model
 
         # Per-eye working copies of the mutable model components; the model spec stays pristine and shared.

@@ -84,3 +84,32 @@ class EyeModel:
     def copy(self, **overrides: object) -> "EyeModel":
         """Return a copy of this model with the given fields changed (the model itself is frozen)."""
         return replace(self, **overrides)
+
+
+# ---------------------------------------------------------------------------
+# Named eye-model registry
+# ---------------------------------------------------------------------------
+_EYE_MODELS: dict[str, EyeModel] = {}
+
+
+def register_eye_model(name: str, model: EyeModel) -> None:
+    """Register ``model`` under ``name`` so it can be retrieved by name (matched case-insensitively)."""
+    _EYE_MODELS[name] = model
+
+
+def get_eye_model(name: str) -> EyeModel:
+    """Return the eye model registered under ``name`` (matched case-insensitively)."""
+    for registered, model in _EYE_MODELS.items():
+        if registered.casefold() == name.casefold():
+            return model
+    available = ", ".join(_EYE_MODELS) or "(none registered)"
+    raise KeyError(f"Unknown eye model {name!r}; registered models: {available}")
+
+
+def list_eye_models() -> list[str]:
+    """Return the names of the registered eye models, in registration order."""
+    return list(_EYE_MODELS)
+
+
+# The default PyEtSimul eye: the Böhme port plus the added features (a bare ``EyeModel()``).
+register_eye_model("PyEtSimul", EyeModel())
