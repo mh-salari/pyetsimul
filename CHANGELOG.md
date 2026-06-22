@@ -6,6 +6,8 @@ ETRA 2026 paper; this log records everything since.
 
 ## [Unreleased]
 
+## [3.6.0] - 2026-06-22
+
 ### Added
 
 - **Two-surface (posterior) corneal refraction.** The cornea can refract at both its front and back surfaces
