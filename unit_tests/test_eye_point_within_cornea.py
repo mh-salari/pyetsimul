@@ -4,6 +4,7 @@ import numpy as np
 
 from pyetsimul.core.cornea import SphericalCornea
 from pyetsimul.core.eye import Eye
+from pyetsimul.core.eye_model import EyeModel
 from pyetsimul.types.geometry import Position3D, Vector3D
 
 
@@ -82,7 +83,7 @@ def test_custom_eye() -> None:
     r_cornea_custom = 9
     # Create custom cornea with different radius (center=None for auto-positioning)
     custom_cornea = SphericalCornea(anterior_radius=r_cornea_custom)
-    e5 = Eye(cornea=custom_cornea)
+    e5 = Eye(model=EyeModel(cornea=custom_cornea))
     p5 = e5.cornea.get_apex_position()
     expected_p5 = Position3D(0.0, 0.0, -13.906015)
     p5.assert_close(expected_p5, rtol=1e-6, atol=1e-6)

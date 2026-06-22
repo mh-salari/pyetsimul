@@ -5,13 +5,14 @@ import pytest
 
 from pyetsimul.core.camera import Camera
 from pyetsimul.core.eye import Eye
+from pyetsimul.core.eye_model import EyeModel
 from pyetsimul.types import Point2D, Position3D
 
 
 def test_camera_pointed_at_eye() -> None:
     """Test eye pupil image with camera properly pointed at eye using MATLAB reference values."""
     # Create eye and camera
-    e = Eye(fovea_displacement=False)
+    e = Eye(model=EyeModel(fovea_displacement=False))
     c = Camera()
 
     # Position eye at [0, 500mm, 200mm]
@@ -75,7 +76,7 @@ def test_camera_pointed_at_eye() -> None:
 
 def test_output_properties() -> None:
     """Test that output has correct properties when pupil is visible."""
-    e = Eye(fovea_displacement=False)
+    e = Eye(model=EyeModel(fovea_displacement=False))
     c = Camera()
 
     # Basic setup for visible pupil
@@ -106,7 +107,7 @@ def test_output_properties() -> None:
 
 def test_eye_facing_away_from_camera() -> None:
     """Test that method returns None and warns when eye is facing away from camera."""
-    e = Eye(fovea_displacement=False)
+    e = Eye(model=EyeModel(fovea_displacement=False))
     c = Camera()
 
     # Position eye at [0, 500mm, 200mm]
@@ -148,7 +149,7 @@ def test_eye_facing_away_from_camera() -> None:
 
 def test_eye_behind_camera() -> None:
     """Test that method returns None and warns when eye is behind camera."""
-    e = Eye(fovea_displacement=False)
+    e = Eye(model=EyeModel(fovea_displacement=False))
     c = Camera()
 
     # Position camera at origin
@@ -183,7 +184,7 @@ def test_eye_behind_camera() -> None:
 
 def test_eye_rotated_90_degrees() -> None:
     """Test that method returns None when eye is rotated 90 degrees away."""
-    e = Eye(fovea_displacement=False)
+    e = Eye(model=EyeModel(fovea_displacement=False))
     c = Camera()
 
     # Position eye at [0, 500mm, 200mm]

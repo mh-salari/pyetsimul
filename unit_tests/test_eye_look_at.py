@@ -4,6 +4,7 @@ import numpy as np
 import numpy.testing as npt
 
 from pyetsimul.core.eye import Eye
+from pyetsimul.core.eye_model import EyeModel
 from pyetsimul.types import Position3D, RotationMatrix
 
 
@@ -34,7 +35,7 @@ def test_look_at_with_foveal_displacement() -> None:
 
 def test_look_at_with_no_foveal_displacement() -> None:
     """Test look_at with foveal displacement disabled."""
-    e = Eye(fovea_displacement=False)  # Disable foveal displacement
+    e = Eye(model=EyeModel(fovea_displacement=False))  # Disable foveal displacement
     target = Position3D(x=12000, y=-7000, z=-30000)
     initial_position = np.array(e.position)
 

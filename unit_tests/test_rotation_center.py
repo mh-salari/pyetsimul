@@ -4,6 +4,7 @@ import numpy as np
 import numpy.testing as npt
 
 from pyetsimul.core.eye import Eye
+from pyetsimul.core.eye_model import EyeModel
 from pyetsimul.core.rotation_center import RotationCenter
 from pyetsimul.types import Position3D
 
@@ -30,12 +31,12 @@ def test_equal_depths_reproduce_single_center() -> None:
     target = Position3D(12000, -7000, -30000)
     placement = Position3D(5.0, 3.0, 40.0)
 
-    baseline = Eye(fovea_displacement=False)
+    baseline = Eye(model=EyeModel(fovea_displacement=False))
     baseline.position = placement
     baseline.look_at(target)
 
-    d0 = _apex_to_center(Eye(fovea_displacement=False))
-    configured = Eye(fovea_displacement=False, rotation_center=RotationCenter(d0, d0))
+    d0 = _apex_to_center(Eye(model=EyeModel(fovea_displacement=False)))
+    configured = Eye(model=EyeModel(fovea_displacement=False, rotation_center=RotationCenter(d0, d0)))
     configured.position = placement
     configured.look_at(target)
 
@@ -45,7 +46,7 @@ def test_equal_depths_reproduce_single_center() -> None:
 
 def test_none_leaves_position_unchanged() -> None:
     """Without a rotation centre, look_at never moves the eye position (single fixed centre)."""
-    eye = Eye(fovea_displacement=False)
+    eye = Eye(model=EyeModel(fovea_displacement=False))
     eye.position = Position3D(5.0, 3.0, 40.0)
     eye.look_at(Position3D(15.0, 10.0, 0.0))
     npt.assert_allclose(_xyz(eye.position), [5.0, 3.0, 40.0], atol=1e-12)
@@ -53,10 +54,14 @@ def test_none_leaves_position_unchanged() -> None:
 
 def test_horizontal_target_shifts_globe_center_toward_gaze() -> None:
     """A deeper horizontal centre swings the globe centre toward the (rightward) gaze, no vertical move."""
-    eye = Eye(fovea_displacement=False)
+    d0 = _apex_to_center(Eye(model=EyeModel(fovea_displacement=False)))
+    eye = Eye(
+        model=EyeModel(
+            fovea_displacement=False,
+            rotation_center=RotationCenter(horizontal_depth_mm=d0 + 3.0, vertical_depth_mm=d0),
+        )
+    )
     eye.position = Position3D(0.0, 0.0, 40.0)
-    d0 = _apex_to_center(eye)
-    eye.rotation_center = RotationCenter(horizontal_depth_mm=d0 + 3.0, vertical_depth_mm=d0)
 
     eye.look_at(Position3D(20.0, 0.0, 0.0))  # purely horizontal, rightward
 
@@ -66,10 +71,14 @@ def test_horizontal_target_shifts_globe_center_toward_gaze() -> None:
 
 def test_vertical_target_at_geometric_depth_does_not_move() -> None:
     """A purely vertical target uses the vertical depth; set to the geometric value it is a no-op."""
-    eye = Eye(fovea_displacement=False)
+    d0 = _apex_to_center(Eye(model=EyeModel(fovea_displacement=False)))
+    eye = Eye(
+        model=EyeModel(
+            fovea_displacement=False,
+            rotation_center=RotationCenter(horizontal_depth_mm=d0 + 3.0, vertical_depth_mm=d0),
+        )
+    )
     eye.position = Position3D(0.0, 0.0, 40.0)
-    d0 = _apex_to_center(eye)
-    eye.rotation_center = RotationCenter(horizontal_depth_mm=d0 + 3.0, vertical_depth_mm=d0)
 
     eye.look_at(Position3D(0.0, 20.0, 0.0))  # purely vertical
 
@@ -78,10 +87,14 @@ def test_vertical_target_at_geometric_depth_does_not_move() -> None:
 
 def test_eye_still_aims_at_target_after_repivot() -> None:
     """After re-pivoting, the optical axis from the (moved) globe centre still passes through the target."""
-    eye = Eye(fovea_displacement=False)  # optical axis == aimed axis
+    d0 = _apex_to_center(Eye(model=EyeModel(fovea_displacement=False)))  # optical axis == aimed axis
+    eye = Eye(
+        model=EyeModel(
+            fovea_displacement=False,
+            rotation_center=RotationCenter(horizontal_depth_mm=d0 + 3.0, vertical_depth_mm=d0 + 1.0),
+        )
+    )
     eye.position = Position3D(0.0, 0.0, 40.0)
-    d0 = _apex_to_center(eye)
-    eye.rotation_center = RotationCenter(horizontal_depth_mm=d0 + 3.0, vertical_depth_mm=d0 + 1.0)
 
     target = Position3D(15.0, 10.0, 0.0)
     eye.look_at(target)

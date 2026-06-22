@@ -35,7 +35,7 @@ def look_at_target(eye: "Eye", target_position: Position3D) -> None:
 
     Uses Listing's law to compute eye rotation with proper torsion.
     Accounts for fovea displacement if enabled for realistic gaze alignment.
-    When ``eye.rotation_center`` is set, the eye also pivots about a gaze-direction-dependent
+    When ``eye.model.rotation_center`` is set, the eye also pivots about a gaze-direction-dependent
     rotation centre rather than the single fixed globe centre (see ``rotation_center.py``).
 
     Args:
@@ -49,11 +49,11 @@ def look_at_target(eye: "Eye", target_position: Position3D) -> None:
     # Choose which local axis to align to target: visual axis if fovea displacement is enabled,
     # otherwise the optical axis (-Z). This depends only on the rest orientation, not the eye
     # position, so it is computed once and reused across the re-pivot iterations.
-    if eye.fovea_displacement:
+    if eye.model.fovea_displacement:
         # Local visual axis direction (unit), pointing anteriorly (toward cornea), derived from the
         # fovea displacement angles (alpha: horizontal, signed by eye side; beta: vertical).
         alpha = eye._signed_alpha_rad
-        beta = eye.fovea_beta_deg * np.pi / 180.0
+        beta = eye.model.fovea_beta_deg * np.pi / 180.0
         v_local = np.array([
             -np.sin(alpha) * np.cos(beta),
             -np.sin(beta),
@@ -69,9 +69,9 @@ def look_at_target(eye: "Eye", target_position: Position3D) -> None:
         # from this eye position to the target.
         direction = _direction_to_target(target_position, eye_position)
         rotation = calculate_eye_rotation(rest_axis, direction) @ eye.rest_orientation
-        if not eye.torsion_deg:
+        if not eye.model.torsion_deg:
             return rotation
-        return rotation @ _roll_about_optical_axis(eye.torsion_deg)
+        return rotation @ _roll_about_optical_axis(eye.model.torsion_deg)
 
     _apply_orientation(eye, target_position, orientation_from)
 
@@ -83,7 +83,7 @@ def look_at_target_optical_then_kappa(eye: "Eye", target_position: Position3D) -
     Aligns the optical axis to the target first, then applies foveal (kappa)
     offsets via post-rotations. The post step rotates the eye away so that
     neither the optical axis nor the visual axis ends up passing exactly
-    through the target. Honours ``eye.rotation_center`` when set.
+    through the target. Honours ``eye.model.rotation_center`` when set.
 
     Args:
         eye: Eye object to rotate
@@ -102,9 +102,9 @@ def look_at_target_optical_then_kappa(eye: "Eye", target_position: Position3D) -
         orientation = calculate_eye_rotation(rest_optical_axis, direction) @ eye.rest_orientation
 
         # Then apply post-rotations from foveal displacement (kappa) if enabled.
-        if eye.fovea_displacement:
+        if eye.model.fovea_displacement:
             alpha = eye._signed_alpha_rad  # signed by eye side: the fovea is temporal in both eyes
-            beta = eye.fovea_beta_deg * np.pi / 180.0
+            beta = eye.model.fovea_beta_deg * np.pi / 180.0
 
             rotation_matrix_x = np.array([
                 [np.cos(alpha), 0.0, -np.sin(alpha)],
@@ -172,15 +172,15 @@ def _apply_orientation(
 ) -> None:
     """Set the eye orientation; with a rotation centre configured, also re-pivot the eye position.
 
-    Without ``eye.rotation_center`` the orientation is computed once from the current eye position
+    Without ``eye.model.rotation_center`` the orientation is computed once from the current eye position
     and the position is left untouched (the single fixed centre at the globe centre). With it, the
     eye additionally translates so it rotates about the gaze-direction-dependent centre.
     """
-    if eye.rotation_center is None:
+    if eye.model.rotation_center is None:
         new_orientation = orientation_from(eye.position)
         eye.orientation = RotationMatrix(new_orientation, validate_handedness=False)
         return
-    repivot = _repivot_fick if eye.rotation_center.fick else _repivot
+    repivot = _repivot_fick if eye.model.rotation_center.fick else _repivot
     new_orientation, position = repivot(eye, target_position, orientation_from)
     eye.orientation = RotationMatrix(new_orientation, validate_handedness=False)
     # Write the translation directly so the rest placement (used to re-pivot) is not overwritten.
@@ -228,8 +228,8 @@ def _repivot(
     apex_to_center = abs(eye.cornea.get_apex_position().z)  # current model centre depth (apex -> globe centre)
     horizontal_fraction = _horizontal_fraction(eye, target_position)
     gaze_rest = rest.T @ (np.array([target_position.x, target_position.y, target_position.z], dtype=float) - placement)
-    depth = eye.rotation_center.depth_for(horizontal_fraction, gaze_rest[1])  # gaze_rest[1] >= 0 up, < 0 down
-    lateral_x, lateral_y = eye.rotation_center.lateral_for(horizontal_fraction, eye.which_eye)
+    depth = eye.model.rotation_center.depth_for(horizontal_fraction, gaze_rest[1])  # gaze_rest[1] >= 0 up, < 0 down
+    lateral_x, lateral_y = eye.model.rotation_center.lateral_for(horizontal_fraction, eye.which_eye)
     # Pivot offset in eye-local coordinates: lateral (x nasal-signed, y superior) plus axial (+z deeper).
     offset = np.array([lateral_x, lateral_y, depth - apex_to_center], dtype=float)
 
@@ -258,7 +258,7 @@ def _repivot_fick(
     placement = np.array([eye.placement.x, eye.placement.y, eye.placement.z], dtype=float)
     rest = np.asarray(eye.rest_orientation, dtype=float)
     apex_to_center = abs(eye.cornea.get_apex_position().z)
-    rc = eye.rotation_center
+    rc = eye.model.rotation_center
     nasal = -rc.horizontal_nasal_mm if eye.which_eye == "right" else rc.horizontal_nasal_mm
     c_azi = np.array([nasal, 0.0, rc.horizontal_depth_mm - apex_to_center], dtype=float)
     identity = np.eye(3)

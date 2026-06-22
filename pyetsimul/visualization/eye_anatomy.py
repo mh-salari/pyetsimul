@@ -75,7 +75,7 @@ def plot_eye_anatomy(eye: Eye, ax: "Axes | None" = None) -> "Axes":
     fovea_world = Position3D.from_array(eye.trans @ np.array(fovea_position))
 
     # Eye sphere parameters
-    main_eye_radius = eye.axial_length / 2
+    main_eye_radius = eye.model.axial_length / 2
     apex_pos = eye.cornea.get_apex_position()
     limbus_z_local = apex_pos.z + eye.cornea.get_corneal_depth()
 

@@ -3,6 +3,7 @@
 Defines the Eye class, integrating cornea, pupil, fovea displacement, and gaze mechanics for simulation and analysis.
 """
 
+import copy
 import warnings
 from dataclasses import dataclass, field
 from typing import TYPE_CHECKING
@@ -17,12 +18,12 @@ from ..optics.refractions import find_refraction_point
 from ..types import Direction3D, Point2D, Position3D, PupilData, Ray, RotationMatrix, TransformationMatrix
 from .cornea import ConicCornea, SphericalCornea
 from .default_configs import EyeAnatomyDefaults
+from .eye_model import EyeModel
 from .eye_operations import look_at_target, look_at_target_line_of_sight, look_at_target_optical_then_kappa
 from .eyelid import Eyelid, create_eyelid
 from .off_axis_pupil import OffAxisPupilConfig
 from .pupil import EllipticalPupil, Pupil, RealisticPupilParams, create_pupil
 from .pupil_decentration import PupilDecentrationConfig, PupilDecentrationRegistry
-from .rotation_center import RotationCenter
 
 if TYPE_CHECKING:
     from .camera import Camera
@@ -44,51 +45,26 @@ class Eye:
     - Listing's law: Eye rotation mechanics for realistic torsion
     """
 
-    # Instance parameters
-    cornea: SphericalCornea | ConicCornea = field(
-        default_factory=SphericalCornea
-    )  # Spherical cornea object by default
-    fovea_displacement: bool = True
-    fovea_alpha_deg: float = (
-        EyeAnatomyDefaults.FOVEA_ALPHA_DEG
-    )  # horizontal fovea angle magnitude; sign from which_eye
-    fovea_beta_deg: float = EyeAnatomyDefaults.FOVEA_BETA_DEG
-    # Gaze aiming: "visual_axis" aligns the fovea-to-eye-centre axis to the target; "line_of_sight" aligns the
-    # fovea-to-pupil-centre axis, so the eye re-aims as the pupil decentres.
-    aiming: str = "visual_axis"
-    # Extra roll about the line of sight on top of Listing's law (a torsion deviation), in degrees.
-    torsion_deg: float = 0.0
-    # Pupil-plane tilt off the optical axis (deg): a z-shear of the boundary about the pupil centre, so the
-    # disc plane tilts instead of lying perpendicular to the optical axis. Eye-fixed (rotates with gaze).
-    # pupil_tilt_x raises the +x rim in z, pupil_tilt_y the +y rim. Under perspective this shifts the
-    # projected-ellipse centre while leaving the in-plane size, so its effect grows with pupil radius.
-    pupil_tilt_x_deg: float = 0.0
-    pupil_tilt_y_deg: float = 0.0
-    # "left" or "right": the fovea is temporal in both eyes, so the horizontal angle flips sign between them,
-    # and the population pupil-decentration coefficients are mirrored. Drives both effects.
+    # The eye-model specification: cornea, pupil, kappa, rotation geometry and gaze conventions. Default
+    # is a fresh EyeModel() (the "PyEtSimul" model). The model is the single source of truth for every
+    # optical/anatomical parameter; read them as ``self.model.<field>``.
+    model: EyeModel = field(default_factory=EyeModel)
+    # "left" or "right": identity, not a model property. The fovea is temporal in both eyes, so the
+    # horizontal kappa flips sign between them and the pupil-decentration coefficients are mirrored;
+    # which_eye applies both signs to the model's unsigned magnitudes.
     which_eye: str = "right"
-    axial_length: float = EyeAnatomyDefaults.AXIAL_LENGTH  # Total axial length of eye (mm)
-    pupil_type: str = "elliptical"  # Pupil type: "elliptical" (default), "realistic"
-    pupil_boundary_points: int | None = None  # Number of points for pupil boundary (uses pupil default if None)
-    pupil_random_seed: int | None = None  # Random seed for realistic pupil (None = random, int = deterministic)
-    realistic_pupil_params: RealisticPupilParams | None = (
-        None  # Full params for realistic pupil (overrides pupil_random_seed)
-    )
 
-    # Eyelid configuration (enabled off by default to avoid behavior changes)
-    eyelid_enabled: bool = False
+    # Per-eye working instances, built in __post_init__ from the (shared, frozen) model spec. The model
+    # holds the spec; these are this eye's mutable working copies -- the cornea is set up for the axial
+    # length, the pupil-centre configs are resolved per side and accrue a baseline, the pupil and eyelid
+    # are live. ``self.cornea`` is this eye's working cornea; ``self.model.cornea`` is the pristine spec.
+    cornea: SphericalCornea | ConicCornea = field(init=False)
+    decentration_config: PupilDecentrationConfig = field(init=False)
+    off_axis_pupil: OffAxisPupilConfig = field(init=False)
+    pupil: Pupil = field(init=False)  # live pupil object; its size and shape are dynamic state
+    eyelid: Eyelid | None = field(init=False, default=None)
 
-    # Pupil decentration configuration
-    decentration_config: PupilDecentrationConfig = field(default_factory=PupilDecentrationConfig)
-
-    # Static off-axis pupil: nasal/superior displacement of the pupil centre from the optical axis.
-    off_axis_pupil: OffAxisPupilConfig = field(default_factory=OffAxisPupilConfig)
-
-    # Optional gaze-direction-dependent rotation centre. None keeps the single fixed centre at the
-    # geometric centre of the eyeball sphere (the default model behaviour).
-    rotation_center: RotationCenter | None = None
-
-    # These fields are calculated in __post_init__
+    # Placement and dynamic state, calculated in __post_init__.
     trans: TransformationMatrix = field(init=False)
     # Eyelid transform (local→world): follows eye position but keeps a fixed orientation
     eyelid_trans: TransformationMatrix = field(init=False, repr=False)
@@ -97,28 +73,27 @@ class Eye:
     _current_target_point: Position3D | None = field(init=False, default=None)  # Updated by look_at()
     # Rest globe-centre placement; the gaze-dependent rotation centre re-pivots about it.
     _placement: Position3D = field(init=False)
-    n_aqueous_humor: float = field(init=False)
-    pupil: Pupil = field(init=False)  # Pupil object that handles all pupil calculations
-    eyelid: Eyelid | None = field(init=False, default=None)
     # {pupil diameter (mm): physical eye-local boundary (N x 2)} registered via register_pupil_shape;
     # set_pupil_diameter swaps to the matching shape when called with a registered size.
     _size_shapes: dict[float, np.ndarray] = field(init=False, default_factory=dict, repr=False)
 
     def __post_init__(self) -> None:
-        """Initializes the eye's anatomical properties based on constructor parameters.
+        """Builds this eye's working state from its model specification.
 
-        Sets up cornea geometry, transformation matrices, and pupil object.
-        Scales pupil size based on corneal scaling factor.
+        The frozen model is the shared spec; the eye builds its own mutable working copies of the cornea
+        and the pupil-centre configs (set up / resolved for this eye), plus a live pupil and eyelid, so two
+        eyes built from one model never mutate each other's geometry. Pupil size is scaled by the corneal
+        scaling factor.
         """
-        pupil_radius_default = EyeAnatomyDefaults.PUPIL_RADIUS
-        n_aqueous_humor_default = EyeAnatomyDefaults.N_AQUEOUS_HUMOR
+        model = self.model
 
-        # Create default cornea if none provided
-        if self.cornea is None:
-            self.cornea = SphericalCornea()
+        # Per-eye working copies of the mutable model components; the model spec stays pristine and shared.
+        self.cornea = copy.deepcopy(model.cornea)
+        self.decentration_config = copy.deepcopy(model.decentration_config)
+        self.off_axis_pupil = copy.deepcopy(model.off_axis_pupil)
 
         # Setup cornea-specific geometry (this handles all sphere-specific scaling)
-        self.cornea.setup_eye_geometry(self.axial_length)
+        self.cornea.setup_eye_geometry(model.axial_length)
 
         # Initialize transformation matrix (identity at rest position)
         self._rest_orientation = RotationMatrix.identity()
@@ -129,37 +104,35 @@ class Eye:
             self.trans.get_translation(), self._rest_orientation
         )
 
-        # Refractive indices
-        self.n_aqueous_humor = n_aqueous_humor_default
-
-        # Create pupil object - calculate pupil position and scale radius
+        # Create pupil object - calculate pupil position and scale radius. The model's default (nominal)
+        # diameter sets the starting size; set_pupil_diameter changes it later.
         pupil_position = self.get_pupil_position()
         # Scale pupil radius based on corneal scaling factor
         scale = self.cornea.get_scale_factor()
-        scaled_pupil_radius = pupil_radius_default * scale
+        scaled_pupil_radius = (model.default_pupil_diameter / 2.0) * scale
         x_pupil = Direction3D(scaled_pupil_radius, 0, 0)
         y_pupil = Direction3D(0, scaled_pupil_radius, 0)
 
         # Create pupil with optional n parameter and random seed
         pupil_kwargs = {}
-        if self.pupil_boundary_points is not None:
-            pupil_kwargs["n"] = self.pupil_boundary_points
+        if model.pupil_boundary_points is not None:
+            pupil_kwargs["n"] = model.pupil_boundary_points
 
         # For realistic pupils, use provided params or create from random seed
-        if self.pupil_type == "realistic":
-            if self.realistic_pupil_params is not None:
-                pupil_kwargs["params"] = self.realistic_pupil_params
-            elif self.pupil_random_seed is not None:
-                pupil_kwargs["params"] = RealisticPupilParams(random_seed=self.pupil_random_seed)
+        if model.pupil_type == "realistic":
+            if model.realistic_pupil_params is not None:
+                pupil_kwargs["params"] = model.realistic_pupil_params
+            elif model.pupil_random_seed is not None:
+                pupil_kwargs["params"] = RealisticPupilParams(random_seed=model.pupil_random_seed)
 
         self.pupil = create_pupil(
-            pupil_type=self.pupil_type, pos_pupil=pupil_position, x_pupil=x_pupil, y_pupil=y_pupil, **pupil_kwargs
+            pupil_type=model.pupil_type, pos_pupil=pupil_position, x_pupil=x_pupil, y_pupil=y_pupil, **pupil_kwargs
         )
 
         # Create eyelid if enabled: positioned at eye center, sphere radius = axial_length/2,
         # phi_max derived from limbus z position so that the footprint matches corneal boundary.
-        if self.eyelid_enabled:
-            sphere_radius = self.axial_length / 2.0
+        if model.eyelid_enabled:
+            sphere_radius = model.axial_length / 2.0
             apex_pos = self.cornea.get_apex_position()
             limbus_z_local = apex_pos.z + self.cornea.get_corneal_depth()
             # phi from apex normal (-Z): cos(phi) = n·(r̂) = -z/sphere_radius  -> phi = arccos(-z/sphere_radius)
@@ -195,7 +168,7 @@ class Eye:
         The fovea is temporal in both eyes, so the angle points the opposite horizontal way for the left
         eye; ``fovea_alpha_deg`` carries the magnitude.
         """
-        return np.radians((-1.0 if self.which_eye == "left" else 1.0) * self.fovea_alpha_deg)
+        return np.radians((-1.0 if self.which_eye == "left" else 1.0) * self.model.fovea_alpha_deg)
 
     @property
     def orientation(self) -> RotationMatrix:
@@ -227,7 +200,7 @@ class Eye:
         self.trans[:3, :3] = value
 
         # Keep eyelid orientation aligned to rest orientation (stationary relative to eye rotation)
-        if self.eyelid_enabled:
+        if self.model.eyelid_enabled:
             self.eyelid_trans[:3, :3] = value
 
     @property
@@ -274,9 +247,9 @@ class Eye:
         z_world = target_vec / norm
 
         # Eye-local visual axis direction (unit, pointing outward toward cornea)
-        if self.fovea_displacement:
+        if self.model.fovea_displacement:
             alpha = self._signed_alpha_rad
-            beta = self.fovea_beta_deg * np.pi / 180.0
+            beta = self.model.fovea_beta_deg * np.pi / 180.0
             v_local = np.array(
                 [
                     np.sin(alpha) * np.cos(beta),
@@ -329,7 +302,7 @@ class Eye:
         # gaze-dependent rotation centre relative to it (look_at writes trans directly, not here).
         self._placement = value
         # Eyelid follows eye translation but not rotation
-        if self.eyelid_enabled:
+        if self.model.eyelid_enabled:
             self.eyelid_trans[0, 3] = value.x
             self.eyelid_trans[1, 3] = value.y
             self.eyelid_trans[2, 3] = value.z
@@ -383,7 +356,7 @@ class Eye:
         # Update current target point
         self._current_target_point = target_position
 
-        if self.aiming == "line_of_sight":
+        if self.model.aiming == "line_of_sight":
             look_at_target_line_of_sight(self, target_position)
         elif legacy:
             look_at_target_optical_then_kappa(self, target_position)
@@ -405,12 +378,12 @@ class Eye:
         # Tilt the pupil plane (z-shear about the pupil centre) before the world transform, so the disc is
         # eye-fixed and rotates with gaze. A flat plane keeps every point at pos_pupil.z; the shear gives
         # each point a z-offset linear in its in-plane offset from the centre.
-        if self.pupil_tilt_x_deg or self.pupil_tilt_y_deg:
+        if self.model.pupil_tilt_x_deg or self.model.pupil_tilt_y_deg:
             cx, cy = self.pupil.pos_pupil.x, self.pupil.pos_pupil.y
             dx = pupil_points[0, :] - cx
             dy = pupil_points[1, :] - cy
-            pupil_points[2, :] += dx * np.tan(np.radians(self.pupil_tilt_x_deg)) + dy * np.tan(
-                np.radians(self.pupil_tilt_y_deg)
+            pupil_points[2, :] += dx * np.tan(np.radians(self.model.pupil_tilt_x_deg)) + dy * np.tan(
+                np.radians(self.model.pupil_tilt_y_deg)
             )
 
         # Transform to world coordinates
@@ -731,7 +704,7 @@ class Eye:
         """
         # Call pure refraction function
         refraction_point = find_refraction_point(
-            self.cornea, self.trans, camera_position, object_position, self.n_aqueous_humor
+            self.cornea, self.trans, camera_position, object_position, self.model.n_aqueous_humor
         )
 
         # Check if point is on visible cornea (within boundaries and not occluded by eyelid)
@@ -767,7 +740,7 @@ class Eye:
         ).normalize()
         ray = Ray(origin=camera_local.to_point3d(), direction=direction)
 
-        refracted = self.cornea.refract_ray_inward(ray, 1.0, self.cornea.refractive_index, self.n_aqueous_humor)
+        refracted = self.cornea.refract_ray_inward(ray, 1.0, self.cornea.refractive_index, self.model.n_aqueous_humor)
         if refracted is None:
             return None
 
@@ -902,12 +875,12 @@ class Eye:
 
         """
         # Retina distance from rotation center (from our eye model)
-        retina_distance = self.axial_length / 2
+        retina_distance = self.model.axial_length / 2
 
-        if self.fovea_displacement:
+        if self.model.fovea_displacement:
             # Convert displacement angles to radians
             alpha = self._signed_alpha_rad  # horizontal (temporal); sign set by eye side
-            beta = self.fovea_beta_deg * np.pi / 180.0  # Vertical (upward) displacement
+            beta = self.model.fovea_beta_deg * np.pi / 180.0  # Vertical (upward) displacement
 
             # Calculate fovea position with displacement using spherical coordinates
             fovea_x = retina_distance * np.sin(alpha) * np.cos(beta)  # Temporal displacement
@@ -978,7 +951,7 @@ class Eye:
             # visible cornea -- equivalent to per-point find_refracted_position, without the Python loop.
             objects = pupil_world[:3, :].T  # (N, 3) world pupil-boundary points
             refracted_world, valid = self.cornea.find_refraction_batch(
-                camera.position, objects, 1.0, self.cornea.refractive_index, self.trans, self.n_aqueous_humor
+                camera.position, objects, 1.0, self.cornea.refractive_index, self.trans, self.model.n_aqueous_humor
             )
             keep = valid & self.point_on_visible_cornea_batch(refracted_world)
             refracted_points: list[Position3D] = [
@@ -1049,7 +1022,7 @@ class Eye:
     def __str__(self) -> str:
         """Basic string representation of the eye."""
         pos = self.position
-        return f"Eye(pos=({pos.x:.1f}, {pos.y:.1f}, {pos.z:.1f})mm, axial_length={self.axial_length:.1f}mm)"
+        return f"Eye(pos=({pos.x:.1f}, {pos.y:.1f}, {pos.z:.1f})mm, axial_length={self.model.axial_length:.1f}mm)"
 
     def pprint(self) -> None:
         """Print detailed eye anatomy parameters in a formatted table."""
@@ -1061,7 +1034,7 @@ class Eye:
         data = [
             ["Anterior corneal radius R_a (mm)", f"{self.cornea.anterior_radius:.3f}"],
             ["Posterior corneal radius R_p (mm)", f"{self.cornea.posterior_radius:.3f}"],
-            ["Axial length L (mm)", f"{self.axial_length:.3f}"],
+            ["Axial length L (mm)", f"{self.model.axial_length:.3f}"],
             [
                 "Cornea center to rotation center (mm)",
                 f"{self.cornea.cornea_center_to_rotation_center_default:.3f}",
@@ -1069,9 +1042,9 @@ class Eye:
             ["Thickness offset t_offset (mm)", f"{self.cornea.thickness_offset:.3f}"],
             ["Corneal depth d_c (mm)", f"{self.cornea.get_corneal_depth():.3f}"],
             ["Refractive index n_cornea", f"{self.cornea.refractive_index:.3f}"],
-            ["Refractive index n_aqueous", f"{self.n_aqueous_humor:.3f}"],
-            ["Fovea α (deg)", f"{self.fovea_alpha_deg:.1f}"],
-            ["Fovea β (deg)", f"{self.fovea_beta_deg:.1f}"],
+            ["Refractive index n_aqueous", f"{self.model.n_aqueous_humor:.3f}"],
+            ["Fovea α (deg)", f"{self.model.fovea_alpha_deg:.1f}"],
+            ["Fovea β (deg)", f"{self.model.fovea_beta_deg:.1f}"],
             ["Angle κ (deg)", f"{self.angle_kappa:.3f}"],
             [
                 "Cornea center (x,y,z) mm",
@@ -1110,18 +1083,18 @@ class Eye:
             "rest_orientation": self._rest_orientation.tolist(),
             "current_target_point": self._current_target_point.serialize() if self._current_target_point else None,
             # Anatomical parameters
-            "axial_length": float(self.axial_length),
-            "n_aqueous_humor": float(self.n_aqueous_humor),
-            "fovea_displacement": bool(self.fovea_displacement),
-            "fovea_alpha_deg": float(self.fovea_alpha_deg),
-            "fovea_beta_deg": float(self.fovea_beta_deg),
+            "axial_length": float(self.model.axial_length),
+            "n_aqueous_humor": float(self.model.n_aqueous_humor),
+            "fovea_displacement": bool(self.model.fovea_displacement),
+            "fovea_alpha_deg": float(self.model.fovea_alpha_deg),
+            "fovea_beta_deg": float(self.model.fovea_beta_deg),
             "which_eye": self.which_eye,
             # Pupil configuration
-            "pupil_type": self.pupil_type,
-            "pupil_boundary_points": self.pupil_boundary_points,
-            "pupil_random_seed": self.pupil_random_seed,
+            "pupil_type": self.model.pupil_type,
+            "pupil_boundary_points": self.model.pupil_boundary_points,
+            "pupil_random_seed": self.model.pupil_random_seed,
             # Eyelid configuration
-            "eyelid_enabled": bool(self.eyelid_enabled),
+            "eyelid_enabled": bool(self.model.eyelid_enabled),
             "eyelid_transformation_matrix": self.eyelid_trans.tolist(),
         }
 
@@ -1134,7 +1107,7 @@ class Eye:
             data["pupil"] = self.pupil.serialize()
 
         # Serialize eyelid if enabled
-        if self.eyelid and self.eyelid_enabled:
+        if self.eyelid and self.model.eyelid_enabled:
             data["eyelid"] = self.eyelid.serialize()
 
         return data
@@ -1153,18 +1126,19 @@ class Eye:
             Eye instance in the exact state when serialized
 
         """
-        # Create new eye with basic configuration
-        eye = cls(
+        # Build the model from the stored specification, then construct the eye.
+        model = EyeModel(
+            axial_length=data["axial_length"],
+            n_aqueous_humor=data["n_aqueous_humor"],
             fovea_displacement=data["fovea_displacement"],
             fovea_alpha_deg=data["fovea_alpha_deg"],
             fovea_beta_deg=data["fovea_beta_deg"],
-            which_eye=data.get("which_eye", "right"),
             pupil_type=data["pupil_type"],
-            axial_length=data["axial_length"],
             pupil_boundary_points=data["pupil_boundary_points"],
             pupil_random_seed=data["pupil_random_seed"],
             eyelid_enabled=data["eyelid_enabled"],
         )
+        eye = cls(model=model, which_eye=data.get("which_eye", "right"))
 
         # Restore position and orientation
         if data["position"]:
@@ -1177,19 +1151,14 @@ class Eye:
         if data["current_target_point"]:
             eye._current_target_point = Position3D.deserialize(data["current_target_point"])
 
-        # Restore anatomical parameters
-        eye.n_aqueous_humor = data["n_aqueous_humor"]
-
-        # Restore cornea
+        # Restore the working cornea, live pupil and eyelid to their exact serialized state.
         if data.get("cornea"):
             eye.cornea = SphericalCornea.deserialize(data["cornea"])
 
-        # Restore pupil
         if data.get("pupil"):
             eye.pupil = EllipticalPupil.deserialize(data["pupil"])
 
-        # Restore eyelid if enabled
-        if "eyelid" in data and data["eyelid"] and eye.eyelid_enabled:
+        if "eyelid" in data and data["eyelid"] and eye.model.eyelid_enabled:
             eye.eyelid = Eyelid.deserialize(data["eyelid"])
 
         return eye
