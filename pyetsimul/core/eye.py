@@ -17,7 +17,7 @@ from ..optics.refractions import find_refraction_point
 from ..types import Direction3D, Point2D, Position3D, PupilData, Ray, RotationMatrix, TransformationMatrix
 from .cornea import ConicCornea, SphericalCornea
 from .default_configs import EyeAnatomyDefaults
-from .eye_operations import look_at_target, look_at_target_optical_then_kappa
+from .eye_operations import look_at_target, look_at_target_line_of_sight, look_at_target_optical_then_kappa
 from .eyelid import Eyelid, create_eyelid
 from .off_axis_pupil import OffAxisPupilConfig
 from .pupil import EllipticalPupil, Pupil, RealisticPupilParams, create_pupil
@@ -49,8 +49,21 @@ class Eye:
         default_factory=SphericalCornea
     )  # Spherical cornea object by default
     fovea_displacement: bool = True
-    fovea_alpha_deg: float = EyeAnatomyDefaults.FOVEA_ALPHA_DEG  # horizontal fovea angle magnitude; sign from which_eye
+    fovea_alpha_deg: float = (
+        EyeAnatomyDefaults.FOVEA_ALPHA_DEG
+    )  # horizontal fovea angle magnitude; sign from which_eye
     fovea_beta_deg: float = EyeAnatomyDefaults.FOVEA_BETA_DEG
+    # Gaze aiming: "visual_axis" aligns the fovea-to-eye-centre axis to the target; "line_of_sight" aligns the
+    # fovea-to-pupil-centre axis, so the eye re-aims as the pupil decentres.
+    aiming: str = "visual_axis"
+    # Extra roll about the line of sight on top of Listing's law (a torsion deviation), in degrees.
+    torsion_deg: float = 0.0
+    # Pupil-plane tilt off the optical axis (deg): a z-shear of the boundary about the pupil centre, so the
+    # disc plane tilts instead of lying perpendicular to the optical axis. Eye-fixed (rotates with gaze).
+    # pupil_tilt_x raises the +x rim in z, pupil_tilt_y the +y rim. Under perspective this shifts the
+    # projected-ellipse centre while leaving the in-plane size, so its effect grows with pupil radius.
+    pupil_tilt_x_deg: float = 0.0
+    pupil_tilt_y_deg: float = 0.0
     # "left" or "right": the fovea is temporal in both eyes, so the horizontal angle flips sign between them,
     # and the population pupil-decentration coefficients are mirrored. Drives both effects.
     which_eye: str = "right"
@@ -370,7 +383,9 @@ class Eye:
         # Update current target point
         self._current_target_point = target_position
 
-        if legacy:
+        if self.aiming == "line_of_sight":
+            look_at_target_line_of_sight(self, target_position)
+        elif legacy:
             look_at_target_optical_then_kappa(self, target_position)
         else:
             look_at_target(self, target_position)
@@ -386,6 +401,17 @@ class Eye:
         """
         # Get pupil boundary points from pupil object
         pupil_points = self.pupil.get_boundary_points()
+
+        # Tilt the pupil plane (z-shear about the pupil centre) before the world transform, so the disc is
+        # eye-fixed and rotates with gaze. A flat plane keeps every point at pos_pupil.z; the shear gives
+        # each point a z-offset linear in its in-plane offset from the centre.
+        if self.pupil_tilt_x_deg or self.pupil_tilt_y_deg:
+            cx, cy = self.pupil.pos_pupil.x, self.pupil.pos_pupil.y
+            dx = pupil_points[0, :] - cx
+            dy = pupil_points[1, :] - cy
+            pupil_points[2, :] += dx * np.tan(np.radians(self.pupil_tilt_x_deg)) + dy * np.tan(
+                np.radians(self.pupil_tilt_y_deg)
+            )
 
         # Transform to world coordinates
         pupil_world = self.trans @ pupil_points

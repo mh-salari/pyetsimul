@@ -23,6 +23,13 @@ _REPIVOT_MAX_ITERS = 8
 _REPIVOT_TOL = 1e-9  # mm; stop once the globe-centre position stops moving
 
 
+def _roll_about_optical_axis(deg: float) -> np.ndarray:
+    """Rotation about the eye-local optical axis (z), applied as a torsion deviation from Listing's law."""
+    t = np.radians(deg)
+    c, s = np.cos(t), np.sin(t)
+    return np.array([[c, -s, 0.0], [s, c, 0.0], [0.0, 0.0, 1.0]])
+
+
 def look_at_target(eye: "Eye", target_position: Position3D) -> None:
     """Rotates an eye to look at a given position in space.
 
@@ -61,7 +68,10 @@ def look_at_target(eye: "Eye", target_position: Position3D) -> None:
         # Use Listing's law to compute the rotation that aligns the chosen axis with the direction
         # from this eye position to the target.
         direction = _direction_to_target(target_position, eye_position)
-        return calculate_eye_rotation(rest_axis, direction) @ eye.rest_orientation
+        rotation = calculate_eye_rotation(rest_axis, direction) @ eye.rest_orientation
+        if not eye.torsion_deg:
+            return rotation
+        return rotation @ _roll_about_optical_axis(eye.torsion_deg)
 
     _apply_orientation(eye, target_position, orientation_from)
 
@@ -109,6 +119,30 @@ def look_at_target_optical_then_kappa(eye: "Eye", target_position: Position3D) -
 
             orientation = orientation @ rotation_matrix_y @ rotation_matrix_x
         return orientation
+
+    _apply_orientation(eye, target_position, orientation_from)
+
+
+def look_at_target_line_of_sight(eye: "Eye", target_position: Position3D) -> None:
+    """Rotate the eye so the line of sight -- fovea through the pupil centre -- points at the target.
+
+    ``look_at_target`` aligns the visual axis (fovea to the eye centre) to the target; this aligns the line
+    from the fovea through the current pupil centre instead. Because the pupil centre carries the off-axis
+    offset and the size-dependent decentration, this axis moves when the pupil decentres, so the eye re-aims
+    as the pupil moves; the visual axis does not.
+
+    Raises:
+        ValueError: If target_position coincides with eye position (zero-length vector).
+
+    """
+    fovea = eye.fovea_position
+    pupil = eye.pupil.pos_pupil
+    los = np.array([pupil.x - fovea.x, pupil.y - fovea.y, pupil.z - fovea.z])
+    rest_axis = Vector3D.from_array(eye.rest_orientation @ (los / np.linalg.norm(los)))
+
+    def orientation_from(eye_position: Position3D) -> np.ndarray:
+        direction = _direction_to_target(target_position, eye_position)
+        return calculate_eye_rotation(rest_axis, direction) @ eye.rest_orientation
 
     _apply_orientation(eye, target_position, orientation_from)
 
