@@ -45,10 +45,9 @@ class Eye:
     - Listing's law: Eye rotation mechanics for realistic torsion
     """
 
-    # The eye-model specification: cornea, pupil, kappa, rotation geometry and gaze conventions. Accepts an
-    # EyeModel or a registered model name (case-insensitive, e.g. "PyEtSimul"); a name is resolved to its
-    # EyeModel in __post_init__. The model is the single source of truth for every optical/anatomical
-    # parameter; read them as ``self.model.<field>``.
+    # The eye-model specification. Accepts an EyeModel or a registered model name (case-insensitive,
+    # e.g. "PyEtSimul"); a name is resolved to its EyeModel in __post_init__. Read its parameters as
+    # ``self.model.<field>``.
     model: str | EyeModel = field(default_factory=EyeModel)
     # "left" or "right": identity, not a model property. The fovea is temporal in both eyes, so the
     # horizontal kappa flips sign between them and the pupil-decentration coefficients are mirrored;

@@ -3,6 +3,8 @@
 Exports main classes for eye, camera, light, cornea, and eye tracker models.
 """
 
+# Importing this subpackage registers the named eye models.
+from . import eye_models  # noqa: F401
 from .camera import Camera
 from .cornea import ConicCornea, Cornea, SphericalCornea, ToricCornea, create_cornea
 from .eye import Eye

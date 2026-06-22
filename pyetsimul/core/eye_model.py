@@ -1,12 +1,8 @@
 """Eye-model specification: the optics and anatomy that define how an eye behaves.
 
-An :class:`EyeModel` is an immutable bundle of everything intrinsic to a modelled eye -- its cornea,
-pupil shape, angle kappa, rotation geometry and gaze conventions. It is the *what kind of eye* layer,
-separate from *where the eye is placed and how it is currently posed*, which lives on :class:`~pyetsimul.core.eye.Eye`.
-
-Models are frozen so the shared named models (``"PyEtSimul"``, ``"et_simul"``, ``"gkaModelEye"``) cannot be
-mutated by one caller and corrupted for the next. To customise, copy the model with changed fields via
-:meth:`EyeModel.copy` (or :func:`dataclasses.replace`) rather than mutating in place.
+An :class:`EyeModel` is an immutable bundle of the cornea, pupil shape, angle kappa, rotation geometry and
+gaze conventions -- the *what kind of eye*, separate from the placement and pose held by
+:class:`~pyetsimul.core.eye.Eye`. It is frozen; derive a variant with :meth:`EyeModel.copy`.
 """
 
 from dataclasses import dataclass, field, replace
@@ -109,7 +105,3 @@ def get_eye_model(name: str) -> EyeModel:
 def list_eye_models() -> list[str]:
     """Return the names of the registered eye models, in registration order."""
     return list(_EYE_MODELS)
-
-
-# The default PyEtSimul eye: the Böhme port plus the added features (a bare ``EyeModel()``).
-register_eye_model("PyEtSimul", EyeModel())
