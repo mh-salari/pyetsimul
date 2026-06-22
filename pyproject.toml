@@ -175,3 +175,4 @@ allow-dunder-method-names = ["__array__", "__array_ufunc__"]
 "pyetsimul/log.py" = ["ANN401"]
 "docs/conf.py" = ["INP001"]  # Sphinx config file, not a package member
 "pyetsimul/core/eye.py" = ["PLR0904"]  # Eye is a domain object with many natural operations (orientation, pupil, cornea, eyelid, fovea, refraction, serialization)
+"pyetsimul/core/eye_models/PyEtSimul.py" = ["N999"]  # module named after the PyEtSimul project, not snake_case
