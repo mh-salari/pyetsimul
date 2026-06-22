@@ -14,7 +14,7 @@ def test_look_at_with_foveal_displacement() -> None:
     target = Position3D(x=12000, y=-7000, z=-30000)
     initial_position = np.array(e.position)
 
-    e.look_at(target, legacy=True)
+    e.look_at(target, method="optical_then_kappa")
 
     # MATLAB reference result with foveal displacement
     expected_matrix: RotationMatrix = np.array(

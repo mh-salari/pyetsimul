@@ -255,7 +255,6 @@ class HomographyNormalizationGazeModel(EyeTracker):
             "lights": [light.serialize() for light in self.lights],
             "calib_points": [point.serialize() for point in self.calib_points],
             "use_refraction": self.use_refraction,
-            "use_legacy_look_at": self.use_legacy_look_at,
             "state": self.state,  # Additional state from parent class
         }
 
@@ -293,8 +292,7 @@ class HomographyNormalizationGazeModel(EyeTracker):
         if data["plane_info"]:
             tracker.plane_info = PlaneInfo.deserialize(data["plane_info"])
 
-        # Restore parent class state and legacy mode
-        tracker.use_legacy_look_at = data["use_legacy_look_at"]
+        # Restore parent class state
         tracker.state = data["state"]
 
         return tracker

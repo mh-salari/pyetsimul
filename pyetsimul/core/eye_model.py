@@ -45,12 +45,13 @@ class EyeModel:
     fovea_beta_deg: float = EyeAnatomyDefaults.FOVEA_BETA_DEG  # vertical kappa
 
     # ---------------------------------------------------------------------------
-    # Gaze aiming, rotation and eye-fixed surface orientation
+    # Gaze, rotation and eye-fixed surface orientation
     # ---------------------------------------------------------------------------
-    # How look_at aims the eye: "visual_axis" aligns the fovea-to-eye-centre axis to the target;
-    # "line_of_sight" aligns the fovea-to-pupil-centre axis, so the eye re-aims as the pupil decentres;
-    # "legacy" reproduces the original Böhme 2008 et_simul look_at.
-    aiming: str = "visual_axis"
+    # Default look_at method -- how the eye is pointed at a target (look_at can override it per call):
+    # "visual_axis" aligns the fovea-to-eye-centre axis to the target; "line_of_sight" aligns the
+    # fovea-to-pupil-centre axis, so the eye re-aims as the pupil decentres; "optical_then_kappa" aims the
+    # optical axis at the target then post-rotates by angle kappa (the original Böhme 2008 et_simul construction).
+    look_at_method: str = "visual_axis"
     torsion_deg: float = 0.0  # extra roll about the line of sight on top of Listing's law
     # Pupil-plane tilt off the optical axis (deg): a z-shear of the boundary about the pupil centre, so
     # the disc plane tilts instead of lying perpendicular to the optical axis. Eye-fixed (rotates with gaze).

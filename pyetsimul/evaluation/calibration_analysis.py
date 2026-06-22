@@ -79,7 +79,6 @@ class CalibrationResults:
             et.plane_info,
             et.cameras,
             et.lights,
-            et.use_legacy_look_at,
             show=show,
         )
 

@@ -100,7 +100,6 @@ def render_calibration_view(
     eye_colors: list[str] | None = None,
     target_color: str | None = None,
     screen: ScreenGeometry | None = None,
-    use_legacy_look_at: bool = False,
     ref_bounds_3d: dict | None = None,
     xlim_2d: tuple[float, float] | None = None,
     ylim_2d: tuple[float, float] | None = None,
@@ -129,7 +128,6 @@ def render_calibration_view(
         eye_colors: Optional per-eye colors (defaults to plot config palette).
         target_color: Optional target marker color (defaults to plot config).
         screen: Optional ScreenGeometry to draw screen border on the 3D plot.
-        use_legacy_look_at: Whether to use legacy look-at behavior.
         ref_bounds_3d: Optional fixed 3D axis bounds, passed through to ``plot_setup``.
         xlim_2d: Optional fixed x-limits for the 2D axes.
         ylim_2d: Optional fixed y-limits for the 2D axes.
@@ -171,7 +169,7 @@ def render_calibration_view(
     for pt in calibration_points:
         calib_points_2d.append(Point2D(*plane_info.extract_2d_coords(pt)))
 
-    prepared_data = prepare_eye_data_for_plots(eyes, [target_3d] * n_eyes, lights, cameras, use_legacy_look_at)
+    prepared_data = prepare_eye_data_for_plots(eyes, [target_3d] * n_eyes, lights, cameras)
 
     plot_setup(
         ax_3d,
@@ -369,7 +367,6 @@ def create_interactive_gaze_plot(
     plane_info: PlaneInfo,
     cameras: list,
     lights: list,
-    use_legacy_look_at: bool = False,
     eye_labels: list[str] | None = None,
     eye_colors: list[str] | None = None,
     screen: ScreenGeometry | None = None,
@@ -390,7 +387,6 @@ def create_interactive_gaze_plot(
         plane_info: Plane detection info for coordinate mapping.
         cameras: List of Camera objects in the setup.
         lights: List of Light objects in the setup.
-        use_legacy_look_at: Whether to use legacy look-at behavior.
         eye_labels: Optional labels for each eye (e.g. ["Right", "Left"]).
             Defaults to "Eye 1", "Eye 2", etc.
         eye_colors: Optional colors for each eye (e.g. ["blue", "green"]).
@@ -440,7 +436,6 @@ def create_interactive_gaze_plot(
             eye_labels=eye_labels,
             eye_colors=eye_colors,
             screen=screen,
-            use_legacy_look_at=use_legacy_look_at,
         )
 
         plt.subplots_adjust(top=0.9, bottom=0.1, left=0.05, right=0.95, wspace=0.3)

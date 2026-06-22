@@ -342,7 +342,7 @@ class Eye:
         """
         return find_corneal_reflection(self, light, camera)
 
-    def look_at(self, target_position: Position3D, legacy: bool = False) -> None:
+    def look_at(self, target_position: Position3D, method: str | None = None) -> None:
         """Rotates an eye to look at a given position in space.
 
         Delegates to eye_operations module for gaze control.
@@ -350,15 +350,19 @@ class Eye:
 
         Args:
             target_position: Position in world coordinates to look at
-            legacy: If True, uses optical-then-kappa method for backward compatibility
+            method: Look-at method for this call, overriding the eye model's default ``method``.
+                "visual_axis" (fovea through the eye centre), "line_of_sight" (fovea through the pupil
+                centre), or "optical_then_kappa" (optical axis then a kappa post-rotation; the Böhme 2008
+                et_simul construction). None uses the eye model's default.
 
         """
         # Update current target point
         self._current_target_point = target_position
 
-        if self.model.aiming == "line_of_sight":
+        method = method if method is not None else self.model.look_at_method
+        if method == "line_of_sight":
             look_at_target_line_of_sight(self, target_position)
-        elif legacy:
+        elif method == "optical_then_kappa":
             look_at_target_optical_then_kappa(self, target_position)
         else:
             look_at_target(self, target_position)

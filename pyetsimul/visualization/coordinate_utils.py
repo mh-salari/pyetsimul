@@ -19,7 +19,6 @@ def prepare_eye_data_for_plots(
     look_at_targets: list[Position3D] | Position3D,
     lights: list[Light] | Light | None = None,
     cameras: list[Camera] | Camera | None = None,
-    use_legacy_lookat: bool = False,
 ) -> dict[str, Any]:
     """Prepare eye visualization data for plotting.
 
@@ -31,7 +30,6 @@ def prepare_eye_data_for_plots(
         look_at_targets: Target point or list of target points, one per eye
         lights: Optional Light object or list of Light objects with positions
         cameras: Optional Camera object or list of Camera objects
-        use_legacy_lookat: Whether to use the legacy look-at method
 
     Returns:
         dict: Contains eyes_data list, camera_images list, and cr_3d_lists for plotting
@@ -58,7 +56,7 @@ def prepare_eye_data_for_plots(
     cr_3d_lists = []
 
     for eye, target in zip(eyes, look_at_targets, strict=False):
-        eye_data = _prepare_single_eye_data(eye, target, use_legacy_lookat)
+        eye_data = _prepare_single_eye_data(eye, target)
         eyes_data.append(eye_data)
 
         # Find corneal reflections for this eye (only if cameras available)
@@ -92,7 +90,7 @@ def prepare_eye_data_for_plots(
     return {"eyes_data": eyes_data, "camera_images": camera_images, "cr_3d_lists": cr_3d_lists}
 
 
-def _prepare_single_eye_data(eye: Eye, look_at_target: Position3D, use_legacy_lookat: bool) -> dict[str, Any]:
+def _prepare_single_eye_data(eye: Eye, look_at_target: Position3D) -> dict[str, Any]:
     """Helper function to prepare single eye data for visualization."""
 
     # Calculate all values once
@@ -101,7 +99,7 @@ def _prepare_single_eye_data(eye: Eye, look_at_target: Position3D, use_legacy_lo
         return Position3D.from_array(p) if not isinstance(p, Position3D) else p
 
     # Rotate the eye toward the target
-    eye.look_at(look_at_target, legacy=use_legacy_lookat)
+    eye.look_at(look_at_target)
     # Get eye anatomy points
     cornea_center = eye.cornea.center
     pupil_center = eye.pupil.pos_pupil

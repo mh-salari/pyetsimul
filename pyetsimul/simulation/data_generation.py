@@ -28,7 +28,6 @@ def _process_single_variation(args: tuple[Any, ...]) -> dict[str, Any]:
         value,
         index,
         gaze_target,
-        use_legacy_look_at,
         use_refraction,
         pupil_center_method,
     ) = args
@@ -43,7 +42,6 @@ def _process_single_variation(args: tuple[Any, ...]) -> dict[str, Any]:
         lights=lights,
         experiment_name="worker",
         gaze_target=gaze_target,
-        use_legacy_look_at=use_legacy_look_at,
         use_refraction=use_refraction,
         pupil_center_method=pupil_center_method,
         save_to_file=False,  # Avoid child processes trying to save
@@ -91,7 +89,6 @@ class DataGenerationStrategy(VariationStrategy):
         gaze_target: Position3D | None = None,
         output_dir: str = "output",
         save_to_file: bool = True,
-        use_legacy_look_at: bool = False,
         use_refraction: bool = True,
         pupil_center_method: str = "ellipse",
     ) -> None:
@@ -105,7 +102,6 @@ class DataGenerationStrategy(VariationStrategy):
             output_dir: Directory to save generated datasets
             experiment_name: Base name for experiment files
             save_to_file: Whether to save datasets to disk
-            use_legacy_look_at: Use legacy eye rotation method for compatibility
             use_refraction: Enable corneal refraction in image capture
             pupil_center_method: Method for pupil center calculation ("ellipse" or "center_of_mass")
 
@@ -121,7 +117,6 @@ class DataGenerationStrategy(VariationStrategy):
         self.safe_experiment_name = sanitize_filename(experiment_name)
 
         self.save_to_file = save_to_file
-        self.use_legacy_look_at = use_legacy_look_at
         self.use_refraction = use_refraction
         self.pupil_center_method = pupil_center_method
 
@@ -179,7 +174,6 @@ class DataGenerationStrategy(VariationStrategy):
                         value,
                         i,
                         self.gaze_target,
-                        self.use_legacy_look_at,
                         self.use_refraction,
                         self.pupil_center_method,
                     )
@@ -320,7 +314,7 @@ class DataGenerationStrategy(VariationStrategy):
 
         # If no target variation is present in the composition, use the default gaze target.
         if current_gaze_target == self.gaze_target and self.gaze_target:
-            eye_copy.look_at(self.gaze_target, self.use_legacy_look_at)
+            eye_copy.look_at(self.gaze_target)
 
         return current_gaze_target
 
@@ -336,9 +330,9 @@ class DataGenerationStrategy(VariationStrategy):
         if isinstance(v_inner, EyeParameterVariation):
             v_inner.apply_to_eye(eye_copy, inner_value)
             if self.gaze_target:
-                eye_copy.look_at(self.gaze_target, legacy=self.use_legacy_look_at)
+                eye_copy.look_at(self.gaze_target)
         elif isinstance(v_inner, TargetVariation):
-            eye_copy.look_at(inner_value, legacy=self.use_legacy_look_at)
+            eye_copy.look_at(inner_value)
             current_gaze_target = inner_value
 
         return current_gaze_target
@@ -353,13 +347,14 @@ class DataGenerationStrategy(VariationStrategy):
         # For a simple eye parameter variation, apply it and use the default gaze target.
         variation.apply_to_eye(eye_copy, value)
         if self.gaze_target:
-            eye_copy.look_at(self.gaze_target, legacy=self.use_legacy_look_at)
+            eye_copy.look_at(self.gaze_target)
         return self.gaze_target
 
-    def _handle_target_variation(self, eye_copy: Eye, value: Any) -> Position3D:  # noqa: ANN401
+    @staticmethod
+    def _handle_target_variation(eye_copy: Eye, value: Any) -> Position3D:  # noqa: ANN401
         """Handle TargetVariation."""
         # For a target variation, the value itself is the gaze target.
-        eye_copy.look_at(value, legacy=self.use_legacy_look_at)
+        eye_copy.look_at(value)
         return value
 
     def _serialize_param_value(self, param_value: Any) -> Any:  # noqa: ANN401

@@ -47,9 +47,6 @@ class EyeTracker(ABC):
     # Calibration diagnostics: list of (point_number, position, reason) for failed points
     failed_calibration_points: list[tuple[int, Position3D, str]] = field(default_factory=list)
 
-    # MATLAB compatibility mode for eye rotation
-    use_legacy_look_at: bool = False
-
     @property
     @abstractmethod
     def algorithm_name(self) -> str:
@@ -124,7 +121,7 @@ class EyeTracker(ABC):
 
         for i, calib_point in enumerate(self.calib_points):
             # Make eye look at calibration point
-            eye.look_at(calib_point, legacy=self.use_legacy_look_at)
+            eye.look_at(calib_point)
 
             if not self.cameras:
                 raise ValueError("No cameras available for calibration")
@@ -176,7 +173,7 @@ class EyeTracker(ABC):
         """
         # Make eye look at target position
         target = Position3D(look_at_pos.x, look_at_pos.y, look_at_pos.z)
-        eye.look_at(target, legacy=self.use_legacy_look_at)
+        eye.look_at(target)
 
         # Use first camera (TODO: multi-camera support is algorithm-dependent)
         camera_image = self.cameras[0].take_image(
@@ -245,7 +242,7 @@ class EyeTracker(ABC):
 
         for target_position in self.calib_points:
             # Make eye look at calibration point
-            eye.look_at(target_position, legacy=self.use_legacy_look_at)
+            eye.look_at(target_position)
 
             # Take fresh camera measurement
             camera_image = self.cameras[0].take_image(
@@ -318,7 +315,6 @@ class EyeTracker(ABC):
             ["Calibration points", str(calib_points)],
             ["Calibration status", "Calibrated" if calibrated else "Not calibrated"],
             ["Use refraction", "Yes" if self.use_refraction else "No"],
-            ["Legacy look_at mode", "Yes" if self.use_legacy_look_at else "No"],
         ])
 
         # Add algorithm-specific configuration
