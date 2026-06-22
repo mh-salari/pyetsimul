@@ -39,7 +39,9 @@ def main() -> None:
         (
             "Right Eye (Individual Variation)",
             PupilDecentrationConfig(
-                enabled=True, model_name="wildenmann_2013", baseline_diameter=baseline_diameter,
+                enabled=True,
+                model_name="wildenmann_2013",
+                baseline_diameter=baseline_diameter,
                 use_individual_variation=True,
             ),
             "right",
@@ -47,8 +49,11 @@ def main() -> None:
         (
             "Right Eye (Direct Slope)",  # subject 5 right eye, Wildenmann & Schaeffel (2013) fig. 3
             PupilDecentrationConfig(
-                enabled=True, model_name="wildenmann_2013", baseline_diameter=baseline_diameter,
-                x_coeff=0.0903, y_coeff=-0.1794,
+                enabled=True,
+                model_name="wildenmann_2013",
+                baseline_diameter=baseline_diameter,
+                x_coeff=0.0903,
+                y_coeff=-0.1794,
             ),
             "right",
         ),
@@ -60,7 +65,9 @@ def main() -> None:
         (
             "Left Eye (Individual Variation)",
             PupilDecentrationConfig(
-                enabled=True, model_name="wildenmann_2013", baseline_diameter=baseline_diameter,
+                enabled=True,
+                model_name="wildenmann_2013",
+                baseline_diameter=baseline_diameter,
                 use_individual_variation=True,
             ),
             "left",
@@ -87,7 +94,9 @@ def main() -> None:
             ax = axes[row, col]
 
             # Create eye with current decentration config
-            eye = Eye(pupil_type="elliptical", pupil_boundary_points=100, decentration_config=config, which_eye=which_eye)
+            eye = Eye(
+                pupil_type="elliptical", pupil_boundary_points=100, decentration_config=config, which_eye=which_eye
+            )
 
             # Create reference eye without decentration for comparison
             ref_eye = Eye(pupil_type="elliptical", pupil_boundary_points=100)
