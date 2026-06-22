@@ -31,8 +31,10 @@ def calculate_eye_rotation(out_rest: Vector3D, out_new: Vector3D) -> RotationMat
     # Calculate rotation axis as cross product
     axis = out_new_norm.cross(out_rest_norm)
 
-    # Check if vectors are parallel (no rotation needed)
-    if axis.magnitude() == 0:
+    # The cross-product magnitude is sin(angle) between the axes. Below 1e-9 the axes are
+    # parallel to floating-point precision and need no rotation; normalizing such a
+    # near-zero vector would produce a non-orthonormal matrix.
+    if axis.magnitude() < 1e-9:
         return np.eye(3)
 
     # Normalize the rotation axis
