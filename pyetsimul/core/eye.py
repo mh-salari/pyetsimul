@@ -11,7 +11,7 @@ import numpy as np
 
 from pyetsimul.log import info, table
 
-from ..optics.pupil_imaging import calculate_pupil_center_from_boundary
+from ..optics.pupil_imaging import calculate_pupil_center_from_boundary, calculate_pupil_diameter_from_boundary
 from ..optics.reflections import find_corneal_reflection
 from ..optics.refractions import find_refraction_point
 from ..types import Direction3D, Point2D, Position3D, PupilData, Ray, RotationMatrix, TransformationMatrix
@@ -19,6 +19,7 @@ from .cornea import ConicCornea, SphericalCornea
 from .default_configs import EyeAnatomyDefaults
 from .eye_operations import look_at_target, look_at_target_optical_then_kappa
 from .eyelid import Eyelid, create_eyelid
+from .off_axis_pupil import OffAxisPupilConfig
 from .pupil import EllipticalPupil, Pupil, RealisticPupilParams, create_pupil
 from .pupil_decentration import PupilDecentrationConfig, PupilDecentrationRegistry
 from .rotation_center import RotationCenter
@@ -66,6 +67,9 @@ class Eye:
 
     # Pupil decentration configuration
     decentration_config: PupilDecentrationConfig = field(default_factory=PupilDecentrationConfig)
+
+    # Static off-axis pupil: nasal/superior displacement of the pupil centre from the optical axis.
+    off_axis_pupil: OffAxisPupilConfig = field(default_factory=OffAxisPupilConfig)
 
     # Optional gaze-direction-dependent rotation centre. None keeps the single fixed centre at the
     # geometric centre of the eyeball sphere (the default model behaviour).
@@ -158,23 +162,25 @@ class Eye:
             # Keep eyelid orientation locked to rest orientation (fixed to face)
             self.eyelid_trans[:3, :3] = self._rest_orientation
 
-        # Initialize pupil decentration if enabled
+        # Resolve the population defaults for the pupil-centre models (no-ops when the values were given
+        # or the model is disabled), then position the pupil from whichever models are enabled.
+        self.off_axis_pupil.resolve_defaults()
         if self.decentration_config.enabled:
-            # Fill the eye-specific population coefficients (no-op if they were given explicitly)
             self.decentration_config.resolve_for_eye(self.which_eye)
-            # Set baseline diameter to current pupil diameter
             if self.decentration_config.baseline_diameter is None:
                 self.decentration_config.baseline_diameter = self.get_pupil_diameter()
-            # Apply initial decentration
-            self._update_pupil_position_with_decentration()
+        if self.decentration_config.enabled or self.off_axis_pupil.enabled:
+            self._update_pupil_position()
 
         # Capture the rest placement (globe centre) that the gaze-dependent rotation centre pivots about.
         self._placement = self.position
 
     @property
     def _signed_alpha_rad(self) -> float:
-        """Horizontal fovea angle in radians, signed by eye side. The fovea is temporal in both eyes, so the
-        angle points the opposite horizontal way for the left eye; ``fovea_alpha_deg`` carries the magnitude.
+        """Horizontal fovea angle in radians, signed by eye side.
+
+        The fovea is temporal in both eyes, so the angle points the opposite horizontal way for the left
+        eye; ``fovea_alpha_deg`` carries the magnitude.
         """
         return np.radians((-1.0 if self.which_eye == "left" else 1.0) * self.fovea_alpha_deg)
 
@@ -433,7 +439,7 @@ class Eye:
 
         """
         self.pupil.set_radii(x_radius, y_radius)
-        self._update_pupil_position_with_decentration()
+        self._update_pupil_position()
 
     def corneal_magnification(self, camera: "Camera") -> float:
         """Ratio of the apparent (refracted) to the physical pupil size, for this eye's cornea.
@@ -463,6 +469,39 @@ class Eye:
 
         return span(refracted) / span(direct)
 
+    def _physical_diameter_for_apparent(
+        self, apparent_diameter: float, camera: "Camera", max_iter: int = 8, tol: float = 1e-4
+    ) -> float:
+        """Physical pupil diameter whose refracted projection has ``apparent_diameter`` in ``camera``.
+
+        The corneal magnification varies with pupil size -- the conic cornea does not scale the pupil by a
+        single constant -- so a one-shot ``apparent_diameter / corneal_magnification`` under-sets the physical
+        pupil (the magnification is measured at the apparent size, not at the smaller physical size it should
+        be measured at). This iterates the fixed point ``physical = apparent_diameter /
+        corneal_magnification(physical)``, re-measuring the magnification at each candidate physical size until
+        the diameter settles to within ``tol`` mm. The magnification changes slowly with size, so it converges
+        in a few iterations.
+
+        Args:
+            apparent_diameter: Target apparent (camera) pupil diameter in mm.
+            camera: Camera the apparent size is measured through.
+            max_iter: Maximum fixed-point iterations.
+            tol: Convergence tolerance on the physical diameter in mm.
+
+        Returns:
+            Physical pupil diameter in mm.
+
+        """
+        physical = float(apparent_diameter)
+        for _ in range(max_iter):
+            self.pupil.set_diameter(physical)
+            self._update_pupil_position()
+            updated = apparent_diameter / self.corneal_magnification(camera)
+            if abs(updated - physical) <= tol:
+                return updated
+            physical = updated
+        return physical
+
     def set_pupil_diameter(self, diameter: float, apparent: bool = False, camera: "Camera | None" = None) -> None:
         """Set pupil diameter and update decentration if enabled.
 
@@ -472,8 +511,9 @@ class Eye:
         Args:
             diameter: Pupil diameter in mm. By default this is the physical pupil behind the cornea.
             apparent: If True, ``diameter`` is the apparent (camera) pupil size seen *through* the cornea;
-                it is divided by this eye's ``corneal_magnification`` to recover the physical pupil that
-                the cornea then refracts back up to ``diameter``. Requires ``camera``.
+                the physical pupil that the cornea refracts back up to ``diameter`` is recovered exactly by
+                ``_physical_diameter_for_apparent`` (iterating the size-dependent corneal magnification), so
+                the rendered apparent pupil matches ``diameter``. Requires ``camera``.
             camera: Camera used to measure the corneal magnification when ``apparent`` is True.
 
         Raises:
@@ -489,10 +529,90 @@ class Eye:
         if apparent:
             if camera is None:
                 raise ValueError("set_pupil_diameter(apparent=True) requires a camera to un-refract the size.")
-            self.pupil.set_diameter(diameter)  # apparent size as the reference to measure magnification at
-            diameter /= self.corneal_magnification(camera)
+            diameter = self._physical_diameter_for_apparent(diameter, camera)
         self.pupil.set_diameter(diameter)
-        self._update_pupil_position_with_decentration()
+        self._update_pupil_position()
+
+    def _pupil_centre_and_diameter(self, camera: "Camera", center_method: str) -> tuple[np.ndarray, float]:
+        """The refracted pupil's ``center_method`` centre (px) and mean-axis ellipse diameter (px) in ``camera``."""
+        boundary, _ = self.get_pupil_in_camera_image(camera, use_refraction=True)
+        if not boundary:
+            raise ValueError("solve_decentration_from_apparent: pupil did not project into the camera image.")
+        centre = calculate_pupil_center_from_boundary(boundary, camera.camera_matrix.resolution, center_method)
+        diameter = calculate_pupil_diameter_from_boundary(boundary)
+        return np.array([centre.x, centre.y]), float(diameter)
+
+    def solve_decentration_from_apparent(
+        self,
+        image_cx: float,
+        image_cy: float,
+        apparent_con: float,
+        apparent_dil: float,
+        camera: "Camera",
+        target: Position3D | None = None,
+        center_method: str = "ellipse",
+        max_iter: int = 12,
+        tol: float = 1e-5,
+    ) -> tuple[float, float]:
+        """Eye-local decentration coefficients whose apparent render reproduces a measured image decentration.
+
+        The pupil centre shifts as the pupil changes size; in the camera image that is a centre displacement
+        per unit of apparent pupil-size change. ``image_cx, image_cy`` are that measured shift normalised by
+        the apparent pupil-diameter change (centre-shift px / mean-ellipse-axis-change px, so dimensionless),
+        at the ``apparent_con`` -> ``apparent_dil`` transition. The decentration is applied as an eye-local
+        pupil offset proportional to the physical diameter change; the image projection of that offset is
+        non-linear over the sub-millimetre shift, so a single linear inversion mis-scales it by several
+        percent. This renders the pupil with apparent sizing (adopting any registered per-size shape) at the
+        two diameters, measures the ``center_method`` pupil-centre shift over the mean-ellipse-axis diameter
+        change, and Newton-iterates the eye-local coefficients until the rendered ratio matches
+        ``(image_cx, image_cy)`` -- a 1:1 round-trip, converging in a few iterations.
+
+        ``center_method`` must match the pupil-centre method used downstream (e.g. by the gaze model), so the
+        inversion is consistent with how the centre is later read. The returned coefficients are NOT set on the
+        eye -- the caller assigns them to a ``PupilDecentrationConfig`` (this eye's ``decentration_config`` or a
+        per-target one), since the solve leaves the config at an intermediate probe value.
+
+        Args:
+            image_cx: Measured image decentration x (centre-shift px / pupil-diameter-change px).
+            image_cy: Measured image decentration y.
+            apparent_con: First (constricted) apparent pupil diameter in mm.
+            apparent_dil: Second (dilated) apparent pupil diameter in mm.
+            camera: Camera the apparent decentration was measured in.
+            target: Gaze the decentration was measured at; defaults to the world origin.
+            center_method: Pupil-centre method ("ellipse", "convex_hull", "center_of_mass").
+            max_iter: Maximum Newton iterations.
+            tol: Convergence tolerance on the image-frame ratio.
+
+        Returns:
+            ``(x_coeff, y_coeff)`` eye-local decentration coefficients.
+
+        """
+        self.look_at(target if target is not None else Position3D(0.0, 0.0, 0.0))
+        self.decentration_config.enabled = True
+
+        def rendered_ratio(ex: float, ey: float) -> np.ndarray:
+            self.decentration_config.x_coeff, self.decentration_config.y_coeff = ex, ey
+            self.set_pupil_diameter(apparent_con, apparent=True, camera=camera)
+            con_centre, con_diameter = self._pupil_centre_and_diameter(camera, center_method)
+            self.set_pupil_diameter(apparent_dil, apparent=True, camera=camera)
+            dil_centre, dil_diameter = self._pupil_centre_and_diameter(camera, center_method)
+            return (dil_centre - con_centre) / (dil_diameter - con_diameter)
+
+        measured = np.array([image_cx, image_cy])
+        ex, ey = image_cx, image_cy  # the image-frame value is a good first coefficient
+        eps = 0.005
+        for _ in range(max_iter):
+            current = rendered_ratio(ex, ey)
+            residual = measured - current
+            if float(np.hypot(*residual)) < tol:
+                break
+            jacobian = np.column_stack([
+                (rendered_ratio(ex + eps, ey) - current) / eps,
+                (rendered_ratio(ex, ey + eps) - current) / eps,
+            ])
+            step = np.linalg.solve(jacobian, residual)
+            ex, ey = ex + float(step[0]), ey + float(step[1])
+        return float(ex), float(ey)
 
     def move_pupil_position(self, dx: float, dy: float, dz: float) -> None:
         """Move pupil position by given offset.
@@ -556,22 +676,18 @@ class Eye:
             **self.decentration_config.get_model_params(),
         )
 
-    def _update_pupil_position_with_decentration(self) -> None:
-        """Update pupil position based on current size and decentration config."""
-        if not self.decentration_config.enabled:
-            return
+    def _update_pupil_position(self) -> None:
+        """Position the pupil centre.
 
-        # Get base position from corneal geometry
-        base_position = self.get_pupil_position()
-
-        # Calculate decentration offset
-        current_diameter = self.get_pupil_diameter()
-        offset = self._calculate_decentration_offset(current_diameter)
-
-        # Apply offset to base position
-        new_position = Position3D(base_position.x + offset.x, base_position.y + offset.y, base_position.z + offset.z)
-
-        self.pupil.pos_pupil = new_position
+        The position is the optical-axis base plus the static off-axis offset and the size-dependent
+        decentration, each applied only when its config is enabled.
+        """
+        base = self.get_pupil_position()
+        offset = self.off_axis_pupil.offset_for_eye(self.which_eye)
+        if self.decentration_config.enabled:
+            decentration = self._calculate_decentration_offset(self.get_pupil_diameter())
+            offset = Position3D(offset.x + decentration.x, offset.y + decentration.y, offset.z + decentration.z)
+        self.pupil.pos_pupil = Position3D(base.x + offset.x, base.y + offset.y, base.z + offset.z)
 
     def find_refracted_position(self, camera_position: Position3D, object_position: Position3D) -> Position3D | None:
         """Find where an intraocular object appears due to corneal refraction.

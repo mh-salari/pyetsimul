@@ -305,7 +305,6 @@ class RealisticPupilParams:
     - Average noncircularity: 0.0166 in both light and dark conditions
     - Elliptical component contributes ~50% of shape deviation
     - Individual shape signatures remain stable over time
-    - Pupils are consistently displaced nasal and superior to limbus center
 
     Based on: Wyatt, H.J. (1995). "The Form of the Human Pupil."
     Vision Research, 35(14), 2021-2036.
@@ -315,7 +314,6 @@ class RealisticPupilParams:
         noncircularity: Measure of deviation from circularity (0 = perfect circle)
         ellipse_contribution: Fraction of noncircularity from elliptical component
         major_axis_angle: Orientation of ellipse major axis in radians (0=vertical)
-        pupil_offset_from_limbus: (nasal, superior) displacement from limbus center in mm
         n_harmonics: Number of Fourier harmonics to include in shape generation
         age: Subject age in years (affects noncircularity and pupil size)
         random_seed: Random seed for reproducible shape generation (None for random)
@@ -326,7 +324,6 @@ class RealisticPupilParams:
     noncircularity: float = PupilDefaults.NONCIRCULARITY
     ellipse_contribution: float = PupilDefaults.ELLIPSE_CONTRIBUTION
     major_axis_angle: float = PupilDefaults.MAJOR_AXIS_ANGLE
-    pupil_offset_from_limbus: tuple[float, float] = PupilDefaults.OFFSET_FROM_LIMBUS
     n_harmonics: int = PupilDefaults.N_HARMONICS
     age: float = PupilDefaults.REFERENCE_AGE
     random_seed: int | None = None  # seed for reproducible random generation (None = random)

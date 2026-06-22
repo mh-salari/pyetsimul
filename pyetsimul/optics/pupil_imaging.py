@@ -138,6 +138,25 @@ def calculate_pupil_center_from_boundary(
     raise ValueError(f"Unknown center_method '{center_method}'. Use 'ellipse', 'convex_hull', or 'center_of_mass'")
 
 
+def calculate_pupil_diameter_from_boundary(boundary_points: list[Point2D]) -> float | None:
+    """Mean-axis diameter (px) of the ellipse fitted to the boundary: (major + minor) / 2.
+
+    Matches the ``(axis1 + axis2) / 2`` diameter a contour detector reports, so a simulated boundary and a
+    detected one are sized the same way. Returns None for fewer than five points; falls back to the boundary
+    bounding-box extent only when the ellipse fit is degenerate.
+    """
+    if boundary_points is None or len(boundary_points) < 5:
+        return None
+    points = np.array([[p.x, p.y] for p in boundary_points])
+    ellipse = EllipseModel.from_estimate(points)
+    if ellipse:
+        semi_major, semi_minor = (float(v) for v in ellipse.axis_lengths)
+        if np.isfinite(semi_major) and np.isfinite(semi_minor):
+            return semi_major + semi_minor
+    extent = (points[:, 0].max() - points[:, 0].min()) + (points[:, 1].max() - points[:, 1].min())
+    return float(extent / 2.0)
+
+
 def calculate_pupil_center_methods(
     eye: "Eye", camera: Camera, use_refraction: bool = True, center_method: str = "ellipse"
 ) -> PupilData:

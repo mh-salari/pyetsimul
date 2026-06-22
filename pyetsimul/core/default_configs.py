@@ -51,7 +51,7 @@ class PupilDefaults:
     NONCIRCULARITY: float = 0.0166
     ELLIPSE_CONTRIBUTION: float = 0.5
     MAJOR_AXIS_ANGLE: float = 0.0  # rad
-    OFFSET_FROM_LIMBUS: tuple[float, float] = (0.27, 0.20)  # mm
+    OFFSET_FROM_LIMBUS: tuple[float, float] = (0.27, 0.20)  # (nasal, superior) mm; Wyatt 1995
     N_HARMONICS: int = 6
     REFERENCE_AGE: float = 35.8  # years
 
