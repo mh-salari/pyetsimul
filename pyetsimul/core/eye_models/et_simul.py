@@ -1,4 +1,4 @@
-"""The original Böhme 2008 et_simul eye."""
+"""The original et_simul eye, reproducing the 2008 et_simul MATLAB reference."""
 
 from ..cornea import SphericalCornea
 from ..eye_model import EyeModel, register_eye_model
@@ -7,7 +7,17 @@ from ..pupil_decentration import PupilDecentrationConfig
 
 ET_SIMUL = EyeModel(
     # Spherical cornea, anterior radius 7.98 mm; single anterior-surface refraction (air -> cornea 1.376).
-    cornea=SphericalCornea(anterior_radius=7.98, refractive_index=1.376, use_posterior_surface=False),
+    # "center" placement fixes the curvature centre via CENTER_TO_ROTATION, and scale_with_radius rescales
+    # the eye dimensions with the corneal radius -- together reproducing the 2008 et_simul MATLAB geometry
+    # this model is validated against: apex -12.33 mm, curvature centre -4.35 mm, and the radius-scaled
+    # values for non-default corneas.
+    cornea=SphericalCornea(
+        anterior_radius=7.98,
+        refractive_index=1.376,
+        use_posterior_surface=False,
+        placement_convention="center",
+        scale_with_radius=True,
+    ),
     axial_length=24.75,  # mm
     n_aqueous_humor=1.336,
     fovea_displacement=True,

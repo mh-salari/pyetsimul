@@ -47,6 +47,12 @@ class Cornea(ABC):
     tear_film_thickness: float = 0.005
     tear_refractive_index: float = 1.336
 
+    # Which corneal point is held at a fixed eye-local depth: the apex or the curvature centre.
+    # "apex" fixes the apex at -axial_length/2 and derives the centre, so the apex depth is independent
+    # of the corneal radius and shape. "center" fixes the curvature centre at a radius-scaled depth (via
+    # CENTER_TO_ROTATION) and derives the apex, so the apex moves with the radius.
+    placement_convention: str = "apex"
+
     def __post_init__(self, center_init: Position3D | None) -> None:
         """Initialize cornea center if provided."""
         if center_init is not None:
@@ -256,6 +262,11 @@ class SphericalCornea(Cornea):
     anterior_radius: float = CorneaDefaults.ANTERIOR_RADIUS
     refractive_index: float = CorneaDefaults.REFRACTIVE_INDEX
 
+    # When True, the posterior radius, thickness and corneal depth scale proportionally with the anterior
+    # radius, so resizing the cornea resizes the whole eye. False keeps those dimensions at their reference
+    # values, independent of the corneal radius.
+    scale_with_radius: bool = False
+
     # Reference values for scaling (from Boff and Lincoln [1988])
     _posterior_radius_default: float = CorneaDefaults.POSTERIOR_RADIUS
     _thickness_offset_default: float = CorneaDefaults.THICKNESS_OFFSET
@@ -310,25 +321,31 @@ class SphericalCornea(Cornea):
         thickness_term = self.anterior_radius - self.posterior_radius - self.thickness_offset
         return Position3D(self.center.x, self.center.y, self.center.z - thickness_term)
 
-    @staticmethod
-    def calculate_center_position(
-        scale: float, axial_length: float, cornea_center_to_rotation_center: float
-    ) -> Position3D:
-        """Calculate the center position for spherical cornea based on anatomical parameters.
+    def calculate_center_position(self, axial_length: float) -> Position3D:
+        """Place the spherical curvature centre in eye-local coordinates per the placement convention.
 
-        This implements the original MATLAB/Eye logic for positioning the spherical cornea center.
+        "apex" holds the apex at a fixed depth and derives the centre from the radius; "center" holds
+        the curvature centre at a fixed depth and derives the apex.
 
         Args:
-            scale: Scaling factor based on corneal radius
             axial_length: Total axial length of eye (mm)
-            cornea_center_to_rotation_center: Distance from corneal center to rotation center (mm)
 
         Returns:
             Cornea center position
 
         """
-        cornea_z_offset = axial_length - 2 * cornea_center_to_rotation_center
-        return Position3D(0, 0, -scale * cornea_z_offset)
+        if self.placement_convention == "center":
+            # Curvature centre at a radius-scaled depth (axial_length - 2*CENTER_TO_ROTATION) in front
+            # of the origin; the apex, one radius further forward, therefore moves with the radius.
+            scale = self.get_scale_factor()
+            cornea_z_offset = axial_length - 2.0 * self._cornea_center_to_rotation_center_default
+            return Position3D(0, 0, -scale * cornea_z_offset)
+        if self.placement_convention == "apex":
+            # Apex half the axial length in front of the origin; the curvature centre is one radius
+            # further back. Radius-independent, so rescaling the cornea leaves the apex in place.
+            apex_z = -axial_length / 2.0
+            return Position3D(0, 0, apex_z + self.anterior_radius)
+        raise ValueError(f"Unknown cornea placement convention: {self.placement_convention!r}")
 
     def get_apex_position(self) -> Position3D:
         """Calculate the apex position for spherical cornea.
@@ -342,15 +359,17 @@ class SphericalCornea(Cornea):
         return Position3D(self.center.x, self.center.y, self.center.z - self.anterior_radius)
 
     def get_scale_factor(self) -> float:
-        """Calculate the scaling factor for this spherical cornea.
+        """Proportional scaling factor for the eye's dimensions.
 
-        The scale factor is used to proportionally scale all eye dimensions
-        based on how this cornea's radius differs from the reference radius.
+        With ``scale_with_radius`` the dimensions scale by the corneal radius (radius / reference
+        radius); otherwise they are absolute and the factor is 1.
 
         Returns:
             Scale factor (dimensionless)
 
         """
+        if not self.scale_with_radius:
+            return 1.0
         return self.anterior_radius / self._r_cornea_default
 
     def get_corneal_depth(self) -> float:
@@ -380,9 +399,7 @@ class SphericalCornea(Cornea):
 
         # Calculate center position if not already set
         if self._center is None:
-            self.center = self.calculate_center_position(
-                scale, axial_length, self._cornea_center_to_rotation_center_default
-            )
+            self.center = self.calculate_center_position(axial_length)
 
         return {
             "scale": scale,
@@ -585,20 +602,33 @@ class ConicCornea(Cornea):
         """
         return 1.0
 
-    @staticmethod
-    def calculate_center_position(axial_length: float, cornea_center_to_rotation_center: float) -> Position3D:
-        """Calculate the center position for conic cornea based on anatomical parameters (no scaling).
+    def calculate_center_position(self, axial_length: float) -> Position3D:
+        """Place the conic geometric centre in eye-local coordinates per the placement convention.
+
+        "apex" holds the apex at a fixed depth and derives the centre; "center" holds the geometric
+        centre at a fixed depth and derives the apex. The conic apex sits ``R / (1 + k)`` in front of
+        the geometric centre.
 
         Args:
             axial_length: Total axial length of eye (mm)
-            cornea_center_to_rotation_center: Distance from corneal center to rotation center (mm)
 
         Returns:
             Cornea center position
 
         """
-        cornea_z_offset = axial_length - 2 * cornea_center_to_rotation_center
-        return Position3D(0, 0, -cornea_z_offset)
+        if self.placement_convention == "center":
+            # Geometric centre at a fixed depth (axial_length - 2*CENTER_TO_ROTATION) in front of the
+            # origin (a conic carries no radius scaling); the apex, R/(1+k) further forward, moves with
+            # R and k.
+            cornea_z_offset = axial_length - 2.0 * self._cornea_center_to_rotation_center_default
+            return Position3D(0, 0, -cornea_z_offset)
+        if self.placement_convention == "apex":
+            # Apex half the axial length in front of the origin; the geometric centre is R/(1+k)
+            # further back. Shape-independent, so the apex stays put as R or k change.
+            apex_z = -axial_length / 2.0
+            center_z = apex_z + self.anterior_radius / (1.0 + self.anterior_k)
+            return Position3D(0, 0, center_z)
+        raise ValueError(f"Unknown cornea placement convention: {self.placement_convention!r}")
 
     def setup_eye_geometry(self, axial_length: float) -> dict:
         """Setup conic cornea geometry parameters.
@@ -612,11 +642,8 @@ class ConicCornea(Cornea):
             Dictionary containing geometry parameters
 
         """
-        # Set default center if not already set (no scaling applied)
-        # For conic: position center at origin for mathematical consistency
         if self._center is None:
-            # Use anatomical offset if desired, otherwise origin
-            self.center = self.calculate_center_position(axial_length, self._cornea_center_to_rotation_center_default)
+            self.center = self.calculate_center_position(axial_length)
 
         return {
             "scale": 1.0,  # No scaling for conic cornea

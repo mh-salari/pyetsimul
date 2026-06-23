@@ -8,7 +8,7 @@ from pyetsimul.types.geometry import Position3D
 
 def test_basic_refraction() -> None:
     """Test basic refraction scenario with MATLAB reference values."""
-    e = Eye()
+    e = Eye(model="et_simul")
 
     # Camera position (50mm in front, slightly offset)
     center_point = Position3D(1000.0, 500.0, 50000.0)
@@ -32,7 +32,7 @@ def test_basic_refraction() -> None:
 
 def test_close_camera() -> None:
     """Test refraction with camera close to eye and MATLAB reference values."""
-    e = Eye()
+    e = Eye(model="et_simul")
 
     # Camera very close (15mm instead of 50mm)
     center_point = Position3D(1000.0, 500.0, 15000.0)
@@ -56,7 +56,7 @@ def test_close_camera() -> None:
 
 def test_refraction_impossible_geometry() -> None:
     """Test case where refraction is impossible - should return None."""
-    e = Eye()
+    e = Eye(model="et_simul")
 
     # Put object outside the eye sphere entirely (beyond cornea radius)
     # This causes the underlying find_refraction to succeed but point_within_cornea to fail
@@ -71,7 +71,7 @@ def test_refraction_impossible_geometry() -> None:
 
 def test_output_properties() -> None:
     """Test that output has correct properties when valid."""
-    e = Eye()
+    e = Eye(model="et_simul")
     center_point = Position3D(1000.0, 500.0, 50000.0)
     origin_point = Position3D(500.0, 200.0, -4000.0)
 

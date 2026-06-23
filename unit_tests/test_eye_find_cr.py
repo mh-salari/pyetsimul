@@ -11,7 +11,7 @@ from pyetsimul.types.geometry import Position3D
 
 def test_basic_corneal_reflex() -> None:
     """Test basic corneal reflex with MATLAB reference values."""
-    e = Eye()
+    e = Eye(model="et_simul")
 
     l = Light(position=Position3D(0, 0, -50000))
     c = Camera()
@@ -38,7 +38,7 @@ def test_basic_corneal_reflex() -> None:
 
 def test_different_positions() -> None:
     """Test corneal reflex with different light and camera positions."""
-    e = Eye()
+    e = Eye(model="et_simul")
     l = Light(position=Position3D(20000, 15000, -60000))
     c = Camera()
 
@@ -62,7 +62,7 @@ def test_different_positions() -> None:
 
 def test_light_behind_eye() -> None:
     """Test case where light is behind eye - should return None."""
-    e = Eye()
+    e = Eye(model="et_simul")
     l = Light(position=Position3D(0, 0, 50000))
     c = Camera()
 
@@ -77,7 +77,7 @@ def test_light_behind_eye() -> None:
 
 def test_reflex_outside_cornea_boundary() -> None:
     """Test case where reflex falls outside cornea boundary - should return None."""
-    e = Eye()
+    e = Eye(model="et_simul")
     l = Light(position=Position3D(5000, 30000, -40000))
     c = Camera()
 
@@ -94,7 +94,7 @@ def test_reflex_outside_cornea_boundary() -> None:
 
 def test_output_properties() -> None:
     """Test that output has correct properties."""
-    e = Eye()
+    e = Eye(model="et_simul")
     l = Light(position=Position3D(0, 0, -50000))
     c = Camera()
     c.trans[0:3, 3] = np.array([30000, 0, -40000])

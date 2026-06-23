@@ -10,7 +10,7 @@ from pyetsimul.types.geometry import Position3D, Vector3D
 
 def test_basic_cases() -> None:
     """Test basic cases with MATLAB reference values."""
-    e = Eye()
+    e = Eye(model="et_simul")
 
     # Case 1: Point at apex (should be within)
     p1 = e.cornea.get_apex_position()
@@ -40,7 +40,7 @@ def test_basic_cases() -> None:
 
 def test_boundary_cases() -> None:
     """Test boundary and edge cases with MATLAB reference values."""
-    e = Eye()
+    e = Eye(model="et_simul")
 
     # Case 4: Point just inside boundary (should be within)
     apex = e.cornea.get_apex_position()
@@ -82,7 +82,7 @@ def test_custom_eye() -> None:
     # Case 5: Custom eye with different cornea radius
     r_cornea_custom = 9
     # Create custom cornea with different radius (center=None for auto-positioning)
-    custom_cornea = SphericalCornea(anterior_radius=r_cornea_custom)
+    custom_cornea = SphericalCornea(anterior_radius=r_cornea_custom, placement_convention="center", scale_with_radius=True)
     e5 = Eye(model=EyeModel(cornea=custom_cornea))
     p5 = e5.cornea.get_apex_position()
     expected_p5 = Position3D(0.0, 0.0, -13.906015)
@@ -95,7 +95,7 @@ def test_custom_eye() -> None:
 
 def test_output_properties() -> None:
     """Test that output has correct properties."""
-    e = Eye()
+    e = Eye(model="et_simul")
     result = e.point_within_cornea(e.cornea.get_apex_position())
 
     # Check return type
