@@ -5,7 +5,7 @@ import numpy.testing as npt
 
 from pyetsimul.core.eye import Eye
 from pyetsimul.core.eye_model import EyeModel
-from pyetsimul.core.rotation_center import RotationCenter
+from pyetsimul.core.rotation_center import EyeballCenter, RotationCenter
 from pyetsimul.types import Position3D
 
 
@@ -27,11 +27,11 @@ def test_depth_for_blends_linearly() -> None:
 
 
 def test_equal_depths_reproduce_single_center() -> None:
-    """A rotation centre with both depths at the geometric apex-to-centre value == the default model."""
+    """A RotationCenter with both depths at the geometric apex-to-centre value == an EyeballCenter."""
     target = Position3D(12000, -7000, -30000)
     placement = Position3D(5.0, 3.0, 40.0)
 
-    baseline = Eye(model=EyeModel(fovea_displacement=False))
+    baseline = Eye(model=EyeModel(fovea_displacement=False, rotation_center=EyeballCenter()))
     baseline.position = placement
     baseline.look_at(target)
 
@@ -44,9 +44,9 @@ def test_equal_depths_reproduce_single_center() -> None:
     npt.assert_allclose(_xyz(configured.position), _xyz(baseline.position), atol=1e-12)
 
 
-def test_none_leaves_position_unchanged() -> None:
-    """Without a rotation centre, look_at never moves the eye position (single fixed centre)."""
-    eye = Eye(model=EyeModel(fovea_displacement=False))
+def test_eyeball_center_leaves_position_unchanged() -> None:
+    """With an EyeballCenter, look_at never moves the eye position (single fixed centre)."""
+    eye = Eye(model=EyeModel(fovea_displacement=False, rotation_center=EyeballCenter()))
     eye.position = Position3D(5.0, 3.0, 40.0)
     eye.look_at(Position3D(15.0, 10.0, 0.0))
     npt.assert_allclose(_xyz(eye.position), [5.0, 3.0, 40.0], atol=1e-12)

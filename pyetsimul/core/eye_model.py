@@ -12,7 +12,7 @@ from .default_configs import EyeAnatomyDefaults
 from .off_axis_pupil import OffAxisPupilConfig
 from .pupil import RealisticPupilParams
 from .pupil_decentration import PupilDecentrationConfig
-from .rotation_center import RotationCenter
+from .rotation_center import EyeballCenter, RotationCenter
 
 
 @dataclass(frozen=True)
@@ -53,9 +53,18 @@ class EyeModel:
     # the disc plane tilts instead of lying perpendicular to the optical axis. Eye-fixed (rotates with gaze).
     pupil_tilt_x_deg: float = 0.0
     pupil_tilt_y_deg: float = 0.0
-    # Gaze-direction-dependent rotation centre. None keeps the single fixed centre at the geometric centre
-    # of the eyeball sphere (the default model behaviour).
-    rotation_center: RotationCenter | None = None
+    # Rotation centre the rigid eye pivots about, defaulting to the anatomical Fick centres: azimuth
+    # 14.7 mm / 0.79 mm nasal, elevation 12.0 mm / 0.33 mm superior behind the corneal apex. An
+    # EyeballCenter() instead gives a single fixed pivot at the eyeball centre.
+    rotation_center: EyeballCenter | RotationCenter = field(
+        default_factory=lambda: RotationCenter(
+            horizontal_depth_mm=14.7,
+            vertical_depth_mm=12.0,
+            horizontal_nasal_mm=0.79,
+            vertical_superior_mm=0.33,
+            fick=True,
+        )
+    )
 
     # ---------------------------------------------------------------------------
     # Pupil-centre displacement models

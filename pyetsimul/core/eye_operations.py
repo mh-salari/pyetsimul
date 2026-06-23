@@ -11,6 +11,7 @@ import numpy as np
 
 from ..geometry.listings_law import calculate_eye_rotation
 from ..types import Position3D, RotationMatrix, Vector3D
+from .rotation_center import EyeballCenter
 
 if TYPE_CHECKING:
     from .eye import Eye
@@ -35,8 +36,8 @@ def look_at_target(eye: "Eye", target_position: Position3D) -> None:
 
     Uses Listing's law to compute eye rotation with proper torsion.
     Accounts for fovea displacement if enabled for realistic gaze alignment.
-    When ``eye.model.rotation_center`` is set, the eye also pivots about a gaze-direction-dependent
-    rotation centre rather than the single fixed globe centre (see ``rotation_center.py``).
+    With a ``RotationCenter`` the eye also pivots about a gaze-direction-dependent centre rather than
+    the single fixed eyeball centre of an ``EyeballCenter`` (see ``rotation_center.py``).
 
     Args:
         eye: Eye object to rotate
@@ -83,7 +84,7 @@ def look_at_target_optical_then_kappa(eye: "Eye", target_position: Position3D) -
     Aligns the optical axis to the target first, then applies foveal (kappa)
     offsets via post-rotations. The post step rotates the eye away so that
     neither the optical axis nor the visual axis ends up passing exactly
-    through the target. Honours ``eye.model.rotation_center`` when set.
+    through the target. Honours ``eye.model.rotation_center`` (``EyeballCenter`` or ``RotationCenter``).
 
     Args:
         eye: Eye object to rotate
@@ -170,17 +171,18 @@ def _direction_to_target(target_position: Position3D, eye_position: Position3D) 
 def _apply_orientation(
     eye: "Eye", target_position: Position3D, orientation_from: Callable[[Position3D], np.ndarray]
 ) -> None:
-    """Set the eye orientation; with a rotation centre configured, also re-pivot the eye position.
+    """Set the eye orientation; for a gaze-dependent rotation centre, also re-pivot the eye position.
 
-    Without ``eye.model.rotation_center`` the orientation is computed once from the current eye position
-    and the position is left untouched (the single fixed centre at the globe centre). With it, the
-    eye additionally translates so it rotates about the gaze-direction-dependent centre.
+    For an ``EyeballCenter`` the orientation is computed once from the current eye position and the
+    position is left untouched (the single fixed centre at the eyeball centre). For a ``RotationCenter``
+    the eye additionally translates so it rotates about the gaze-direction-dependent centre.
     """
-    if eye.model.rotation_center is None:
+    rotation_center = eye.model.rotation_center
+    if isinstance(rotation_center, EyeballCenter):
         new_orientation = orientation_from(eye.position)
         eye.orientation = RotationMatrix(new_orientation, validate_handedness=False)
         return
-    repivot = _repivot_fick if eye.model.rotation_center.fick else _repivot
+    repivot = _repivot_fick if rotation_center.fick else _repivot
     new_orientation, position = repivot(eye, target_position, orientation_from)
     eye.orientation = RotationMatrix(new_orientation, validate_handedness=False)
     # Write the translation directly so the rest placement (used to re-pivot) is not overwritten.

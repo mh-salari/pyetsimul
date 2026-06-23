@@ -5,12 +5,14 @@ import numpy.testing as npt
 
 from pyetsimul.core.eye import Eye
 from pyetsimul.core.eye_model import EyeModel
+from pyetsimul.core.rotation_center import EyeballCenter
 from pyetsimul.types import Position3D, RotationMatrix
 
 
 def test_look_at_with_foveal_displacement() -> None:
     """Test look_at with foveal displacement enabled (default)."""
-    e = Eye()
+    # Single fixed centre: look_at rotates about eye.position and leaves it unchanged.
+    e = Eye(model=EyeModel(rotation_center=EyeballCenter()))
     target = Position3D(x=12000, y=-7000, z=-30000)
     initial_position = np.array(e.position)
 
@@ -35,7 +37,8 @@ def test_look_at_with_foveal_displacement() -> None:
 
 def test_look_at_with_no_foveal_displacement() -> None:
     """Test look_at with foveal displacement disabled."""
-    e = Eye(model=EyeModel(fovea_displacement=False))  # Disable foveal displacement
+    # Foveal displacement off; single fixed centre, so look_at leaves eye.position unchanged.
+    e = Eye(model=EyeModel(fovea_displacement=False, rotation_center=EyeballCenter()))
     target = Position3D(x=12000, y=-7000, z=-30000)
     initial_position = np.array(e.position)
 

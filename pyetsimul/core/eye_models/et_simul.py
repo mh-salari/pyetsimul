@@ -4,6 +4,7 @@ from ..cornea import SphericalCornea
 from ..eye_model import EyeModel, register_eye_model
 from ..off_axis_pupil import OffAxisPupilConfig
 from ..pupil_decentration import PupilDecentrationConfig
+from ..rotation_center import EyeballCenter
 
 ET_SIMUL = EyeModel(
     # Spherical cornea, anterior radius 7.98 mm; single anterior-surface refraction (air -> cornea 1.376).
@@ -27,7 +28,7 @@ ET_SIMUL = EyeModel(
     torsion_deg=0.0,
     pupil_tilt_x_deg=0.0,
     pupil_tilt_y_deg=0.0,
-    rotation_center=None,  # single fixed centre at the eyeball-sphere centre
+    rotation_center=EyeballCenter(),  # single fixed pivot at the eyeball centre
     decentration_config=PupilDecentrationConfig(enabled=False),  # no size-dependent pupil decentration
     off_axis_pupil=OffAxisPupilConfig(enabled=False),  # no static off-axis pupil
     pupil_type="elliptical",

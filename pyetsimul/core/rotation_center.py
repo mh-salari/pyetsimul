@@ -1,19 +1,27 @@
-"""Gaze-direction-dependent eye rotation centre.
+"""Eye rotation centre: the point the rigid eye pivots about as gaze direction changes.
 
-By default the eye model rotates the whole eye rigidly about a single fixed point at the geometric
-centre of the eyeball sphere, a fixed distance behind the corneal apex. The human eye has no unique
-centre of rotation: it lies about 15 mm behind the cornea in horizontal gaze and about 12.5 mm in
-vertical gaze (Atchison & Smith, *Optics of the Human Eye*, 2nd ed., 2023, Section 1.7, after Fry &
-Hill 1962 and Ohlendorf et al. 2022).
+The human eye has no unique centre of rotation: it lies about 15 mm behind the cornea in horizontal
+gaze and about 12.5 mm in vertical gaze (Atchison & Smith, *Optics of the Human Eye*, 2nd ed., 2023,
+Section 1.7, after Fry & Hill 1962 and Ohlendorf et al. 2022).
 
-:class:`RotationCenter` makes the rotation-centre depth (corneal apex to pivot, in millimetres)
-depend on the gaze direction, blending the horizontal and vertical values by the horizontal fraction
-of the gaze eccentricity. It changes only *where* the rigid eye pivots; the cornea, pupil and every
-optical surface are left untouched. Attaching it to an :class:`~pyetsimul.core.eye.Eye` is opt-in;
-without it the eye keeps its single fixed centre.
+Two models are provided. :class:`EyeballCenter` rotates the whole eye rigidly about its origin (the
+eyeball centre), the same point for every gaze direction. :class:`RotationCenter` makes the
+rotation-centre depth (corneal apex to pivot, in millimetres) depend on the gaze direction, blending
+the horizontal and vertical values by the horizontal fraction of the gaze eccentricity. Both change
+only *where* the rigid eye pivots; the cornea, pupil and every optical surface are left untouched.
 """
 
 from dataclasses import dataclass
+
+
+@dataclass
+class EyeballCenter:
+    """A single fixed rotation centre at the eyeball centre (the eye-local origin).
+
+    The eye rotates rigidly about its origin for every gaze direction -- the simplest rotation model.
+    The eyeball centre is the eye-local origin, so this carries no depth or lateral offset, unlike the
+    gaze-dependent :class:`RotationCenter`.
+    """
 
 
 @dataclass
@@ -22,16 +30,25 @@ class RotationCenter:
 
     Each centre is a corneal-apex-to-pivot depth (mm) plus an optional lateral displacement off the
     optical axis: the horizontal centre is displaced nasally by ``horizontal_nasal_mm`` and the
-    vertical centre superiorly by ``vertical_superior_mm``. Fry & Hill (1962, 1963) measured the
-    azimuthal centre about 14.7 mm behind the apex and 0.79 mm nasal, and the elevation centre about
-    12.2 mm behind the apex and 0.33 mm superior; Aguirre (2019, Sci. Rep. 9:9360; ``gkaModelEye``
-    ``+human/rotationCenters.m``) uses two such centres to model the appearance of the rotated eye.
+    vertical centre superiorly by ``vertical_superior_mm``. Fry & Hill measured the azimuthal centre
+    about 14.7 mm behind the apex and 0.79 mm nasal, and the elevation centre about 12.2 mm behind the
+    apex and 0.33 mm superior; Aguirre's model uses two such centres to model the appearance of the
+    rotated eye.
 
     ``depth_for`` and ``lateral_for`` blend the two centres linearly by the horizontal fraction of the
     gaze eccentricity, so purely horizontal gaze pivots about the azimuth centre and purely vertical
     gaze about the elevation centre. The lateral magnitudes default to zero, and setting both depths
     equal to the model's geometric apex-to-centre distance reproduces the single fixed-centre
     behaviour exactly.
+
+    References:
+        Fry, G. A., & Hill, W. W. (1962). The center of rotation of the eye.
+            Optometry and Vision Science, 39(11), 581-595.
+        Fry, G. A., & Hill, W. W. (1963). The mechanics of elevating the eye.
+            Optometry and Vision Science, 40(12), 707-716.
+        Aguirre, G. K. (2019). A model of the entrance pupil of the human eye.
+            Scientific Reports, 9, 9360.
+
     """
 
     horizontal_depth_mm: float
