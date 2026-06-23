@@ -132,18 +132,21 @@ class Eye:
             pupil_type=model.pupil_type, pos_pupil=pupil_position, x_pupil=x_pupil, y_pupil=y_pupil, **pupil_kwargs
         )
 
-        # Create eyelid if enabled: positioned at eye center, sphere radius = axial_length/2,
-        # phi_max derived from limbus z position so that the footprint matches corneal boundary.
+        # Create eyelid if enabled: the eyeball globe (radius axial_length/2) centred on the eyeball
+        # centre (axial_length/2 behind the corneal apex), phi_max set so its front-cap rim meets the
+        # corneal limbus.
         if model.eyelid_enabled:
             sphere_radius = model.axial_length / 2.0
             apex_pos = self.cornea.get_apex_position()
-            limbus_z_local = apex_pos.z + self.cornea.get_corneal_depth()
-            # phi from apex normal (-Z): cos(phi) = n·(r̂) = -z/sphere_radius  -> phi = arccos(-z/sphere_radius)
-            ratio = np.clip(-limbus_z_local / sphere_radius, -1.0, 1.0)
+            eyeball_center_z = self.eyeball_center_z
+            # Limbus z relative to the eyeball centre; phi from the apex pole (-Z from the centre):
+            # cos(phi) = -limbus_z_rel / sphere_radius -> phi = arccos(...).
+            limbus_z_rel = apex_pos.z + self.cornea.get_corneal_depth() - eyeball_center_z
+            ratio = np.clip(-limbus_z_rel / sphere_radius, -1.0, 1.0)
             phi_max = float(np.arccos(ratio))
 
             self.eyelid = create_eyelid(
-                center=Position3D(0.0, 0.0, 0.0),
+                center=Position3D(0.0, 0.0, eyeball_center_z),
                 sphere_radius=sphere_radius,
                 phi_max=phi_max,
                 openness=EyeAnatomyDefaults.EYELID_OPENNESS,
@@ -294,15 +297,19 @@ class Eye:
 
     @property
     def position(self) -> Position3D:
-        """Get/set the eye's position in world coordinates."""
+        """Get/set the world position of the eye-local origin.
+
+        The origin is the corneal apex under the "apex" placement convention and the eyeball centre
+        under the "center" convention.
+        """
         return Position3D.from_array(self.trans[:, 3])
 
     @position.setter
     def position(self, value: Position3D) -> None:
         """Set the eye's position and update transformation matrix."""
         self.trans[:, 3] = np.array(value)
-        # Record the placement as the rest globe centre so look_at can re-pivot about a
-        # gaze-dependent rotation centre relative to it (look_at writes trans directly, not here).
+        # Record the placement as the rest origin so look_at can re-pivot about a gaze-dependent
+        # rotation centre relative to it (look_at writes trans directly, not here).
         self._placement = value
         # Eyelid follows eye translation but not rotation
         if self.model.eyelid_enabled:
@@ -871,18 +878,29 @@ class Eye:
         return within
 
     @property
+    def eyeball_center_z(self) -> float:
+        """Eye-local z of the eyeball (globe) centre, axial_length/2 behind the corneal apex.
+
+        Derived from the live apex position, so it is convention-agnostic: 0 when the eye-local
+        origin is the eyeball centre ("center" convention) and axial_length/2 when the origin is the
+        corneal apex ("apex" convention).
+        """
+        return self.cornea.get_apex_position().z + self.model.axial_length / 2.0
+
+    @property
     def fovea_position(self) -> Position3D:
         """Calculate the 3D position of the fovea on the retinal surface.
 
-        Uses spherical eye model with optional fovea displacement angles.
-        Positions fovea at axial_length/2 distance from rotation center.
+        The fovea sits on the retina, axial_length/2 behind the eyeball centre, with the x/y offset
+        set by the optional fovea-displacement (kappa) angles.
 
         Returns:
             Fovea position in eye coordinate system
 
         """
-        # Retina distance from rotation center (from our eye model)
+        # Retina radius (from the eyeball centre) and the eyeball centre in eye-local coordinates.
         retina_distance = self.model.axial_length / 2
+        eyeball_center_z = self.eyeball_center_z
 
         if self.model.fovea_displacement:
             # Convert displacement angles to radians
@@ -892,12 +910,12 @@ class Eye:
             # Calculate fovea position with displacement using spherical coordinates
             fovea_x = retina_distance * np.sin(alpha) * np.cos(beta)  # Temporal displacement
             fovea_y = retina_distance * np.sin(beta)  # Vertical displacement
-            fovea_z = retina_distance * np.cos(alpha) * np.cos(beta)  # Along optical axis
+            fovea_z = eyeball_center_z + retina_distance * np.cos(alpha) * np.cos(beta)  # Along optical axis
         else:
             # Fovea at optical axis center (no displacement)
             fovea_x = 0.0
             fovea_y = 0.0
-            fovea_z = retina_distance
+            fovea_z = eyeball_center_z + retina_distance
 
         return Position3D(fovea_x, fovea_y, fovea_z)
 
@@ -915,8 +933,10 @@ class Eye:
         # Get fovea position
         fovea_pos = self.fovea_position
 
-        # Calculate visual axis direction (normalized)
-        visual_axis = Direction3D(fovea_pos.x, fovea_pos.y, fovea_pos.z).normalize()
+        # Visual axis = the direction from the eyeball centre (the nodal point) to the fovea, which
+        # depends only on the kappa angles, independent of where the eye-local origin sits.
+        eyeball_center_z = self.eyeball_center_z
+        visual_axis = Direction3D(fovea_pos.x, fovea_pos.y, fovea_pos.z - eyeball_center_z).normalize()
 
         # Optical axis points along -Z direction in eye coordinates
         optical_axis = Direction3D(0, 0, -1)

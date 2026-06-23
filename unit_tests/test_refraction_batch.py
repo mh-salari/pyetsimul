@@ -94,13 +94,14 @@ def _dual_forward_inverse(conic: bool) -> None:
                 cam, obj, ant[0], ant[1], post[0], post[1], N_AIR, N_CORNEA, N_AQ
             )
 
+    pupil_z = c.get_apex_position().z + c.get_corneal_depth()  # pupil plane: behind the cornea, in the aqueous
     stack = [(post, N_CORNEA), (ant, N_AIR)]  # object side out: aqueous -> posterior -> cornea -> anterior -> air
     rng = np.random.default_rng(1)
     checked = 0
     for _ in range(60):
         radius = 3.0 * np.sqrt(rng.random())  # pupil-sized object, like the real boundary
         theta = 2 * np.pi * rng.random()
-        obj = np.array([[radius * np.cos(theta), radius * np.sin(theta), -8.79]])
+        obj = np.array([[radius * np.cos(theta), radius * np.sin(theta), pupil_z]])
         front = np.array([[3.0 * (rng.random() - 0.5), 3.0 * (rng.random() - 0.5), -200.0]])  # small-angle
         exit_pt, exit_dir, valid = rb._trace_stack(front - obj, obj, stack, N_AQ, conic)
         if not valid[0]:

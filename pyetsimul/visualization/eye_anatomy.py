@@ -62,8 +62,10 @@ def plot_eye_anatomy(eye: Eye, ax: "Axes | None" = None) -> "Axes":
             "to orient the eye and set a target for visualization."
         )
 
-    # Calculate all key points in WORLD coordinates using structured types
-    eye_rotation_center = eye.position
+    # Calculate all key points in WORLD coordinates using structured types. The eye-local origin is the
+    # corneal apex under the "apex" convention, so the eyeball (globe) centre is axial_length/2 behind it.
+    eyeball_center_local = Position3D(0.0, 0.0, eye.eyeball_center_z)
+    eye_rotation_center = Position3D.from_array(eye.trans @ np.array(eyeball_center_local))
     cornea_center = eye.cornea.center
     cornea_inner_center = eye.cornea.get_posterior_center()
     pupil_position = eye.pupil.pos_pupil
@@ -113,7 +115,7 @@ def plot_eye_anatomy(eye: Eye, ax: "Axes | None" = None) -> "Axes":
 
     x_eye_local = main_eye_radius * np.sin(phi_eye_grid) * np.cos(theta_eye_grid)
     y_eye_local = main_eye_radius * np.sin(phi_eye_grid) * np.sin(theta_eye_grid)
-    z_eye_local = main_eye_radius * np.cos(phi_eye_grid)
+    z_eye_local = eye.eyeball_center_z + main_eye_radius * np.cos(phi_eye_grid)
 
     x_eye_world, y_eye_world, z_eye_world = transform_surface(x_eye_local, y_eye_local, z_eye_local, eye.trans)
 

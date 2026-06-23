@@ -16,11 +16,12 @@ from dataclasses import dataclass
 
 @dataclass
 class EyeballCenter:
-    """A single fixed rotation centre at the eyeball centre (the eye-local origin).
+    """A single fixed rotation centre at the eye-local origin.
 
-    The eye rotates rigidly about its origin for every gaze direction -- the simplest rotation model.
-    The eyeball centre is the eye-local origin, so this carries no depth or lateral offset, unlike the
-    gaze-dependent :class:`RotationCenter`.
+    The eye rotates rigidly about its origin for every gaze direction -- the simplest rotation model,
+    carrying no depth or lateral offset (unlike the gaze-dependent :class:`RotationCenter`). The origin
+    coincides with the eyeball centre only under the "center" placement convention; for an apex-origin
+    eye, use :class:`RotationCenter` rather than pivoting about the apex.
     """
 
 

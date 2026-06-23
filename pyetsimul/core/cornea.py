@@ -48,9 +48,10 @@ class Cornea(ABC):
     tear_refractive_index: float = 1.336
 
     # Which corneal point is held at a fixed eye-local depth: the apex or the curvature centre.
-    # "apex" fixes the apex at -axial_length/2 and derives the centre, so the apex depth is independent
-    # of the corneal radius and shape. "center" fixes the curvature centre at a radius-scaled depth (via
-    # CENTER_TO_ROTATION) and derives the apex, so the apex moves with the radius.
+    # "apex" fixes the apex at the eye-local origin (z=0), so the eye-local origin IS the corneal apex,
+    # and the apex depth is independent of the corneal radius and shape. "center" fixes the curvature
+    # centre at a radius-scaled depth (via CENTER_TO_ROTATION) and derives the apex, so the apex moves
+    # with the radius.
     placement_convention: str = "apex"
 
     def __post_init__(self, center_init: Position3D | None) -> None:
@@ -341,9 +342,10 @@ class SphericalCornea(Cornea):
             cornea_z_offset = axial_length - 2.0 * self._cornea_center_to_rotation_center_default
             return Position3D(0, 0, -scale * cornea_z_offset)
         if self.placement_convention == "apex":
-            # Apex half the axial length in front of the origin; the curvature centre is one radius
-            # further back. Radius-independent, so rescaling the cornea leaves the apex in place.
-            apex_z = -axial_length / 2.0
+            # Apex at the eye-local origin (z=0), so the origin IS the corneal apex; the curvature
+            # centre is one radius behind (positive z). Radius-independent, so rescaling the cornea
+            # leaves the apex at the origin.
+            apex_z = 0.0
             return Position3D(0, 0, apex_z + self.anterior_radius)
         raise ValueError(f"Unknown cornea placement convention: {self.placement_convention!r}")
 
@@ -623,9 +625,10 @@ class ConicCornea(Cornea):
             cornea_z_offset = axial_length - 2.0 * self._cornea_center_to_rotation_center_default
             return Position3D(0, 0, -cornea_z_offset)
         if self.placement_convention == "apex":
-            # Apex half the axial length in front of the origin; the geometric centre is R/(1+k)
-            # further back. Shape-independent, so the apex stays put as R or k change.
-            apex_z = -axial_length / 2.0
+            # Apex at the eye-local origin (z=0), so the origin IS the corneal apex; the geometric
+            # centre is R/(1+k) behind (positive z). Shape-independent, so the apex stays at the
+            # origin as R or k change.
+            apex_z = 0.0
             center_z = apex_z + self.anterior_radius / (1.0 + self.anterior_k)
             return Position3D(0, 0, center_z)
         raise ValueError(f"Unknown cornea placement convention: {self.placement_convention!r}")

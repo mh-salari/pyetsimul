@@ -217,9 +217,9 @@ def _repivot(
 
     The rigid eye rotates about a point ``depth`` mm behind the corneal apex, where ``depth`` blends
     the horizontal and vertical rotation-centre depths by the horizontal fraction of the gaze. The
-    pivot is anchored to the rest placement, so the globe centre translates as the eye turns to
-    off-axis targets. Orientation and position depend on each other (aiming uses the translated globe
-    centre), so they are iterated to a fixed point.
+    pivot is anchored to the rest placement, so the eye-local origin translates as the eye turns to
+    off-axis targets. Orientation and position depend on each other (aiming uses the translated
+    origin), so they are iterated to a fixed point.
 
     Returns:
         (orientation matrix (3x3), eye-position xyz array (3,)).
@@ -227,7 +227,9 @@ def _repivot(
     """
     placement = np.array([eye.placement.x, eye.placement.y, eye.placement.z], dtype=float)
     rest = np.asarray(eye.rest_orientation, dtype=float)
-    apex_to_center = abs(eye.cornea.get_apex_position().z)  # current model centre depth (apex -> globe centre)
+    # Apex depth below the origin: ~axial_length/2 under "center", ~0 under "apex" (origin = apex);
+    # offset.z = depth - apex_to_center keeps the pivot depth mm behind the apex under either convention.
+    apex_to_center = abs(eye.cornea.get_apex_position().z)
     horizontal_fraction = _horizontal_fraction(eye, target_position)
     gaze_rest = rest.T @ (np.array([target_position.x, target_position.y, target_position.z], dtype=float) - placement)
     depth = eye.model.rotation_center.depth_for(horizontal_fraction, gaze_rest[1])  # gaze_rest[1] >= 0 up, < 0 down
