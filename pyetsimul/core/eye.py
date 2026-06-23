@@ -317,6 +317,21 @@ class Eye:
             self.eyelid_trans[1, 3] = value.y
             self.eyelid_trans[2, 3] = value.z
 
+    def copy(self, **overrides: object) -> "Eye":
+        """Return a new Eye, optionally overriding model fields with a derived EyeModel.
+
+        Mirrors :meth:`EyeModel.copy` at the eye level: keyword overrides are forwarded to a derived
+        copy of the model, so the shared named model is never mutated, and the placement (position,
+        rest orientation, which_eye) carries over. Dynamic state -- a changed pupil size, the current
+        gaze target, registered per-size shapes -- is not copied; the result is a freshly built eye.
+        """
+        model = self.model.copy(**overrides) if overrides else self.model
+        new_eye = Eye(model=model, which_eye=self.which_eye)
+        new_eye.position = self.position
+        if self._rest_orientation_explicitly_set:
+            new_eye.set_rest_orientation(self.rest_orientation)
+        return new_eye
+
     def point_within_cornea(self, p: Position3D) -> bool:
         """Check if a point lies within the corneal boundaries.
 
