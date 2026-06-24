@@ -237,12 +237,14 @@ class Eye:
         """
         return self._current_target_point
 
-    def set_rest_orientation_at_target(self, target_position: Position3D) -> None:
+    def set_rest_orientation_at_target(self, target_position: Position3D, up: Position3D | None = None) -> None:
         """Set rest orientation so the VISUAL axis points to the target.
 
         Aligns the eye-local visual axis (derived from fovea angles when enabled,
         or equals the optical axis when disabled) with the world-space direction
-        from eye position to target. Keeps +Y approximately aligned with world up.
+        from eye position to target. Keeps the eye-local +Y axis approximately aligned
+        with ``up`` (the world up direction); ``up`` defaults to +Y when not given, and
+        must not be parallel to the gaze direction.
         """
         # Eye position and target direction (world)
         eye_pos = np.array([self.trans[0, 3], self.trans[1, 3], self.trans[2, 3]], dtype=float)
@@ -281,7 +283,7 @@ class Eye:
         local_rotation_matrix = np.column_stack([x_local, y_local, v_local])  # maps basis to canonical
 
         # Build world visual basis (target dir as z)
-        world_up = np.array([0.0, 1.0, 0.0], dtype=float)
+        world_up = np.array([0.0, 1.0, 0.0]) if up is None else np.array([up.x, up.y, up.z], dtype=float)
         y_world = world_up - np.dot(world_up, z_world) * z_world
         if np.linalg.norm(y_world) < 1e-12:
             world_up = np.array([1.0, 0.0, 0.0], dtype=float)
