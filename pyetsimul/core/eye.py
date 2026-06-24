@@ -229,6 +229,25 @@ class Eye:
         return self._placement
 
     @property
+    def rotation_centre(self) -> Position3D:
+        """Azimuth rotation centre in world coordinates.
+
+        The point the rigid eye pivots about for horizontal gaze, placed by the eye's rest pose.
+        Requires a gaze-dependent rotation centre.
+        """
+        local = self._azimuth_rotation_centre_local()
+        world = np.asarray(self.rest_orientation, float) @ local
+        world += np.array([self.placement.x, self.placement.y, self.placement.z], dtype=float)
+        return Position3D(world[0], world[1], world[2])
+
+    def _azimuth_rotation_centre_local(self) -> np.ndarray:
+        """Azimuth rotation centre in eye-local coordinates: nasal-signed lateral plus depth behind the apex."""
+        centre = self.model.rotation_center
+        nasal = -centre.horizontal_nasal_mm if self.which_eye == "right" else centre.horizontal_nasal_mm
+        apex_to_centre = abs(self.cornea.get_apex_position().z)
+        return np.array([nasal, 0.0, centre.horizontal_depth_mm - apex_to_centre], dtype=float)
+
+    @property
     def current_target_point(self) -> Position3D | None:
         """Get the current target point (read-only).
 

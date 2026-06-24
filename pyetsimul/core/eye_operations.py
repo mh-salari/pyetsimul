@@ -263,8 +263,7 @@ def _repivot_fick(
     rest = np.asarray(eye.rest_orientation, dtype=float)
     apex_to_center = abs(eye.cornea.get_apex_position().z)
     rc = eye.model.rotation_center
-    nasal = -rc.horizontal_nasal_mm if eye.which_eye == "right" else rc.horizontal_nasal_mm
-    c_azi = np.array([nasal, 0.0, rc.horizontal_depth_mm - apex_to_center], dtype=float)
+    c_azi = eye._azimuth_rotation_centre_local()
     identity = np.eye(3)
 
     position = placement.copy()

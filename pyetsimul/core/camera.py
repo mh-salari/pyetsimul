@@ -30,6 +30,36 @@ if TYPE_CHECKING:
     from .eye import Eye
 
 
+# Rows map a world-frame offset (x = right, y = depth away from the screen, z = up) into the reference
+# frame the FickRotation projection uses (x = right, y = up, z = forward).
+_REFERENCE_AXES = np.array([[1.0, 0.0, 0.0], [0.0, 0.0, 1.0], [0.0, -1.0, 0.0]])
+
+
+def _fick_rotation_angles(camera_position: np.ndarray, target: np.ndarray) -> list[float]:
+    """``[elevation, azimuth, torsion]`` degrees that aim a camera at ``camera_position`` toward ``target``.
+
+    Both points are in the projection's reference frame. The rotation is the shortest arc turning the
+    camera's initial facing (``-Z``) onto the target direction, decomposed into the three sequential angle
+    rotations the FickRotation projection consumes. A camera already facing the target needs no turn.
+    """
+    initial = np.array([0.0, 0.0, -1.0])
+    direction = np.asarray(target, float) - np.asarray(camera_position, float)
+    direction /= np.linalg.norm(direction)
+    cos_angle = float(np.clip(initial @ direction, -1.0, 1.0))
+    axis = np.cross(initial, direction)
+    axis_norm = np.linalg.norm(axis)
+    if axis_norm < 1e-12:  # already aligned or anti-aligned: no usable turn axis
+        return [0.0, 0.0, 0.0]
+    axis /= axis_norm
+    skew = np.array([[0.0, -axis[2], axis[1]], [axis[2], 0.0, -axis[0]], [-axis[1], axis[0], 0.0]])
+    angle = np.arccos(cos_angle)
+    rotation = np.eye(3) + np.sin(angle) * skew + (1.0 - np.cos(angle)) * (skew @ skew)
+    pitch = np.arcsin(np.clip(-rotation[2, 0], -1.0, 1.0))
+    yaw = np.arctan2(rotation[1, 0], rotation[0, 0])
+    torsion = np.arctan2(rotation[2, 1], rotation[2, 2])
+    return [float(np.degrees(-pitch)), float(np.degrees(-torsion)), float(np.degrees(yaw))]
+
+
 @dataclass
 class Camera:
     """Pinhole camera model for eye tracking.
@@ -60,6 +90,9 @@ class Camera:
 
     # Internal field to track where camera is pointing (set by point_at method)
     _pointing_at: Position3D | None = field(default=None, init=False)
+
+    # World->pixel matrix when the camera is switched to the FickRotation projection; None = default pinhole.
+    _fick_projection: np.ndarray | None = field(default=None, init=False)
 
     def __post_init__(self) -> None:
         """Initialize camera with default values."""
@@ -127,6 +160,9 @@ class Camera:
             - valid_mask: 1xn boolean array indicating points within image bounds
 
         """
+        if self._fick_projection is not None:
+            return self._project_fick(pos)
+
         # Convert input to homogeneous coordinates matrix
         if isinstance(pos, Position3D):
             # Single position
@@ -185,6 +221,70 @@ class Camera:
         x[:, invalid_mask] = np.nan
 
         return ProjectionResult(image_points=x, distances=dist, valid_mask=condition)
+
+    def _set_fick_projection(
+        self,
+        reference_origin: Position3D,
+        rotation_deg: list[float],
+        translation: list[float],
+        intrinsic: np.ndarray,
+    ) -> None:
+        """Build and store the FickRotation projection from explicit angles and translation.
+
+        The world-to-camera rotation is composed by applying, in order, a torsion rotation about the
+        optical axis, an elevation rotation about the horizontal axis and an azimuth rotation about the
+        vertical axis. The azimuth term carries matching (both-negative) off-diagonal signs, so it is not a
+        pure rotation: it scales the image as well as turning it, magnifying points more the further they
+        fall from the centre. Everything else is an ordinary pinhole; lens distortion is not applied.
+
+        Args:
+            reference_origin: World point that is the origin of the projection's reference frame.
+            rotation_deg: ``[elevation, azimuth, torsion]`` angles in degrees.
+            translation: Camera position in the reference frame as ``[right, up, forward]``.
+            intrinsic: 3x3 matrix of focal lengths and principal point in pixels.
+
+        """
+        origin = np.asarray(reference_origin, float)[:3]
+        r1, r2, r3 = np.radians(rotation_deg)
+        c1, s1 = np.cos(r1), np.sin(r1)
+        c2, s2 = np.cos(r2), np.sin(r2)
+        c3, s3 = np.cos(r3), np.sin(r3)
+        torsion = np.array([[c3, -s3, 0.0], [s3, c3, 0.0], [0.0, 0.0, 1.0]])
+        elevation = np.array([[c1, 0.0, -s1], [0.0, 1.0, 0.0], [s1, 0.0, c1]])
+        azimuth = np.array([[1.0, 0.0, 0.0], [0.0, c2, -s2], [0.0, -s2, c2]])
+        rotation = (torsion @ elevation @ azimuth) @ np.array([[1.0, 0, 0], [0, -1.0, 0], [0, 0, -1.0]])
+
+        translation = np.asarray(translation, float)
+        rotation_t_axes = rotation.T @ _REFERENCE_AXES
+        # Fold the world->reference-frame change into the extrinsic so callers project world points directly.
+        offset = -(rotation_t_axes @ origin) - rotation.T @ translation
+        self._fick_projection = np.asarray(intrinsic, float) @ np.hstack([rotation_t_axes, offset.reshape(3, 1)])
+        # Keep the world position consistent with the projection for the optics that read it.
+        self.position = Position3D(*(origin + _REFERENCE_AXES.T @ translation))
+
+    def _project_fick(self, pos: Position3D | list[Position3D]) -> ProjectionResult:
+        """Project world points to pixels using the configured FickRotation projection."""
+        if isinstance(pos, Position3D):
+            world_homogeneous = np.array(pos).reshape(-1, 1)
+        else:
+            world_homogeneous = np.column_stack([np.array(p) for p in pos])
+        projected = self._fick_projection @ world_homogeneous
+        depth = projected[2, :]
+        return ProjectionResult(image_points=projected[:2, :] / depth, distances=depth, valid_mask=depth > 0)
+
+    def _aim_fick(self, eye: "Eye") -> None:
+        """Configure the FickRotation projection aimed at ``eye``'s rotation centre.
+
+        The rotation and the reference-frame translation are derived from this camera's own world position
+        and the eye -- nothing precomputed is supplied -- and the camera's intrinsic is used as-is.
+        """
+        origin = np.array([eye.position.x, eye.position.y, eye.position.z], dtype=float)
+        camera = np.array([self.position.x, self.position.y, self.position.z], dtype=float)
+        centre = eye.rotation_centre
+        target = np.array([centre.x, centre.y, centre.z], dtype=float)
+        translation = _REFERENCE_AXES @ (camera - origin)
+        rotation = _fick_rotation_angles(translation, _REFERENCE_AXES @ (target - origin))
+        self._set_fick_projection(eye.position, rotation, list(translation), self.camera_matrix.matrix)
 
     def unproject(
         self, image_points: Point2D | list[Point2D], distance: float | np.ndarray
@@ -327,28 +427,40 @@ class Camera:
         # Update camera's orientation
         self.trans[:3, :3] = camera_rotation
 
-    def point_at(self, target_point: Position3D, world_frame: RotationMatrix | None = None) -> None:
-        """Points camera towards a certain location.
+    def point_at(
+        self, target: "Position3D | Eye", world_frame: RotationMatrix | None = None, mode: str | None = None
+    ) -> None:
+        """Point the camera at a target.
 
-        Changes camera's rest position to point at specified target.
-        Updates both rest_trans and trans matrices accordingly.
-        Differs from pan_tilt() by modifying the rest position.
+        By default the camera is oriented (pan-tilt) toward a 3D ``target`` point, which the ordinary
+        projection then uses. With ``mode='fick'`` the camera is instead given the FickRotation projection
+        aimed at an ``Eye``'s rotation centre, derived from the camera's own position and intrinsic.
 
         Args:
-            target_point: Point to point at in world coordinates
-            world_frame: Optional world coordinate frame for camera orientation
+            target: A ``Position3D`` to look at (default), or an ``Eye`` to aim at when ``mode='fick'``.
+            world_frame: Optional world coordinate frame for the default orientation.
+            mode: ``None`` for the ordinary pan-tilt orientation, ``'fick'`` for the FickRotation projection.
+
+        Raises:
+            TypeError: If ``target`` does not match ``mode``.
+            ValueError: If ``mode`` is neither ``None`` nor ``'fick'``.
 
         """
-        # Store the target point for later reference
-        self._pointing_at = target_point
+        if mode == "fick":
+            from .eye import Eye  # noqa: PLC0415  (deferred to avoid a circular import with eye.py)
 
-        # Store current transformation as rest position
+            if not isinstance(target, Eye):
+                raise TypeError(f"point_at(mode='fick') expects an Eye, got {type(target).__name__}")
+            self._aim_fick(target)
+            return
+        if mode is not None:
+            raise ValueError(f"unknown point_at mode {mode!r}; expected None or 'fick'")
+        if not isinstance(target, Position3D):
+            raise TypeError(f"point_at expects a Position3D target, got {type(target).__name__}")
+
+        self._pointing_at = target
         self.rest_trans = self.trans.copy()
-
-        # Pan and tilt towards the target point
-        self.pan_tilt(target_point, world_frame)
-
-        # Update rest position to the new orientation
+        self.pan_tilt(target, world_frame)
         self.rest_trans = self.trans.copy()
 
     def point_at_binocular(self, left_eye_pos: Position3D, right_eye_pos: Position3D) -> None:
