@@ -211,7 +211,13 @@ def intersect_ray_conic(
 
 
 def conic_surface_normal(
-    point: Point3D, conic_center: Position3D, radius: float, conic_constant: float
+    point: Point3D,
+    conic_center: Position3D,
+    radius: float,
+    conic_constant: float,
+    axx: float = 1.0,
+    ayy: float = 1.0,
+    axy: float = 0.0,
 ) -> Direction3D:
     """Calculate surface normal at a point on conic section surface.
 
@@ -223,6 +229,10 @@ def conic_surface_normal(
         conic_center: Conic center position
         radius: Radius parameter (R in the formula, mm)
         conic_constant: Conic constant (k < 0 for prolate, k = 0 for sphere, k > 0 for oblate)
+        axx: Lateral x^2 coefficient. Default 1.0; with ayy and axy other than (1, 1, 0) the surface
+            becomes toric, its two meridian apex radii R/axx and R/ayy with axy setting the steep axis.
+        ayy: Lateral y^2 coefficient. Default 1.0.
+        axy: Lateral cross-term coefficient. Default 0.0.
 
     Returns:
         Unit normal vector pointing outward from conic surface
@@ -237,9 +247,9 @@ def conic_surface_normal(
     y = point.y - cy
     z = point.z - cz
 
-    # Calculate gradient: ∇F = (2(x-cx), 2(y-cy), 2(1+k)(z-cz) - 2R)
-    normal_x = 2 * x
-    normal_y = 2 * y
+    # Gradient of the implicit surface axx x^2 + ayy y^2 + 2 axy x y + (1+k) z^2 - 2R z
+    normal_x = 2 * (axx * x + axy * y)
+    normal_y = 2 * (ayy * y + axy * x)
     normal_z = 2 * (1 + conic_constant) * z - 2 * radius
 
     normal = Direction3D(normal_x, normal_y, normal_z)
@@ -253,7 +263,13 @@ def conic_surface_normal(
 
 
 def point_on_conic_surface(
-    conic_center: Position3D, direction: Vector3D, radius: float, conic_constant: float
+    conic_center: Position3D,
+    direction: Vector3D,
+    radius: float,
+    conic_constant: float,
+    axx: float = 1.0,
+    ayy: float = 1.0,
+    axy: float = 0.0,
 ) -> Point3D | None:
     """Calculate point on conic surface given direction from start point.
 
@@ -265,6 +281,10 @@ def point_on_conic_surface(
         direction: Direction vector (will be normalized)
         radius: Radius parameter of the conic (R)
         conic_constant: Shape parameter of the conic (k)
+        axx: Lateral x^2 coefficient. Default 1.0; with ayy and axy other than (1, 1, 0) the surface
+            becomes toric, its two meridian apex radii R/axx and R/ayy with axy setting the steep axis.
+        ayy: Lateral y^2 coefficient. Default 1.0.
+        axy: Lateral cross-term coefficient. Default 0.0.
 
     Returns:
         Point on conic surface, or None if no intersection
@@ -281,14 +301,12 @@ def point_on_conic_surface(
     cx, cy = conic_center.x, conic_center.y
     cz = conic_center.z - radius / (1 + conic_constant)  # Standard -R/(1+k) translation
 
-    # Ray equation: P(t) = (x0, y0, z0) + t * (dx, dy, dz)
-    # Substitute into conic: (x-cx)² + (y-cy)² + (1+k)(z-cz)² - 2R(z-cz) = 0
-    # (x0+t*dx-cx)² + (y0+t*dy-cy)² + (1+k)(z0+t*dz-cz)² - 2R(z0+t*dz-cz) = 0
-
-    # Expand and collect terms: at² + bt + c = 0
-    a = dx**2 + dy**2 + (1 + conic_constant) * dz**2
-    b = 2 * ((x0 - cx) * dx + (y0 - cy) * dy + (1 + conic_constant) * (z0 - cz) * dz - radius * dz)
-    c = (x0 - cx) ** 2 + (y0 - cy) ** 2 + (1 + conic_constant) * (z0 - cz) ** 2 - 2 * radius * (z0 - cz)
+    # Ray P(t) = (x0, y0, z0) + t (dx, dy, dz) into the implicit surface
+    # axx(x-cx)² + ayy(y-cy)² + 2 axy(x-cx)(y-cy) + (1+k)(z-cz)² - 2R(z-cz) = 0, collected as a t² + b t + c = 0
+    ox, oy, oz = x0 - cx, y0 - cy, z0 - cz
+    a = axx * dx**2 + ayy * dy**2 + 2 * axy * dx * dy + (1 + conic_constant) * dz**2
+    b = 2 * (axx * ox * dx + ayy * oy * dy + axy * (ox * dy + oy * dx) + (1 + conic_constant) * oz * dz - radius * dz)
+    c = axx * ox**2 + ayy * oy**2 + 2 * axy * ox * oy + (1 + conic_constant) * oz**2 - 2 * radius * oz
 
     # Solve quadratic equation
     discriminant = b**2 - 4 * a * c

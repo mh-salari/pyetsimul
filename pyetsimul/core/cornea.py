@@ -728,10 +728,11 @@ class ConicCornea(Cornea):
     def find_reflection(
         self, light_pos: Position3D, camera_pos: Position3D, eye_transform: TransformationMatrix
     ) -> Point3D | None:
-        """Finds position of a glint on the anterior conic surface.
+        """Finds position of a glint on the anterior surface.
 
         Transforms light and camera positions into eye-local coordinates where
-        the conic axis is aligned with the Z-axis, runs the reflection solver,
+        the conic axis is aligned with the Z-axis, runs the reflection solver on
+        the anterior surface (toric when the lateral coefficients are not symmetric),
         then transforms the result back to world coordinates.
         """
         inv_transform = np.linalg.inv(eye_transform)
@@ -746,8 +747,9 @@ class ConicCornea(Cornea):
                 *((np.array([local_camera.x, local_camera.y, local_camera.z]) - apex) @ rot + apex)
             )
 
+        axx, ayy, axy = self._anterior_lateral_coeffs()
         local_glint = reflections.find_reflection_conic(
-            local_light, local_camera, self.center, self.anterior_radius, self.anterior_k
+            local_light, local_camera, self.center, self.anterior_radius, self.anterior_k, axx, ayy, axy
         )
         if local_glint is None:
             return None

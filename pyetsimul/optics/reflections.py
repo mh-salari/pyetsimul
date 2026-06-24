@@ -111,13 +111,17 @@ def _reflection_residuals_conic(
     conic_center: Position3D,
     radius: float,
     conic_constant: float,
+    axx: float = 1.0,
+    ayy: float = 1.0,
+    axy: float = 0.0,
 ) -> np.ndarray:
     """Residual function for 2D reflection finding on conic surface.
 
     Uses (alpha, beta) parameterization where alpha interpolates between light
     and camera directions, and beta adds an out-of-plane component. This 2D
     search is necessary because aspherical conic surfaces (k != 0) can have
-    reflection points outside the light-center-camera plane.
+    reflection points outside the light-center-camera plane. The lateral coefficients
+    (axx, ayy, axy), default (1, 1, 0), make the surface toric.
 
     Returns a 2-element residual vector:
         [0]: Equal angles condition (N dot d_incident + N dot d_camera)
@@ -134,11 +138,11 @@ def _reflection_residuals_conic(
     direction /= norm
 
     n_vec = Direction3D(direction[0], direction[1], direction[2])
-    glint_pos = point_on_conic_surface(conic_center, n_vec, radius, conic_constant)
+    glint_pos = point_on_conic_surface(conic_center, n_vec, radius, conic_constant, axx, ayy, axy)
     if glint_pos is None:
         return np.array([1e10, 1e10])
 
-    surface_normal = conic_surface_normal(glint_pos, conic_center, radius, conic_constant)
+    surface_normal = conic_surface_normal(glint_pos, conic_center, radius, conic_constant, axx, ayy, axy)
     n = np.array([surface_normal.x, surface_normal.y, surface_normal.z])
 
     # Incident direction: light -> glint (pointing inward)
@@ -159,7 +163,14 @@ def _reflection_residuals_conic(
 
 
 def find_reflection_conic(
-    light_pos: Position3D, camera_pos: Position3D, conic_center: Position3D, radius: float, conic_constant: float
+    light_pos: Position3D,
+    camera_pos: Position3D,
+    conic_center: Position3D,
+    radius: float,
+    conic_constant: float,
+    axx: float = 1.0,
+    ayy: float = 1.0,
+    axy: float = 0.0,
 ) -> Point3D | None:
     """Find reflection point on conic surface.
 
@@ -175,6 +186,10 @@ def find_reflection_conic(
         conic_center: Conic center position (typically corneal apex)
         radius: Radius of curvature at apex (mm)
         conic_constant: Conic constant (k < 0 for prolate, k = 0 for sphere, k > 0 for oblate)
+        axx: Lateral x^2 coefficient. Default 1.0; with ayy and axy other than (1, 1, 0) the surface
+            becomes toric, its two meridian apex radii R/axx and R/ayy with axy setting the steep axis.
+        ayy: Lateral y^2 coefficient. Default 1.0.
+        axy: Lateral cross-term coefficient. Default 0.0.
 
     Returns:
         Position of glint on conic surface, or None if no reflection found
@@ -197,7 +212,7 @@ def find_reflection_conic(
         solution, _info, ier, _msg = fsolve(
             _reflection_residuals_conic,
             x0=np.array([0.5, 0.0]),
-            args=(to_camera, to_light, perp, light_pos, camera_pos, conic_center, radius, conic_constant),
+            args=(to_camera, to_light, perp, light_pos, camera_pos, conic_center, radius, conic_constant, axx, ayy, axy),
             full_output=True,
         )
 
@@ -209,7 +224,7 @@ def find_reflection_conic(
         direction = to_camera * alpha + to_light * (1 - alpha) + perp * beta
         direction /= np.linalg.norm(direction)
         n_vec = Direction3D(direction[0], direction[1], direction[2])
-        return point_on_conic_surface(conic_center, n_vec, radius, conic_constant)
+        return point_on_conic_surface(conic_center, n_vec, radius, conic_constant, axx, ayy, axy)
 
     except (ValueError, TypeError):
         warnings.warn(
