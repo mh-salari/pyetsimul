@@ -31,119 +31,75 @@ def _roll_about_optical_axis(deg: float) -> np.ndarray:
     return np.array([[c, -s, 0.0], [s, c, 0.0], [0.0, 0.0, 1.0]])
 
 
-def look_at_target(eye: "Eye", target_position: Position3D) -> None:
-    """Rotates an eye to look at a given position in space.
+LOOK_AT_METHODS = ("visual_axis", "line_of_sight", "optical_then_kappa", "optical_axis_target_direction")
 
-    Uses Listing's law to compute eye rotation with proper torsion.
-    Accounts for fovea displacement if enabled for realistic gaze alignment.
-    With a ``RotationCenter`` the eye also pivots about a gaze-direction-dependent centre rather than
-    the single fixed eyeball centre of an ``EyeballCenter`` (see ``rotation_center.py``).
+
+def look_at_target(eye: "Eye", target_position: Position3D, method: str = "visual_axis") -> None:
+    """Rotate the eye to look at a target by one of several gaze constructions.
+
+    Each method aligns a rest-frame axis to the target with Listing's law and pivots about the model's
+    rotation centre (a gaze-dependent ``RotationCenter`` or a fixed ``EyeballCenter``, see
+    ``rotation_center.py``). They differ only in which axis is aimed, where the aim direction is measured
+    from, and the post-rotation applied:
+
+    - ``visual_axis``: the visual axis (the optical axis when fovea displacement is off) to the target.
+    - ``line_of_sight``: the fovea-through-pupil-centre axis to the target; the pupil centre carries the
+      off-axis offset and the size-dependent decentration, so this axis re-aims as the pupil decentres.
+    - ``optical_then_kappa``: the optical axis to the target, then a foveal (kappa) post-rotation so that
+      neither the optical nor the visual axis ends up through the target (Böhme et al. 2008 et_simul).
+    - ``optical_axis_target_direction``: the optical axis along the apex-to-target direction taken from the
+      fixed rest apex, so the pose is the azimuth/elevation of that direction, independent of target distance,
+      and the axis does not pass through a finite target (the eyePose convention of gkaModelEye).
 
     Args:
         eye: Eye object to rotate
         target_position: Position in world coordinates to look at
+        method: Gaze construction to use; one of ``LOOK_AT_METHODS``.
 
     Raises:
-        ValueError: If target_position is the same as eye position (zero-length direction vector)
+        ValueError: If ``method`` is unrecognised, or the target coincides with the eye (zero-length direction).
 
     """
-    # Choose which local axis to align to target: visual axis if fovea displacement is enabled,
-    # otherwise the optical axis (-Z). This depends only on the rest orientation, not the eye
-    # position, so it is computed once and reused across the re-pivot iterations.
-    if eye.model.fovea_displacement:
-        # Local visual axis direction (unit), pointing anteriorly (toward cornea), derived from the
-        # fovea displacement angles (alpha: horizontal, signed by eye side; beta: vertical).
-        alpha = eye._signed_alpha_rad
-        beta = eye.model.fovea_beta_deg * np.pi / 180.0
-        v_local = np.array([
-            -np.sin(alpha) * np.cos(beta),
-            -np.sin(beta),
-            -np.cos(alpha) * np.cos(beta),
-        ])
+    if method not in LOOK_AT_METHODS:
+        raise ValueError(f"unknown look_at method {method!r}; expected one of {LOOK_AT_METHODS}")
+
+    # Rest-frame axis aligned to the target. It depends only on the rest orientation, so it is fixed across
+    # the re-pivot iterations.
+    if method == "line_of_sight":
+        # The line of sight runs from the fovea through the current pupil centre.
+        fovea, pupil = eye.fovea_position, eye.pupil.pos_pupil
+        los = np.array([pupil.x - fovea.x, pupil.y - fovea.y, pupil.z - fovea.z])
+        rest_axis = Vector3D.from_array(eye.rest_orientation @ (los / np.linalg.norm(los)))
+    elif method == "visual_axis" and eye.model.fovea_displacement:
+        # Visual axis from the foveal displacement angles (alpha horizontal, signed by eye side; beta vertical).
+        alpha, beta = eye._signed_alpha_rad, np.radians(eye.model.fovea_beta_deg)
+        v_local = np.array([-np.sin(alpha) * np.cos(beta), -np.sin(beta), -np.cos(alpha) * np.cos(beta)])
         rest_axis = Vector3D.from_array(eye.rest_orientation @ v_local)
     else:
-        # Optical axis in local coordinates is -Z
+        # Optical axis is -Z in local coordinates.
         rest_axis = Vector3D.from_array(eye.rest_orientation @ np.array([0.0, 0.0, -1.0]))
 
-    def orientation_from(eye_position: Position3D) -> np.ndarray:
-        # Use Listing's law to compute the rotation that aligns the chosen axis with the direction
-        # from this eye position to the target.
-        direction = _direction_to_target(target_position, eye_position)
-        rotation = calculate_eye_rotation(rest_axis, direction) @ eye.rest_orientation
-        if not eye.model.torsion_deg:
-            return rotation
-        return rotation @ _roll_about_optical_axis(eye.model.torsion_deg)
-
-    _apply_orientation(eye, target_position, orientation_from)
-
-
-def look_at_target_optical_then_kappa(eye: "Eye", target_position: Position3D) -> None:
-    """Rotate the eye using optical-axis alignment followed by kappa offsets.
-
-    Duplicates Böhme et al. (2008) original MATLAB implementation of look_at.
-    Aligns the optical axis to the target first, then applies foveal (kappa)
-    offsets via post-rotations. The post step rotates the eye away so that
-    neither the optical axis nor the visual axis ends up passing exactly
-    through the target. Honours ``eye.model.rotation_center`` (``EyeballCenter`` or ``RotationCenter``).
-
-    Args:
-        eye: Eye object to rotate
-        target_position: Position in world coordinates to look at
-
-    Raises:
-        ValueError: If target_position coincides with eye position (zero-length vector)
-
-    """
-    # Rest optical axis (-Z in local) in world coordinates; independent of the eye position.
-    rest_optical_axis = Vector3D.from_array(eye.rest_orientation @ np.array([0.0, 0.0, -1.0]))
+    # optical_axis_target_direction measures the aim direction from the fixed rest apex, so the pose is
+    # distance-independent; the others recompute it from the re-pivoted eye position and aim through the target.
+    from_fixed_apex = method == "optical_axis_target_direction"
 
     def orientation_from(eye_position: Position3D) -> np.ndarray:
-        # First align the optical axis to the target using Listing's law.
-        direction = _direction_to_target(target_position, eye_position)
-        orientation = calculate_eye_rotation(rest_optical_axis, direction) @ eye.rest_orientation
-
-        # Then apply post-rotations from foveal displacement (kappa) if enabled.
-        if eye.model.fovea_displacement:
-            alpha = eye._signed_alpha_rad  # signed by eye side: the fovea is temporal in both eyes
-            beta = eye.model.fovea_beta_deg * np.pi / 180.0
-
-            rotation_matrix_x = np.array([
+        origin = eye.placement if from_fixed_apex else eye_position
+        direction = _direction_to_target(target_position, origin)
+        orientation = calculate_eye_rotation(rest_axis, direction) @ eye.rest_orientation
+        if method == "optical_then_kappa" and eye.model.fovea_displacement:
+            # Foveal (kappa) post-rotation lands the fovea on the target after the optical axis is aimed.
+            alpha, beta = eye._signed_alpha_rad, np.radians(eye.model.fovea_beta_deg)
+            rot_x = np.array([
                 [np.cos(alpha), 0.0, -np.sin(alpha)],
                 [0.0, 1.0, 0.0],
                 [np.sin(alpha), 0.0, np.cos(alpha)],
             ])
-            rotation_matrix_y = np.array([
-                [1.0, 0.0, 0.0],
-                [0.0, np.cos(beta), np.sin(beta)],
-                [0.0, -np.sin(beta), np.cos(beta)],
-            ])
-
-            orientation = orientation @ rotation_matrix_y @ rotation_matrix_x
+            rot_y = np.array([[1.0, 0.0, 0.0], [0.0, np.cos(beta), np.sin(beta)], [0.0, -np.sin(beta), np.cos(beta)]])
+            return orientation @ rot_y @ rot_x
+        if eye.model.torsion_deg and method in {"visual_axis", "optical_axis_target_direction"}:
+            return orientation @ _roll_about_optical_axis(eye.model.torsion_deg)
         return orientation
-
-    _apply_orientation(eye, target_position, orientation_from)
-
-
-def look_at_target_line_of_sight(eye: "Eye", target_position: Position3D) -> None:
-    """Rotate the eye so the line of sight -- fovea through the pupil centre -- points at the target.
-
-    ``look_at_target`` aligns the visual axis (fovea to the eye centre) to the target; this aligns the line
-    from the fovea through the current pupil centre instead. Because the pupil centre carries the off-axis
-    offset and the size-dependent decentration, this axis moves when the pupil decentres, so the eye re-aims
-    as the pupil moves; the visual axis does not.
-
-    Raises:
-        ValueError: If target_position coincides with eye position (zero-length vector).
-
-    """
-    fovea = eye.fovea_position
-    pupil = eye.pupil.pos_pupil
-    los = np.array([pupil.x - fovea.x, pupil.y - fovea.y, pupil.z - fovea.z])
-    rest_axis = Vector3D.from_array(eye.rest_orientation @ (los / np.linalg.norm(los)))
-
-    def orientation_from(eye_position: Position3D) -> np.ndarray:
-        direction = _direction_to_target(target_position, eye_position)
-        return calculate_eye_rotation(rest_axis, direction) @ eye.rest_orientation
 
     _apply_orientation(eye, target_position, orientation_from)
 

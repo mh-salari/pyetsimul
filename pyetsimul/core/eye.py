@@ -19,7 +19,7 @@ from ..types import Direction3D, Point2D, Position3D, PupilData, Ray, RotationMa
 from .cornea import ConicCornea, SphericalCornea
 from .default_configs import EyeAnatomyDefaults
 from .eye_model import EyeModel, get_eye_model
-from .eye_operations import look_at_target, look_at_target_line_of_sight, look_at_target_optical_then_kappa
+from .eye_operations import look_at_target
 from .eyelid import Eyelid, create_eyelid
 from .off_axis_pupil import OffAxisPupilConfig
 from .pupil import EllipticalPupil, Pupil, RealisticPupilParams, create_pupil
@@ -398,20 +398,17 @@ class Eye:
             target_position: Position in world coordinates to look at
             method: Look-at method for this call, overriding the eye model's default ``method``.
                 "visual_axis" (fovea through the eye centre), "line_of_sight" (fovea through the pupil
-                centre), or "optical_then_kappa" (optical axis then a kappa post-rotation; the Böhme 2008
-                et_simul construction). None uses the eye model's default.
+                centre), "optical_then_kappa" (optical axis then a kappa post-rotation; the Böhme 2008
+                et_simul construction), or "optical_axis_target_direction" (optical axis along the apex-to-target
+                direction, distance-independent; the gkaModelEye eyePose convention). None uses the eye model's
+                default.
 
         """
         # Update current target point
         self._current_target_point = target_position
 
         method = method if method is not None else self.model.look_at_method
-        if method == "line_of_sight":
-            look_at_target_line_of_sight(self, target_position)
-        elif method == "optical_then_kappa":
-            look_at_target_optical_then_kappa(self, target_position)
-        else:
-            look_at_target(self, target_position)
+        look_at_target(self, target_position, method)
 
     def get_pupil(self) -> PupilData:
         """Get pupil boundary points in world coordinates.
