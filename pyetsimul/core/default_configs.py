@@ -45,7 +45,6 @@ class PupilDefaults:
     """Pupil parameters based on Wyatt 1995."""
 
     BOUNDARY_POINTS_ELLIPTICAL: int = 100
-    BOUNDARY_POINTS_FACTORY: int = 20
     BOUNDARY_POINTS_REALISTIC: int = 360
     BASE_RADIUS: float = 2.5  # mm
     NONCIRCULARITY: float = 0.0166

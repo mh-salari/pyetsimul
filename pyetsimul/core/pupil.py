@@ -691,7 +691,7 @@ def create_pupil(
 
     """
     if pupil_type == "elliptical":
-        n: int = kwargs.get("n", PupilDefaults.BOUNDARY_POINTS_FACTORY)
+        n: int = kwargs.get("n", PupilDefaults.BOUNDARY_POINTS_ELLIPTICAL)
         return EllipticalPupil(pos_pupil, x_pupil, y_pupil, n)
     if pupil_type == "realistic":
         params = kwargs.get("params")
