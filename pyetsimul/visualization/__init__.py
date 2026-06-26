@@ -19,6 +19,7 @@ from .analysis_plots import plot_error_vectors_2d, plot_error_vectors_3d
 from .camera_view import plot_camera_view_of_eye
 from .coordinate_utils import prepare_eye_data_for_plots
 from .eye_anatomy import plot_eye_anatomy
+from .eye_cross_section import plot_eye_cross_section
 from .gaze_accuracy_plots import GazeAccuracyPlotter
 from .integrated_plots import plot_setup_and_camera_view
 from .interactive import plot_interactive_cameras, plot_interactive_pupil_comparison, plot_interactive_setup
@@ -45,6 +46,7 @@ __all__ = [
     "plot_error_vectors_2d",
     "plot_error_vectors_3d",
     "plot_eye_anatomy",
+    "plot_eye_cross_section",
     "plot_interactive_cameras",
     "plot_interactive_pupil_comparison",
     "plot_interactive_setup",
