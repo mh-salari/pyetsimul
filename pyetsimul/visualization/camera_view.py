@@ -20,6 +20,11 @@ def _draw_glint(ax: "Axes", x: float, y: float, color: str, label: str, alpha: f
     ax.scatter(x, y, color=color, s=size, marker="*", edgecolor="none", zorder=3, label=label, alpha=alpha)
 
 
+def _glint_color(override: str | None, light_colors: list[str], cr_idx: int) -> str:
+    """Color for the glint of light ``cr_idx``: the per-camera override if given, else that light's own color."""
+    return override if override is not None else light_colors[cr_idx % len(light_colors)]
+
+
 def plot_camera_view_of_eye(
     camera_images: list[CameraImage] | CameraImage,
     cameras: list[Camera] | Camera,
@@ -61,7 +66,8 @@ def plot_camera_view_of_eye(
         pupil_fill_color: Fill color inside the pupil contour; None (the default) draws an outline only.
         pupil_edge_color: Pupil border color; when None the border identifies the camera if several share the
             frame, otherwise the eye.
-        glint_colors: Per-camera glint color (one per image); defaults to the reflection gold for all.
+        glint_colors: Per-camera glint color (one per image), overriding the per-light coloring (e.g. to tell
+            apart models that share the frame). When None, each glint takes its light's color.
         pupil_linestyles: Per-camera pupil-outline line style (e.g. "-", ":", "--"); helps tell apart pupils
             that overlap. Defaults to solid for all.
         center_markers: Per-camera centre marker (e.g. "+", "x", "o"); helps tell apart centres that overlap.
@@ -166,11 +172,11 @@ def plot_camera_view_of_eye(
                 feature_y.append(center_img[1])
 
         # Glints come from the projected 3D reflection points when given, else the image's own corneal
-        # reflections. They keep their own colour: the reflection gold by default, or per camera via glint_colors.
-        if glint_colors is not None:
-            glint_color = glint_colors[cam_idx % len(glint_colors)]
-        else:
-            glint_color = config.colors.corneal_reflection
+        # reflections. Each glint takes its light's color (config.colors.lights, the same palette the 3D setup
+        # uses for the light markers), so reflections from different lights are told apart. A per-camera
+        # glint_colors overrides this, e.g. to distinguish models that share the frame.
+        glint_override = glint_colors[cam_idx % len(glint_colors)] if glint_colors is not None else None
+        light_colors = config.colors.lights
         if cr_3d_lists:
             for cr_3d_list in cr_3d_lists:
                 for cr_idx, cr_3d in enumerate(cr_3d_list):
@@ -179,6 +185,7 @@ def plot_camera_view_of_eye(
                     has_valid_data = True
                     cr_img = camera.project(cr_3d).image_points
                     x, y = float(cr_img[0, 0]), float(cr_img[1, 0])
+                    glint_color = _glint_color(glint_override, light_colors, cr_idx)
                     _draw_glint(ax2, x, y, glint_color, f"Glint {cr_idx + 1}", alpha, marker_size)
                     feature_x.append(x)
                     feature_y.append(y)
@@ -187,6 +194,7 @@ def plot_camera_view_of_eye(
                 if reflection is None:
                     continue
                 has_valid_data = True
+                glint_color = _glint_color(glint_override, light_colors, cr_idx)
                 _draw_glint(ax2, reflection.x, reflection.y, glint_color, f"Glint {cr_idx + 1}", alpha, marker_size)
                 feature_x.append(reflection.x)
                 feature_y.append(reflection.y)

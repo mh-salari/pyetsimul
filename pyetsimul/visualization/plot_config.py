@@ -52,7 +52,7 @@ class ColorPalettes:
             self.eyes_light = ["lightblue", "lightgreen", "plum", "moccasin", "tan", "paleturquoise"]
 
         if self.cameras is None:
-            self.cameras = ["#405068", "gray", "darkgreen", "darkblue", "purple", "brown"]
+            self.cameras = ["#2C3E50", "#C0392B", "#16A085", "#8E44AD", "#2980B9", "#D35400"]
 
         if self.lights is None:
             self.lights = ["darkgoldenrod", "orange", "gold", "khaki"]
