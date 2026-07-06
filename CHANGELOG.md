@@ -4,7 +4,7 @@ All notable changes to PyEtSimul are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version 3.0.0 is the release presented in the
 ETRA 2026 paper; this log records everything since.
 
-## [Unreleased]
+## [4.0.0] - 2026-07-06
 
 ### Added
 
