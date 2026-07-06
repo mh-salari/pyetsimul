@@ -6,6 +6,57 @@ ETRA 2026 paper; this log records everything since.
 
 ## [Unreleased]
 
+### Added
+
+- **The eye specification is a first-class `EyeModel`.** An immutable `EyeModel` holds the cornea, angle kappa,
+  rotation geometry, gaze convention and pupil; `EyeModel.copy(**overrides)` derives a variant, and `Eye.copy`
+  derives a placed eye with model overrides.
+- **Named eye-model registry.** `get_eye_model`, `register_eye_model` and `list_eye_models` select models by
+  name, with `"PyEtSimul"`, `"et_simul"` and `"gkaModelEye"` built in.
+- **`et_simul` eye model with a 1:1 MATLAB validation.** The original Böhme (2008) eye as a named model, with a
+  MATLAB reference and a test asserting the pupil centre and glint at each gaze target.
+- **`gkaModelEye` eye model with a 1:1 MATLAB validation.** An independently built schematic eye as a named
+  model, validated against its MATLAB reference to the iterative-solver floor.
+- **`FickRotation` camera projection.** `Camera.point_at(eye, mode="fick")` aims the camera at the eye's
+  rotation centre via a Fick-rotation projection.
+- **`plot_eye_cross_section` visualization.** A 2D cross-section of the eye (cornea, globe, pupil, optical and
+  visual axes), derived from the eye's own geometry.
+- **World-up control for `set_rest_orientation_at_target`.** An optional `up` vector sets the eye's roll when it
+  is rested facing a target.
+- **New examples series (numbered `01` to `16`).** One ordered, self-contained learning path: scene basics, the
+  eye, cornea, pupil, eyelid, glint and camera models, binocular setups, dataset generation and custom parameter
+  variations, calibration and gaze-accuracy evaluation with interactive plots, and building custom eye and gaze models.
+
+### Changed
+
+- **The eye specification lives in `EyeModel`, not in `Eye` keyword arguments.** An eye is constructed as
+  `Eye(model=..., which_eye=...)`.
+- **The look-at method is an `EyeModel` property.** `look_at` is unified over `visual_axis`, `line_of_sight`,
+  `optical_then_kappa` and `optical_axis_target_direction`, chosen on the model, with a single `look_at_target`.
+- **The rotation centre is modelled as data on the eye model,** defaulting to anatomical Fick centres rather than
+  a single hard-coded globe centre.
+- **Corneal placement and radius-scaling are per-cornea conventions,** carried by each cornea rather than a global
+  setting.
+- **The eye-local origin is anchored at the corneal apex.**
+- **The default eye-model module is renamed to `PyEtSimul`.**
+- **`plot_camera_view_of_eye` reworked.** It accepts a plain rendered image (not only 3D-setup data), supports
+  per-camera and per-eye styling and zoom-to-features, and colours each glint by its light; the camera palette is
+  now distinct.
+- **Default elliptical-pupil boundary points raised to 100** (from 20), matching the `EllipticalPupil` class
+  default.
+- **README** gains a Features list, a Quickstart, an examples index, and a validation note.
+
+### Fixed
+
+- **The glint reflects off the toric anterior surface** rather than the conic base.
+- **Near-parallel rotation axes** return the identity rotation instead of an unstable result.
+
+### Removed
+
+- **The ad-hoc example scripts, `examples/experiments/`, and `validation_and_scientific_exploitation/`,**
+  superseded by the numbered examples series and the `validation/` MATLAB tests (preserved in git history and the
+  ETRA 2026 branch).
+
 ## [3.6.0] - 2026-06-22
 
 ### Added
