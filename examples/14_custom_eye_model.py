@@ -2,18 +2,16 @@
 
 An eye in PyEtSimul is defined by an immutable EyeModel: its cornea, angle kappa, rotation centre, look-at
 convention and pupil. The named models ("PyEtSimul", "et_simul", "gkaModelEye") are just EyeModels, and you
-build your own the same way. This constructs an EyeModel that reproduces the validated et_simul eye field by
-field, confirms it renders the same pupil and glint as the built-in "et_simul", then uses copy() to change one
-field and shows the render move, the point of an editable eye model.
+build your own the same way by setting any of those fields. This constructs a custom eye that differs from the
+built-in PyEtSimul across its cornea (a two-surface conic), angle kappa, look-at convention and rotation centre,
+renders it, then uses copy() to flatten its cornea and shows the render move.
 """
 
 from tabulate import tabulate
 
 from pyetsimul.core import Camera, Eye, Light
-from pyetsimul.core.cornea import SphericalCornea
+from pyetsimul.core.cornea import ConicCornea
 from pyetsimul.core.eye_model import EyeModel, get_eye_model
-from pyetsimul.core.off_axis_pupil import OffAxisPupilConfig
-from pyetsimul.core.pupil_decentration import PupilDecentrationConfig
 from pyetsimul.core.rotation_center import EyeballCenter
 from pyetsimul.types import Position3D
 
@@ -34,63 +32,60 @@ def render(model: EyeModel) -> tuple:
     return image.pupil_center, image.corneal_reflections[0]
 
 
-# Build an EyeModel from scratch, reproducing the validated et_simul eye: a spherical cornea (no posterior
-# surface), angle kappa 6/2 deg, a single fixed eyeball-centre pivot, and the original optical-then-kappa look-at.
-my_et_simul = EyeModel(
-    cornea=SphericalCornea(
-        anterior_radius=7.98,
-        refractive_index=1.376,
-        use_posterior_surface=False,
-        placement_convention="center",
-        scale_with_radius=True,
-    ),
-    axial_length=24.75,
-    fovea_alpha_deg=6.0,
-    fovea_beta_deg=2.0,
-    look_at_method="optical_then_kappa",
-    rotation_center=EyeballCenter(),
-    decentration_config=PupilDecentrationConfig(enabled=False),
-    off_axis_pupil=OffAxisPupilConfig(enabled=False),
-    default_pupil_diameter=6.0,
+# The built-in PyEtSimul eye is a bare EyeModel of defaults: a single-surface spherical cornea, angle kappa
+# 6/2 deg, anatomical Fick rotation centres and the visual-axis look-at.
+builtin = get_eye_model("PyEtSimul")
+
+# Build a custom EyeModel from scratch. An EyeModel is far more than a cornea: it also carries the look-at
+# convention, the rotation centre, angle kappa and the pupil, so a custom eye can differ from PyEtSimul across
+# all of them at once.
+my_custom = EyeModel(
+    cornea=ConicCornea(anterior_radius=7.76, use_posterior_surface=True),  # a two-surface conic cornea
+    fovea_alpha_deg=4.5,  # horizontal angle kappa (deg)
+    fovea_beta_deg=1.5,  # vertical angle kappa (deg)
+    look_at_method="line_of_sight",  # aim the fovea-to-pupil axis, vs the default visual_axis
+    rotation_center=EyeballCenter(),  # a single fixed pivot, vs the default anatomical Fick centres
 )
 
 # copy() returns a new EyeModel with fields changed (the model is frozen); here flatten the cornea to R = 8.4 mm.
-flatter = my_et_simul.copy(
-    cornea=SphericalCornea(
-        anterior_radius=8.4,
-        refractive_index=1.376,
-        use_posterior_surface=False,
-        placement_convention="center",
-        scale_with_radius=True,
-    )
-)
+flatter = my_custom.copy(cornea=ConicCornea(anterior_radius=8.4, use_posterior_surface=True))
 
-mine_pupil, mine_glint = render(my_et_simul)
-ref_pupil, ref_glint = render(get_eye_model("et_simul"))  # the built-in validated eye
-flat_pupil, flat_glint = render(flatter)
+# What the custom eye changes, field by field, against the built-in PyEtSimul and the flatter copy.
+ROTATION_DESC = {"RotationCenter": "Fick centres", "EyeballCenter": "eyeball centre"}
+FIELDS = {
+    "cornea model": lambda m: type(m.cornea).__name__,
+    "posterior surface": lambda m: "yes" if m.cornea.use_posterior_surface else "no",
+    "anterior R (mm)": lambda m: f"{m.cornea.anterior_radius:.2f}",
+    "kappa alpha/beta (deg)": lambda m: f"{m.fovea_alpha_deg:.1f} / {m.fovea_beta_deg:.1f}",
+    "look-at": lambda m: m.look_at_method,
+    "rotation centre": lambda m: ROTATION_DESC.get(type(m.rotation_center).__name__, type(m.rotation_center).__name__),
+}
+config = {"PyEtSimul": builtin, "my custom": my_custom, "+ flatter copy": flatter}
+field_rows = [[label, *(read(m) for m in config.values())] for label, read in FIELDS.items()]
+print("What the custom eye changes")
+print(tabulate(field_rows, headers=["field", *config]))
 
-rows = [
-    [
-        "my et_simul (built here)",
-        f"({mine_pupil.x:.2f}, {mine_pupil.y:.2f})",
-        f"({mine_glint.x:.2f}, {mine_glint.y:.2f})",
-    ],
-    ["built-in et_simul", f"({ref_pupil.x:.2f}, {ref_pupil.y:.2f})", f"({ref_glint.x:.2f}, {ref_glint.y:.2f})"],
-    [
-        "+ flatter cornea (copy)",
-        f"({flat_pupil.x:.2f}, {flat_pupil.y:.2f})",
-        f"({flat_glint.x:.2f}, {flat_glint.y:.2f})",
-    ],
+# Render each eye at the same off-axis target and read its pupil centre and glint.
+renders = {
+    "built-in eye model (PyEtSimul)": builtin,
+    "my custom eye model": my_custom,
+    "+ flatter cornea (copy)": flatter,
+}
+rendered = {label: render(m) for label, m in renders.items()}
+render_rows = [
+    [label, f"({pupil.x:.1f}, {pupil.y:.1f})", f"({glint.x:.1f}, {glint.y:.1f})"]
+    for label, (pupil, glint) in rendered.items()
 ]
-print(tabulate(rows, headers=["eye model", "pupil centre (px)", "glint (px)"], tablefmt="grid"))
+print("\nRendered output (the same off-axis target through each eye)")
+print(tabulate(render_rows, headers=["eye model", "pupil centre (px)", "glint (px)"]))
 
-# The reproduction should match the built-in eye; the flatter cornea should move the glint.
-match = max(
-    abs(mine_pupil.x - ref_pupil.x),
-    abs(mine_pupil.y - ref_pupil.y),
-    abs(mine_glint.x - ref_glint.x),
-    abs(mine_glint.y - ref_glint.y),
+builtin_pupil, builtin_glint = rendered["built-in eye model (PyEtSimul)"]
+custom_pupil, custom_glint = rendered["my custom eye model"]
+_, flatter_glint = rendered["+ flatter cornea (copy)"]
+pupil_offset = ((custom_pupil.x - builtin_pupil.x) ** 2 + (custom_pupil.y - builtin_pupil.y) ** 2) ** 0.5
+glint_offset = ((custom_glint.x - builtin_glint.x) ** 2 + (custom_glint.y - builtin_glint.y) ** 2) ** 0.5
+glint_move = ((flatter_glint.x - custom_glint.x) ** 2 + (flatter_glint.y - custom_glint.y) ** 2) ** 0.5
+print(
+    f"\n-> vs the built-in PyEtSimul the custom eye shifts the pupil centre {pupil_offset:.1f} px "
+    f"and the glint {glint_offset:.1f} px; flattening its cornea moves the glint a further {glint_move:.1f} px"
 )
-moved = ((flat_glint.x - mine_glint.x) ** 2 + (flat_glint.y - mine_glint.y) ** 2) ** 0.5
-print(f"max difference from the built-in et_simul: {match:.4f} px")
-print(f"glint shift from flattening the cornea:    {moved:.2f} px")
