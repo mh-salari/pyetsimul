@@ -112,7 +112,7 @@ The `examples/` directory is an ordered, self-contained series. Start at `01`, o
 | `11_generate_dataset` | render a gaze grid and save/load a labelled dataset |
 | `12_calibrate` | calibrate a gaze model on an HV9 grid and measure accuracy (interactive) |
 | `13_validate` | gaze accuracy across the screen and as the head moves |
-| `14_custom_eye_model` | build a custom `EyeModel` (reproducing et_simul), then tweak it |
+| `14_custom_eye_model` | build a custom `EyeModel` from scratch (cornea, kappa, look-at, rotation centre), then derive a variant with `copy()` |
 | `15_custom_gaze_model` | register a custom polynomial gaze model |
 | `16_custom_variation` | sweep any eye parameter (built-in or a custom `GenericEyeVariation`) |
 
