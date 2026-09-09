@@ -29,13 +29,8 @@ Repository = "https://github.com/mh-salari/pyetsimul"
 Documentation = "https://pyetsimul.readthedocs.io/"
 Issues = "https://github.com/mh-salari/pyetsimul/issues"
 
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["pyetsimul*"]
-
 [tool.hatch.version]
 source = "vcs"
-tag-regex = "^(?P<version>\\d+\\.\\d+\\.\\d+)$"
 
 [dependency-groups]
 dev = [
