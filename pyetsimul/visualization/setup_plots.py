@@ -261,9 +261,8 @@ def plot_setup(
 
     # Include calibration points in bounds calculation if provided
     if calib_points is not None:
-        calib_array = np.array([[cp.x, cp.y] for cp in calib_points])
-        if calib_array.ndim == 2 and calib_array.shape[1] == 3:
-            all_points.extend(calib_array.tolist())
+        # On the screen plane, matching where they are drawn below: y = 0 with the vertical on z.
+        all_points.extend(Position3D(cp.x, 0.0, cp.y) for cp in calib_points)
 
     if ref_bounds:
         ax1.set_xlim(ref_bounds["x"])

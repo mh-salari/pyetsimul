@@ -21,6 +21,9 @@ ETRA 2026 paper; this log records everything since.
   carried five terms where the published model has four, so the design matrix held a duplicate column and the
   fitted mapping spent a coefficient on it. The pseudo-inverse absorbed the rank deficiency, leaving the mapping
   itself correct, but the descriptor did not match the cited model.
+- **Calibration points are included in the setup plot bounds.** The bounds test asked a two-column array for
+  three columns, so it never ran and calibration points outside the rest of the scene fell off the axes. The
+  points are now placed on the screen plane, where they are drawn.
 
 ### Changed
 

@@ -10,10 +10,9 @@ import matplotlib.pyplot as plt
 if TYPE_CHECKING:
     from matplotlib.axes import Axes
     from matplotlib.figure import Figure
-import numpy as np
 
 from ..core import Camera, Eye, Light
-from ..types import Position3D
+from ..types import Point2D, Position3D
 from .camera_view import plot_camera_view_of_eye
 from .coordinate_utils import prepare_eye_data_for_plots
 from .plot_config import create_plot_config
@@ -25,7 +24,7 @@ def plot_setup_and_camera_view(
     look_at_targets: list[Position3D] | Position3D,
     cameras: list[Camera] | Camera | None = None,
     lights: list[Light] | Light | None = None,
-    calib_points: np.ndarray | None = None,
+    calib_points: list[Point2D] | None = None,
     ax1: "Axes | None" = None,
     ax2: "Axes | None" = None,
     fig: "Figure | None" = None,
@@ -40,7 +39,7 @@ def plot_setup_and_camera_view(
         look_at_targets: List of target points for each eye
         cameras: Optional list of Camera objects
         lights: Optional list of Light objects with positions
-        calib_points: Optional calibration points array
+        calib_points: Optional calibration points, drawn on the screen plane as black x markers
         ax1: Optional matplotlib axes for reuse
         ax2: Optional matplotlib axes for reuse
         fig: Optional matplotlib figure for reuse
