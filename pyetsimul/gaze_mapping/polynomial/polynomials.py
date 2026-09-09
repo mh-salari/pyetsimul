@@ -97,15 +97,15 @@ ZHU_JI_2005 = PolynomialDescriptor(
 )
 
 
-# Cerrolaza et al. (2008) polynomial: [[x², x, y, 1, 0], [x²*y, x², x*y, y, 1]]
+# Cerrolaza et al. (2008) polynomial: [[x², x, y, 1], [x²*y, x², x*y, y, 1]]
 # Mathematical model (different features for X,Y):
 # gaze_x = a₀*x² + a₁*x + a₂*y + a₃
 # gaze_y = b₀*x²*y + b₁*x² + b₂*x*y + b₃*y + b₄
 CERROLAZA_2008_ASYMMETRIC = PolynomialDescriptor(
     name="cerrolaza_2008_asymmetric",
     description="Cerrolaza et al. (2008) asymmetric second-order polynomial",
-    terms=[["x", "x", "y", "1", "1"], ["x*y", "x", "x*y", "y", "1"]],
-    orders=[[2, 1, 1, 0, 0], [[2, 1], 2, [1, 1], 1, 0]],
+    terms=[["x", "x", "y", "1"], ["x*y", "x", "x*y", "y", "1"]],
+    orders=[[2, 1, 1, 0], [[2, 1], 2, [1, 1], 1, 0]],
 )
 
 

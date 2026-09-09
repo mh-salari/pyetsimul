@@ -17,6 +17,10 @@ ETRA 2026 paper; this log records everything since.
   therefore failed on every call and the centre silently became a boundary or hull-vertex centroid. On a smooth
   pupil that substitute is close enough to pass unnoticed; on a boundary traced from a real image it differs by
   several pixels.
+- **The Cerrolaza et al. (2008) asymmetric polynomial listed its constant term twice.** The horizontal row
+  carried five terms where the published model has four, so the design matrix held a duplicate column and the
+  fitted mapping spent a coefficient on it. The pseudo-inverse absorbed the rank deficiency, leaving the mapping
+  itself correct, but the descriptor did not match the cited model.
 
 ### Changed
 
