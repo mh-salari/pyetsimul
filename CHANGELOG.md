@@ -4,6 +4,21 @@ All notable changes to PyEtSimul are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version 3.0.0 is the release presented in the
 ETRA 2026 paper; this log records everything since.
 
+## [5.0.1] - 2026-09-09
+
+### Fixed
+
+- **The two guide pages are rebuilt as documentation rather than symlinks.** `docs/guides` held symlinks into
+  `examples/`, whose targets were deleted when the examples became the ordered 01-16 series. Sphinx could not read
+  them, and with `fail_on_warning` set that failed every Read the Docs build since 4.0.0. The guides are now
+  reStructuredText pages in `docs/`, and the gaze-model guide documents polynomial registration, which is what the
+  theory pages linking to it describe.
+
+### Removed
+
+- **`GenericEyeVariation` no longer takes a `description` argument.** It was stored and never read; `describe()`
+  builds its string from the parameter path. Passing it now raises `TypeError`.
+
 ## [5.0.0] - 2026-09-09
 
 ### Fixed
