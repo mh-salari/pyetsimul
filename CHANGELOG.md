@@ -29,6 +29,19 @@ ETRA 2026 paper; this log records everything since.
 
 - **A pupil centre or diameter that falls back now warns.** Each fallback says which input could not be fitted
   and what was reported instead, so a failed fit can no longer be mistaken for a fitted result.
+- **The default cornea is a conic.** `EyeModel` builds a `ConicCornea` rather than a `SphericalCornea`, so the
+  default eye refracts at an aspheric anterior surface (R 7.76 mm, k -0.10) instead of a sphere at 7.98 mm.
+- **`ConicCornea` models its posterior surface by default.** `use_posterior_surface` defaults to `True`, so
+  refraction is solved at both corneal surfaces; pass `False` for a single-surface cornea.
+- **The static off-axis pupil is applied by default.** `OffAxisPupilConfig.enabled` defaults to `True`, placing
+  the pupil centre nasally and superiorly off the optical axis (Wyatt 1995) rather than on it; pass `False` to
+  put the pupil back on the axis.
+
+Together these make the default eye anatomically closer to a real one, and they move every result built on the
+defaults: the apparent pupil sits at the static offset and the corneal magnification changes. Code that needs the
+previous behaviour states it explicitly, as
+`EyeModel(cornea=SphericalCornea(), off_axis_pupil=OffAxisPupilConfig(enabled=False))`. The named `et_simul` and
+`gkaModelEye` models set their own cornea and off-axis pupil, so their MATLAB validations are unaffected.
 
 ## [4.0.0] - 2026-07-06
 

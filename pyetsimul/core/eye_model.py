@@ -29,7 +29,7 @@ class EyeModel:
     # ---------------------------------------------------------------------------
     # Cornea and ocular anatomy
     # ---------------------------------------------------------------------------
-    cornea: SphericalCornea | ConicCornea = field(default_factory=SphericalCornea)
+    cornea: SphericalCornea | ConicCornea = field(default_factory=ConicCornea)
     axial_length: float = EyeAnatomyDefaults.AXIAL_LENGTH  # total axial length of the eye (mm)
     n_aqueous_humor: float = EyeAnatomyDefaults.N_AQUEOUS_HUMOR  # index of the medium behind the cornea
 

@@ -35,8 +35,9 @@ class Cornea(ABC):
     _cornea_center_to_rotation_center_default: float = CorneaDefaults.CENTER_TO_ROTATION
 
     # When True, find_refraction models refraction at both corneal surfaces (posterior aqueous->cornea and
-    # anterior cornea->air) instead of the anterior surface alone.
-    use_posterior_surface: bool = False
+    # anterior cornea->air) instead of the anterior surface alone. The real cornea has both, so this is on;
+    # set it False for a single-surface cornea.
+    use_posterior_surface: bool = True
 
     # When True, a thin tear film is modelled as a third refracting surface in front of the anterior cornea
     # (air -> tears -> cornea): the anterior shape shifted forward by ``tear_film_thickness`` mm, with

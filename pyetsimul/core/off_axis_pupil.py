@@ -34,7 +34,8 @@ class OffAxisPupilConfig:
     along the optical axis (its depth behind the cornea) and is the same for both eyes.
 
     Attributes:
-        enabled: Whether the displacement is applied. Off by default, so the pupil stays at its base position.
+        enabled: Whether the displacement is applied. On by default, since a real pupil centre does not sit
+            on the optical axis; set it False to place the pupil on the axis.
         nasal_mm: Nasal displacement by default, or the eye-local +x offset when raw, in mm. Filled from the
             population mean (Wyatt 1995) by resolve_defaults() when enabled and left None.
         superior_mm: Superior (eye-local +y) displacement in mm; filled the same way.
@@ -45,7 +46,7 @@ class OffAxisPupilConfig:
 
     """
 
-    enabled: bool = False
+    enabled: bool = True
     nasal_mm: float | None = None
     superior_mm: float | None = None
     raw: bool = False

@@ -5,6 +5,7 @@ import numpy as np
 from pyetsimul.core.cornea import SphericalCornea
 from pyetsimul.core.eye import Eye
 from pyetsimul.core.eye_model import EyeModel
+from pyetsimul.core.off_axis_pupil import OffAxisPupilConfig
 
 
 def test_default_n() -> None:
@@ -129,7 +130,10 @@ def test_custom_n_8() -> None:
 def test_custom_corneal_radius() -> None:
     """Test get_pupil with custom corneal radius and MATLAB reference values."""
     r_cornea_custom = 10  # 10mm corneal radius
-    e = Eye(model=EyeModel(cornea=SphericalCornea(anterior_radius=r_cornea_custom, placement_convention="center", scale_with_radius=True)))
+    e = Eye(model=EyeModel(
+        cornea=SphericalCornea(anterior_radius=r_cornea_custom, placement_convention="center", scale_with_radius=True),
+        off_axis_pupil=OffAxisPupilConfig(enabled=False),  # the MATLAB reference has the pupil on the axis
+    ))
     e.pupil.n = 12  # Set pupil resolution to 12
     pupil_boundary_points = e.get_pupil().boundary_points
 
@@ -222,7 +226,10 @@ def test_custom_rest_position() -> None:
         [0, 1, 0],
         [-np.sin(theta), 0, np.cos(theta)],
     ])
-    e = Eye(model=EyeModel(cornea=SphericalCornea(anterior_radius=7.98, placement_convention="center", scale_with_radius=True)))
+    e = Eye(model=EyeModel(
+        cornea=SphericalCornea(anterior_radius=7.98, placement_convention="center", scale_with_radius=True),
+        off_axis_pupil=OffAxisPupilConfig(enabled=False),  # the MATLAB reference has the pupil on the axis
+    ))
     e.set_rest_orientation(custom_rest)
     e.pupil.n = 6  # Set pupil resolution to 6
     pupil_boundary_points = e.get_pupil().boundary_points
