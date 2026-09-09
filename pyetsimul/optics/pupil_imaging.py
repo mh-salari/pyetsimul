@@ -4,6 +4,7 @@ This module contains pupil imaging operations that were previously
 part of the Eye class, extracted for better modularity and testability.
 """
 
+import warnings
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -11,7 +12,6 @@ from scipy import ndimage
 from scipy.optimize import minimize
 from scipy.spatial import ConvexHull
 from skimage.draw import polygon
-from skimage.measure import EllipseModel
 
 from ..core.camera import Camera
 from ..types.geometry import Point2D, Position3D
@@ -19,6 +19,8 @@ from ..types.imaging import PupilData
 
 if TYPE_CHECKING:
     from ..core.eye import Eye
+
+MIN_ELLIPSE_POINTS = 5  # fewest points that determine an ellipse
 
 
 def get_pupil_boundary_image(eye: "Eye", camera: Camera, use_refraction: bool = True) -> PupilData:
@@ -145,14 +147,18 @@ def calculate_pupil_diameter_from_boundary(boundary_points: list[Point2D]) -> fl
     detected one are sized the same way. Returns None for fewer than five points; falls back to the boundary
     bounding-box extent only when the ellipse fit is degenerate.
     """
-    if boundary_points is None or len(boundary_points) < 5:
+    if boundary_points is None or len(boundary_points) < MIN_ELLIPSE_POINTS:
         return None
     points = np.array([[p.x, p.y] for p in boundary_points])
-    ellipse = EllipseModel.from_estimate(points)
-    if ellipse:
-        semi_major, semi_minor = (float(v) for v in ellipse.axis_lengths)
-        if np.isfinite(semi_major) and np.isfinite(semi_minor):
-            return semi_major + semi_minor
+    fitted = fit_ellipse(points)
+    if fitted is not None:
+        return (fitted[2] + fitted[3]) / 2.0
+    warnings.warn(
+        f"Ellipse fit failed for {len(points)} boundary points; reporting the mean bounding-box "
+        f"extent instead, which is not the same quantity.",
+        RuntimeWarning,
+        stacklevel=2,
+    )
     extent = (points[:, 0].max() - points[:, 0].min()) + (points[:, 1].max() - points[:, 1].min())
     return float(extent / 2.0)
 
@@ -292,22 +298,76 @@ def image_jacobian(
     return np.array(columns).T
 
 
-def _safe_ellipse_center(points: np.ndarray) -> tuple[float, float] | None:
-    """Centre (x, y) of the least-squares ellipse, or None when the fit is degenerate.
+def fit_ellipse(points: np.ndarray) -> tuple[float, float, float, float, float] | None:
+    """(centre x, centre y, major axis, minor axis, angle in degrees) of the least-squares ellipse.
 
-    scikit-image's conic fit can raise or return a complex angle for near-collinear boundary points; in
-    that case the caller falls back to the boundary centroid.
+    Direct conic fit under the constraint that keeps the solution an ellipse, so any point set that
+    determines one is fitted without iteration. The coordinates are centred and scaled first, because
+    the conic design matrix on raw pixel values is ill-conditioned.
+
+    Returns None only when the points determine no ellipse: fewer than five of them, or a singular
+    system, which near-collinear points produce.
     """
+    points = np.asarray(points, dtype=float)
+    if points.shape[0] < MIN_ELLIPSE_POINTS:
+        return None
+    origin = points.mean(axis=0)
+    centred = points - origin
+    scale = float(np.sqrt((centred**2).sum(axis=1)).max())
+    if not np.isfinite(scale) or scale <= 0:
+        return None
+    x, y = (centred / scale).T
+
+    quadratic = np.column_stack([x * x, x * y, y * y])
+    linear = np.column_stack([x, y, np.ones_like(x)])
     try:
-        ellipse = EllipseModel.from_estimate(points)
-        if not ellipse:
-            return None
-        center_x, center_y = float(ellipse.center[0]), float(ellipse.center[1])
-    except (TypeError, ValueError, np.linalg.LinAlgError):
+        linear_terms = -np.linalg.solve(linear.T @ linear, (quadratic.T @ linear).T)
+    except np.linalg.LinAlgError:
         return None
-    if not (np.isfinite(center_x) and np.isfinite(center_y)):
+    reduced = quadratic.T @ quadratic + (quadratic.T @ linear) @ linear_terms
+    # The ellipse constraint 4ac - b^2 = 1, inverted and applied to the reduced scatter matrix.
+    constrained = np.array([reduced[2] / 2.0, -reduced[1], reduced[0] / 2.0])
+
+    _eigenvalues, eigenvectors = np.linalg.eig(constrained)
+    elliptical = np.where(4.0 * eigenvectors[0] * eigenvectors[2] - eigenvectors[1] ** 2 > 0)[0]
+    if elliptical.size == 0:
         return None
-    return center_x, center_y
+    quadratic_terms = np.real(eigenvectors[:, elliptical[0]])
+    a, b, c = quadratic_terms
+    d, e, f = linear_terms @ quadratic_terms
+
+    discriminant = b * b - 4.0 * a * c
+    if not np.isfinite(discriminant) or discriminant == 0:
+        return None
+    centre_x = (2.0 * c * d - b * e) / discriminant
+    centre_y = (2.0 * a * e - b * d) / discriminant
+
+    # In the eigenbasis of the quadratic form the conic is curvature[i] * u[i]^2 = -constant, so each
+    # eigenvector carries a semi-axis of sqrt(-constant / curvature[i]) and the major axis is simply the
+    # longer of the two. Reading both from one decomposition keeps the axes and the angle consistent
+    # whichever overall sign the conic solution came back with.
+    constant = a * centre_x**2 + b * centre_x * centre_y + c * centre_y**2 + d * centre_x + e * centre_y + f
+    curvature, directions = np.linalg.eigh(np.array([[a, b / 2.0], [b / 2.0, c]]))
+    squared = -constant / curvature
+    if np.any(squared <= 0) or not np.all(np.isfinite(squared)):
+        return None
+    semi_axes = np.sqrt(squared)
+    major = int(np.argmax(semi_axes))
+    if not (np.isfinite(centre_x) and np.isfinite(centre_y)):
+        return None
+    return (
+        float(origin[0] + scale * centre_x),
+        float(origin[1] + scale * centre_y),
+        float(2.0 * scale * semi_axes[major]),
+        float(2.0 * scale * semi_axes[1 - major]),
+        float(np.degrees(np.arctan2(directions[1, major], directions[0, major])) % 180.0),
+    )
+
+
+def _safe_ellipse_center(points: np.ndarray) -> tuple[float, float] | None:
+    """Centre (x, y) of the least-squares ellipse, or None when the points determine none."""
+    fitted = fit_ellipse(points)
+    return None if fitted is None else (fitted[0], fitted[1])
 
 
 def _fit_ellipse_center(pupil_boundary: np.ndarray) -> Point2D | None:
@@ -323,11 +383,17 @@ def _fit_ellipse_center(pupil_boundary: np.ndarray) -> Point2D | None:
         Point2D with center coordinates, or None if there are too few points
 
     """
-    if pupil_boundary.shape[1] < 5:
+    if pupil_boundary.shape[1] < MIN_ELLIPSE_POINTS:
         return None
     center = _safe_ellipse_center(pupil_boundary.T)
     if center is not None:
         return Point2D(x=center[0], y=center[1])
+    warnings.warn(
+        f"Ellipse fit failed for {pupil_boundary.shape[1]} boundary points; reporting the boundary "
+        f"centroid instead, which depends on how the boundary is sampled.",
+        RuntimeWarning,
+        stacklevel=2,
+    )
     return Point2D(x=float(np.mean(pupil_boundary[0, :])), y=float(np.mean(pupil_boundary[1, :])))
 
 
@@ -345,15 +411,21 @@ def _fit_convex_hull_center(pupil_boundary: np.ndarray) -> Point2D | None:
         Point2D with center coordinates, or None if fitting fails.
 
     """
-    if pupil_boundary.shape[1] < 5:
+    if pupil_boundary.shape[1] < MIN_ELLIPSE_POINTS:
         return None
     points = pupil_boundary.T
     hull_points = points[ConvexHull(points).vertices]
-    if len(hull_points) < 5:
+    if len(hull_points) < MIN_ELLIPSE_POINTS:
         return None
     center = _safe_ellipse_center(hull_points)
     if center is not None:
         return Point2D(x=center[0], y=center[1])
+    warnings.warn(
+        f"Ellipse fit failed for a convex hull of {len(hull_points)} vertices; reporting the mean of "
+        f"those vertices instead, which depends on how densely the hull is sampled.",
+        RuntimeWarning,
+        stacklevel=2,
+    )
     return Point2D(x=float(np.mean(hull_points[:, 0])), y=float(np.mean(hull_points[:, 1])))
 
 

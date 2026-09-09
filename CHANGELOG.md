@@ -4,6 +4,25 @@ All notable changes to PyEtSimul are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version 3.0.0 is the release presented in the
 ETRA 2026 paper; this log records everything since.
 
+## [Unreleased]
+
+### Fixed
+
+- **The pupil centre is fitted in-package rather than by scikit-image.** `fit_ellipse` solves the ellipse
+  directly under the conic constraint, on coordinates conditioned before the solve, and `_safe_ellipse_center`,
+  `_fit_ellipse_center`, `_fit_convex_hull_center` and `calculate_pupil_diameter_from_boundary` all read from it.
+  It reproduces scikit-image 0.25.2 to floating point on synthetic and measured boundaries: centre and axes to
+  1.4e-13, angle to 3.2e-12 degrees. Under numpy 2.5 scikit-image's `EllipseModel` raises `TypeError` for every
+  input, including a noiseless ellipse, because it applies `%=` to an angle that comes back complex; the fit path
+  therefore failed on every call and the centre silently became a boundary or hull-vertex centroid. On a smooth
+  pupil that substitute is close enough to pass unnoticed; on a boundary traced from a real image it differs by
+  several pixels.
+
+### Changed
+
+- **A pupil centre or diameter that falls back now warns.** Each fallback says which input could not be fitted
+  and what was reported instead, so a failed fit can no longer be mistaken for a fitted result.
+
 ## [4.0.0] - 2026-07-06
 
 ### Added
