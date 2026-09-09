@@ -12,6 +12,7 @@ def test_camera_take_image_with_refraction() -> None:
     """Test camera take_image with refraction using actual MATLAB reference values."""
     # Create eye and camera setup (matching MATLAB test)
     e = Eye(model="et_simul").copy(fovea_displacement=False)
+    e.pupil.n = 20  # the MATLAB reference samples the pupil boundary at 20 points
     e.position = Position3D(0, 500, 200)  # Eye at [0, 500mm, 200mm]
 
     # Camera at origin pointing at eye
@@ -88,6 +89,7 @@ def test_camera_take_image_without_refraction() -> None:
     """Test camera take_image without refraction using actual MATLAB reference values."""
     # Same setup as refraction test
     e = Eye(model="et_simul").copy(fovea_displacement=False)
+    e.pupil.n = 20  # the MATLAB reference samples the pupil boundary at 20 points
     e.position = Position3D(0, 500, 200)
 
     c = Camera()

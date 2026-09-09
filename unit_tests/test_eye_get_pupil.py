@@ -8,8 +8,9 @@ from pyetsimul.core.eye_model import EyeModel
 
 
 def test_default_n() -> None:
-    """Test get_pupil with default N=20 and MATLAB reference values."""
+    """Test get_pupil with N=20 and MATLAB reference values."""
     e = Eye(model="et_simul")
+    e.pupil.n = 20  # the MATLAB reference samples the pupil boundary at 20 points
     pupil_boundary_points = e.get_pupil().boundary_points
 
     # MATLAB reference values for first 5 points
