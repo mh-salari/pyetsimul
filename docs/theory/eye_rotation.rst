@@ -12,6 +12,16 @@ the optics. In every case the eye moves as a rigid body, so only its pose change
 
 |
 
+.. note::
+
+   The **optical axis** is the geometric symmetry axis of the cornea, along :math:`-Z` in
+   eye-local coordinates. The **visual axis** runs from the fovea to the fixation point,
+   separated from the optical axis by the foveal displacement angles
+   :math:`\alpha_{\text{fovea}}` (horizontal) and :math:`\beta_{\text{fovea}}` (vertical). The
+   two coincide when foveal displacement is disabled. The fovea is temporal in both eyes, so
+   the visual axis tilts nasally and the horizontal angle changes sign between the left and the
+   right eye. :doc:`coordinate_systems` sets out the eye frame both axes live in.
+
 Listing's Law
 -------------
 
@@ -64,8 +74,8 @@ direction is measured from, and the post-rotation they apply.
    * - Method
      - Axis aimed at the target
    * - ``visual_axis``
-     - The visual axis, built from the foveal angles :math:`\alpha` (horizontal) and
-       :math:`\beta` (vertical). This is the default.
+     - The visual axis, built from the foveal angles :math:`\alpha_{\text{fovea}}` (horizontal)
+       and :math:`\beta_{\text{fovea}}` (vertical). This is the default.
    * - ``line_of_sight``
      - The axis from the fovea through the current pupil center. That center carries the
        off-axis offset and the size-dependent decentration, so this axis re-aims as the pupil
@@ -80,8 +90,8 @@ direction is measured from, and the post-rotation they apply.
        and the axis does not pass through a finite target. This is the eyePose convention of
        gkaModelEye [3].
 
-The horizontal foveal angle is signed by eye side, because the fovea is temporal in both eyes.
-The model carries the magnitude and the eye applies the sign.
+The model carries the magnitude of the horizontal foveal angle, and the eye applies the sign
+for its side.
 
 ``look_at`` takes a method argument that overrides the model default for a single call.
 
@@ -89,8 +99,8 @@ Rotation Center
 ---------------
 
 The human eye has no single center of rotation. It lies about 15 mm behind the cornea in
-horizontal gaze and about 12.5 mm in vertical gaze [4]. PyEtSimul provides two models, and both
-change only where the rigid eye pivots.
+horizontal gaze and about 12.5 mm in vertical gaze [4], so one fixed pivot cannot match both
+directions. PyEtSimul provides two models, and both change only where the rigid eye pivots.
 
 Fixed Center
 ^^^^^^^^^^^^
@@ -98,8 +108,10 @@ Fixed Center
 ``EyeballCenter`` pivots the eye about its own local origin for every gaze direction, and the
 eye never translates. The origin is the eyeball center under the ``"center"`` placement
 convention, which is where the original et_simul puts it: 12.33 mm behind the corneal apex for
-the default 7.98 mm corneal radius. Under the ``"apex"`` convention this model would pivot the
-eye about its corneal apex, so an apex-origin eye needs a gaze-dependent center instead.
+the default 7.98 mm corneal radius. The ``et_simul`` eye model keeps this fixed pivot so that it
+reproduces the 2008 MATLAB implementation it is validated against. Under the ``"apex"``
+convention this model would pivot the eye about its corneal apex, so an apex-origin eye needs a
+gaze-dependent center instead.
 
 Gaze-Dependent Center
 ^^^^^^^^^^^^^^^^^^^^^
@@ -214,7 +226,8 @@ rotation. The eyelid keeps its own transform, anchored to the rest placement and
 orientation, because it is fixed to the face rather than to the globe.
 
 The translation still changes what the camera records. Because the camera views the pupil
-obliquely, moving the globe shifts the imaged pupil ellipse and the corneal reflection.
+obliquely, moving the globe shifts the imaged pupil ellipse and the corneal reflection, which
+are the features a gaze estimation algorithm works from.
 
 Defaults by Eye Model
 ---------------------
