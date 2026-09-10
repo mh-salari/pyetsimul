@@ -1,0 +1,5 @@
+/* sphinx_rtd_theme caps the content column at 800px, which leaves wide screens mostly empty
+   and forces long equations and tables to wrap. */
+.wy-nav-content {
+    max-width: 1100px;
+}
