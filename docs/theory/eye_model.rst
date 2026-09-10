@@ -17,20 +17,18 @@ and extends the model by representing the cornea as conic. Default anatomical di
 Eye Rotation
 ------------
 
-The eye's rotational center is defined at the geometric center of the eyeball sphere. All
-anatomical structures are specified relative to this reference point.
+The eye moves as a rigid body. Which axis is aimed at the target, and which point the eye
+pivots about, are both properties of the eye model: the default eye aims its visual axis and
+pivots about separate horizontal and vertical centers behind the corneal apex, while the
+et_simul model [4] aims its optical axis, applies the foveal displacement angles
+(:math:`\alpha_{\text{fovea}}`, :math:`\beta_{\text{fovea}}`) as post-rotations, and pivots
+about the eyeball center.
 
-Eye rotations follow **Listing's law** [3], which governs the torsional component of eye
-movements. When the eye rotates from an initial to a final gaze direction, the rotation
-occurs around an axis perpendicular to both the initial and final visual axis directions.
+In every case the torsional component follows **Listing's law** [3]: the rotation occurs about
+an axis perpendicular to both the initial and the final direction of the aimed axis.
 
-Two rotation approaches are available:
-
-1. Align the optical axis using Listing's law, then apply foveal displacement angles
-   (:math:`\alpha_{\text{fovea}}`, :math:`\beta_{\text{fovea}}`) as post-rotations
-   (default in et_simul [4]).
-2. Compute the visual axis direction from foveal displacement and apply Listing's law
-   directly to this target direction.
+:doc:`eye_rotation` covers the four gaze constructions, the two rotation-center models, and the
+geometry of the pivot.
 
 Cornea
 ------
@@ -43,9 +41,13 @@ surface positioned relative to it based on corneal thickness.
 Cornea Position
 ^^^^^^^^^^^^^^^
 
-The corneal center is positioned along the optical axis, anterior to the eye's rotation center.
-Its location is determined by the eyeball's axial length and the distance from the eyeball's
-front surface to the corneal center.
+Two placement conventions fix the cornea along the optical axis. Under ``"apex"``, the default,
+the corneal apex sits at the eye-local origin and the center of curvature lies behind it, so
+rescaling the cornea leaves the apex in place. Under ``"center"`` the center of curvature sits
+at a fixed depth in front of the origin, determined by the eyeball's axial length and the
+distance from the eyeball's front surface to the corneal center, and the apex moves with the
+radius. The et_simul model uses ``"center"``, which puts the eye-local origin at the eyeball
+center.
 
 Spherical Cornea
 ^^^^^^^^^^^^^^^^

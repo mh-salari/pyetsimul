@@ -48,6 +48,7 @@ of gaze estimation algorithms across calibrated and uncalibrated settings.
 
    theory/coordinate_systems
    theory/eye_model
+   theory/eye_rotation
    theory/optical_calculations
    theory/camera_and_lights
    theory/gaze_estimation_models
