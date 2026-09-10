@@ -53,13 +53,13 @@ class EyeModel:
     # the disc plane tilts instead of lying perpendicular to the optical axis. Eye-fixed (rotates with gaze).
     pupil_tilt_x_deg: float = 0.0
     pupil_tilt_y_deg: float = 0.0
-    # Rotation centre the rigid eye pivots about, defaulting to the anatomical Fick centres: azimuth
-    # 14.7 mm / 0.79 mm nasal, elevation 12.0 mm / 0.33 mm superior behind the corneal apex. An
-    # EyeballCenter() instead gives a single fixed pivot at the eyeball centre.
+    # Rotation centre the rigid eye pivots about, defaulting to the anatomical Fick centres measured by
+    # Fry & Hill: azimuth 14.8 mm / 0.79 mm nasal, elevation 12.2 mm / 0.33 mm superior behind the
+    # corneal apex. An EyeballCenter() instead gives a single fixed pivot at the eyeball centre.
     rotation_center: EyeballCenter | RotationCenter = field(
         default_factory=lambda: RotationCenter(
-            horizontal_depth_mm=14.7,
-            vertical_depth_mm=12.0,
+            horizontal_depth_mm=14.8,
+            vertical_depth_mm=12.2,
             horizontal_nasal_mm=0.79,
             vertical_superior_mm=0.33,
             fick=True,

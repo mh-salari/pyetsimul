@@ -4,6 +4,19 @@ All notable changes to PyEtSimul are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version 3.0.0 is the release presented in the
 ETRA 2026 paper; this log records everything since.
 
+## [5.1.0] - 2026-09-10
+
+### Changed
+
+- **The default rotation-centre depths are the measured ones.** Azimuth 14.8 mm and elevation 12.2 mm behind
+  the corneal apex (Fry & Hill 1962, 1963), replacing 14.7 mm and 12.0 mm. Gaze-dependent eye positions shift
+  by up to about 0.1 mm at large eccentricities. `gkaModelEye` keeps the values that model sets.
+
+### Fixed
+
+- **The Fick rotation centres are credited to Aguirre (2021), not (2019).** The 2019 entrance-pupil paper
+  states that rotation is not studied there.
+
 ## [5.0.1] - 2026-09-09
 
 ### Fixed

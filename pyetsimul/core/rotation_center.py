@@ -32,7 +32,7 @@ class RotationCenter:
     Each centre is a corneal-apex-to-pivot depth (mm) plus an optional lateral displacement off the
     optical axis: the horizontal centre is displaced nasally by ``horizontal_nasal_mm`` and the
     vertical centre superiorly by ``vertical_superior_mm``. Fry & Hill measured the azimuthal centre
-    about 14.7 mm behind the apex and 0.79 mm nasal, and the elevation centre about 12.2 mm behind the
+    about 14.8 mm behind the apex and 0.79 mm nasal, and the elevation centre about 12.2 mm behind the
     apex and 0.33 mm superior; Aguirre's model uses two such centres to model the appearance of the
     rotated eye.
 
@@ -47,8 +47,8 @@ class RotationCenter:
             Optometry and Vision Science, 39(11), 581-595.
         Fry, G. A., & Hill, W. W. (1963). The mechanics of elevating the eye.
             Optometry and Vision Science, 40(12), 707-716.
-        Aguirre, G. K. (2019). A model of the entrance pupil of the human eye.
-            Scientific Reports, 9, 9360.
+        Aguirre, G. K. (2021). A model of the appearance of the moving human eye.
+            bioRxiv preprint. https://doi.org/10.1101/2021.02.02.429411
 
     """
 
@@ -63,7 +63,7 @@ class RotationCenter:
     vertical_up_depth_mm: float | None = None
     vertical_down_depth_mm: float | None = None
     # When True, azimuth and elevation rotate about their own centres applied sequentially (Fick), as in
-    # Aguirre (2019) / gkaModelEye, instead of blending both into a single on-axis pivot. The depth/lateral
+    # Aguirre (2021) / gkaModelEye, instead of blending both into a single on-axis pivot. The depth/lateral
     # fields above become the azimuth (horizontal) and elevation (vertical) Fick centres.
     fick: bool = False
 

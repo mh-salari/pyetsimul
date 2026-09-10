@@ -208,7 +208,7 @@ def _repivot(
 def _repivot_fick(
     eye: "Eye", _target_position: Position3D, orientation_from: Callable[[Position3D], np.ndarray]
 ) -> tuple[np.ndarray, np.ndarray]:
-    """Position via separate Fick rotation centres for azimuth and elevation (gkaModelEye / Aguirre 2019).
+    """Position via separate Fick rotation centres for azimuth and elevation (gkaModelEye / Aguirre 2021).
 
     Azimuth rotates about the horizontal (azimuth) centre and elevation about the vertical (elevation)
     centre, applied sequentially, rather than blending both into one pivot. The orientation is the same

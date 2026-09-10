@@ -128,10 +128,10 @@ are the values Fry and Hill measured for azimuth [5] and for elevation [6]:
      - Depth behind the apex
      - Lateral displacement
    * - Azimuth (horizontal gaze)
-     - 14.7 mm
+     - 14.8 mm
      - 0.79 mm nasal
    * - Elevation (vertical gaze)
-     - 12.0 mm
+     - 12.2 mm
      - 0.33 mm superior
 
 The two centers are blended by the horizontal share of the gaze eccentricity. With the target
@@ -241,19 +241,19 @@ Defaults by Eye Model
      - Rotation center
    * - PyEtSimul default
      - ``visual_axis``
-     - Fick centers at 14.7 mm and 12.0 mm
+     - Fick centers at 14.8 mm and 12.2 mm
    * - ``et_simul``
      - ``optical_then_kappa``
      - Fixed center at the eyeball center
    * - ``gkaModelEye``
      - ``optical_axis_target_direction``
-     - Fick centers at 14.7 mm and 12.0 mm
+     - Fick centers at 14.7 mm and 12.0 mm, as that model sets them
 
 ----
 
 | [1] Haustein, W. (1989). Considerations on Listing's law and the primary position by means of a matrix description of eye position control. *Biological Cybernetics*, 60(6), 411-420.
 | [2] Bohme, M., Dorr, M., Graw, M., Martinetz, T., & Barth, E. (2008). A software framework for simulating eye trackers. In *Proceedings of ETRA '08*, pp. 251-258. ACM.
-| [3] Aguirre, G. K. (2019). A model of the entrance pupil of the human eye. *Scientific Reports*, 9, 9360.
+| [3] Aguirre, G. K. (2021). A model of the appearance of the moving human eye. bioRxiv preprint. `DOI: 10.1101/2021.02.02.429411 <https://doi.org/10.1101/2021.02.02.429411>`_
 | [4] Atchison, D. A., & Smith, G. (2023). *Optics of the Human Eye* (2nd ed.), Section 1.7. CRC Press.
 | [5] Fry, G. A., & Hill, W. W. (1962). The center of rotation of the eye. *Optometry and Vision Science*, 39(11), 581-595.
 | [6] Fry, G. A., & Hill, W. W. (1963). The mechanics of elevating the eye. *Optometry and Vision Science*, 40(12), 707-716.
