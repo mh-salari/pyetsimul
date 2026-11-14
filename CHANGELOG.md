@@ -513,6 +513,23 @@ ETRA 2026 paper; this log records everything since.
 - **Removed: the `cr_3d_lists` argument of `plot_camera_view_of_eye`.**
   The glints are read from the camera images. `plot_setup` still draws the 3D reflection points.
 
+- **Fixed: the interactive gaze plot only worked for a screen in the x-z plane.**
+  Before, `render_calibration_view`, `create_interactive_gaze_plot` and `plot_setup` assumed that the screen lies in
+  the plane y = 0. For a screen in the x-y plane, the calibration points were drawn up to 124.5 mm from their real
+  positions, and the arrow keys moved the target out of the screen plane. Now the plots use the plane of the
+  calibration points. A screen in the x-z plane is drawn as before.
+
+- **Added: the keyboard controls of the interactive plots work for a screen in any plane, with
+  `InteractiveControls(screen_axes=...)`.**
+  The interactive plots move the gaze target and the eyes with the keyboard, along the two world axes of the screen.
+  Before, these axes were always x and z. `screen_axes` sets them, for example `("x", "y")` for a screen in the x-y
+  plane. The default is `("x", "z")`.
+
+- **Changed: `plot_setup` and `plot_setup_and_camera_view` take the calibration points as 3D positions instead of 2D
+  points.**
+  Before, `calib_points` was a list of 2D points, which were always drawn in the plane y = 0. Now it is the list of 3D
+  calibration positions, which are drawn where they are.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed

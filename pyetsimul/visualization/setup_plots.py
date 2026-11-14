@@ -14,7 +14,7 @@ if TYPE_CHECKING:
     from matplotlib.axes import Axes
 
 from ..core import Camera, Light
-from ..types import Point2D, Point3D, Position3D, ScreenGeometry, TransformationMatrix, Vector3D
+from ..types import Point3D, Position3D, ScreenGeometry, TransformationMatrix, Vector3D
 from .plot_config import PlotConfig, create_plot_config
 
 
@@ -63,7 +63,7 @@ def plot_setup(
     cameras: list[Camera] | Camera | None = None,
     cr_3d_lists: list[list[Any]] | None = None,
     ref_bounds: dict[str, tuple[float, float]] | None = None,
-    calib_points: list[Point2D] | None = None,
+    calib_points: list[Position3D] | None = None,
     screen: ScreenGeometry | None = None,
 ) -> tuple[list[str], list[str]]:
     """Plot 3D eye tracking setup visualization.
@@ -78,7 +78,7 @@ def plot_setup(
         cameras: Optional Camera object or list of Camera objects
         cr_3d_lists: List of lists of corneal reflection 3D positions for each eye
         ref_bounds: Optional reference bounds dict with 'x', 'y', 'z' keys
-        calib_points: Optional calibration points array to plot as black x markers
+        calib_points: Optional calibration points in world coordinates, drawn where they are as black x markers
         screen: Optional screen geometry to draw the screen border
 
     Returns:
@@ -267,8 +267,7 @@ def plot_setup(
 
     # Include calibration points in bounds calculation if provided
     if calib_points is not None:
-        # On the screen plane, matching where they are drawn below: y = 0 with the vertical on z.
-        all_points.extend(Position3D(cp.x, 0.0, cp.y) for cp in calib_points)
+        all_points.extend(calib_points)
 
     if ref_bounds:
         ax1.set_xlim(ref_bounds["x"])
@@ -297,15 +296,10 @@ def plot_setup(
 
     # Plot calibration points if provided
     if calib_points is not None:
-        cps = np.array([[cp.x, cp.y] for cp in calib_points]).T
-        calib_x = cps[0, :]
-        calib_y = np.zeros_like(cps[0, :])
-        calib_z = cps[1, :]
-
         ax1.scatter(
-            calib_x,
-            calib_y,
-            calib_z,
+            [cp.x for cp in calib_points],
+            [cp.y for cp in calib_points],
+            [cp.z for cp in calib_points],
             color=config.colors.calibration_points,
             marker="x",
             s=config.markers.calibration_points,

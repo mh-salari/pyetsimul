@@ -14,6 +14,9 @@ if TYPE_CHECKING:
     from pyetsimul.core import Eye
 
 
+_WORLD_AXES = ("x", "y", "z")
+
+
 class InteractiveControls:
     """Centralized keyboard controls for interactive eye tracking plots."""
 
@@ -25,6 +28,7 @@ class InteractiveControls:
         initial_eye_positions: list[Position3D] | None = None,
         initial_target_position: Point3D | None = None,
         custom_handlers: dict[str, Callable] | None = None,
+        screen_axes: tuple[str, str] = ("x", "z"),
     ) -> None:
         """Initialize interactive controls.
 
@@ -35,8 +39,22 @@ class InteractiveControls:
             initial_eye_positions: Initial positions for each eye (defaults to where each eye is placed).
             initial_target_position: Initial target position (defaults to current).
             custom_handlers: Additional key handlers.
+            screen_axes: World axes of the screen plane, horizontal then vertical ("x", "y" or "z" each). The
+                arrow keys move the target along them, J/L and I/K move the eyes along them, and ./, move
+                the eyes along the third axis.
+
+        Raises:
+            ValueError: If ``screen_axes`` are not two different world axes.
 
         """
+        if len(set(screen_axes)) != len(_WORLD_AXES) - 1 or not set(screen_axes) <= set(_WORLD_AXES):
+            raise ValueError(f"screen_axes must be two different axes out of {_WORLD_AXES}, got {screen_axes}")
+        depth_axis = next(axis for axis in _WORLD_AXES if axis not in screen_axes)
+        # Unit steps along the screen's horizontal and vertical axes and along the axis through the screen.
+        self._right, self._up, self._away = (
+            tuple(float(axis == name) for axis in _WORLD_AXES) for name in (*screen_axes, depth_axis)
+        )
+
         self.eyes = eyes
         self.target_point = target_point
 
@@ -61,26 +79,26 @@ class InteractiveControls:
         standard_actions = {
             # Reset
             " ": self.reset_positions,
-            # Target movement
-            "up": lambda: self._move_target(0, 0, self.step_size),
-            "Up": lambda: self._move_target(0, 0, self.step_size),
-            "↑": lambda: self._move_target(0, 0, self.step_size),
-            "down": lambda: self._move_target(0, 0, -self.step_size),
-            "Down": lambda: self._move_target(0, 0, -self.step_size),
-            "↓": lambda: self._move_target(0, 0, -self.step_size),
-            "left": lambda: self._move_target(-self.step_size, 0, 0),
-            "Left": lambda: self._move_target(-self.step_size, 0, 0),
-            "←": lambda: self._move_target(-self.step_size, 0, 0),
-            "right": lambda: self._move_target(self.step_size, 0, 0),
-            "Right": lambda: self._move_target(self.step_size, 0, 0),
-            "→": lambda: self._move_target(self.step_size, 0, 0),
+            # Target movement, in the screen plane
+            "up": lambda: self._move_target(*self._step(self._up, 1)),
+            "Up": lambda: self._move_target(*self._step(self._up, 1)),
+            "↑": lambda: self._move_target(*self._step(self._up, 1)),
+            "down": lambda: self._move_target(*self._step(self._up, -1)),
+            "Down": lambda: self._move_target(*self._step(self._up, -1)),
+            "↓": lambda: self._move_target(*self._step(self._up, -1)),
+            "left": lambda: self._move_target(*self._step(self._right, -1)),
+            "Left": lambda: self._move_target(*self._step(self._right, -1)),
+            "←": lambda: self._move_target(*self._step(self._right, -1)),
+            "right": lambda: self._move_target(*self._step(self._right, 1)),
+            "Right": lambda: self._move_target(*self._step(self._right, 1)),
+            "→": lambda: self._move_target(*self._step(self._right, 1)),
             # Eye movement (all eyes together)
-            "j": lambda: self._move_eyes(-self.step_size, 0, 0),
-            "l": lambda: self._move_eyes(self.step_size, 0, 0),
-            "i": lambda: self._move_eyes(0, 0, self.step_size),
-            "k": lambda: self._move_eyes(0, 0, -self.step_size),
-            ".": lambda: self._move_eyes(0, -self.step_size, 0),
-            ",": lambda: self._move_eyes(0, self.step_size, 0),
+            "j": lambda: self._move_eyes(*self._step(self._right, -1)),
+            "l": lambda: self._move_eyes(*self._step(self._right, 1)),
+            "i": lambda: self._move_eyes(*self._step(self._up, 1)),
+            "k": lambda: self._move_eyes(*self._step(self._up, -1)),
+            ".": lambda: self._move_eyes(*self._step(self._away, -1)),
+            ",": lambda: self._move_eyes(*self._step(self._away, 1)),
             # Special keys
             "escape": InteractiveControls._handle_escape,
         }
@@ -99,6 +117,10 @@ class InteractiveControls:
             return True
 
         return False
+
+    def _step(self, direction: tuple[float, float, float], sign: int) -> tuple[float, float, float]:
+        """One step of ``step_size`` mm along a unit direction, forward (1) or back (-1)."""
+        return tuple(sign * self.step_size * component for component in direction)
 
     def _move_target(self, dx: float, dy: float, dz: float) -> None:
         """Move target by the specified amounts."""

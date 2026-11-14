@@ -22,7 +22,7 @@ from pyetsimul.core import Eye
 
 from ..geometry.conversions import calculate_angular_error_degrees
 from ..geometry.plane_detection import PlaneInfo
-from ..types import GazePrediction, Point2D, Point3D, ScreenGeometry
+from ..types import GazePrediction, Point3D, ScreenGeometry
 from .coordinate_utils import prepare_eye_data_for_plots
 from .interactive_controls import InteractiveControls
 from .plot_config import create_plot_config
@@ -163,11 +163,8 @@ def render_calibration_view(
     # ---------------------------------------------------------------------
     # Left subplot: 3D eye tracking setup
     # ---------------------------------------------------------------------
-    target_3d = Point3D(target_point.x, 0, target_point.z)
-
-    calib_points_2d: list[Point2D] = []
-    for pt in calibration_points:
-        calib_points_2d.append(Point2D(*plane_info.extract_2d_coords(pt)))
+    # The target on the calibration plane.
+    target_3d = plane_info.reconstruct_3d_point(*plane_info.extract_2d_coords(target_point))
 
     prepared_data = prepare_eye_data_for_plots(eyes, [target_3d] * n_eyes, lights, cameras)
 
@@ -178,15 +175,15 @@ def render_calibration_view(
         lights,
         cameras,
         prepared_data["cr_3d_lists"],
-        calib_points=calib_points_2d,
+        calib_points=calibration_points,
         screen=screen,
         ref_bounds=ref_bounds_3d,
     )
 
     ax_3d.scatter(
-        [target_point.x],
-        [0],
-        [target_point.z],
+        [target_3d.x],
+        [target_3d.y],
+        [target_3d.z],
         c=target_color,
         s=40,
         marker="+",
@@ -410,11 +407,17 @@ def create_interactive_gaze_plot(
     fig = plt.figure(figsize=(24, 10))
     interactive_eyes = [copy.deepcopy(eye) for eye in eyes]
 
-    mean_x = sum(pt.x for pt in calibration_points) / len(calibration_points)
-    mean_z = sum(pt.z for pt in calibration_points) / len(calibration_points)
-    current_target = Point3D(mean_x, 0, mean_z)
+    # The target starts at the centre of the calibration points, and the arrow keys move it in their plane.
+    mean_u = sum(plane_info.extract_2d_coords(pt)[0] for pt in calibration_points) / len(calibration_points)
+    mean_v = sum(plane_info.extract_2d_coords(pt)[1] for pt in calibration_points) / len(calibration_points)
+    current_target = plane_info.reconstruct_3d_point(mean_u, mean_v)
 
-    controls = InteractiveControls(interactive_eyes, current_target, step_size=10)
+    controls = InteractiveControls(
+        interactive_eyes,
+        current_target,
+        step_size=10,
+        screen_axes=(plane_info.primary_axis, plane_info.secondary_axis),
+    )
 
     def update_display() -> None:
         """Update both 3D and 2D plots with current target position."""
