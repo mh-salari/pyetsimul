@@ -32,7 +32,11 @@ def prepare_eye_data_for_plots(
         cameras: Optional Camera object or list of Camera objects
 
     Returns:
-        dict: Contains eyes_data list, camera_images list, and cr_3d_lists for plotting
+        dict: Contains eyes_data list, camera_images list, and cr_3d_lists for plotting. There is one camera
+            image per camera: the image of the first eye, with the pupils and glints of every eye attached
+            as ``pupil_boundaries``, ``pupil_centers`` and ``corneal_reflections_per_eye``. ``cr_3d_lists``
+            holds, per eye, the points on the cornea that reflect each light toward the first camera, for the
+            3D view.
 
     """
     # Convert single objects to lists
@@ -69,21 +73,12 @@ def prepare_eye_data_for_plots(
 
     if cameras:
         for camera in cameras:
-            combined_pupil_boundaries = []
-            combined_pupil_centers = []
-
-            for eye in eyes:
-                eye_image = camera.take_image(eye, lights)
-                combined_pupil_boundaries.append(eye_image.pupil_boundary)
-                combined_pupil_centers.append(eye_image.pupil_center)
-
-            if eyes:
-                first_eye_image = camera.take_image(eyes[0], lights)
-                first_eye_image.pupil_boundaries = combined_pupil_boundaries
-                first_eye_image.pupil_centers = combined_pupil_centers
-                camera_images.append(first_eye_image)
-            else:
-                camera_images.append(None)
+            eye_images = [camera.take_image(eye, lights) for eye in eyes]
+            first_eye_image = eye_images[0]
+            first_eye_image.pupil_boundaries = [image.pupil_boundary for image in eye_images]
+            first_eye_image.pupil_centers = [image.pupil_center for image in eye_images]
+            first_eye_image.corneal_reflections_per_eye = [image.corneal_reflections for image in eye_images]
+            camera_images.append(first_eye_image)
     else:
         camera_images = [None]
 

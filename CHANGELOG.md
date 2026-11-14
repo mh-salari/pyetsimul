@@ -505,6 +505,14 @@ ETRA 2026 paper; this log records everything since.
   the origin 6 m away. Now the vectors run from the eye to the predicted gaze point. `cosine_similarity_average` and
   `amplitude_agreement` take the eye positions as a third argument.
 
+- **Fixed: the camera view showed the glints of the first camera in every camera.**
+  Before, in `plot_setup_and_camera_view` with several cameras, the glints were computed for the first camera and drawn
+  in all camera views. The position of a glint depends on the camera, so the glints drawn for the other cameras were
+  wrong (by 22 px for two cameras 400 mm apart). Now each camera view shows its own glints.
+
+- **Removed: the `cr_3d_lists` argument of `plot_camera_view_of_eye`.**
+  The glints are read from the camera images. `plot_setup` still draws the 3D reflection points.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed

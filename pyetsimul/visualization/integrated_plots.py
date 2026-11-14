@@ -92,7 +92,6 @@ def plot_setup_and_camera_view(
         plot_camera_view_of_eye(
             prepared_data["camera_images"],
             cameras,
-            prepared_data["cr_3d_lists"],
             ax=ax2,
             eye_colors=eye_colors,
             camera_colors=camera_colors,

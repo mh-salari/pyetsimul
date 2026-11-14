@@ -3,7 +3,7 @@
 Shows the pupil outline, the pupil centre, and the corneal reflections (glints) in image-pixel coordinates.
 """
 
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import matplotlib.pyplot as plt
 
@@ -28,7 +28,6 @@ def _glint_color(override: str | None, light_colors: list[str], cr_idx: int) -> 
 def plot_camera_view_of_eye(
     camera_images: list[CameraImage] | CameraImage,
     cameras: list[Camera] | Camera,
-    cr_3d_lists: list[list[Any]] | list[Any] | None = None,
     ax: "Axes | None" = None,
     eye_colors: list[str] | None = None,
     camera_colors: list[str] | None = None,
@@ -48,16 +47,14 @@ def plot_camera_view_of_eye(
     """Plot camera views of eyes.
 
     Shows what each camera sees - the pupil, its centre, and the glints (corneal reflections) - in image
-    pixels. Works with a plain image from ``camera.take_image(eye, lights)`` (one pupil, glints from the
-    image's own ``corneal_reflections``) and with the 3D-setup path, which attaches several eyes' pupils to one
-    image as ``pupil_boundaries`` / ``pupil_centers`` and passes the glints as 3D reflection points in
-    ``cr_3d_lists``.
+    pixels. Works with a plain image from ``camera.take_image(eye, lights)`` (one pupil and the image's own
+    ``corneal_reflections``) and with the 3D-setup path, which attaches several eyes' pupils and glints to one
+    image as ``pupil_boundaries``, ``pupil_centers`` and ``corneal_reflections_per_eye``. The glints are always
+    those in the camera's own image.
 
     Args:
         camera_images: CameraImage object or list of CameraImage objects (one per camera)
         cameras: Camera object or list of Camera objects
-        cr_3d_lists: list of lists of corneal reflection 3D positions for each eye, or single list. When given,
-            glints are projected from these; otherwise they are taken from each image's corneal_reflections.
         ax: Optional matplotlib axis
         eye_colors: Optional list of colors for the eyes.
         camera_colors: Per-camera color for the pupil and centre (distinguishes the models when overlaid).
@@ -82,9 +79,6 @@ def plot_camera_view_of_eye(
         camera_images = [camera_images]
     if not isinstance(cameras, list):
         cameras = [cameras]
-    if cr_3d_lists is not None and not isinstance(cr_3d_lists, list):
-        cr_3d_lists = [cr_3d_lists]
-
     if len(camera_images) != len(cameras):
         raise ValueError("Number of camera images must match number of cameras")
 
@@ -171,26 +165,17 @@ def plot_camera_view_of_eye(
                 feature_x.append(center_img[0])
                 feature_y.append(center_img[1])
 
-        # Glints come from the projected 3D reflection points when given, else the image's own corneal
-        # reflections. Each glint takes its light's color (config.colors.lights, the same palette the 3D setup
-        # uses for the light markers), so reflections from different lights are told apart. A per-camera
-        # glint_colors overrides this, e.g. to distinguish models that share the frame.
+        # The glints are those this camera's image holds, for every eye when the image carries several. Each
+        # glint takes its light's color (config.colors.lights, the same palette the 3D setup uses for the
+        # light markers), so reflections from different lights are told apart. A per-camera glint_colors
+        # overrides this, e.g. to distinguish models that share the frame.
         glint_override = glint_colors[cam_idx % len(glint_colors)] if glint_colors is not None else None
         light_colors = config.colors.lights
-        if cr_3d_lists:
-            for cr_3d_list in cr_3d_lists:
-                for cr_idx, cr_3d in enumerate(cr_3d_list):
-                    if cr_3d is None:
-                        continue
-                    has_valid_data = True
-                    cr_img = camera.project(cr_3d).image_points
-                    x, y = float(cr_img[0, 0]), float(cr_img[1, 0])
-                    glint_color = _glint_color(glint_override, light_colors, cr_idx)
-                    _draw_glint(ax2, x, y, glint_color, f"Glint {cr_idx + 1}", alpha, marker_size)
-                    feature_x.append(x)
-                    feature_y.append(y)
-        else:
-            for cr_idx, reflection in enumerate(camera_image.corneal_reflections):
+        reflections_per_eye = getattr(camera_image, "corneal_reflections_per_eye", None)
+        if reflections_per_eye is None:
+            reflections_per_eye = [camera_image.corneal_reflections]
+        for reflections in reflections_per_eye:
+            for cr_idx, reflection in enumerate(reflections):
                 if reflection is None:
                     continue
                 has_valid_data = True
