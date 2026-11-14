@@ -182,7 +182,8 @@ class PupilSizeWithDecentrationVariation(GenericEyeVariation):
 class PupilDecentrationVariation(GenericEyeVariation):
     """Pupil decentration variation without changing pupil size.
 
-    Uses move_pupil_position to apply offsets in x, y, and/or z directions.
+    Uses move_pupil_position to apply offsets in x, y, and/or z directions. The eye keeps the offset when
+    its pupil size changes, so the variation can be combined with a pupil size variation in any order.
     """
 
     def __init__(

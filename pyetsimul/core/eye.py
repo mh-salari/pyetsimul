@@ -91,6 +91,9 @@ class Eye:
     _current_look_at_method: str | None = field(init=False, default=None)
     # Rest globe-centre placement; the gaze-dependent rotation centre re-pivots about it.
     _placement: Position3D = field(init=False)
+    # Offset of the pupil centre set by hand (set_pupil_position, move_pupil_position), eye-local mm. It is
+    # added to the position that the optical axis and the pupil-centre configs give, at every pupil size.
+    _pupil_offset: Position3D = field(init=False, default_factory=lambda: Position3D(0.0, 0.0, 0.0))
     # {pupil diameter (mm): physical eye-local boundary (N x 2)} registered via register_pupil_shape;
     # set_pupil_diameter swaps to the matching shape when called with a registered size.
     _size_shapes: dict[float, np.ndarray] = field(init=False, default_factory=dict, repr=False)
@@ -835,18 +838,25 @@ class Eye:
     def move_pupil_position(self, dx: float, dy: float, dz: float) -> None:
         """Move pupil position by given offset.
 
+        The offset is added to the offsets given before and stays with the eye: the pupil keeps it when its
+        size changes, on top of the off-axis offset and the size-dependent decentration.
+
         Args:
             dx: X offset in mm
             dy: Y offset in mm
             dz: Z offset in mm
 
         """
-        current_pos = self.pupil.pos_pupil
-        new_pos = Position3D(current_pos.x + dx, current_pos.y + dy, current_pos.z + dz)
-        self.pupil.pos_pupil = new_pos
+        offset = self._pupil_offset
+        self._pupil_offset = Position3D(offset.x + dx, offset.y + dy, offset.z + dz)
+        self._update_pupil_position()
 
     def set_pupil_position(self, x: float, y: float, z: float) -> None:
         """Set pupil position to absolute coordinates.
+
+        The pupil centre is placed at the given eye-local coordinates. The difference from the position that
+        the optical axis and the pupil-centre configs give is kept as the eye's own pupil offset, so with
+        decentration enabled a later size change shifts the centre from here by the change in decentration.
 
         Args:
             x: Absolute X position in mm
@@ -854,6 +864,8 @@ class Eye:
             z: Absolute Z position in mm
 
         """
+        configured = self._configured_pupil_position()
+        self._pupil_offset = Position3D(x - configured.x, y - configured.y, z - configured.z)
         self.pupil.pos_pupil = Position3D(x, y, z)
 
     def get_pupil_center_in_world(self) -> Position3D:
@@ -894,8 +906,8 @@ class Eye:
             **self.decentration_config.get_model_params(),
         )
 
-    def _update_pupil_position(self) -> None:
-        """Position the pupil centre.
+    def _configured_pupil_position(self) -> Position3D:
+        """Pupil centre that the optical axis and the pupil-centre configs give at the current pupil size.
 
         The position is the optical-axis base plus the static off-axis offset and the size-dependent
         decentration, each applied only when its config is enabled.
@@ -905,7 +917,12 @@ class Eye:
         if self.decentration_config.enabled:
             decentration = self._calculate_decentration_offset(self.get_pupil_diameter())
             offset = Position3D(offset.x + decentration.x, offset.y + decentration.y, offset.z + decentration.z)
-        self.pupil.pos_pupil = Position3D(base.x + offset.x, base.y + offset.y, base.z + offset.z)
+        return Position3D(base.x + offset.x, base.y + offset.y, base.z + offset.z)
+
+    def _update_pupil_position(self) -> None:
+        """Position the pupil centre: the configured position plus the offset set by hand."""
+        configured, offset = self._configured_pupil_position(), self._pupil_offset
+        self.pupil.pos_pupil = Position3D(configured.x + offset.x, configured.y + offset.y, configured.z + offset.z)
 
     def find_refracted_position(self, camera_position: Position3D, object_position: Position3D) -> Position3D | None:
         """Find where an intraocular object appears due to corneal refraction.

@@ -325,6 +325,13 @@ ETRA 2026 paper; this log records everything since.
   position, pupil size and gaze target. In everything else it is identical to an eye built from the new model.
   `Eye.copy(**overrides)` follows the same rule.
 
+- **Fixed: a pupil position set by hand was lost when the pupil size changed.**
+  `Eye.set_pupil_position` and `Eye.move_pupil_position` shift the pupil centre. Before, the next `set_pupil_diameter`
+  or `set_pupil_radii` positioned the pupil again without this shift. In a dataset, a `PupilDecentrationVariation`
+  followed by a pupil size variation therefore produced no shift, while the opposite order kept it. Now the eye
+  remembers the shift and applies it at every pupil size, in addition to the off-axis position and the size-dependent
+  decentration of the pupil.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed
