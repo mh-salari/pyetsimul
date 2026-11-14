@@ -444,6 +444,20 @@ ETRA 2026 paper; this log records everything since.
   Before, with `use_posterior_surface=False`, the refraction through a `ToricCornea` used only its symmetric conic
   shape, so the pupil was imaged as through a cornea without astigmatism. Now the toric shape is used.
 
+- **Fixed: the result of aiming a camera depended on how the camera was positioned or aimed before.**
+  Before, `Camera.pan_tilt` ignored a position or orientation that had been assigned to the camera: a camera that was
+  positioned and then turned with `pan_tilt` jumped back to the origin. `Camera.point_at` started from the orientation
+  left by the previous `point_at`, so aiming at A and then at B gave a camera that was rolled, by 8.5 deg in a test,
+  compared with aiming at B directly. Now `pan_tilt` and `point_at` start from the position and orientation that were
+  assigned to the camera. A camera that is positioned and aimed once, as in the examples, is not affected.
+
+- **Changed: trackers, cameras, eyes and datasets saved with an earlier version cannot be loaded.**
+  The saved dictionaries have new keys, so `deserialize` raises `KeyError` for older ones. A saved tracker loads again
+  after `"pupil_center_method": "ellipse"` is added to its dictionary. A saved camera loads again after the keys
+  `error_seed`, `fick_projection`, `aim_start_orientation` and `aimed_orientation` are added with the value `null`. The
+  dictionary of an eye has a different layout and cannot be converted. Datasets generated with an earlier version have
+  to be generated again before `evaluate_gaze_accuracy` can read them.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed

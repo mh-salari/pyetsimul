@@ -66,7 +66,7 @@ class Camera:
 
     Key components:
     - trans: Camera to world transformation matrix
-    - rest_trans: Rest position transformation (for pan-tilt cameras)
+    - rest_trans: Rest pose that pan_tilt pans and tilts from; follows the position and orientation setters
     - camera_matrix: CameraMatrix with focal_length and resolution properties
     - dist_coeffs: OpenCV distortion coefficients (default: no distortion)
     - err: Random error amount (default: 0.0)
@@ -92,6 +92,11 @@ class Camera:
 
     # Internal field to track where camera is pointing (set by point_at method)
     _pointing_at: Position3D | None = field(default=None, init=False)
+    # Orientation that point_at pans and tilts from, and the orientation its last call gave. While the camera
+    # still has the second, the next call starts from the first again, so an aim does not depend on the aims
+    # before it. An orientation set since then is taken as the new one to start from.
+    _aim_start_orientation: np.ndarray | None = field(default=None, init=False)
+    _aimed_orientation: np.ndarray | None = field(default=None, init=False)
 
     # World->pixel matrix when the camera is switched to the FickRotation projection; None = default pinhole.
     _fick_projection: np.ndarray | None = field(default=None, init=False)
@@ -120,7 +125,11 @@ class Camera:
 
     @property
     def orientation(self) -> RotationMatrix:
-        """Get/set the camera's orientation (3x3 rotation matrix)."""
+        """Get/set the camera's orientation (3x3 rotation matrix).
+
+        Setting it also makes it the orientation of the rest pose, from which ``pan_tilt`` and ``point_at``
+        turn the camera.
+        """
         return self.trans.get_rotation()
 
     @orientation.setter
@@ -137,15 +146,20 @@ class Camera:
         # RotationMatrix type already validates during construction
 
         self.trans[:3, :3] = value
+        self.rest_trans[:3, :3] = value
 
     @property
     def position(self) -> Position3D:
-        """Get/set the camera's position (3D vector)."""
+        """Get/set the camera's position (3D vector).
+
+        Setting it moves the rest pose with the camera, so a later ``pan_tilt`` turns the camera where it is.
+        """
         return Position3D.from_array(self.trans[:3, 3])
 
     @position.setter
     def position(self, value: Position3D) -> None:
         self.trans[:3, 3] = np.array(value)[:3]  # Extract x,y,z from homogeneous coordinates
+        self.rest_trans[:3, 3] = self.trans[:3, 3]
 
     @property
     def pointing_at(self) -> Position3D | None:
@@ -448,6 +462,10 @@ class Camera:
         projection then uses. With ``mode='fick'`` the camera is instead given the FickRotation projection
         aimed at an ``Eye``'s rotation centre, derived from the camera's own position and intrinsic.
 
+        The camera pans and tilts from the orientation it had before it was first aimed, or from the
+        orientation set on it since, so the result does not depend on where it was aimed before. The aimed
+        pose becomes the rest pose.
+
         Args:
             target: A ``Position3D`` to look at (default), or an ``Eye`` to aim at when ``mode='fick'``.
             world_frame: Optional world coordinate frame for the default orientation.
@@ -470,10 +488,17 @@ class Camera:
         if not isinstance(target, Position3D):
             raise TypeError(f"point_at expects a Position3D target, got {type(target).__name__}")
 
+        # The camera starts from the orientation of its last aim only if that was changed by hand since.
+        orientation = np.asarray(self.trans[:3, :3])
+        if self._aimed_orientation is None or not np.array_equal(orientation, self._aimed_orientation):
+            self._aim_start_orientation = orientation.copy()
+        self.trans[:3, :3] = self._aim_start_orientation
+
         self._pointing_at = target
         self.rest_trans = self.trans.copy()
         self.pan_tilt(target, world_frame)
         self.rest_trans = self.trans.copy()
+        self._aimed_orientation = np.asarray(self.trans[:3, :3]).copy()
 
     def point_at_binocular(self, left_eye_pos: Position3D, right_eye_pos: Position3D) -> None:
         """Point camera at the midpoint between two eyes, rolled so the inter-eye axis is horizontal.
@@ -646,6 +671,10 @@ class Camera:
             "rest_transformation": self.rest_trans.tolist(),
             "glint_noise_config": self.glint_noise_config.serialize() if self.glint_noise_config else None,
             "fick_projection": None if self._fick_projection is None else self._fick_projection.tolist(),
+            "aim_start_orientation": (
+                None if self._aim_start_orientation is None else self._aim_start_orientation.tolist()
+            ),
+            "aimed_orientation": None if self._aimed_orientation is None else self._aimed_orientation.tolist(),
         }
 
     @classmethod
@@ -679,5 +708,9 @@ class Camera:
 
         if data["fick_projection"] is not None:
             camera._fick_projection = np.array(data["fick_projection"], dtype=float)
+        if data["aim_start_orientation"] is not None:
+            camera._aim_start_orientation = np.array(data["aim_start_orientation"], dtype=float)
+        if data["aimed_orientation"] is not None:
+            camera._aimed_orientation = np.array(data["aimed_orientation"], dtype=float)
 
         return camera
