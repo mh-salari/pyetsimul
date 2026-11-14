@@ -1097,6 +1097,17 @@ class Eye:
         pos = self.position
         return f"Eye(pos=({pos.x:.1f}, {pos.y:.1f}, {pos.z:.1f})mm, axial_length={self.model.axial_length:.1f}mm)"
 
+    def _rotation_centre_rows(self) -> list[list[str]]:
+        """Rows of the anatomy table giving the rotation centre(s), in mm behind the corneal apex."""
+        rotation_center = self.model.rotation_center
+        if isinstance(rotation_center, EyeballCenter):
+            # A fixed pivot is the eye-local origin, and the apex lies at or in front of it (z <= 0).
+            return [["Rotation center (mm behind apex)", f"{-self.cornea.get_apex_position().z:.3f}"]]
+        return [
+            ["Rotation center, horizontal gaze (mm behind apex)", f"{rotation_center.horizontal_depth_mm:.3f}"],
+            ["Rotation center, vertical gaze (mm behind apex)", f"{rotation_center.vertical_depth_mm:.3f}"],
+        ]
+
     def pprint(self) -> None:
         """Print detailed eye anatomy parameters in a formatted table."""
         cornea_center = self.cornea.center
@@ -1108,10 +1119,7 @@ class Eye:
             ["Anterior corneal radius R_a (mm)", f"{self.cornea.anterior_radius:.3f}"],
             ["Posterior corneal radius R_p (mm)", f"{self.cornea.posterior_radius:.3f}"],
             ["Axial length L (mm)", f"{self.model.axial_length:.3f}"],
-            [
-                "Cornea center to rotation center (mm)",
-                f"{self.cornea.cornea_center_to_rotation_center_default:.3f}",
-            ],
+            *self._rotation_centre_rows(),
             ["Thickness offset t_offset (mm)", f"{self.cornea.thickness_offset:.3f}"],
             ["Corneal depth d_c (mm)", f"{self.cornea.get_corneal_depth():.3f}"],
             ["Refractive index n_cornea", f"{self.cornea.refractive_index:.3f}"],

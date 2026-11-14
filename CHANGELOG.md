@@ -188,6 +188,11 @@ ETRA 2026 paper; this log records everything since.
   default cornea, whose radius is 7.76 mm), and the line "Pupil radius" printed the distance from the cornea centre to
   the pupil centre. Now the report prints the anterior corneal radius and the pupil diameter.
 
+- **Fixed: `Eye.pprint` printed the same rotation-centre distance for every eye.**
+  Before, the row "Cornea center to rotation center" showed 10.2 mm, whatever the eye model. Now it is replaced by the
+  depth of the rotation centre behind the corneal apex, which is 14.8 mm for horizontal and 12.2 mm for vertical
+  rotation in the default eye.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed
