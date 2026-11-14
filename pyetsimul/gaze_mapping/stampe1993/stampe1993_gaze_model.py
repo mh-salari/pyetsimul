@@ -55,13 +55,15 @@ class Stampe1993GazeModel(PolynomialGazeModel):
         lights: list,
         calib_points: list[Position3D],
         use_refraction: bool = True,
+        pupil_center_method: str = "ellipse",
     ) -> "Stampe1993GazeModel":
-        """Create a Stampe1993GazeModel with cameras, lights, calibration points, and refraction option."""
+        """Create a Stampe1993GazeModel with cameras, lights, calibration points, refraction and pupil center options."""
         return cls(
             cameras=cameras,
             lights=lights,
             calib_points=calib_points,
             use_refraction=use_refraction,
+            pupil_center_method=pupil_center_method,
         )
 
     def calibrate(self, calibration_measurements: list[EyeMeasurement]) -> None:

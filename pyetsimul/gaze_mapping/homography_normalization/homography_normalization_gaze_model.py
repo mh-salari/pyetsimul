@@ -58,6 +58,7 @@ class HomographyNormalizationGazeModel(EyeTracker):
         use_gp_correction: bool = False,
         ransac_threshold: float = 5.0,
         use_refraction: bool = True,
+        pupil_center_method: str = "ellipse",
     ) -> "HomographyNormalizationGazeModel":
         """Create homography normalization gaze model eye tracker setup.
 
@@ -70,6 +71,7 @@ class HomographyNormalizationGazeModel(EyeTracker):
             use_gp_correction: Whether to use Gaussian Process error correction
             ransac_threshold: RANSAC reprojection error threshold in pixels
             use_refraction: Whether to use refraction in optical calculations
+            pupil_center_method: Pupil center method: "ellipse", "convex_hull" or "center_of_mass"
 
         Returns:
             HomographyNormalizationGazeModel: Configured homography normalization gaze model eye tracker
@@ -82,6 +84,7 @@ class HomographyNormalizationGazeModel(EyeTracker):
             lights=lights,
             calib_points=calib_points,
             use_refraction=use_refraction,
+            pupil_center_method=pupil_center_method,
         )
 
     def calibrate(self, calibration_measurements: list[EyeMeasurement]) -> None:
@@ -239,6 +242,7 @@ class HomographyNormalizationGazeModel(EyeTracker):
             "lights": [light.serialize() for light in self.lights],
             "calib_points": [point.serialize() for point in self.calib_points],
             "use_refraction": self.use_refraction,
+            "pupil_center_method": self.pupil_center_method,
             "state": self.state,  # Additional state from parent class
         }
 
@@ -269,6 +273,7 @@ class HomographyNormalizationGazeModel(EyeTracker):
             lights=lights,
             calib_points=calib_points,
             use_refraction=data["use_refraction"],
+            pupil_center_method=data["pupil_center_method"],
         )
 
         # Restore algorithm state and plane info

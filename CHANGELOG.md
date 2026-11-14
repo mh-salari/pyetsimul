@@ -111,6 +111,12 @@ ETRA 2026 paper; this log records everything since.
   for this: with `dy=[0, 0]` and `grid_size=[5, 3, 4]` it reported 60 positions, while 20 were generated. The dataset
   metadata and `describe()` carried the wrong number. Now `len()` returns the number of positions that are generated.
 
+- **Fixed: a saved eye tracker lost its pupil centre method.**
+  Before, the method was not stored, so a tracker calibrated with `"center_of_mass"` or `"convex_hull"` used
+  `"ellipse"` after loading. Now it is stored. `create` of the three gaze models also accepts `pupil_center_method`;
+  before, only the constructor did. A tracker saved with an earlier version has no stored method and does not load
+  until `"pupil_center_method": "ellipse"` is added to its dictionary.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed

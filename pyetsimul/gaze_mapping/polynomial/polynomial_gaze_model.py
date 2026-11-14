@@ -55,6 +55,7 @@ class PolynomialGazeModel(EyeTracker):
         calib_points: list[Position3D],
         polynomial: str,
         use_refraction: bool = True,
+        pupil_center_method: str = "ellipse",
     ) -> "PolynomialGazeModel":
         """Create polynomial gaze model eye tracker setup.
 
@@ -66,6 +67,7 @@ class PolynomialGazeModel(EyeTracker):
             calib_points: List of calibration target positions
             polynomial: Polynomial type to use
             use_refraction: Whether to use refraction model (default True)
+            pupil_center_method: Pupil center method: "ellipse", "convex_hull" or "center_of_mass"
 
         Returns:
             PolynomialGazeModel: Configured polynomial gaze model eye tracker
@@ -77,6 +79,7 @@ class PolynomialGazeModel(EyeTracker):
             lights=lights,
             calib_points=calib_points,
             use_refraction=use_refraction,
+            pupil_center_method=pupil_center_method,
         )
 
     @staticmethod
@@ -320,6 +323,7 @@ class PolynomialGazeModel(EyeTracker):
             "lights": [light.serialize() for light in self.lights],
             "calib_points": [point.serialize() for point in self.calib_points],
             "use_refraction": self.use_refraction,
+            "pupil_center_method": self.pupil_center_method,
             "state": self.state,  # Additional state from parent class
         }
 
@@ -349,6 +353,7 @@ class PolynomialGazeModel(EyeTracker):
             lights=lights,
             calib_points=calib_points,
             use_refraction=data["use_refraction"],
+            pupil_center_method=data["pupil_center_method"],
         )
 
         # Restore algorithm state and plane info
