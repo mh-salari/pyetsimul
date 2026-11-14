@@ -1,7 +1,8 @@
 """Composed parameter variations for complex experiment designs."""
 
+import itertools
 import math
-from collections.abc import Generator, Iterable
+from collections.abc import Iterable
 from typing import Any
 
 from .core import ParameterVariation
@@ -17,6 +18,9 @@ class ComposedVariation(ParameterVariation):
             variations: List of parameter variations to combine
             param_name: Name for the composed parameter
 
+        Raises:
+            ValueError: If no variation is given, or two variations share a param_name
+
         """
         super().__init__(param_name)
         self.variations = variations
@@ -24,46 +28,26 @@ class ComposedVariation(ParameterVariation):
         if not variations:
             raise ValueError("Must provide at least one variation")
 
-    @property
-    def description(self) -> str:
-        """Get a description of the composed variation."""
-        names = [v.__class__.__name__ for v in self.variations]
-        return f"Composed({', '.join(names)})"
+        # Each combination is a dict keyed by param_name, so two variations cannot share one.
+        names = [v.param_name for v in variations]
+        repeated = sorted({name for name in names if names.count(name) > 1})
+        if repeated:
+            raise ValueError(f"Variations in a composition need distinct param_name values; repeated: {repeated}")
 
     def __len__(self) -> int:
         """Return the total number of combinations (Cartesian product)."""
-        if not self.variations:
-            return 0
         return math.prod(len(v) for v in self.variations)
 
     def generate_values(self) -> Iterable[dict[str, Any]]:
-        """Generate Cartesian product of all variation values using a generator."""
-        if not self.variations:
-            return
-
-        # Each inner variation is iterated once per value of the variations before it, so its values
-        # must be a list: generate_values() may return a generator, which can be read only once.
-        all_values = [(v.param_name, list(v.generate_values())) for v in self.variations]
-        yield from self._generate_combinations(all_values, {}, 0)
+        """Generate the Cartesian product of all variation values, one dict per combination."""
+        names = [v.param_name for v in self.variations]
+        for combination in itertools.product(*(v.generate_values() for v in self.variations)):
+            yield dict(zip(names, combination, strict=True))
 
     def describe(self) -> str:
         """Return a human-readable description of the composed variations."""
         descriptions = [var.describe() for var in self.variations]
         return f"Combined: {' + '.join(descriptions)}"
-
-    def _generate_combinations(
-        self, all_values: list[tuple[str, list[Any]]], current_combo: dict[str, Any], index: int
-    ) -> Generator[dict[str, Any], None, None]:
-        """Recursively generate all combinations."""
-        if index == len(all_values):
-            yield current_combo.copy()
-            return
-
-        param_name, values = all_values[index]
-        for value in values:
-            current_combo[param_name] = value
-            yield from self._generate_combinations(all_values, current_combo, index + 1)
-            del current_combo[param_name]
 
 
 class SequentialVariation(ParameterVariation):

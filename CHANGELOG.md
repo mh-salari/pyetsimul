@@ -24,6 +24,14 @@ ETRA 2026 paper; this log records everything since.
   Before, only the combinations with the first value of its first variation were generated, while `len()` and the
   dataset metadata reported the full number. Now all combinations are generated.
 
+- **Changed: two variations with the same `param_name` in one `ComposedVariation` raise `ValueError`.**
+  A `ComposedVariation` combines several parameter variations and stores every combination under the `param_name` of
+  its variations. Before, two variations with the same name overwrote each other, and dataset generation stopped
+  part-way with `KeyError`. Now creating such a composition raises `ValueError`, which names the repeated `param_name`.
+
+- **Removed: `ComposedVariation.description`.**
+  Nothing used it. `describe()` returns the description.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed
