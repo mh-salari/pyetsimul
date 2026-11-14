@@ -493,6 +493,11 @@ ETRA 2026 paper; this log records everything since.
   failed with a `TypeError` about `NoneType`. Now these two cases raise `ValueError` with the reason, and so do nine
   points that do not form a centre, four edge points and four corners.
 
+- **Fixed: `EyeTracker.calculate_gaze_error` lost one component of the error for a screen in the x-z plane.**
+  The function returns the gaze error along two axes. Before, these were always world x and y. For a screen in the x-z
+  plane, which all examples use, the second value was therefore always 0, and the error along z was not reported. Now
+  the function returns the error along the two axes of the calibration plane.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed

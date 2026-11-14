@@ -11,6 +11,7 @@ import numpy as np
 
 from pyetsimul.log import info, table, warning
 
+from ..geometry.plane_detection import detect_calibration_plane
 from ..types import AlgorithmState, EyeMeasurement, GazePrediction, Point3D, Position3D, PupilData
 from ..utils import validate_eye_camera_setup
 from .camera import Camera
@@ -202,15 +203,17 @@ class EyeTracker(ABC):
             look_at_pos: 3D position where eye should look
 
         Returns:
-            Tuple of (u, v) gaze error in mm, or (NaN, NaN) if estimation fails
+            Tuple of (u, v) gaze error in mm along the two axes of the calibration plane (x and z for a
+            screen in the XZ plane), or (NaN, NaN) if estimation fails
 
         """
         gaze_prediction = self.estimate_gaze_at(eye, look_at_pos)
 
         if gaze_prediction is not None and gaze_prediction.gaze_point is not None:
-            u = gaze_prediction.gaze_point.x - look_at_pos.x
-            v = gaze_prediction.gaze_point.y - look_at_pos.y
-            return u, v
+            plane = detect_calibration_plane(self.calib_points)
+            predicted_u, predicted_v = plane.extract_2d_coords(gaze_prediction.gaze_point)
+            target_u, target_v = plane.extract_2d_coords(look_at_pos)
+            return predicted_u - target_u, predicted_v - target_v
         return np.nan, np.nan
 
     @abstractmethod
