@@ -121,6 +121,10 @@ ETRA 2026 paper; this log records everything since.
   Before, it raised `ValueError`, although `take_image` and `Eye.get_pupil_in_camera_image` accept the same three
   methods (`"ellipse"`, `"center_of_mass"` and `"convex_hull"`). Now it accepts all three.
 
+- **Changed: `use_tear_film=True` raises `ValueError` on a cornea that cannot model a tear film.**
+  The tear film is modelled only on a `ConicCornea` or `ToricCornea` with its posterior surface. Before, on a
+  `SphericalCornea` or with `use_posterior_surface=False`, the option was accepted and had no effect.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed

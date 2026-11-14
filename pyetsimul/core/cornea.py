@@ -273,6 +273,14 @@ class SphericalCornea(Cornea):
     _posterior_radius_default: float = CorneaDefaults.POSTERIOR_RADIUS
     _thickness_offset_default: float = CorneaDefaults.THICKNESS_OFFSET
 
+    def __post_init__(self, center_init: Position3D | None) -> None:
+        """Initialize spherical cornea; a tear film is rejected because this model has none."""
+        super().__post_init__(center_init)
+        if self.use_tear_film:
+            raise ValueError(
+                "SphericalCornea does not model a tear film. Use a ConicCornea with use_posterior_surface=True."
+            )
+
     @property
     def cornea_type(self) -> str:
         """Return the type name of this cornea model."""
@@ -657,8 +665,12 @@ class ConicCornea(Cornea):
         }
 
     def __post_init__(self, center_init: Position3D | None) -> None:
-        """Initialize conic cornea with validation of k parameters."""
+        """Initialize conic cornea with validation of the tear film setting and the k parameters."""
         super().__post_init__(center_init)
+        if self.use_tear_film and not self.use_posterior_surface:
+            raise ValueError(
+                "The tear film is modelled only with the posterior surface: set use_posterior_surface=True."
+            )
         # Validate k parameter ranges for both surfaces
         if self.anterior_k < -1:
             warning(f"anterior_k = {self.anterior_k} < -1 may represent unusual corneal geometry")
