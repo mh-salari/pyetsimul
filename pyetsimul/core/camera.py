@@ -278,13 +278,13 @@ class Camera:
         The rotation and the reference-frame translation are derived from this camera's own world position
         and the eye -- nothing precomputed is supplied -- and the camera's intrinsic is used as-is.
         """
-        origin = np.array([eye.position.x, eye.position.y, eye.position.z], dtype=float)
+        origin = np.array([eye.placement.x, eye.placement.y, eye.placement.z], dtype=float)
         camera = np.array([self.position.x, self.position.y, self.position.z], dtype=float)
         centre = eye.rotation_centre
         target = np.array([centre.x, centre.y, centre.z], dtype=float)
         translation = _REFERENCE_AXES @ (camera - origin)
         rotation = _fick_rotation_angles(translation, _REFERENCE_AXES @ (target - origin))
-        self._set_fick_projection(eye.position, rotation, list(translation), self.camera_matrix.matrix)
+        self._set_fick_projection(eye.placement, rotation, list(translation), self.camera_matrix.matrix)
 
     def unproject(
         self, image_points: Point2D | list[Point2D], distance: float | np.ndarray
