@@ -9,7 +9,7 @@ import time
 import numpy as np
 
 from pyetsimul.core import Camera, EyeTracker, Light
-from pyetsimul.log import info
+from pyetsimul.log import info, warning
 from pyetsimul.types.algorithms import GazePrediction
 from pyetsimul.types.geometry import Point2D, Position3D
 from pyetsimul.types.imaging import EyeMeasurement
@@ -167,6 +167,12 @@ class HomographyNormalizationGazeModel(EyeTracker):
             self.algorithm_state.calibration_errors = errors
 
             info("Gaussian Process error correction model trained.")
+        elif self.use_gp_correction:
+            # A homography fits four points exactly, so four valid points leave no residual to learn from.
+            warning(
+                f"Gaussian Process error correction was requested but not trained: it needs more than 4 valid "
+                f"calibration points, got {len(normalized_pupils)}."
+            )
 
         self.algorithm_state.is_calibrated = True
         info(f"Homography calibration complete with {len(normalized_pupils)} points.")

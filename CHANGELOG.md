@@ -158,6 +158,10 @@ ETRA 2026 paper; this log records everything since.
 - **Changed: `load_experiment_data` raises `ValueError` for a file that is not a generated dataset.**
   Before, a file without the dataset metadata was loaded as a dataset with 0 measurements and an empty parameter name.
 
+- **Changed: the homography model warns when its Gaussian process correction is not trained.**
+  Before, with `use_gp_correction=True` and exactly four valid calibration points, the correction was skipped without a
+  message, and the tracker predicted without it. Now a warning is printed.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed
