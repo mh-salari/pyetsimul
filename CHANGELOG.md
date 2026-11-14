@@ -137,6 +137,11 @@ ETRA 2026 paper; this log records everything since.
   A turn of exactly 180 deg from the rest direction has no defined rotation axis under Listing's law. Before, `look_at`
   left the eye facing away from the target, without an error.
 
+- **Changed: a missing coefficient of the linear pupil decentration model raises `ValueError`.**
+  Before, when only one of `x_coeff` and `y_coeff` was given, or when decentration was enabled on an eye that was built
+  without it, the next pupil size change failed with `TypeError: unsupported operand type(s) for *`. Now the error
+  names the missing coefficient.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed

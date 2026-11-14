@@ -130,7 +130,16 @@ class WildenmannModel(PupilDecentrationModel):
         Returns:
             Position3D offset for pupil decentration
 
+        Raises:
+            ValueError: If a diameter is not positive, or a coefficient is still None.
+
         """
+        if x_coeff is None or y_coeff is None:
+            raise ValueError(
+                f"The linear decentration model needs both x_coeff and y_coeff, got x_coeff={x_coeff} and "
+                f"y_coeff={y_coeff}. They are filled from the population mean only when both are left None on a "
+                "config that is enabled when the eye is built."
+            )
         if current_diameter <= 0:
             raise ValueError(f"Current pupil diameter must be positive, got {current_diameter}")
         if baseline_diameter <= 0:
