@@ -171,6 +171,9 @@ ETRA 2026 paper; this log records everything since.
   The camera stores five coefficients in the OpenCV order `k1`, `k2`, `p1`, `p2`, `k3`. Before, the fourth and fifth
   were printed as `p1` and `p2`, and the real `p1` was not printed. Now all five are printed with their own names.
 
+- **Fixed: the algorithm comparison printed its amplitude differences in degrees.**
+  The values are differences of distances. Now they are printed in mm.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed

@@ -80,7 +80,7 @@ class AlgorithmRanking:
         self._print_symmetric_matrix(self.pairwise_cosine_sim, algorithms, "6f", "")
 
         # Amplitude Difference Table (mean values, lower is better)
-        info("\nPairwise Amplitude Differences (°) - Lower = More Similar")
+        info("\nPairwise Amplitude Differences (mm) - Lower = More Similar")
         info("-" * 62)
         amplitude_means = {}
 
@@ -94,7 +94,7 @@ class AlgorithmRanking:
                     else:
                         amplitude_means[algo1][algo2] = np.nan
                     pbar.update(1)
-        self._print_symmetric_matrix(amplitude_means, algorithms, "6f", "°")
+        self._print_symmetric_matrix(amplitude_means, algorithms, "6f", " mm")
 
     @staticmethod
     def _print_symmetric_matrix(matrix: dict, algorithms: list[str], fmt: str, unit: str) -> None:
