@@ -552,6 +552,21 @@ ETRA 2026 paper; this log records everything since.
   `EyeModel`, so the example could not be run. Now it builds the eye from an `EyeModel`. The list of examples on the
   same page named files that no longer exist; now it lists the sixteen current examples.
 
+- **Fixed: the 3D setup plot drew the cornea too deep in the eye.**
+  Before, every cornea was drawn as a sphere, around a point that is the centre only for a spherical cornea. The
+  default conic cornea appeared 0.86 mm too deep in the eye, and the `gkaModelEye` cornea 6.4 mm. Now the plot draws
+  the front surface of the cornea itself.
+
+- **Fixed: plotting an eye turned the eye.**
+  Before, `prepare_eye_data_for_plots`, `plot_setup_and_camera_view` and the interactive plots called `look_at` on the
+  eyes passed to them, so an eye had a different orientation after it was plotted. Now the plots work on copies.
+
+- **Added: the camera view plot can show the pupil centre as an eye tracker computes it, with `use_refraction` and
+  `center_method`.**
+  `prepare_eye_data_for_plots` and `plot_setup_and_camera_view` take these two new arguments. Before, the camera view
+  always computed the pupil with corneal refraction and marked the centre of the ellipse fitted to it. Now it can, for
+  example, leave out the refraction or mark the centre of mass.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed

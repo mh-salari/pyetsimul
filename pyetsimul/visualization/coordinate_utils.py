@@ -5,13 +5,16 @@ Handles eye anatomy, camera imaging, and corneal reflection calculations.
 Support for multiple eyes, cameras, and lights.
 """
 
+import copy
 from typing import Any
 
 import numpy as np
 
-from pyetsimul.core import Camera, Eye, Light
+from pyetsimul.core import Camera, ConicCornea, Eye, Light
 
 from ..types import Position3D
+
+CORNEA_SURFACE_STEPS = 20  # grid points of the drawn corneal cap, radially and around the axis
 
 
 def prepare_eye_data_for_plots(
@@ -19,17 +22,23 @@ def prepare_eye_data_for_plots(
     look_at_targets: list[Position3D] | Position3D,
     lights: list[Light] | Light | None = None,
     cameras: list[Camera] | Camera | None = None,
+    use_refraction: bool = True,
+    center_method: str = "ellipse",
 ) -> dict[str, Any]:
     """Prepare eye visualization data for plotting.
 
     Transforms eye anatomies to world coordinates and generates camera images.
-    Calculates corneal reflections and optical axes for 3D visualization.
+    Calculates corneal reflections and optical axes for 3D visualization. The eyes are drawn looking at
+    their targets; this is done on copies, so the eyes passed in keep their pose.
 
     Args:
         eyes: Eye object or list of Eye objects
         look_at_targets: Target point or list of target points, one per eye
         lights: Optional Light object or list of Light objects with positions
         cameras: Optional Camera object or list of Camera objects
+        use_refraction: Whether the camera images use corneal refraction, as for ``Camera.take_image``; give
+            a tracker's setting to see what the tracker sees
+        center_method: Pupil center method of the camera images, as for ``Camera.take_image``
 
     Returns:
         dict: Contains eyes_data list, camera_images list, and cr_3d_lists for plotting. There is one camera
@@ -55,6 +64,9 @@ def prepare_eye_data_for_plots(
     if not eyes:
         raise ValueError("At least one eye must be provided")
 
+    # Copies are turned to the targets, so that plotting does not change the pose of the caller's eyes.
+    eyes = [copy.deepcopy(eye) for eye in eyes]
+
     eyes_data = []
     camera_images = []
     cr_3d_lists = []
@@ -73,7 +85,10 @@ def prepare_eye_data_for_plots(
 
     if cameras:
         for camera in cameras:
-            eye_images = [camera.take_image(eye, lights) for eye in eyes]
+            eye_images = [
+                camera.take_image(eye, lights, use_refraction=use_refraction, center_method=center_method)
+                for eye in eyes
+            ]
             first_eye_image = eye_images[0]
             first_eye_image.pupil_boundaries = [image.pupil_boundary for image in eye_images]
             first_eye_image.pupil_centers = [image.pupil_center for image in eye_images]
@@ -83,6 +98,31 @@ def prepare_eye_data_for_plots(
         camera_images = [None]
 
     return {"eyes_data": eyes_data, "camera_images": camera_images, "cr_3d_lists": cr_3d_lists}
+
+
+def _anterior_cap_world(eye: Eye) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Grid of points on the anterior corneal surface, from the apex to the corneal depth, in world coordinates.
+
+    The surface is the conic rho^2 + (1 + k) z^2 - 2 R z = 0 about the eye's axis, with z measured from the apex
+    into the eye and rho the distance from the axis; k = 0 gives the sphere. A toric cornea is drawn as the
+    conic it is built on, and a tilt of the cornea is not drawn; both are too small to show at this scale.
+    """
+    radius = eye.cornea.anterior_radius
+    k = eye.cornea.anterior_k if isinstance(eye.cornea, ConicCornea) else 0.0
+    depth = eye.cornea.get_corneal_depth()
+    apex = eye.cornea.get_apex_position()
+
+    rho = np.linspace(0.0, np.sqrt(2.0 * radius * depth - (1.0 + k) * depth**2), CORNEA_SURFACE_STEPS)
+    phi = np.linspace(0.0, 2.0 * np.pi, CORNEA_SURFACE_STEPS)
+    z = rho**2 / (radius + np.sqrt(radius**2 - (1.0 + k) * rho**2))
+    local = np.stack([
+        apex.x + np.outer(np.cos(phi), rho),
+        apex.y + np.outer(np.sin(phi), rho),
+        apex.z + np.outer(np.ones_like(phi), z),
+        np.ones((CORNEA_SURFACE_STEPS, CORNEA_SURFACE_STEPS)),
+    ])
+    world = np.einsum("ij,jkl->ikl", np.asarray(eye.trans, dtype=float), local)
+    return world[0], world[1], world[2]
 
 
 def _prepare_single_eye_data(eye: Eye, look_at_target: Position3D) -> dict[str, Any]:
@@ -98,8 +138,6 @@ def _prepare_single_eye_data(eye: Eye, look_at_target: Position3D) -> dict[str, 
     # Get eye anatomy points
     cornea_center = eye.cornea.center
     pupil_center = eye.pupil.pos_pupil
-    r_cornea = eye.cornea.anterior_radius
-    depth_cornea = eye.cornea.get_corneal_depth()
 
     # Transform anatomical points to world coordinates
     cornea_center_world = transform_point(cornea_center)
@@ -108,32 +146,7 @@ def _prepare_single_eye_data(eye: Eye, look_at_target: Position3D) -> dict[str, 
     fovea_world = transform_point(eye.fovea_position)
     eyeball_center_world = transform_point(Position3D(0.0, 0.0, eye.eyeball_center_z))
 
-    # Draw corneal surface
-    u = np.linspace(0, 2 * np.pi, 20)
-    v = np.linspace(0, np.pi, 20)
-    cornea_surface_x = r_cornea * np.outer(np.cos(u), np.sin(v))
-    cornea_surface_y = r_cornea * np.outer(np.sin(u), np.sin(v))
-    cornea_surface_z = r_cornea * np.outer(np.ones(np.size(u)), np.cos(v))
-
-    # Only show anterior surface (cap)
-    mask = cornea_surface_z > -r_cornea + depth_cornea
-    cornea_surface_x[mask] = np.nan
-    cornea_surface_y[mask] = np.nan
-    cornea_surface_z[mask] = np.nan
-
-    # Transform cornea surface points to world coordinates
-    for i in range(cornea_surface_x.shape[0]):
-        for j in range(cornea_surface_x.shape[1]):
-            if not np.isnan(cornea_surface_x[i, j]):
-                point = np.array([cornea_center.x, cornea_center.y, cornea_center.z]) + np.array([
-                    cornea_surface_x[i, j],
-                    cornea_surface_y[i, j],
-                    cornea_surface_z[i, j],
-                ])
-                point_world = transform_point(Position3D.from_array(point))
-                cornea_surface_x[i, j] = point_world.x
-                cornea_surface_y[i, j] = point_world.y
-                cornea_surface_z[i, j] = point_world.z
+    cornea_surface_x, cornea_surface_y, cornea_surface_z = _anterior_cap_world(eye)
 
     # Calculate optical axis
     optical_axis_direction_local = np.array([0, 0, -1, 0])  # negative z in homogeneous coordinates

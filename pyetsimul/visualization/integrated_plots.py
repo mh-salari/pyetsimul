@@ -29,6 +29,8 @@ def plot_setup_and_camera_view(
     ax2: "Axes | None" = None,
     fig: "Figure | None" = None,
     ref_bounds: dict[str, tuple[float, float]] | None = None,
+    use_refraction: bool = True,
+    center_method: str = "ellipse",
 ) -> "Figure":
     """Create comprehensive eye tracking visualization with 3D setup and camera view.
 
@@ -44,6 +46,8 @@ def plot_setup_and_camera_view(
         ax2: Optional matplotlib axes for reuse
         fig: Optional matplotlib figure for reuse
         ref_bounds: Optional reference bounds dict with 'x', 'y', 'z' keys
+        use_refraction: Whether the camera view uses corneal refraction, as for ``Camera.take_image``
+        center_method: Pupil center method of the camera view, as for ``Camera.take_image``
 
     Returns:
         fig: Matplotlib figure object
@@ -73,7 +77,9 @@ def plot_setup_and_camera_view(
         plt.subplots_adjust(right=0.85)
 
     # Prepare eye data
-    prepared_data = prepare_eye_data_for_plots(eyes, look_at_targets, lights, cameras)
+    prepared_data = prepare_eye_data_for_plots(
+        eyes, look_at_targets, lights, cameras, use_refraction=use_refraction, center_method=center_method
+    )
 
     # Plot 3D setup
     eye_colors, camera_colors = plot_setup(
