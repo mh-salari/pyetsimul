@@ -46,6 +46,9 @@ ETRA 2026 paper; this log records everything since.
   Before, the polynomial model failed with an error about matrix shapes, and the Stampe and homography models returned
   the point (0, 0, 0) as if it were a prediction.
 
+- **Removed: `PolynomialFeatures.predict`.**
+  Nothing called it. `PolynomialGazeModel.predict_gaze` computes the prediction.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed
