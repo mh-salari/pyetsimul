@@ -240,6 +240,13 @@ ETRA 2026 paper; this log records everything since.
   positions of the light, the camera and the eye. `DEBUG` is a fourth log level, more detailed than `SILENT`, `WARNING`
   and `INFO` (the default). Dataset generation passes the log level on to its worker processes.
 
+- **Fixed: in some generated datasets the eye did not look at its target.**
+  Before, in a `ComposedVariation` that listed a target variation before an eye variation, the eye was turned to the
+  target first and moved or changed afterwards. In every image the eye then looked beside its target, by 48 mm in a
+  test with a 40 mm eye shift. Without a `gaze_target` and without a target variation, the eye was not turned at all
+  after an eye variation. Now the eye is turned once, after all its parameters are set. A composition that contains an
+  unsupported kind of variation raises `TypeError`; before, that variation was skipped without a message.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed
