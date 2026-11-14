@@ -41,7 +41,9 @@ class ComposedVariation(ParameterVariation):
         if not self.variations:
             return
 
-        all_values = [(v.param_name, v.generate_values()) for v in self.variations]
+        # Each inner variation is iterated once per value of the variations before it, so its values
+        # must be a list: generate_values() may return a generator, which can be read only once.
+        all_values = [(v.param_name, list(v.generate_values())) for v in self.variations]
         yield from self._generate_combinations(all_values, {}, 0)
 
     def describe(self) -> str:
