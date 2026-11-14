@@ -82,6 +82,11 @@ ETRA 2026 paper; this log records everything since.
   one. `ConicCornea.intersect`, `ConicCornea.intersect_posterior`, `reflect_ray_conic` and `refract_ray_conic` use this
   function and returned the same wrong point. Ray directions of unit length were not affected.
 
+- **Fixed: a `TransformationMatrix` created from whole numbers dropped decimals.**
+  Before, a `TransformationMatrix` built from whole numbers stored integers, so a value such as 0.5 written into it
+  later was cut to 0 without a message. A `TransformationMatrix` or `RotationMatrix` also shared its memory with the
+  array it was built from, so changing one changed the other. Now each stores its own floating-point copy.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed

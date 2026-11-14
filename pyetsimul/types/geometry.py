@@ -685,8 +685,8 @@ class RotationMatrix(np.ndarray):
                                 If False, allow left-handed systems (det=-1) for legacy compatibility
 
         """
-        # Convert input to numpy array (handles both arrays and lists)
-        obj = np.asarray(input_array, dtype=np.float64).view(cls)
+        # A float64 copy, so the matrix does not share memory with the array it was built from
+        obj = np.array(input_array, dtype=np.float64).view(cls)
         if obj.shape != (3, 3):
             raise ValueError(f"RotationMatrix must be 3x3, got shape {obj.shape}")
 
@@ -746,7 +746,9 @@ class TransformationMatrix(np.ndarray):
 
     def __new__(cls, input_array: np.ndarray | list) -> Self:
         """Create a new transformation matrix from input array."""
-        obj = np.asarray(input_array).view(cls)
+        # A float64 copy: whole-number input must still hold fractions written into it later, and the
+        # matrix must not share memory with the array it was built from
+        obj = np.array(input_array, dtype=np.float64).view(cls)
         if obj.shape != (4, 4):
             raise ValueError(f"TransformationMatrix must be 4x4, got shape {obj.shape}")
         return obj
