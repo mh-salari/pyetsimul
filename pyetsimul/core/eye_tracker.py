@@ -6,7 +6,6 @@ system with cameras, lights, calibration points, and algorithm functions.
 
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
-from typing import Any
 
 import numpy as np
 
@@ -34,9 +33,6 @@ class EyeTracker(ABC):
 
     # Calibration points for gaze tracking
     calib_points: list[Position3D] = field(default_factory=list)
-
-    # Algorithm state/parameters
-    state: dict[str, Any] = field(default_factory=dict)
 
     # Calibration state; each algorithm replaces it with its own AlgorithmState subclass. Left out of
     # equality because the states hold numpy arrays, which do not compare to a single bool.

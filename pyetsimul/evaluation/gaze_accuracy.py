@@ -178,11 +178,8 @@ def _extract_ground_truth_data(measurement: dict) -> tuple[Point3D | None, Posit
     ground_truth = Point3D(
         measurement["gaze_target"]["x"], measurement["gaze_target"]["y"], measurement["gaze_target"]["z"]
     )
-    eye_position = Position3D(
-        measurement["eye_state"]["position"]["x"],
-        measurement["eye_state"]["position"]["y"],
-        measurement["eye_state"]["position"]["z"],
-    )
+    # Where the eye was placed. The eye-local origin moves as the eye turns, the placement does not.
+    eye_position = Position3D.deserialize(measurement["eye_state"]["placement"])
 
     return ground_truth, eye_position
 

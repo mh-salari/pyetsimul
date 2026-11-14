@@ -12,7 +12,7 @@ References:
 
 """
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 
 from ..types import Position3D
 from .default_configs import PupilDefaults
@@ -72,3 +72,12 @@ class OffAxisPupilConfig:
         flip_nasal = not self.raw and which_eye == "right"
         x = -self.nasal_mm if flip_nasal else self.nasal_mm
         return Position3D(x, self.superior_mm, self.axial_mm)
+
+    def serialize(self) -> dict:
+        """Serialize to dictionary representation."""
+        return asdict(self)
+
+    @classmethod
+    def deserialize(cls, data: dict) -> "OffAxisPupilConfig":
+        """Deserialize from dictionary representation."""
+        return cls(**data)

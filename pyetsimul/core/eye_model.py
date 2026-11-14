@@ -6,14 +6,14 @@ gaze conventions -- the *what kind of eye*, separate from the placement and pose
 """
 
 import copy
-from dataclasses import dataclass, field, fields, replace
+from dataclasses import asdict, dataclass, field, fields, replace
 
-from .cornea import ConicCornea, SphericalCornea
+from .cornea import ConicCornea, Cornea, SphericalCornea
 from .default_configs import EyeAnatomyDefaults
 from .off_axis_pupil import OffAxisPupilConfig
 from .pupil import RealisticPupilParams
 from .pupil_decentration import PupilDecentrationConfig
-from .rotation_center import EyeballCenter, RotationCenter
+from .rotation_center import EyeballCenter, RotationCenter, deserialize_rotation_center
 
 
 @dataclass(frozen=True)
@@ -115,6 +115,29 @@ class EyeModel:
             raise AttributeError(f"{type(part).__name__} has no attribute {attribute!r} (parameter path {path!r}).")
         setattr(part, attribute, value)
         return replace(self, **{name: part})
+
+    def serialize(self) -> dict:
+        """Serialize to dictionary representation: every field, with the objects it holds as dictionaries."""
+        data = {model_field.name: getattr(self, model_field.name) for model_field in fields(self)}
+        data["cornea"] = self.cornea.serialize()
+        data["rotation_center"] = self.rotation_center.serialize()
+        data["decentration_config"] = self.decentration_config.serialize()
+        data["off_axis_pupil"] = self.off_axis_pupil.serialize()
+        if self.realistic_pupil_params is not None:
+            data["realistic_pupil_params"] = asdict(self.realistic_pupil_params)
+        return data
+
+    @classmethod
+    def deserialize(cls, data: dict) -> "EyeModel":
+        """Deserialize from dictionary representation."""
+        values = {model_field.name: data[model_field.name] for model_field in fields(cls)}
+        values["cornea"] = Cornea.deserialize(data["cornea"])
+        values["rotation_center"] = deserialize_rotation_center(data["rotation_center"])
+        values["decentration_config"] = PupilDecentrationConfig.deserialize(data["decentration_config"])
+        values["off_axis_pupil"] = OffAxisPupilConfig.deserialize(data["off_axis_pupil"])
+        if data["realistic_pupil_params"] is not None:
+            values["realistic_pupil_params"] = RealisticPupilParams(**data["realistic_pupil_params"])
+        return cls(**values)
 
 
 # ---------------------------------------------------------------------------

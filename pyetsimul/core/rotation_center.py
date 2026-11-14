@@ -11,7 +11,7 @@ values by the horizontal fraction of the gaze eccentricity. Both change only *wh
 pivots; the cornea, pupil and every optical surface are left untouched.
 """
 
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 
 
 @dataclass
@@ -25,6 +25,10 @@ class EyeballCenter:
     eye's placement. Under "apex" the origin is the corneal apex, and the centre is the centre of the
     globe, half the axial length behind the apex.
     """
+
+    def serialize(self) -> dict:  # noqa: PLR6301
+        """Serialize to dictionary representation."""
+        return {"type": "EyeballCenter"}
 
 
 @dataclass
@@ -115,3 +119,17 @@ class RotationCenter:
         """
         nasal = -self.horizontal_nasal_mm if which_eye == "right" else self.horizontal_nasal_mm
         return nasal * horizontal_fraction, self.vertical_superior_mm * (1.0 - horizontal_fraction)
+
+    def serialize(self) -> dict:
+        """Serialize to dictionary representation."""
+        return {"type": "RotationCenter", **asdict(self)}
+
+
+def deserialize_rotation_center(data: dict) -> EyeballCenter | RotationCenter:
+    """Deserialize the rotation centre of the class that ``type`` names from dictionary representation."""
+    values = {name: value for name, value in data.items() if name != "type"}
+    if data["type"] == "EyeballCenter":
+        return EyeballCenter(**values)
+    if data["type"] == "RotationCenter":
+        return RotationCenter(**values)
+    raise ValueError(f"Unknown rotation centre type: {data['type']!r}")

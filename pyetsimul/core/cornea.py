@@ -4,7 +4,7 @@ Defines abstract and concrete cornea models (spherical, conic, toric) for anatom
 """
 
 from abc import ABC, abstractmethod
-from dataclasses import InitVar, dataclass, field
+from dataclasses import InitVar, dataclass, field, fields
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -70,6 +70,26 @@ class Cornea(ABC):
     @center.setter
     def center(self, value: Position3D) -> None:
         self._center = value
+
+    def serialize(self) -> dict:
+        """Serialize to dictionary representation: the cornea type, every field, and the centre if it is set."""
+        data = {"cornea_type": self.cornea_type}
+        data.update({
+            cornea_field.name: getattr(self, cornea_field.name) for cornea_field in fields(self) if cornea_field.init
+        })
+        data["center"] = None if self._center is None else self._center.serialize()
+        return data
+
+    @staticmethod
+    def deserialize(data: dict) -> "Cornea":
+        """Deserialize a cornea of the class that ``cornea_type`` names from dictionary representation."""
+        cornea_class = _CORNEA_CLASSES[data["cornea_type"]]
+        cornea = cornea_class(**{
+            cornea_field.name: data[cornea_field.name] for cornea_field in fields(cornea_class) if cornea_field.init
+        })
+        if data["center"] is not None:
+            cornea.center = Position3D.deserialize(data["center"])
+        return cornea
 
     @property
     def cornea_center_to_rotation_center_default(self) -> float:
@@ -487,23 +507,6 @@ class SphericalCornea(Cornea):
             camera, object_points, world_center, self.anterior_radius, n_outside, n_cornea
         )
 
-    def serialize(self) -> dict:
-        """Serialize to dictionary representation."""
-        return {
-            "cornea_type": self.cornea_type,
-            "center": self.center.serialize() if self.center else None,
-            "anterior_radius": float(self.anterior_radius),
-            "refractive_index": float(self.refractive_index),
-        }
-
-    @classmethod
-    def deserialize(cls, data: dict) -> "SphericalCornea":
-        """Deserialize from dictionary representation."""
-        cornea = cls(anterior_radius=data["anterior_radius"], refractive_index=data["refractive_index"])
-        if data["center"]:
-            cornea.center = Position3D.deserialize(data["center"])
-        return cornea
-
 
 @dataclass
 class ConicCornea(Cornea):
@@ -855,34 +858,6 @@ class ConicCornea(Cornea):
         world = (homog_out @ et.T)[:, :3]
         return np.where(valid[:, None], world, np.nan), valid
 
-    def serialize(self) -> dict:
-        """Serialize to dictionary representation."""
-        return {
-            "cornea_type": self.cornea_type,
-            "center": self.center.serialize() if self.center else None,
-            "anterior_radius": float(self.anterior_radius),
-            "anterior_k": float(self.anterior_k),
-            "posterior_radius": float(self.posterior_radius),
-            "posterior_k": float(self.posterior_k),
-            "refractive_index": float(self.refractive_index),
-            "thickness_offset": float(self.thickness_offset),
-        }
-
-    @classmethod
-    def deserialize(cls, data: dict) -> "ConicCornea":
-        """Deserialize from dictionary representation."""
-        cornea = cls(
-            anterior_radius=data["anterior_radius"],
-            anterior_k=data["anterior_k"],
-            posterior_radius=data["posterior_radius"],
-            posterior_k=data["posterior_k"],
-            refractive_index=data["refractive_index"],
-            thickness_offset=data["thickness_offset"],
-        )
-        if data["center"]:
-            cornea.center = Position3D.deserialize(data["center"])
-        return cornea
-
 
 @dataclass
 class ToricCornea(ConicCornea):
@@ -923,29 +898,9 @@ class ToricCornea(ConicCornea):
         cos2, sin2, cs = np.cos(phi) ** 2, np.sin(phi) ** 2, np.sin(phi) * np.cos(phi)
         return float(steep * cos2 + flat * sin2), float(steep * sin2 + flat * cos2), float((steep - flat) * cs)
 
-    def serialize(self) -> dict:
-        """Serialize to dictionary representation."""
-        data = super().serialize()
-        data["anterior_astigmatism_mm"] = float(self.anterior_astigmatism_mm)
-        data["anterior_astigmatism_axis_deg"] = float(self.anterior_astigmatism_axis_deg)
-        return data
 
-    @classmethod
-    def deserialize(cls, data: dict) -> "ToricCornea":
-        """Deserialize from dictionary representation."""
-        cornea = cls(
-            anterior_radius=data["anterior_radius"],
-            anterior_k=data["anterior_k"],
-            posterior_radius=data["posterior_radius"],
-            posterior_k=data["posterior_k"],
-            refractive_index=data["refractive_index"],
-            thickness_offset=data["thickness_offset"],
-            anterior_astigmatism_mm=data.get("anterior_astigmatism_mm", 0.0),
-            anterior_astigmatism_axis_deg=data.get("anterior_astigmatism_axis_deg", 90.0),
-        )
-        if data.get("center"):
-            cornea.center = Position3D.deserialize(data["center"])
-        return cornea
+# Cornea class by the name its cornea_type property returns, as saved by Cornea.serialize.
+_CORNEA_CLASSES: dict[str, type[Cornea]] = {"spherical": SphericalCornea, "conic": ConicCornea, "toric": ToricCornea}
 
 
 def create_cornea(cornea_model_type: str, center: Position3D, **kwargs: float) -> Cornea:

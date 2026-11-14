@@ -382,6 +382,35 @@ ETRA 2026 paper; this log records everything since.
   looking at the target. Results change only for a non-zero `torsion_deg` (the default is 0), and not for
   `optical_axis_target_direction` or for `visual_axis` without foveal displacement.
 
+- **Fixed: a saved eye was loaded as a different eye.**
+  Before, `Eye.deserialize` rebuilt every cornea as a `SphericalCornea` and every pupil as an `EllipticalPupil`,
+  restored only a part of the eye model, and did not restore the position of the eye correctly. A default eye was
+  therefore loaded with a spherical cornea, and its image differed by 1.4 px in a test. An eye with a contour pupil
+  raised `KeyError`, and an eye with an eyelid could not be imaged after loading. Now `Eye.serialize` stores the
+  complete eye, and a loaded eye gives exactly the same images as the original. This also holds for the eyes stored in
+  a generated dataset, whose pupil centre was 0.6 px off after loading. An eye or a dataset saved with an earlier
+  version cannot be loaded.
+
+- **Fixed: a saved camera in Fick mode was loaded as a pinhole camera.**
+  Before, the mode set with `point_at(eye, mode="fick")` was not stored. Now it is saved with the camera.
+
+- **Fixed: `evaluate_gaze_accuracy` measured the angular error from a displaced eye position.**
+  The angular error is the angle, seen from the eye, between the target and the predicted gaze point. Before, the eye
+  position was taken at the corneal apex after the eye had turned, which is up to 3.5 mm from the position the eye was
+  given. Now the position the eye was given is used. Angular errors change in the fourth digit (a mean of 0.10042 deg
+  became 0.10031 deg).
+
+- **Added: an eye model and its parts can be converted to a dictionary and back, with `serialize` and `deserialize`.**
+  `EyeModel`, `RotationCenter`, `EyeballCenter`, `PupilDecentrationConfig` and `OffAxisPupilConfig` have both methods.
+  Saving an eye to a file uses them. `Cornea.deserialize` and `deserialize_pupil` rebuild a cornea or a pupil of the
+  class that the saved dictionary names.
+
+- **Removed: `EyeTracker.state` and the `"state"` key of a saved tracker.**
+  The dictionary was saved and loaded but never used. The calibration is stored in `algorithm_state`.
+
+- **Removed: the `"focal_length"` key of a saved camera.**
+  The focal length is part of the saved camera matrix.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed

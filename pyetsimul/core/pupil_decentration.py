@@ -6,7 +6,7 @@ allowing users to register custom decentration profiles.
 
 from abc import ABC, abstractmethod
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 
 import numpy as np
 
@@ -223,6 +223,15 @@ class PupilDecentrationConfig:
     def get_model_params(self) -> dict:
         """Get parameters to pass to model's calculate_offset method."""
         return {"x_coeff": self.x_coeff, "y_coeff": self.y_coeff, "z_coeff": self.z_coeff}
+
+    def serialize(self) -> dict:
+        """Serialize to dictionary representation."""
+        return asdict(self)
+
+    @classmethod
+    def deserialize(cls, data: dict) -> "PupilDecentrationConfig":
+        """Deserialize from dictionary representation."""
+        return cls(**data)
 
 
 def register_custom_decentration(name: str, calculation_func: Callable) -> None:

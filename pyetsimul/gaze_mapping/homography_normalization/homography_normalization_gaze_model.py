@@ -249,7 +249,6 @@ class HomographyNormalizationGazeModel(EyeTracker):
             "calib_points": [point.serialize() for point in self.calib_points],
             "use_refraction": self.use_refraction,
             "pupil_center_method": self.pupil_center_method,
-            "state": self.state,  # Additional state from parent class
         }
 
     @classmethod
@@ -286,8 +285,5 @@ class HomographyNormalizationGazeModel(EyeTracker):
         tracker.algorithm_state = HomographyNormalizationGazeModelState.deserialize(data["algorithm_state"])
         if data["plane_info"]:
             tracker.plane_info = PlaneInfo.deserialize(data["plane_info"])
-
-        # Restore parent class state
-        tracker.state = data["state"]
 
         return tracker

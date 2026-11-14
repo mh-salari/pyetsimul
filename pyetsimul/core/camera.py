@@ -638,7 +638,6 @@ class Camera:
             # Taken from trans, not from the orientation getter, which normalises the columns and so
             # changes their last bits.
             "orientation": self.trans[:3, :3].tolist(),
-            "focal_length": float(self.camera_matrix.focal_length),
             "resolution": self.camera_matrix.resolution.serialize(),
             "camera_matrix": self.camera_matrix.matrix.tolist(),
             "distortion_coefficients": self.dist_coeffs.tolist() if self.dist_coeffs is not None else None,
@@ -649,6 +648,7 @@ class Camera:
             "pointing_at": self._pointing_at.serialize() if self._pointing_at else None,
             "rest_transformation": self.rest_trans.tolist(),
             "glint_noise_config": self.glint_noise_config.serialize() if self.glint_noise_config else None,
+            "fick_projection": None if self._fick_projection is None else self._fick_projection.tolist(),
         }
 
     @classmethod
@@ -679,5 +679,8 @@ class Camera:
         # Restore glint noise config
         if data["glint_noise_config"]:
             camera.glint_noise_config = GlintNoiseConfig.deserialize(data["glint_noise_config"])
+
+        if data["fick_projection"] is not None:
+            camera._fick_projection = np.array(data["fick_projection"], dtype=float)
 
         return camera

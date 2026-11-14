@@ -272,6 +272,7 @@ class EllipticalPupil(Pupil):
     def serialize(self) -> dict:
         """Serialize to dictionary representation."""
         return {
+            "pupil_type": "elliptical",
             "pos_pupil": self.pos_pupil.serialize(),
             "x_pupil": self.x_pupil.serialize(),
             "y_pupil": self.y_pupil.serialize(),
@@ -288,8 +289,8 @@ class EllipticalPupil(Pupil):
             x_pupil=Direction3D.deserialize(data["x_pupil"]),
             y_pupil=Direction3D.deserialize(data["y_pupil"]),
             n=data["n"],
-            aspect_ratio=data.get("aspect_ratio", 1.0),
-            aspect_angle=data.get("aspect_angle", 0.0),
+            aspect_ratio=data["aspect_ratio"],
+            aspect_angle=data["aspect_angle"],
         )
 
 
@@ -544,6 +545,7 @@ class RealisticPupil(Pupil):
     def serialize(self) -> dict:
         """Serialize to dictionary representation."""
         return {
+            "pupil_type": "realistic",
             "pos_pupil": self.pos_pupil.serialize(),
             "x_pupil": self.x_pupil.serialize(),
             "y_pupil": self.y_pupil.serialize(),
@@ -636,15 +638,36 @@ class ContourPupil(Pupil):
     def serialize(self) -> dict:
         """Serialize to dictionary representation."""
         return {
+            "pupil_type": "contour",
             "pos_pupil": self.pos_pupil.serialize(),
-            "contour": (self._unit * self._radius).tolist(),
+            "unit_contour": self._unit.tolist(),
+            "radius": self._radius,
             "n": self.n,
         }
 
     @classmethod
     def deserialize(cls, data: dict) -> "ContourPupil":
         """Deserialize from dictionary representation."""
-        return cls(pos_pupil=Position3D.deserialize(data["pos_pupil"]), contour=np.array(data["contour"]), n=data["n"])
+        unit = np.array(data["unit_contour"], dtype=float)
+        pupil = cls(pos_pupil=Position3D.deserialize(data["pos_pupil"]), contour=unit, n=data["n"])
+        # The constructor recentres and rescales its contour, which changes the last digits; the saved
+        # shape and radius are taken as they are.
+        pupil._unit = unit
+        pupil._radius = data["radius"]
+        return pupil
+
+
+# Pupil class by the pupil_type that its serialize method saves.
+_PUPIL_CLASSES: dict[str, type[Pupil]] = {
+    "elliptical": EllipticalPupil,
+    "realistic": RealisticPupil,
+    "contour": ContourPupil,
+}
+
+
+def deserialize_pupil(data: dict) -> Pupil:
+    """Deserialize a pupil of the class that ``pupil_type`` names from dictionary representation."""
+    return _PUPIL_CLASSES[data["pupil_type"]].deserialize(data)
 
 
 def create_pupil(
