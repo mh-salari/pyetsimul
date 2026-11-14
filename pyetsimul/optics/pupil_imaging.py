@@ -60,23 +60,7 @@ def get_pupil_ellipse_image(eye: "Eye", camera: Camera, use_refraction: bool = T
         PupilData object containing boundary points and ellipse center
 
     """
-    # Get pupil boundary points
-    pupil_data = get_pupil_boundary_image(eye, camera, use_refraction=use_refraction)
-
-    if not pupil_data.boundary_points:
-        return PupilData.empty()
-
-    # Fit ellipse to find center; route through the helper that converts the Point2D list to the
-    # 2xN array the fitter expects.
-    pupil_center = calculate_pupil_center_from_boundary(
-        pupil_data.boundary_points, camera.camera_matrix.resolution, center_method="ellipse"
-    )
-
-    return PupilData(
-        boundary_points=pupil_data.boundary_points,
-        center=pupil_center,
-        ellipse_params=None,  # Could be extended to return full ellipse parameters
-    )
+    return calculate_pupil_center_methods(eye, camera, use_refraction=use_refraction, center_method="ellipse")
 
 
 def get_pupil_center_mass_image(eye: "Eye", camera: Camera, use_refraction: bool = True) -> PupilData:
@@ -94,19 +78,7 @@ def get_pupil_center_mass_image(eye: "Eye", camera: Camera, use_refraction: bool
         PupilData object containing boundary points and center of mass
 
     """
-    # Get pupil boundary points
-    pupil_data = get_pupil_boundary_image(eye, camera, use_refraction=use_refraction)
-
-    if not pupil_data.boundary_points:
-        return PupilData.empty()
-
-    # Calculate center of mass; route through the helper that converts the Point2D list to the
-    # 2xN array the helper expects.
-    pupil_center = calculate_pupil_center_from_boundary(
-        pupil_data.boundary_points, camera.camera_matrix.resolution, center_method="center_of_mass"
-    )
-
-    return PupilData(boundary_points=pupil_data.boundary_points, center=pupil_center)
+    return calculate_pupil_center_methods(eye, camera, use_refraction=use_refraction, center_method="center_of_mass")
 
 
 def calculate_pupil_center_from_boundary(
