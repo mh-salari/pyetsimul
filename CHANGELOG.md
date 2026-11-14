@@ -129,6 +129,10 @@ ETRA 2026 paper; this log records everything since.
   Before, when `look_at` raised `ValueError` (unknown method, or a target at the eye position), the eye had not turned,
   but `current_target_point` already held the new target. Now it keeps the previous target.
 
+- **Changed: `set_rest_orientation_at_target` raises `ValueError` when the target is at the eye position.**
+  No direction can be computed for such a target. Before, the call returned without doing anything, so the eye kept its
+  previous rest orientation and nothing showed that the call had failed.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed

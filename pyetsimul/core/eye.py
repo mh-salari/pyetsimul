@@ -263,13 +263,19 @@ class Eye:
         from eye position to target. Keeps the eye-local +Y axis approximately aligned
         with ``up`` (the world up direction); ``up`` defaults to +Y when not given, and
         must not be parallel to the gaze direction.
+
+        Raises:
+            ValueError: If the target is at the eye position, which gives no direction to face.
+
         """
         # Eye position and target direction (world)
         eye_pos = np.array([self.trans[0, 3], self.trans[1, 3], self.trans[2, 3]], dtype=float)
         target_vec = np.array([target_position.x, target_position.y, target_position.z], dtype=float) - eye_pos
         norm = np.linalg.norm(target_vec)
         if norm < 1e-12:
-            return
+            raise ValueError(
+                f"Cannot set the rest orientation at target {target_position}: it is at the eye position."
+            )
         z_world = target_vec / norm
 
         # Eye-local visual axis direction (unit, pointing outward toward cornea)
