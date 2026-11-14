@@ -84,9 +84,10 @@ def plot_eye_cross_section(
         return abs(z - apex_z)
 
     rc = eye.model.rotation_center
-    rot_z = eye.rotation_centre.z if hasattr(rc, "horizontal_depth_mm") else 0.0  # EyeballCenter pivots at origin
     acd = depth(eye.pupil.pos_pupil.z)
-    rot_depth = depth(rot_z)
+    # A RotationCenter holds the depth of its azimuth centre behind the apex; an EyeballCenter pivots at the
+    # eye-local origin.
+    rot_depth = rc.horizontal_depth_mm if hasattr(rc, "horizontal_depth_mm") else depth(0.0)
     pupil_d = eye.model.default_pupil_diameter
 
     # The cornea is a steep cap that ends at the limbus, one corneal depth back; its half-width there is the

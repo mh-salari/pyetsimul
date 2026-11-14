@@ -95,6 +95,11 @@ ETRA 2026 paper; this log records everything since.
   this small angle, and the simulated images change with it. The methods `optical_then_kappa` and
   `optical_axis_target_direction`, and eyes without foveal displacement, are not affected.
 
+- **Fixed: `plot_eye_cross_section` drew the rotation centre at the wrong depth.**
+  Before, the marker was correct only for an eye at the world origin without a rest orientation. For an eye placed 814
+  mm from the origin, the rotation centre was drawn 828.8 mm behind the corneal apex. Now it is drawn at its depth in
+  the eye model.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed
