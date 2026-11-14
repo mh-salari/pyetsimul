@@ -12,7 +12,7 @@ import numpy as np
 
 from pyetsimul.log import info, table, warning
 
-from ..types import EyeMeasurement, GazePrediction, Point3D, Position3D, PupilData
+from ..types import AlgorithmState, EyeMeasurement, GazePrediction, Point3D, Position3D, PupilData
 from ..utils import validate_eye_camera_setup
 from .camera import Camera
 from .eye import Eye
@@ -37,6 +37,10 @@ class EyeTracker(ABC):
 
     # Algorithm state/parameters
     state: dict[str, Any] = field(default_factory=dict)
+
+    # Calibration state; each algorithm replaces it with its own AlgorithmState subclass. Left out of
+    # equality because the states hold numpy arrays, which do not compare to a single bool.
+    algorithm_state: AlgorithmState = field(default_factory=AlgorithmState, init=False, repr=False, compare=False)
 
     # Refraction setting
     use_refraction: bool = True
@@ -285,10 +289,7 @@ class EyeTracker(ABC):
 
     def __str__(self) -> str:
         """Basic string representation of the eye tracker."""
-        try:
-            calibrated = self.algorithm_state.is_calibrated
-        except AttributeError:
-            calibrated = False
+        calibrated = self.algorithm_state.is_calibrated
         return f"{self.__class__.__name__}(algorithm={self.algorithm_name}, cameras={len(self.cameras)}, lights={len(self.lights)}, calibrated={calibrated})"
 
     def pprint(self, eye: "Eye | None" = None) -> None:
@@ -298,12 +299,7 @@ class EyeTracker(ABC):
             eye: Optional Eye instance to include eye position in the summary.
 
         """
-        # Check calibration status
-        try:
-            calibrated = self.algorithm_state.is_calibrated
-        except AttributeError:
-            calibrated = False
-
+        calibrated = self.algorithm_state.is_calibrated
         calib_points = len(self.calib_points) if self.calib_points else 0
 
         data = []
@@ -321,14 +317,6 @@ class EyeTracker(ABC):
             ["Calibration status", "Calibrated" if calibrated else "Not calibrated"],
             ["Use refraction", "Yes" if self.use_refraction else "No"],
         ])
-
-        # Add algorithm-specific configuration
-        if hasattr(self, "algorithm_state") and hasattr(self.algorithm_state, "config"):
-            config = self.algorithm_state.config
-            if hasattr(config, "method"):
-                data.append(["Algorithm method", config.method])
-            if hasattr(config, "degree"):
-                data.append(["Polynomial degree", str(config.degree)])
 
         # Add camera details
         if self.cameras:

@@ -10,10 +10,11 @@ import numpy as np
 from pyetsimul.core import Camera, EyeTracker, Light
 from pyetsimul.log import info
 from pyetsimul.types.algorithms import GazePrediction
-from pyetsimul.types.geometry import Position3D
+from pyetsimul.types.geometry import Point2D, Position3D
 from pyetsimul.types.imaging import EyeMeasurement
 
 from ...geometry.plane_detection import PlaneInfo, detect_calibration_plane, summarize_plane_detection
+from .polynomial_features import PolynomialFeatures
 from .polynomial_state import PolynomialGazeModelState
 from .polynomials import get_polynomial
 
@@ -78,87 +79,65 @@ class PolynomialGazeModel(EyeTracker):
             use_refraction=use_refraction,
         )
 
-    def _compute_glint_features(self, measurement: EyeMeasurement) -> np.ndarray | None:
-        """Compute polynomial features for all available glints and concatenate them.
+    @staticmethod
+    def _pcr_vectors(measurement: EyeMeasurement) -> list[Point2D] | None:
+        """P-CR vectors of a measurement: the pupil center minus each corneal reflection.
 
-        Applies the same polynomial to each P-CR vector (pupil center minus each
-        corneal reflection) and concatenates the feature vectors. This allows any
-        single-glint polynomial to automatically leverage multiple light sources.
+        Returns None if the pupil center or any corneal reflection is missing.
+        """
+        pc = measurement.pupil_data.center
+        corneal_reflections = measurement.camera_image.corneal_reflections
+        if pc is None or not corneal_reflections or any(cr is None for cr in corneal_reflections):
+            return None
+        return [pc - cr for cr in corneal_reflections]
+
+    def _glint_features(self, pcr_vectors: list[Point2D]) -> list[PolynomialFeatures]:
+        """Polynomial features of each P-CR vector, one entry per glint.
+
+        The same polynomial is applied to every glint, so a single-glint polynomial also works with
+        several light sources.
+        """
+        return [self.polynomial_func(pcr_vector.x, pcr_vector.y) for pcr_vector in pcr_vectors]
+
+    @staticmethod
+    def _concatenate_same_xy(glint_features: list[PolynomialFeatures]) -> np.ndarray:
+        """Feature vector shared by both gaze coordinates, concatenated across the glints.
 
         For example, with Cerrolaza [x², y², xy, x, y, 1] and 2 glints, the
         concatenated feature vector becomes:
         [x1², y1², x1y1, x1, y1, 1, x2², y2², x2y2, x2, y2, 1]
-
-        Args:
-            measurement: EyeMeasurement with pupil data and corneal reflections
-
-        Returns:
-            Concatenated feature array for same_xy polynomials, or None if
-            pupil center or any corneal reflection is missing.
-
         """
-        pc = measurement.pupil_data.center
-        if pc is None:
+        return np.concatenate([features.features for features in glint_features])
+
+    @staticmethod
+    def _concatenate_different_xy(glint_features: list[PolynomialFeatures]) -> tuple[np.ndarray, np.ndarray]:
+        """Feature vectors of the X and the Y gaze coordinate, each concatenated across the glints."""
+        return (
+            np.concatenate([features.features[0] for features in glint_features]),
+            np.concatenate([features.features[1] for features in glint_features]),
+        )
+
+    def _compute_glint_features(self, measurement: EyeMeasurement) -> np.ndarray | None:
+        """Feature vector of a measurement for a polynomial with the same features for X and Y.
+
+        Returns None if the pupil center or any corneal reflection is missing.
+        """
+        pcr_vectors = self._pcr_vectors(measurement)
+        if pcr_vectors is None:
             return None
-
-        corneal_reflections = measurement.camera_image.corneal_reflections
-        if not corneal_reflections:
-            return None
-
-        # Apply polynomial to each P-CR vector and collect feature arrays
-        all_features = []
-        for cr in corneal_reflections:
-            if cr is None:
-                return None
-            pcr = pc - cr
-            poly_features = self.polynomial_func(pcr.x, pcr.y)
-            all_features.append(poly_features.features)
-
-        return np.concatenate(all_features)
+        return self._concatenate_same_xy(self._glint_features(pcr_vectors))
 
     def _compute_glint_features_different_xy(
         self, measurement: EyeMeasurement
     ) -> tuple[np.ndarray, np.ndarray] | None:
-        """Compute polynomial features for all glints with different X/Y feature sets.
+        """Feature vectors (X, Y) of a measurement for a polynomial with different features for X and Y.
 
-        Same as _compute_glint_features but handles polynomials that use independent
-        feature sets for X and Y gaze coordinates. Concatenates X features and Y
-        features separately across all glints.
-
-        Args:
-            measurement: EyeMeasurement with pupil data and corneal reflections
-
-        Returns:
-            Tuple of (x_features, y_features) concatenated across all glints,
-            or None if pupil center or any corneal reflection is missing.
-
+        Returns None if the pupil center or any corneal reflection is missing.
         """
-        pc = measurement.pupil_data.center
-        if pc is None:
+        pcr_vectors = self._pcr_vectors(measurement)
+        if pcr_vectors is None:
             return None
-
-        corneal_reflections = measurement.camera_image.corneal_reflections
-        if not corneal_reflections:
-            return None
-
-        # Apply polynomial to each P-CR vector and collect per-coordinate features
-        all_x_features = []
-        all_y_features = []
-        for cr in corneal_reflections:
-            if cr is None:
-                return None
-            pcr = pc - cr
-            poly_features = self.polynomial_func(pcr.x, pcr.y)
-            if poly_features.features.dtype == object:
-                # Handle object arrays (mixed-length coordinates)
-                all_x_features.append(poly_features.features[0])
-                all_y_features.append(poly_features.features[1])
-            else:
-                # Handle regular 2D arrays
-                all_x_features.append(poly_features.features[0, :])
-                all_y_features.append(poly_features.features[1, :])
-
-        return np.concatenate(all_x_features), np.concatenate(all_y_features)
+        return self._concatenate_different_xy(self._glint_features(pcr_vectors))
 
     def calibrate(self, calibration_measurements: list[EyeMeasurement]) -> None:
         """Calibration function for pupil-CR polynomial gaze model.
@@ -282,67 +261,44 @@ class PolynomialGazeModel(EyeTracker):
 
         """
         self._require_calibration()
-        start_time = time.time()
+        start_time = time.perf_counter()
 
-        pc = measurement.pupil_data.center
-        corneal_reflections = measurement.camera_image.corneal_reflections
-        if pc is None or not corneal_reflections or any(cr is None for cr in corneal_reflections):
+        pcr_vectors = self._pcr_vectors(measurement)
+        if pcr_vectors is None:
             return None
-
-        polynomial_name = self.polynomial_name
-        pcr_vectors = [pc - cr for cr in corneal_reflections]
-        all_features = [self.polynomial_func(pcr_vector.x, pcr_vector.y) for pcr_vector in pcr_vectors]
+        glint_features = self._glint_features(pcr_vectors)
 
         # Intermediate results for debugging and analysis
         intermediate_results = {
-            "pc": pc,
-            "corneal_reflections": corneal_reflections,
-            "polynomial_name": polynomial_name,
+            "pc": measurement.pupil_data.center,
+            "corneal_reflections": measurement.camera_image.corneal_reflections,
+            "polynomial_name": self.polynomial_name,
             "pcr_vectors": pcr_vectors,
-            "polynomial_info": all_features[0],
+            "polynomial_info": glint_features[0],
         }
 
-        # Determine polynomial feature type and predict gaze coordinates
-        if all_features[0].uses_same_xy_features:
-            # Same features for X and Y — single concatenated vector
-            concatenated_features = np.concatenate([f.features for f in all_features])
-            intermediate_results["feature_vector"] = concatenated_features
-
-            # Apply calibrated polynomial model with plane coordinate system
+        if glint_features[0].uses_same_xy_features:
+            feature_vector = self._concatenate_same_xy(glint_features)
+            intermediate_results["feature_vector"] = feature_vector
             coefficient_matrix = np.vstack([
                 self.algorithm_state.x_coefficients,
                 self.algorithm_state.y_coefficients,
             ])
-            gaze_2d = coefficient_matrix @ concatenated_features
+            gaze_2d = coefficient_matrix @ feature_vector
         else:
-            # Different features for X and Y — concatenate per-coordinate
-            all_x_features = []
-            all_y_features = []
-            for f in all_features:
-                if f.features.dtype == object:
-                    # Handle object arrays (mixed-length coordinates)
-                    all_x_features.append(f.features[0])
-                    all_y_features.append(f.features[1])
-                else:
-                    # Handle regular 2D arrays
-                    all_x_features.append(f.features[0, :])
-                    all_y_features.append(f.features[1, :])
-            concat_x = np.concatenate(all_x_features)
-            concat_y = np.concatenate(all_y_features)
-            intermediate_results["feature_vector_x"] = concat_x
-            intermediate_results["feature_vector_y"] = concat_y
-
-            # Apply separate calibrated coefficients for X and Y coordinates
+            feature_vector_x, feature_vector_y = self._concatenate_different_xy(glint_features)
+            intermediate_results["feature_vector_x"] = feature_vector_x
+            intermediate_results["feature_vector_y"] = feature_vector_y
             gaze_2d = np.array([
-                self.algorithm_state.x_coefficients @ concat_x,
-                self.algorithm_state.y_coefficients @ concat_y,
+                self.algorithm_state.x_coefficients @ feature_vector_x,
+                self.algorithm_state.y_coefficients @ feature_vector_y,
             ])
 
         return GazePrediction(
             gaze_point=self.plane_info.reconstruct_3d_point(gaze_2d[0], gaze_2d[1]),
             confidence=1.0,
-            algorithm_name=f"polynomial_{polynomial_name}",
-            processing_time=time.time() - start_time,
+            algorithm_name=f"polynomial_{self.polynomial_name}",
+            processing_time=time.perf_counter() - start_time,
             intermediate_results=intermediate_results,
         )
 

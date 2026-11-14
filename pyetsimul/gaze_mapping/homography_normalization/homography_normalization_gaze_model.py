@@ -175,7 +175,7 @@ class HomographyNormalizationGazeModel(EyeTracker):
         when the tracker has not been calibrated.
         """
         self._require_calibration()
-        start_time = time.time()
+        start_time = time.perf_counter()
 
         pc = measurement.pupil_data.center
         glints = measurement.camera_image.corneal_reflections
@@ -216,7 +216,7 @@ class HomographyNormalizationGazeModel(EyeTracker):
             gaze_point=gaze_point,
             confidence=1.0,
             algorithm_name="homography",
-            processing_time=time.time() - start_time,
+            processing_time=time.perf_counter() - start_time,
             intermediate_results=intermediate_results,
         )
 
