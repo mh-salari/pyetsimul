@@ -476,6 +476,23 @@ ETRA 2026 paper; this log records everything since.
 - **Removed: `order_points_by_angle` in `homography_normalization_utils`.**
   Only the homography gaze model used it, and that model no longer sorts the glints.
 
+- **Fixed: `Stampe1993GazeModel` only worked with one order of the calibration points.**
+  The model treats the centre and the four edge points of the 3 x 3 grid differently from the four corners. Before, it
+  assumed that the first five points in the list are the centre and the edge points. A grid given row by row, or
+  corners first, failed with `outer points must span all 4 quadrants`. Now the model tells the points apart by their
+  position, and every order gives the same result.
+
+- **Fixed: `Stampe1993GazeModel` could not be saved and loaded.**
+  Before, `deserialize` raised `TypeError`, and the fitted mapping was not stored. Now it is stored under
+  `stampe_model`, and a loaded tracker gives the same predictions. The fitted mapping of a model is its `stampe_model`
+  attribute.
+
+- **Changed: `Stampe1993GazeModel` raises `ValueError` for calibration data it cannot use.**
+  The model needs the nine points of a 3 x 3 calibration grid. Before, with more than nine points, the points after the
+  ninth were ignored without a message. With a calibration point that had no pupil centre or no glint, calibration
+  failed with a `TypeError` about `NoneType`. Now these two cases raise `ValueError` with the reason, and so do nine
+  points that do not form a centre, four edge points and four corners.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed

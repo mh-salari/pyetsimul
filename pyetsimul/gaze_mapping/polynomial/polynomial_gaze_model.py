@@ -327,6 +327,18 @@ class PolynomialGazeModel(EyeTracker):
         }
 
     @classmethod
+    def _init_arguments(cls, data: dict) -> dict:
+        """Constructor arguments of the tracker that ``data`` holds: the polynomial and the hardware."""
+        return {
+            "polynomial": data["polynomial_name"],
+            "cameras": [Camera.deserialize(cam_data) for cam_data in data["cameras"]],
+            "lights": [Light.deserialize(light_data) for light_data in data["lights"]],
+            "calib_points": [Position3D.deserialize(pt_data) for pt_data in data["calib_points"]],
+            "use_refraction": data["use_refraction"],
+            "pupil_center_method": data["pupil_center_method"],
+        }
+
+    @classmethod
     def deserialize(cls, data: dict) -> "PolynomialGazeModel":
         """Deserialize eye tracker from dictionary.
 
@@ -340,20 +352,7 @@ class PolynomialGazeModel(EyeTracker):
             PolynomialGazeModel: Fully configured and calibrated eye tracker
 
         """
-        # Deserialize hardware components
-        cameras = [Camera.deserialize(cam_data) for cam_data in data["cameras"]]
-        lights = [Light.deserialize(light_data) for light_data in data["lights"]]
-        calib_points = [Position3D.deserialize(pt_data) for pt_data in data["calib_points"]]
-
-        # Create tracker instance
-        tracker = cls(
-            polynomial=data["polynomial_name"],
-            cameras=cameras,
-            lights=lights,
-            calib_points=calib_points,
-            use_refraction=data["use_refraction"],
-            pupil_center_method=data["pupil_center_method"],
-        )
+        tracker = cls(**cls._init_arguments(data))
 
         # Restore algorithm state and plane info
         tracker.algorithm_state = PolynomialGazeModelState.deserialize(data["algorithm_state"])
