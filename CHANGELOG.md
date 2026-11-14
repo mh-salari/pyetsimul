@@ -151,6 +151,13 @@ ETRA 2026 paper; this log records everything since.
   `compare_algorithms` failed in the same way. Now `evaluate_gaze_accuracy` and `compare_algorithms` report that the
   dataset holds no measurements for the selected camera and eye.
 
+- **Fixed: `load_experiment_data` reported a wrong number of measurements.**
+  Before, `total_measurements` was the number of parameter values. For a dataset with two cameras it was half the real
+  number. Now it is the number of measurements.
+
+- **Changed: `load_experiment_data` raises `ValueError` for a file that is not a generated dataset.**
+  Before, a file without the dataset metadata was loaded as a dataset with 0 measurements and an empty parameter name.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed

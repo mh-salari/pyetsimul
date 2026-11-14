@@ -19,6 +19,7 @@ def load_experiment_data(experiment_name: str, output_dir: str | Path = "outputs
 
     Raises:
         FileNotFoundError: If no cached dataset exists for this experiment name
+        ValueError: If the file lacks the metadata or the cameras a generated dataset has
 
     """
     output_path = Path(output_dir)
@@ -32,11 +33,19 @@ def load_experiment_data(experiment_name: str, output_dir: str | Path = "outputs
     with Path.open(cache_path, encoding="utf-8") as f:
         cached_data = json.load(f)
 
+    try:
+        parameter_name = cached_data["experiment_metadata"]["parameter_variation"]
+        # One measurement per parameter value for every camera and eye, as DataGenerationStrategy.execute counts.
+        total_measurements = sum(
+            len(eye["measurements"]) for camera in cached_data["cameras"] for eye in camera["eyes"]
+        )
+    except KeyError as error:
+        raise ValueError(f"{cache_path} is not a generated dataset: it has no {error}") from error
+
     # Return in the format expected by comparison functions
-    total_measurements = cached_data.get("experiment_metadata", {}).get("total_parameter_values", 0)
     return {
         "total_measurements": total_measurements,
         "data": cached_data,
-        "parameter_name": cached_data.get("experiment_metadata", {}).get("parameter_variation", ""),
+        "parameter_name": parameter_name,
         "saved_files": [str(cache_path)],
     }
