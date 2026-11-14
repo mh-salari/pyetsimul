@@ -335,7 +335,7 @@ class Eye:
         # The visual axis passes through axis_point, which turns with the eye, so the orientation is solved
         # together with the direction from that point to the target, as look_at does.
         rest_orientation = orientation_through_target(
-            orientation_facing, np.eye(3), axis_point, Position3D(eye_pos[0], eye_pos[1], eye_pos[2]), target_position
+            orientation_facing, np.eye(3), axis_point, lambda _orientation: eye_pos, target_position
         )
         self.set_rest_orientation(RotationMatrix(rest_orientation))
 
@@ -540,7 +540,7 @@ class Eye:
         return span(refracted) / span(direct)
 
     def _physical_diameter_for_apparent(
-        self, apparent_diameter: float, camera: "Camera", max_iter: int = 8, tol: float = 1e-4
+        self, apparent_diameter: float, camera: "Camera", max_iter: int = 50, tol: float = 1e-10
     ) -> float:
         """Physical pupil diameter whose refracted projection has ``apparent_diameter`` in ``camera``.
 
@@ -549,8 +549,8 @@ class Eye:
         pupil (the magnification is measured at the apparent size, not at the smaller physical size it should
         be measured at). This iterates the fixed point ``physical = apparent_diameter /
         corneal_magnification(physical)``, re-measuring the magnification at each candidate physical size until
-        the diameter settles to within ``tol`` mm. The magnification changes slowly with size, so it converges
-        in a few iterations.
+        the diameter settles to within ``tol`` mm. The magnification changes slowly with size, so each step
+        shrinks the change of the diameter by more than ten times.
 
         Args:
             apparent_diameter: Target apparent (camera) pupil diameter in mm.
@@ -561,6 +561,9 @@ class Eye:
         Returns:
             Physical pupil diameter in mm.
 
+        Raises:
+            RuntimeError: If the diameter does not settle within ``max_iter`` iterations.
+
         """
         physical = float(apparent_diameter)
         for _ in range(max_iter):
@@ -570,7 +573,10 @@ class Eye:
             if abs(updated - physical) <= tol:
                 return updated
             physical = updated
-        return physical
+        raise RuntimeError(
+            f"The physical pupil diameter for an apparent diameter of {apparent_diameter} mm did not settle to "
+            f"within {tol} mm in {max_iter} iterations."
+        )
 
     def set_pupil_diameter(self, diameter: float, apparent: bool = False, camera: "Camera | None" = None) -> None:
         """Set pupil diameter and update decentration if enabled.
@@ -622,7 +628,7 @@ class Eye:
         target: Position3D | None = None,
         center_method: str = "ellipse",
         max_iter: int = 12,
-        tol: float = 1e-5,
+        tol: float = 1e-10,
     ) -> tuple[float, float]:
         """Eye-local decentration coefficients whose apparent render reproduces a measured image decentration.
 
@@ -656,6 +662,10 @@ class Eye:
         Returns:
             ``(x_coeff, y_coeff)`` eye-local decentration coefficients.
 
+        Raises:
+            RuntimeError: If the rendered ratio does not match the measured one to within ``tol`` in
+                ``max_iter`` iterations.
+
         """
         self.look_at(target if target is not None else Position3D(0.0, 0.0, 0.0))
         self.decentration_config.enabled = True
@@ -675,14 +685,17 @@ class Eye:
             current = rendered_ratio(ex, ey)
             residual = measured - current
             if float(np.hypot(*residual)) < tol:
-                break
+                return float(ex), float(ey)
             jacobian = np.column_stack([
                 (rendered_ratio(ex + eps, ey) - current) / eps,
                 (rendered_ratio(ex, ey + eps) - current) / eps,
             ])
             step = np.linalg.solve(jacobian, residual)
             ex, ey = ex + float(step[0]), ey + float(step[1])
-        return float(ex), float(ey)
+        raise RuntimeError(
+            f"The decentration coefficients for the measured image decentration ({image_cx}, {image_cy}) did not "
+            f"settle to within {tol} in {max_iter} iterations."
+        )
 
     def move_pupil_position(self, dx: float, dy: float, dz: float) -> None:
         """Move pupil position by given offset.

@@ -187,8 +187,11 @@ apex, and roughly half the axial length when the origin is the eyeball center.
 
 Orientation and position depend on each other, since the aim direction is measured from the
 translated origin while the translation needs the orientation that aiming produces. The two are
-solved together as a fixed point, to a tolerance of :math:`10^{-9}` mm and at most eight
-iterations. The shift is under a millimeter, so it settles in a couple of steps.
+solved together as a fixed point, until no entry of the orientation matrix changes by more than
+:math:`10^{-13}`. Each step shrinks the error by about the ratio of the pivot depth to the target
+distance, so a target at a viewing distance settles in under ten steps. A target about as near to
+the eye as its rotation center (within about 20 mm of the default eye) does not settle, and
+``look_at`` raises ``ValueError`` for it.
 
 Placement versus Position
 ^^^^^^^^^^^^^^^^^^^^^^^^^

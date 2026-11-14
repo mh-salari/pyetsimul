@@ -16,20 +16,14 @@ from .rotation_center import EyeballCenter
 if TYPE_CHECKING:
     from .eye import Eye
 
-# Re-pivot solve (gaze-dependent rotation centre): the aiming direction depends on where the globe
-# centre sits after pivoting, and the pivot depends on the gaze direction, so orientation and
-# position are iterated to a fixed point. The shift is sub-millimetre, so this converges in a couple
-# of steps.
-_REPIVOT_MAX_ITERS = 8
-_REPIVOT_TOL = 1e-9  # mm; stop once the globe-centre position stops moving
-
-# Aim solve: the aimed axis passes through a point of the eye that turns with it, so the aim direction
-# depends on the orientation it produces, and the two are iterated to a fixed point. Each step shrinks
-# the error by the ratio of that point's distance from the eye-local origin to its distance from the
-# target. The point is at most a millimetre or two from the origin, so a target at a viewing distance
-# settles in a few steps, and only a target within that distance of the eye does not settle.
-_AIM_MAX_ITERS = 50
-_AIM_TOL = 1e-13  # largest change of an orientation-matrix entry between two steps
+# Pose solve: the aim direction is measured from a point of the eye that moves with the pose. The aimed
+# axis passes through a point that turns with the eye, and an eye with a rotation centre behind its
+# origin shifts as it turns. The aim direction therefore depends on the orientation it produces, and the
+# two are iterated to a fixed point. Each step shrinks the error by about the ratio of the point's
+# distance from the rotation centre to its distance from the target. A target at a viewing distance
+# settles in under ten steps; a target about as near to the eye as its rotation centre does not settle.
+_POSE_MAX_ITERS = 100
+_POSE_TOL = 1e-13  # largest change of an orientation-matrix entry between two steps
 
 
 def _roll_about_optical_axis(deg: float) -> np.ndarray:
@@ -66,14 +60,14 @@ def look_at_target(eye: "Eye", target_position: Position3D, method: str = "visua
 
     Raises:
         ValueError: If ``method`` is unrecognised, the target coincides with the eye (zero-length direction),
-            or the target is too close to the eye for the aim to settle.
+            or the target is too close to the eye for the pose to settle.
 
     """
     if method not in LOOK_AT_METHODS:
         raise ValueError(f"unknown look_at method {method!r}; expected one of {LOOK_AT_METHODS}")
 
     # Rest-frame axis aligned to the target, and the eye-local point that axis passes through. Both depend
-    # only on the rest orientation and the eye's anatomy, so they are fixed across the re-pivot iterations.
+    # only on the rest orientation and the eye's anatomy, so they are fixed while the pose is solved.
     if method == "line_of_sight":
         # The line of sight runs from the fovea through the current pupil centre.
         fovea, pupil = eye.fovea_position, eye.pupil.pos_pupil
@@ -93,24 +87,14 @@ def look_at_target(eye: "Eye", target_position: Position3D, method: str = "visua
         rest_axis = Vector3D.from_array(eye.rest_orientation @ np.array([0.0, 0.0, -1.0]))
         axis_point = np.zeros(3)
 
-    # optical_axis_target_direction measures the aim direction from the fixed rest apex, so the pose is
-    # distance-independent; the others measure it from the point of the re-pivoted eye that the aimed axis
-    # passes through, so that the axis itself passes through the target.
-    from_fixed_apex = method == "optical_axis_target_direction"
-
     rest = np.asarray(eye.rest_orientation, dtype=float)
+    origin_for = _origin_for_orientation(eye, target_position)
 
     def orientation_facing(direction: Vector3D) -> np.ndarray:
         return calculate_eye_rotation(rest_axis, direction) @ rest
 
-    def orientation_from(eye_position: Position3D) -> np.ndarray:
-        if from_fixed_apex:
-            direction = _direction_to_target(target_position, eye.placement)
-            orientation = calculate_eye_rotation(rest_axis, direction) @ eye.rest_orientation
-        else:
-            orientation = orientation_through_target(
-                orientation_facing, rest, axis_point, eye_position, target_position
-            )
+    def posed(aimed: np.ndarray) -> np.ndarray:
+        """Eye orientation for an aimed orientation: the rotation the method applies after the aim."""
         if method == "optical_then_kappa" and eye.model.fovea_displacement:
             # Foveal (kappa) post-rotation lands the fovea on the target after the optical axis is aimed.
             alpha, beta = eye._signed_alpha_rad, np.radians(eye.model.fovea_beta_deg)
@@ -120,16 +104,29 @@ def look_at_target(eye: "Eye", target_position: Position3D, method: str = "visua
                 [np.sin(alpha), 0.0, np.cos(alpha)],
             ])
             rot_y = np.array([[1.0, 0.0, 0.0], [0.0, np.cos(beta), np.sin(beta)], [0.0, -np.sin(beta), np.cos(beta)]])
-            return orientation @ rot_y @ rot_x
+            return aimed @ rot_y @ rot_x
         if eye.model.torsion_deg and method in {"visual_axis", "optical_axis_target_direction"}:
-            return orientation @ _roll_about_optical_axis(eye.model.torsion_deg)
-        return orientation
+            return aimed @ _roll_about_optical_axis(eye.model.torsion_deg)
+        return aimed
 
-    _apply_orientation(eye, target_position, orientation_from)
+    if method == "optical_axis_target_direction":
+        # The direction is taken from the fixed rest apex, so the pose does not depend on the target
+        # distance and the axis does not pass through a finite target.
+        aimed = orientation_facing(_direction_to_target(target_position, eye.placement))
+    else:
+        # The direction is taken from the point of the posed eye that the aimed axis passes through, so
+        # that the axis itself passes through the target.
+        aimed = orientation_through_target(
+            orientation_facing, rest, axis_point, lambda orientation: origin_for(posed(orientation)), target_position
+        )
+    orientation = posed(aimed)
+    eye.orientation = RotationMatrix(orientation, validate_handedness=False)
+    # Write the translation directly so the rest placement (which anchors the rotation centre) is kept.
+    eye.trans[:3, 3] = origin_for(orientation)
 
 
 # ---------------------------------------------------------------------------
-# Orientation application and the gaze-dependent rotation centre
+# Pose solve and the rotation centre
 # ---------------------------------------------------------------------------
 
 
@@ -160,57 +157,49 @@ def orientation_through_target(
     orientation_facing: Callable[[Vector3D], np.ndarray],
     start: np.ndarray,
     axis_point: np.ndarray,
-    eye_position: Position3D,
+    origin_for: Callable[[np.ndarray], np.ndarray],
     target_position: Position3D,
 ) -> np.ndarray:
-    """Orientation for which the aimed axis passes through the target, for one eye position.
+    """Orientation for which the aimed axis passes through the target.
 
     ``orientation_facing`` gives the orientation that points the aimed axis along a world direction. The
-    axis passes through ``axis_point`` (eye-local), whose world position depends on the orientation, so
-    the direction from that point to the target and the orientation are iterated to a fixed point,
-    beginning at ``start``.
+    axis passes through ``axis_point`` (eye-local), and ``origin_for`` gives the world position of the
+    eye-local origin for an orientation. The world position of the axis point therefore depends on the
+    orientation, so the direction from that point to the target and the orientation are iterated to a
+    fixed point, beginning at ``start``.
 
     Raises:
-        ValueError: If the iteration does not settle, which happens for a target nearer to the eye than
-            ``axis_point`` is to the eye-local origin.
+        ValueError: If the iteration does not settle, which happens for a target about as near to the eye
+            as the point the eye turns about.
 
     """
-    origin = np.array([eye_position.x, eye_position.y, eye_position.z], dtype=float)
-    # A point at the eye-local origin does not move with the orientation, so its first step is the answer.
-    point_is_origin = not axis_point.any()
     orientation = start
-    for _ in range(_AIM_MAX_ITERS):
-        point = origin + orientation @ axis_point
+    for _ in range(_POSE_MAX_ITERS):
+        point = origin_for(orientation) + orientation @ axis_point
         direction = _direction_to_target(target_position, Position3D(point[0], point[1], point[2]))
         updated = np.asarray(orientation_facing(direction), dtype=float)
-        if point_is_origin or np.max(np.abs(updated - orientation)) < _AIM_TOL:
+        if np.max(np.abs(updated - orientation)) < _POSE_TOL:
             return updated
         orientation = updated
     raise ValueError(
-        f"Cannot look at target {target_position}: the aim did not settle within {_AIM_MAX_ITERS} steps. "
-        f"The target is too close to the eye at {eye_position}."
+        f"Cannot look at target {target_position}: the eye pose did not settle within {_POSE_MAX_ITERS} steps. "
+        f"The target is too close to the eye."
     )
 
 
-def _apply_orientation(
-    eye: "Eye", target_position: Position3D, orientation_from: Callable[[Position3D], np.ndarray]
-) -> None:
-    """Set the eye orientation; for a gaze-dependent rotation centre, also re-pivot the eye position.
+def _origin_for_orientation(eye: "Eye", target_position: Position3D) -> Callable[[np.ndarray], np.ndarray]:
+    """World position of the eye-local origin as a function of the eye orientation.
 
-    For an ``EyeballCenter`` the orientation is computed once from the current eye position and the
-    position is left untouched (the single fixed centre at the eyeball centre). For a ``RotationCenter``
-    the eye additionally translates so it rotates about the gaze-direction-dependent centre.
+    An ``EyeballCenter`` leaves the origin where it is. A ``RotationCenter`` turns the eye about a centre
+    behind the corneal apex that is anchored to the rest placement, so the origin shifts as the eye turns.
     """
     rotation_center = eye.model.rotation_center
     if isinstance(rotation_center, EyeballCenter):
-        new_orientation = orientation_from(eye.position)
-        eye.orientation = RotationMatrix(new_orientation, validate_handedness=False)
-        return
-    repivot = _repivot_fick if rotation_center.fick else _repivot
-    new_orientation, position = repivot(eye, target_position, orientation_from)
-    eye.orientation = RotationMatrix(new_orientation, validate_handedness=False)
-    # Write the translation directly so the rest placement (used to re-pivot) is not overwritten.
-    eye.trans[:3, 3] = position
+        origin = np.array([eye.position.x, eye.position.y, eye.position.z], dtype=float)
+        return lambda _orientation: origin
+    if rotation_center.fick:
+        return _fick_origin(eye)
+    return _blended_centre_origin(eye, target_position)
 
 
 def _horizontal_fraction(eye: "Eye", target_position: Position3D) -> float:
@@ -234,20 +223,12 @@ def _horizontal_fraction(eye: "Eye", target_position: Position3D) -> float:
     return horizontal / denom if denom > 1e-12 else 0.0
 
 
-def _repivot(
-    eye: "Eye", target_position: Position3D, orientation_from: Callable[[Position3D], np.ndarray]
-) -> tuple[np.ndarray, np.ndarray]:
-    """Solve orientation and position together for the gaze-direction-dependent rotation centre.
+def _blended_centre_origin(eye: "Eye", target_position: Position3D) -> Callable[[np.ndarray], np.ndarray]:
+    """Origin of an eye that turns about one rotation centre whose depth depends on the gaze direction.
 
-    The rigid eye rotates about a point ``depth`` mm behind the corneal apex, where ``depth`` blends
-    the horizontal and vertical rotation-centre depths by the horizontal fraction of the gaze. The
-    pivot is anchored to the rest placement, so the eye-local origin translates as the eye turns to
-    off-axis targets. Orientation and position depend on each other (aiming uses the translated
-    origin), so they are iterated to a fixed point.
-
-    Returns:
-        (orientation matrix (3x3), eye-position xyz array (3,)).
-
+    The centre lies ``depth`` mm behind the corneal apex, where ``depth`` blends the horizontal and
+    vertical rotation-centre depths by the horizontal fraction of the gaze. The centre is anchored to the
+    rest placement, so the eye-local origin translates as the eye turns to off-axis targets.
     """
     placement = np.array([eye.placement.x, eye.placement.y, eye.placement.z], dtype=float)
     rest = np.asarray(eye.rest_orientation, dtype=float)
@@ -261,27 +242,18 @@ def _repivot(
     # Pivot offset in eye-local coordinates: lateral (x nasal-signed, y superior) plus axial (+z deeper).
     offset = np.array([lateral_x, lateral_y, depth - apex_to_center], dtype=float)
 
-    position = placement.copy()
-    orientation = rest
-    for _ in range(_REPIVOT_MAX_ITERS):
-        orientation = np.asarray(orientation_from(Position3D(position[0], position[1], position[2])), dtype=float)
-        updated = placement + (rest - orientation) @ offset
-        if np.max(np.abs(updated - position)) < _REPIVOT_TOL:
-            position = updated
-            break
-        position = updated
-    return orientation, position
+    def origin(orientation: np.ndarray) -> np.ndarray:
+        return placement + (rest - orientation) @ offset
+
+    return origin
 
 
-def _repivot_fick(
-    eye: "Eye", _target_position: Position3D, orientation_from: Callable[[Position3D], np.ndarray]
-) -> tuple[np.ndarray, np.ndarray]:
-    """Position via separate Fick rotation centres for azimuth and elevation (gkaModelEye / Aguirre 2021).
+def _fick_origin(eye: "Eye") -> Callable[[np.ndarray], np.ndarray]:
+    """Origin of an eye with separate Fick rotation centres for azimuth and elevation (gkaModelEye / Aguirre 2021).
 
     Azimuth rotates about the horizontal (azimuth) centre and elevation about the vertical (elevation)
-    centre, applied sequentially, rather than blending both into one pivot. The orientation is the same
-    Listing-law aiming as the single-pivot path; only the translation differs. With both centres equal this
-    reduces to ``_repivot`` exactly.
+    centre, applied sequentially, rather than blending both into one pivot. With both centres equal this
+    gives the same origin as one blended centre.
     """
     placement = np.array([eye.placement.x, eye.placement.y, eye.placement.z], dtype=float)
     rest = np.asarray(eye.rest_orientation, dtype=float)
@@ -290,10 +262,7 @@ def _repivot_fick(
     c_azi = eye._azimuth_rotation_centre_local()
     identity = np.eye(3)
 
-    position = placement.copy()
-    orientation = rest
-    for _ in range(_REPIVOT_MAX_ITERS):
-        orientation = np.asarray(orientation_from(Position3D(position[0], position[1], position[2])), dtype=float)
+    def origin(orientation: np.ndarray) -> np.ndarray:
         fwd = (rest.T @ orientation) @ np.array([0.0, 0.0, -1.0])  # rotated optical axis in the rest frame
         elev = float(np.arcsin(np.clip(fwd[1], -1.0, 1.0)))  # Fick elevation (about the horizontal axis)
         azim = float(np.arctan2(-fwd[0], -fwd[2]))  # Fick azimuth (about the vertical axis)
@@ -303,9 +272,6 @@ def _repivot_fick(
         r_azi = np.array([[ca, 0.0, sa], [0.0, 1.0, 0.0], [-sa, 0.0, ca]])
         r_ele = np.array([[1.0, 0.0, 0.0], [0.0, ce, -se], [0.0, se, ce]])
         t_fick = r_azi @ (identity - r_ele) @ c_ele + (identity - r_azi) @ c_azi  # eye-local translation
-        updated = placement + rest @ t_fick
-        if np.max(np.abs(updated - position)) < _REPIVOT_TOL:
-            position = updated
-            break
-        position = updated
-    return orientation, position
+        return placement + rest @ t_fick
+
+    return origin

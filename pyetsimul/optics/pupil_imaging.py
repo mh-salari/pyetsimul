@@ -9,7 +9,7 @@ from typing import TYPE_CHECKING
 
 import numpy as np
 from scipy import ndimage
-from scipy.optimize import minimize
+from scipy.optimize import least_squares
 from scipy.spatial import ConvexHull
 from skimage.draw import polygon
 
@@ -22,6 +22,11 @@ if TYPE_CHECKING:
 
 MIN_ELLIPSE_POINTS = 5  # fewest points that determine an ellipse
 PUPIL_CENTER_METHODS = ("ellipse", "convex_hull", "center_of_mass")
+
+# Back-projection of an image point to the pupil plane.
+_BACK_PROJECTION_SOLVER_TOL = 1e-14  # stopping tolerance of the solve on the offset, the cost and the gradient
+_BACK_PROJECTION_TOL_PX = 1e-9  # largest accepted distance between the image point and the projected solution
+_UNPROJECTABLE_RESIDUAL_PX = 1e6  # residual of a pupil-plane point that does not refract to the camera
 
 
 def get_pupil_boundary_image(eye: "Eye", camera: Camera, use_refraction: bool = True) -> PupilData:
@@ -201,10 +206,11 @@ def reverse_project_to_pupil_plane(eye: "Eye", camera: Camera, image_points: lis
     """Recovers eye-frame points in the pupil plane that image to the given camera points.
 
     Inverse of project_point_to_image for points constrained to the pupil plane at the eye's current
-    orientation. For each image point it searches the in-plane offset from the pupil center whose refracted
-    projection matches the target (Nelder-Mead), then expresses the result in eye-frame coordinates. The
-    search is confined to the pupil plane because a single camera cannot resolve the depth of an unconstrained
-    point; recovering the axial component requires combining two cameras (see image_jacobian).
+    orientation. For each image point it solves for the in-plane offset from the pupil center whose refracted
+    projection is the image point (least squares on the two image coordinates), then expresses the result in
+    eye-frame coordinates. The solve is confined to the pupil plane because a single camera cannot resolve the
+    depth of an unconstrained point; recovering the axial component requires combining two cameras (see
+    image_jacobian).
 
     Args:
         eye: Eye object providing the corneal refraction and current orientation.
@@ -214,24 +220,38 @@ def reverse_project_to_pupil_plane(eye: "Eye", camera: Camera, image_points: lis
     Returns:
         Nx3 array of eye-frame coordinates, one row per input point.
 
+    Raises:
+        ValueError: If no point of the pupil plane projects to one of the image points.
+
     """
     transform = np.asarray(eye.trans)
     x_axis, y_axis = transform[:3, 0], transform[:3, 1]
     pupil_center = np.asarray(eye.get_pupil().boundary_points)[:3].mean(axis=1)
 
-    def residual(offset: np.ndarray, target: np.ndarray) -> float:
+    def residual(offset: np.ndarray, target: np.ndarray) -> np.ndarray:
         world = pupil_center + offset[0] * x_axis + offset[1] * y_axis
         projected = project_point_to_image(eye, camera, Position3D(float(world[0]), float(world[1]), float(world[2])))
         if projected is None:
-            return 1e9
-        return float((projected.x - target[0]) ** 2 + (projected.y - target[1]) ** 2)
+            return np.full(2, _UNPROJECTABLE_RESIDUAL_PX)
+        return np.array([projected.x - target[0], projected.y - target[1]])
 
     eye_frame_points = []
     for image_point in image_points:
         target = np.array([image_point.x, image_point.y])
-        solution = minimize(
-            residual, [0.0, 0.0], args=(target,), method="Nelder-Mead", options={"xatol": 1e-5, "fatol": 1e-10}
+        solution = least_squares(
+            residual,
+            [0.0, 0.0],
+            args=(target,),
+            xtol=_BACK_PROJECTION_SOLVER_TOL,
+            ftol=_BACK_PROJECTION_SOLVER_TOL,
+            gtol=_BACK_PROJECTION_SOLVER_TOL,
         )
+        miss = float(np.hypot(*solution.fun))
+        if miss > _BACK_PROJECTION_TOL_PX:
+            raise ValueError(
+                f"No point of the pupil plane projects to image point ({image_point.x}, {image_point.y}): "
+                f"the nearest point found projects {miss:.3g} px from it."
+            )
         world = pupil_center + solution.x[0] * x_axis + solution.x[1] * y_axis
         eye_frame_points.append((np.linalg.inv(transform) @ np.array([world[0], world[1], world[2], 1.0]))[:3])
     return np.array(eye_frame_points)

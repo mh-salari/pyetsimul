@@ -263,6 +263,27 @@ ETRA 2026 paper; this log records everything since.
   different in every run. With `err_seed`, it is the same in every run, also when a dataset is generated with several
   worker processes.
 
+- **Fixed: `look_at` was inexact for a target very close to the eye.**
+  With the default rotation centre the eye moves slightly as it turns, so `look_at` finds the position and the
+  orientation of the eye together, in repeated steps. Before, it stopped after 8 steps, finished or not. For a target
+  40 mm from the eye the aimed axis then missed the target by 0.0034 mm, and for a target at 20 mm by 0.45 mm. Now the
+  steps continue until the result no longer changes. For a target closer than about 20 mm, which is about as close as
+  the rotation centre of the eye, no result is reached and `look_at` raises `ValueError`. Results at normal viewing
+  distances change by about 1e-11 mm.
+
+- **Fixed: setting a pupil by its apparent size could return an unfinished result without a warning.**
+  `Eye.set_pupil_diameter(apparent=True)` and `Eye.solve_decentration_from_apparent` find their result in repeated
+  steps. Before, when the steps did not finish within the step limit, the value of the last step was returned. Now
+  `RuntimeError` is raised in that case. The two functions are also more exact: the physical pupil diameter is solved
+  to 1e-10 mm (before 1e-4 mm, which left the apparent diameter off by about 1e-6 mm), and the default tolerance of
+  `solve_decentration_from_apparent` is 1e-10 (before 1e-5).
+
+- **Fixed: `reverse_project_to_pupil_plane` returned a wrong point when no solution exists.**
+  The function finds the point on the pupil plane that is seen at a given image position. Before, for an image position
+  at which no point of the pupil plane is seen, it returned a point anyway. In a test with an image position 400 px
+  away from the pupil, the returned point is seen 373 px away from the requested position. Now `ValueError` is raised
+  in that case. For positions that have a solution, the result is more exact (within 1e-11 px; before, about 1e-5 px).
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed
