@@ -247,6 +247,12 @@ ETRA 2026 paper; this log records everything since.
   after an eye variation. Now the eye is turned once, after all its parameters are set. A composition that contains an
   unsupported kind of variation raises `TypeError`; before, that variation was skipped without a message.
 
+- **Fixed: `PupilSizeWithDecentrationVariation` produced no decentration with the automatic baseline.**
+  The pupil decentration is computed from the difference between the current pupil size and a baseline size. Before,
+  the automatic baseline was read after the pupil already had its new size, so the difference, and with it the
+  decentration, was zero in every sample. With the population-mean coefficients the sweep did not run at all. Now both
+  cases produce the expected decentration. The configuration object passed to the variation is no longer modified.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed

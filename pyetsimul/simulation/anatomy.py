@@ -1,5 +1,6 @@
 """Anatomical parameter variations for eye tracking simulation."""
 
+import copy
 from typing import TYPE_CHECKING
 
 from ..core.cornea import ConicCornea
@@ -166,8 +167,16 @@ class PupilSizeWithDecentrationVariation(GenericEyeVariation):
 
     def apply_to_eye(self, eye: "Eye", value: float) -> None:
         """Apply decentration config and set pupil diameter."""
-        # Apply the decentration config
-        eye.decentration_config = self.decentration_config
+        # The eye gets its own copy, with the coefficients resolved for its side: the horizontal coefficient
+        # has opposite sign in the two eyes.
+        config = copy.deepcopy(self.decentration_config)
+        config.resolve_for_eye(eye.which_eye)
+        if config.baseline_diameter is None:
+            # The automatic baseline is the eye's own baseline if it has one, else the diameter the eye has
+            # before the sweep changes it. Taken here, because the eye would set it after the size change.
+            own_baseline = eye.decentration_config.baseline_diameter
+            config.baseline_diameter = eye.get_pupil_diameter() if own_baseline is None else own_baseline
+        eye.decentration_config = config
         # Set pupil diameter - this will trigger decentration
         eye.set_pupil_diameter(value)
 
