@@ -10,10 +10,8 @@ def compute_homography(src_points: np.ndarray, dst_points: np.ndarray, ransac_th
     Args:
         src_points: Nx2 array of source points
         dst_points: Nx2 array of destination points
-        ransac_threshold: Maximum reprojection error in pixels for RANSAC inliers.
+        ransac_threshold: Maximum reprojection error for RANSAC inliers, in the units of dst_points.
                          Points with larger error are considered outliers.
-                         Default: 5.0 pixels (adjust based on camera resolution
-                         and noise characteristics)
 
     Returns:
         3x3 homography matrix H such that dst = H @ src

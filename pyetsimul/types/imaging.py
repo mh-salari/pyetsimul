@@ -34,7 +34,8 @@ class CameraImage:
 class PupilData:
     """Result of pupil detection/analysis operations."""
 
-    boundary_points: np.ndarray | None = None  # 2xM matrix of boundary points
+    # 4xN homogeneous world points from Eye.get_pupil, or the Point2D boundary in a camera image
+    boundary_points: np.ndarray | list[Point2D] | None = None
     center: Point2D | None = None  # Pupil center position
     ellipse_params: np.ndarray | None = None  # Ellipse fitting parameters
     area: float | None = None  # Pupil area in pixels

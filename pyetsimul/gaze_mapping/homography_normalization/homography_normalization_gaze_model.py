@@ -32,9 +32,9 @@ class HomographyNormalizationGazeModel(EyeTracker):
 
         Args:
             use_gp_correction: Whether to use Gaussian Process error correction
-            ransac_threshold: Maximum reprojection error in pixels for RANSAC.
-                            Adjust based on camera resolution and noise.
-                            Default: 5.0 pixels
+            ransac_threshold: Maximum reprojection error for a RANSAC inlier, in mm. Both homographies map
+                            onto points given in mm: the light positions and the calibration targets.
+                            Default: 5.0 mm
             **kwargs: Arguments passed to parent EyeTracker
 
         """
@@ -69,7 +69,7 @@ class HomographyNormalizationGazeModel(EyeTracker):
             lights: List of Light objects (minimum 4 required)
             calib_points: List of 3D calibration points
             use_gp_correction: Whether to use Gaussian Process error correction
-            ransac_threshold: RANSAC reprojection error threshold in pixels
+            ransac_threshold: RANSAC reprojection error threshold in mm
             use_refraction: Whether to use refraction in optical calculations
             pupil_center_method: Pupil center method: "ellipse", "convex_hull" or "center_of_mass"
 
