@@ -197,12 +197,14 @@ def intersect_ray_conic(
 
     if len(ts) == 0:
         return None, None
+    # The roots are distances along the unit direction, so the points are taken on the unit-direction ray.
+    unit_ray = Ray(origin=ray.origin, direction=direction_normalized)
     if len(ts) == 1:
-        point = ray.point_at(ts[0])
+        point = unit_ray.point_at(ts[0])
         return IntersectionResult.intersection_at(point, ts[0]), None
     ts.sort()
-    point1 = ray.point_at(ts[0])
-    point2 = ray.point_at(ts[1])
+    point1 = unit_ray.point_at(ts[0])
+    point2 = unit_ray.point_at(ts[1])
 
     result1 = IntersectionResult.intersection_at(point1, ts[0])
     result2 = IntersectionResult.intersection_at(point2, ts[1])

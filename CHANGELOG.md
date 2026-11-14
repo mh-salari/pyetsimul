@@ -77,6 +77,11 @@ ETRA 2026 paper; this log records everything since.
   Before, when an `EyeModel` had `realistic_pupil_params`, every eye built from it, and every `Eye.copy()`, used the
   same parameter object. Now every pupil has its own copy of the parameters.
 
+- **Fixed: `intersect_ray_conic` returned a wrong point for a ray direction that is not of unit length.**
+  Before, for a ray direction of length 2, the returned intersection point was twice as far along the ray as the real
+  one. `ConicCornea.intersect`, `ConicCornea.intersect_posterior`, `reflect_ray_conic` and `refract_ray_conic` use this
+  function and returned the same wrong point. Ray directions of unit length were not affected.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed
