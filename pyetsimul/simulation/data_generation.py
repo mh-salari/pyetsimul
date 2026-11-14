@@ -37,6 +37,7 @@ def _process_single_variation(args: tuple[Any, ...]) -> dict[str, Any]:
     eye_copy = copy.deepcopy(eye)
     # Every task receives the camera with the same generator state, so each measurement starts its own
     # noise stream; the stream numbers make it the same in every run and different between measurements.
+    camera.restart_noise(camera_index, eye_index, index)
     if camera.glint_noise_config is not None:
         camera.glint_noise_config.restart(camera_index, eye_index, index)
 

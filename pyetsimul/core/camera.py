@@ -71,6 +71,7 @@ class Camera:
     - dist_coeffs: OpenCV distortion coefficients (default: no distortion)
     - err: Random error amount (default: 0.0)
     - err_type: Error distribution type ('gaussian' or 'uniform')
+    - err_seed: Seed of the random error; with a seed the error is the same in every run (default: None)
     - glint_noise_config: GlintNoiseConfig for corneal reflection detection noise (default: None)
 
     Usage:
@@ -86,6 +87,7 @@ class Camera:
     glint_noise_config: GlintNoiseConfig | None = None
     name: str | None = None
     trans: TransformationMatrix = field(default_factory=TransformationMatrix.identity)
+    err_seed: int | None = None
     rest_trans: TransformationMatrix = field(init=False)
 
     # Internal field to track where camera is pointing (set by point_at method)
@@ -96,6 +98,8 @@ class Camera:
 
     def __post_init__(self) -> None:
         """Initialize camera with default values."""
+        self.restart_noise()
+
         # Store rest position for pan-tilt operations
         self.rest_trans = self.trans.copy()
 
@@ -103,6 +107,16 @@ class Camera:
             self.dist_coeffs = np.zeros(5)
         else:
             self.dist_coeffs = np.asarray(self.dist_coeffs, dtype=np.float64)
+
+    def restart_noise(self, *stream: int) -> None:
+        """Start the sequence of random errors again.
+
+        With ``err_seed``, the sequence is the same every time it is started with the same stream numbers,
+        and different stream numbers give independent sequences. Dataset generation starts one stream per
+        measurement, so the error of a measurement does not depend on the worker process that takes it.
+        Without a seed every start gives a new sequence.
+        """
+        self._err_rng = np.random.default_rng(None if self.err_seed is None else [self.err_seed, *stream])
 
     @property
     def orientation(self) -> RotationMatrix:
@@ -197,7 +211,7 @@ class Camera:
         x[1, :] -= cy
 
         # Add error based on error type
-        rng = np.random.default_rng()
+        rng = self._err_rng
         if self.err_type == "uniform":
             x += self.err * (2 * rng.random((2, pos_camera.shape[1])) - 1)
         elif self.err_type == "gaussian":
@@ -630,6 +644,7 @@ class Camera:
             "distortion_coefficients": self.dist_coeffs.tolist() if self.dist_coeffs is not None else None,
             "measurement_error": float(self.err),
             "error_type": self.err_type,
+            "error_seed": self.err_seed,
             "name": self.name,
             "pointing_at": self._pointing_at.serialize() if self._pointing_at else None,
             "rest_transformation": self.rest_trans.tolist(),
@@ -640,7 +655,9 @@ class Camera:
     def deserialize(cls, data: dict) -> "Camera":
         """Deserialize from dictionary representation."""
         # Create camera with basic parameters
-        camera = cls(err=data["measurement_error"], err_type=data["error_type"], name=data["name"])
+        camera = cls(
+            err=data["measurement_error"], err_type=data["error_type"], err_seed=data["error_seed"], name=data["name"]
+        )
 
         # Restore position and orientation
         camera.position = Position3D.deserialize(data["position"])

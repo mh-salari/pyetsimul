@@ -258,6 +258,11 @@ ETRA 2026 paper; this log records everything since.
   glints were shifted identically. Now the shifts differ between glints and are the same in every run, also with
   several worker processes. `examples/07_glint_noise.py` uses a seed and now shows scattered glints.
 
+- **Added: the pixel noise of a camera can be made the same in every run, with `Camera(err_seed=...)`.**
+  `Camera(err=...)` adds random noise to every image position the camera reports. Without a seed, this noise is
+  different in every run. With `err_seed`, it is the same in every run, also when a dataset is generated with several
+  worker processes.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed
