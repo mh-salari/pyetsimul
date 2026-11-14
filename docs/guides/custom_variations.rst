@@ -24,7 +24,7 @@ spaced evenly with ``numpy.linspace``, so this sweep uses -0.1, -0.2, -0.3, -0.4
 Parameter Paths
 ---------------
 
-The first argument names the attribute to set on the ``Eye``. It is resolved in one of three ways:
+The first argument names the parameter to vary. It is resolved in one of four ways:
 
 .. list-table::
    :header-rows: 1
@@ -34,16 +34,40 @@ The first argument names the attribute to set on the ``Eye``. It is resolved in 
      - Effect
    * - ``"pupil_diameter"``
      - calls ``eye.set_pupil_diameter(value)``
-   * - ``"cornea.anterior_k"``
-     - sets the attribute on the named sub-object, here ``eye.cornea``
    * - ``"fovea_alpha_deg"``
-     - sets the attribute directly on the eye
+     - a field of the eye model: the eye gets a model with the new value
+   * - ``"cornea.anterior_k"``
+     - an attribute of the object a model field holds, here the model's cornea: the eye gets a
+       model with a cornea that has the new value
+   * - ``"eyelid.openness"``
+     - any other path: sets the attribute on the eye, or on the named object of the eye
 
-A dotted path goes one level deep. The name before the dot must be an attribute of the ``Eye``,
-and the name after it an attribute of that object. ``"cornea.anterior_radius"`` and
-``"cornea.anterior_k"`` both work this way.
+A dotted path goes one level deep. ``"cornea.anterior_radius"`` and ``"cornea.anterior_k"`` both
+work this way.
 
 An unknown path raises ``AttributeError`` when the sweep runs, not when the variation is created.
+
+Changing a Model Parameter of a Placed Eye
+------------------------------------------
+
+The eye model is frozen, and a placed eye holds parts built from it: a cornea set up for the axial
+length, a pupil, and the pupil-center configurations resolved for its side. A model parameter of a
+placed eye is therefore changed by giving the eye a model with the new value:
+
+.. code-block:: python
+
+   eye.set_model(eye.model.with_parameter("cornea.anterior_k", -0.3))
+   eye.set_model(eye.model.copy(fovea_alpha_deg=6.0, fovea_beta_deg=2.0))
+
+``set_model`` builds the parts that the changed fields define again, so the result is the eye that
+the same model gives when it is built from scratch. The eye keeps its side, its placement, its
+pupil size and the target it looks at, and it turns to that target again. A rest orientation set
+with ``set_rest_orientation_at_target`` is derived again for the new model. Parts that the change
+does not concern are kept as they are.
+
+Setting the attribute on the eye's own cornea (``eye.cornea.anterior_k = -0.3``) does not do this.
+The cornea keeps the center that its old shape gave it, so the corneal apex moves along the optical
+axis and the pupil stays where it was.
 
 Running a Sweep
 ---------------
@@ -174,7 +198,7 @@ apply one of them, ``__len__()`` for the step count, and ``describe()``.
 
        def apply_to_eye(self, eye, value: float) -> None:
            eye.set_pupil_diameter(2.5 + 4.5 * value)
-           eye.cornea.anterior_k = -0.1 - 0.4 * value
+           eye.set_model(eye.model.with_parameter("cornea.anterior_k", -0.1 - 0.4 * value))
 
        def __len__(self) -> int:
            return self.num_steps

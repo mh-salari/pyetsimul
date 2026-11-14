@@ -115,11 +115,9 @@ class CorneaThicknessVariation(GenericEyeVariation):
 
     def apply_to_eye(self, eye: "Eye", value: float) -> None:  # noqa: PLR6301
         """Apply thickness value by setting appropriate cornea parameter."""
-        cornea = eye.cornea
-
         # For ConicCornea: set thickness_offset directly
-        if isinstance(cornea, ConicCornea):
-            cornea.thickness_offset = value
+        if isinstance(eye.model.cornea, ConicCornea):
+            eye.set_model(eye.model.with_parameter("cornea.thickness_offset", value))
             return
 
         # For SphericalCornea: calculate anterior_radius that gives desired thickness
@@ -127,7 +125,7 @@ class CorneaThicknessVariation(GenericEyeVariation):
         # scale = anterior_radius / _r_cornea_default
         # So: anterior_radius = (desired_thickness / _thickness_offset_default) * _r_cornea_default
         desired_radius = (value / CorneaDefaults.THICKNESS_OFFSET) * CorneaDefaults.ANTERIOR_RADIUS
-        cornea.anterior_radius = desired_radius
+        eye.set_model(eye.model.with_parameter("cornea.anterior_radius", desired_radius))
 
 
 class PupilSizeWithDecentrationVariation(GenericEyeVariation):

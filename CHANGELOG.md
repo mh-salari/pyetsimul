@@ -299,6 +299,32 @@ ETRA 2026 paper; this log records everything since.
   the eye goes to its rest orientation instead, which is the direction it faces when it looks at no target. It then has
   no target until the next `look_at`.
 
+- **Fixed: variations of angle kappa and of several other eye parameters did not change the eye (since 4.0.0).**
+  Before, `AngleKappaVariation`, `AngleKappaAlphaVariation`, `AngleKappaBetaVariation`, and a `GenericEyeVariation` on
+  `fovea_alpha_deg`, `fovea_beta_deg`, `axial_length`, `n_aqueous_humor`, `torsion_deg` or the pupil tilt had no effect
+  on the eye. Every measurement of such a sweep was made with the same eye, while the dataset recorded the varied
+  values. Now these variations change the eye.
+
+- **Fixed: varying a cornea parameter in a dataset moved the corneal apex.**
+  This affected `CorneaRadiusVariation`, `CorneaThicknessVariation` on a spherical cornea, and a `GenericEyeVariation`
+  on `cornea.anterior_radius` or `cornea.anterior_k`. Before, the new value was applied without positioning the cornea
+  again, so the corneal apex moved along the optical axis (by 6.9 mm when the conic constant changed from -0.1 to -0.5)
+  while the pupil stayed where it was. Such a sweep mostly changed the distance between cornea and pupil. Now the eye
+  is identical to an eye built with the new cornea. Datasets of these sweeps change: in
+  `examples/16_custom_variation.py`, the glint moved 42.1 px and the pupil centre 63.3 px over the sweep of the conic
+  constant, and with the fix they move 0.7 px and 0.1 px.
+
+- **Fixed: `GenericEyeVariation` accepted a parameter name that does not exist.**
+  Before, with a misspelled parameter path, the sweep ran and changed nothing. Now `AttributeError` is raised.
+
+- **Added: one parameter of an eye that is already in a scene can be changed, with `Eye.set_model` and
+  `EyeModel.with_parameter`.**
+  An `EyeModel` cannot be modified after it is created. `EyeModel.with_parameter(path, value)` returns a copy of the
+  model with one parameter changed, and `Eye.set_model(model)` gives that model to an existing eye, for example
+  `eye.set_model(eye.model.with_parameter("cornea.anterior_k", -0.3))`. The eye keeps its side (left or right),
+  position, pupil size and gaze target. In everything else it is identical to an eye built from the new model.
+  `Eye.copy(**overrides)` follows the same rule.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed

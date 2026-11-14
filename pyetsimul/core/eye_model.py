@@ -5,7 +5,8 @@ gaze conventions -- the *what kind of eye*, separate from the placement and pose
 :class:`~pyetsimul.core.eye.Eye`. It is frozen; derive a variant with :meth:`EyeModel.copy`.
 """
 
-from dataclasses import dataclass, field, replace
+import copy
+from dataclasses import dataclass, field, fields, replace
 
 from .cornea import ConicCornea, SphericalCornea
 from .default_configs import EyeAnatomyDefaults
@@ -91,6 +92,28 @@ class EyeModel:
     def copy(self, **overrides: object) -> "EyeModel":
         """Return a copy of this model with the given fields changed (the model itself is frozen)."""
         return replace(self, **overrides)
+
+    def with_parameter(self, path: str, value: object) -> "EyeModel":
+        """Return a copy of this model with one parameter changed, named by a path.
+
+        The path is a field of the model (``"fovea_alpha_deg"``), or a field and an attribute of the object
+        it holds, joined by a dot (``"cornea.anterior_k"``). For the second form the copy holds its own copy
+        of that object, so this model and its cornea stay as they are.
+
+        Raises:
+            AttributeError: If the path names no field of the model, or no attribute of the field's object.
+
+        """
+        name, _, attribute = path.partition(".")
+        if name not in {model_field.name for model_field in fields(self)}:
+            raise AttributeError(f"EyeModel has no field {name!r} (parameter path {path!r}).")
+        if not attribute:
+            return replace(self, **{name: value})
+        part = copy.deepcopy(getattr(self, name))
+        if not hasattr(part, attribute):
+            raise AttributeError(f"{type(part).__name__} has no attribute {attribute!r} (parameter path {path!r}).")
+        setattr(part, attribute, value)
+        return replace(self, **{name: part})
 
 
 # ---------------------------------------------------------------------------

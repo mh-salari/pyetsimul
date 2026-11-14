@@ -5,7 +5,7 @@ Defines the Eye class, integrating cornea, pupil, fovea displacement, and gaze m
 
 import copy
 import warnings
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, fields
 from typing import TYPE_CHECKING
 
 import numpy as np
@@ -30,6 +30,10 @@ if TYPE_CHECKING:
     from .camera import Camera
     from .light import Light
 
+# Model fields that define a part of the eye. set_model builds the part again when one of them changes.
+_CORNEA_MODEL_FIELDS = frozenset({"cornea", "axial_length"})
+_PUPIL_MODEL_FIELDS = frozenset({"pupil_type", "pupil_boundary_points", "pupil_random_seed", "realistic_pupil_params"})
+
 
 @dataclass
 class Eye:
@@ -42,10 +46,13 @@ class Eye:
 
     The pose follows from three things: where the eye is placed (``position``), its rest orientation
     (``set_rest_orientation``, ``set_rest_orientation_at_target``) and the target it looks at
-    (``look_at``). Placing the eye or setting its rest orientation while it looks at a target makes it
-    turn to that target again, so these calls give the same pose in any order. With
-    ``hold_fixation=False`` such a call returns the eye to its rest pose and clears the target instead,
-    and the eye stays at rest until the next ``look_at``.
+    (``look_at``). Placing the eye, setting its rest orientation or changing its model (``set_model``)
+    while it looks at a target makes it turn to that target again, so these calls give the same pose in
+    any order. With ``hold_fixation=False`` such a call returns the eye to its rest pose and clears the
+    target instead, and the eye stays at rest until the next ``look_at``.
+
+    The model is frozen. A parameter of a placed eye is changed with ``set_model``, which builds the parts
+    of the eye that the parameter defines again.
     """
 
     # The eye-model specification. Accepts an EyeModel or a registered model name (case-insensitive,
@@ -56,8 +63,8 @@ class Eye:
     # horizontal kappa flips sign between them and the pupil-decentration coefficients are mirrored;
     # which_eye applies both signs to the model's unsigned magnitudes.
     which_eye: str = "right"
-    # Whether an eye that looks at a target turns to it again when it is placed or its rest orientation is
-    # set. Off, such a call returns the eye to its rest pose and clears the target.
+    # Whether an eye that looks at a target turns to it again when it is placed, its rest orientation is set
+    # or its model is changed. Off, such a call returns the eye to its rest pose and clears the target.
     hold_fixation: bool = True
 
     # Per-eye working instances, built in __post_init__ from the (shared, frozen) model spec. The model
@@ -76,8 +83,12 @@ class Eye:
     eyelid_trans: TransformationMatrix = field(init=False, repr=False)
     _rest_orientation: RotationMatrix = field(init=False)
     _rest_orientation_explicitly_set: bool = field(init=False, default=False)  # Track if user set rest orientation
+    # How set_rest_orientation_at_target defined the rest orientation: (target, up, placement at that call).
+    # None for a rest orientation given as a matrix. set_model derives the rest orientation again from it.
+    _rest_definition: tuple[Position3D, Position3D | None, Position3D] | None = field(init=False, default=None)
     _current_target_point: Position3D | None = field(init=False, default=None)  # Updated by look_at()
-    _current_look_at_method: str | None = field(init=False, default=None)  # method of that look_at()
+    # Method given to that look_at(); None is the model's default.
+    _current_look_at_method: str | None = field(init=False, default=None)
     # Rest globe-centre placement; the gaze-dependent rotation centre re-pivots about it.
     _placement: Position3D = field(init=False)
     # {pupil diameter (mm): physical eye-local boundary (N x 2)} registered via register_pupil_shape;
@@ -95,33 +106,37 @@ class Eye:
         # Resolve a registered model name (case-insensitive) to its EyeModel.
         if isinstance(self.model, str):
             self.model = get_eye_model(self.model)
-        model = self.model
 
-        # Per-eye working copies of the mutable model components; the model spec stays pristine and shared.
-        self.cornea = copy.deepcopy(model.cornea)
-        self.decentration_config = copy.deepcopy(model.decentration_config)
-        self.off_axis_pupil = copy.deepcopy(model.off_axis_pupil)
-
-        # Setup cornea-specific geometry (this handles all sphere-specific scaling)
-        self.cornea.setup_eye_geometry(model.axial_length)
-
-        # Initialize transformation matrix (identity at rest position)
+        # Rest pose at the origin. The eyelid transform follows the placement and the rest orientation.
         self._rest_orientation = RotationMatrix.identity()
         self.trans = TransformationMatrix.from_rotation(self._rest_orientation)
-
-        # Initialize eyelid transform (same position as eye, orientation = rest)
         self.eyelid_trans = TransformationMatrix.from_translation_and_rotation(
             self.trans.get_translation(), self._rest_orientation
         )
+        self._placement = self.position
 
-        # Create pupil object - calculate pupil position and scale radius. The model's default (nominal)
-        # diameter sets the starting size; set_pupil_diameter changes it later.
-        pupil_position = self.get_pupil_position()
+        self._build_cornea()
+        self._build_pupil()
+        self._build_eyelid(EyeAnatomyDefaults.EYELID_OPENNESS)
+        self._build_off_axis_pupil()
+        self._build_decentration_config()
+        self._update_pupil_position()
+
+    # ---------------------------------------------------------------------------
+    # Parts built from the eye model
+    # ---------------------------------------------------------------------------
+
+    def _build_cornea(self) -> None:
+        """Build this eye's working cornea from the model's cornea and axial length."""
+        self.cornea = copy.deepcopy(self.model.cornea)
+        # Setup cornea-specific geometry (this handles all sphere-specific scaling)
+        self.cornea.setup_eye_geometry(self.model.axial_length)
+
+    def _build_pupil(self) -> None:
+        """Build the pupil of the model's type on the optical axis, at the model's default size."""
+        model = self.model
         # Scale pupil radius based on corneal scaling factor
-        scale = self.cornea.get_scale_factor()
-        scaled_pupil_radius = (model.default_pupil_diameter / 2.0) * scale
-        x_pupil = Direction3D(scaled_pupil_radius, 0, 0)
-        y_pupil = Direction3D(0, scaled_pupil_radius, 0)
+        scaled_pupil_radius = (model.default_pupil_diameter / 2.0) * self.cornea.get_scale_factor()
 
         # Create pupil with optional n parameter and random seed
         pupil_kwargs = {}
@@ -136,43 +151,107 @@ class Eye:
                 pupil_kwargs["params"] = RealisticPupilParams(random_seed=model.pupil_random_seed)
 
         self.pupil = create_pupil(
-            pupil_type=model.pupil_type, pos_pupil=pupil_position, x_pupil=x_pupil, y_pupil=y_pupil, **pupil_kwargs
+            pupil_type=model.pupil_type,
+            pos_pupil=self.get_pupil_position(),
+            x_pupil=Direction3D(scaled_pupil_radius, 0, 0),
+            y_pupil=Direction3D(0, scaled_pupil_radius, 0),
+            **pupil_kwargs,
         )
 
-        # Create eyelid if enabled: the eyeball globe (radius axial_length/2) centred on the eyeball
-        # centre (axial_length/2 behind the corneal apex), phi_max set so its front-cap rim meets the
-        # corneal limbus.
-        if model.eyelid_enabled:
-            sphere_radius = model.axial_length / 2.0
-            apex_pos = self.cornea.get_apex_position()
-            eyeball_center_z = self.eyeball_center_z
-            # Limbus z relative to the eyeball centre; phi from the apex pole (-Z from the centre):
-            # cos(phi) = -limbus_z_rel / sphere_radius -> phi = arccos(...).
-            limbus_z_rel = apex_pos.z + self.cornea.get_corneal_depth() - eyeball_center_z
-            ratio = np.clip(-limbus_z_rel / sphere_radius, -1.0, 1.0)
-            phi_max = float(np.arccos(ratio))
+    def _build_eyelid(self, openness: float) -> None:
+        """Build the eyelid when the model has one: the eyeball globe with an opening over the cornea.
 
-            self.eyelid = create_eyelid(
-                center=Position3D(0.0, 0.0, eyeball_center_z),
-                sphere_radius=sphere_radius,
-                phi_max=phi_max,
-                openness=EyeAnatomyDefaults.EYELID_OPENNESS,
-            )
-            # Keep eyelid orientation locked to rest orientation (fixed to face)
-            self.eyelid_trans[:3, :3] = self._rest_orientation
+        The globe (radius axial_length/2) is centred on the eyeball centre, axial_length/2 behind the corneal
+        apex, with phi_max set so its front-cap rim meets the corneal limbus.
+        """
+        if not self.model.eyelid_enabled:
+            self.eyelid = None
+            return
+        sphere_radius = self.model.axial_length / 2.0
+        apex_pos = self.cornea.get_apex_position()
+        eyeball_center_z = self.eyeball_center_z
+        # Limbus z relative to the eyeball centre; phi from the apex pole (-Z from the centre):
+        # cos(phi) = -limbus_z_rel / sphere_radius -> phi = arccos(...).
+        limbus_z_rel = apex_pos.z + self.cornea.get_corneal_depth() - eyeball_center_z
+        ratio = np.clip(-limbus_z_rel / sphere_radius, -1.0, 1.0)
+        phi_max = float(np.arccos(ratio))
 
-        # Resolve the population defaults for the pupil-centre models (no-ops when the values were given
-        # or the model is disabled), then position the pupil from whichever models are enabled.
+        self.eyelid = create_eyelid(
+            center=Position3D(0.0, 0.0, eyeball_center_z),
+            sphere_radius=sphere_radius,
+            phi_max=phi_max,
+            openness=openness,
+        )
+
+    def _build_off_axis_pupil(self) -> None:
+        """Build this eye's off-axis pupil config from the model's, with its population defaults resolved."""
+        self.off_axis_pupil = copy.deepcopy(self.model.off_axis_pupil)
         self.off_axis_pupil.resolve_defaults()
+
+    def _build_decentration_config(self) -> None:
+        """Build this eye's decentration config from the model's, resolved for the eye's side.
+
+        A config without a baseline takes the eye's current pupil diameter as its baseline.
+        """
+        self.decentration_config = copy.deepcopy(self.model.decentration_config)
         if self.decentration_config.enabled:
             self.decentration_config.resolve_for_eye(self.which_eye)
             if self.decentration_config.baseline_diameter is None:
                 self.decentration_config.baseline_diameter = self.get_pupil_diameter()
-        if self.decentration_config.enabled or self.off_axis_pupil.enabled:
-            self._update_pupil_position()
 
-        # Capture the rest placement that the gaze-dependent rotation centre pivots about.
-        self._placement = self.position
+    def set_model(self, model: str | EyeModel) -> None:
+        """Change the eye model of this placed eye.
+
+        The model is frozen, so a parameter of a placed eye is changed by giving the eye a model with the
+        new value, from ``EyeModel.copy`` or ``EyeModel.with_parameter``:
+        ``eye.set_model(eye.model.with_parameter("cornea.anterior_k", -0.3))``.
+
+        The eye keeps its side, its placement, its rest orientation, its pupil size and the target it looks
+        at, and turns to that target again (with ``hold_fixation`` off it returns to its rest pose). A rest
+        orientation set with ``set_rest_orientation_at_target`` is derived again for the new model, so the
+        result is the eye that the same calls give for an eye built from the new model. The parts
+        that the changed fields define are built again from the model: the cornea for ``cornea`` or
+        ``axial_length`` (and with it the eyelid), the pupil for the pupil type, boundary points, seed or
+        realistic parameters, the eyelid for ``eyelid_enabled``, and the pupil-centre configs for
+        ``decentration_config`` and ``off_axis_pupil``. A part whose fields are the same objects as before is
+        kept as it is, with any change made to it on this eye. ``default_pupil_diameter`` does not resize the
+        pupil of a placed eye.
+
+        Args:
+            model: The new EyeModel, or the name of a registered one.
+
+        Raises:
+            ValueError: If the eye cannot turn to its target with the new model. The eye is then left in its
+                rest pose with no target.
+
+        """
+        if isinstance(model, str):
+            model = get_eye_model(model)
+        changed = {
+            model_field.name
+            for model_field in fields(EyeModel)
+            if getattr(model, model_field.name) is not getattr(self.model, model_field.name)
+        }
+        self.model = model
+
+        cornea_changed = not changed.isdisjoint(_CORNEA_MODEL_FIELDS)
+        if cornea_changed:
+            self._build_cornea()
+        if not changed.isdisjoint(_PUPIL_MODEL_FIELDS):
+            radii = self.pupil.get_radii()
+            self._build_pupil()
+            self.pupil.set_radii(*radii)
+        if cornea_changed or "eyelid_enabled" in changed:
+            self._build_eyelid(EyeAnatomyDefaults.EYELID_OPENNESS if self.eyelid is None else self.eyelid.openness)
+        if "off_axis_pupil" in changed:
+            self._build_off_axis_pupil()
+        if "decentration_config" in changed:
+            self._build_decentration_config()
+        self._update_pupil_position()
+        if self._rest_definition is None:
+            self._settle_pose()
+        else:
+            self._apply_rest_orientation(self._rest_orientation_at_target(*self._rest_definition))
 
     @property
     def _signed_alpha_rad(self) -> float:
@@ -207,12 +286,16 @@ class Eye:
                 left in its rest pose with no target.
 
         """
+        self._rest_definition = None
+        self._apply_rest_orientation(value)
+
+    def _apply_rest_orientation(self, value: RotationMatrix) -> None:
+        """Take ``value`` as the rest orientation and bring the pose in line with it."""
         self._rest_orientation = value.copy()
         self._rest_orientation_explicitly_set = True
 
         # Keep eyelid orientation aligned to rest orientation (stationary relative to eye rotation)
-        if self.model.eyelid_enabled:
-            self.eyelid_trans[:3, :3] = value
+        self.eyelid_trans[:3, :3] = value
 
         self._settle_pose()
 
@@ -220,7 +303,8 @@ class Eye:
         """Bring the pose in line with the placement and the rest orientation after one of them changed.
 
         The eye takes its rest pose. If it was looking at a target and ``hold_fixation`` is on, it then turns
-        to that target again with the method of its last ``look_at``; otherwise it has no target afterwards.
+        to that target again with the method given to its last ``look_at`` (the model's default if none was
+        given); otherwise it has no target afterwards.
         """
         target, method = self._current_target_point, self._current_look_at_method
         self.trans[:3, :3] = self._rest_orientation
@@ -298,12 +382,25 @@ class Eye:
         The rest pose is that of the eye at its placement, so place the eye first. An eye that looks at a
         target turns to it again from the new rest orientation, as for ``set_rest_orientation``.
 
+        The eye remembers the target, ``up`` and its placement at this call. When its model is changed
+        (``set_model``), the rest orientation is derived from them again, so that the visual axis of the new
+        model is the one that passes through the target. Placing the eye elsewhere leaves the rest
+        orientation as it is.
+
         Raises:
             ValueError: If the target is at the eye's placement, which gives no direction to face.
 
         """
+        rest_orientation = self._rest_orientation_at_target(target_position, up, self._placement)
+        self._rest_definition = (target_position, up, self._placement)
+        self._apply_rest_orientation(rest_orientation)
+
+    def _rest_orientation_at_target(
+        self, target_position: Position3D, up: Position3D | None, placement: Position3D
+    ) -> RotationMatrix:
+        """Rest orientation for which the visual axis of an eye at ``placement`` passes through the target."""
         # Eye placement and target (world)
-        eye_pos = np.array([self._placement.x, self._placement.y, self._placement.z], dtype=float)
+        eye_pos = np.array([placement.x, placement.y, placement.z], dtype=float)
         target_vec = np.array([target_position.x, target_position.y, target_position.z], dtype=float) - eye_pos
         if np.linalg.norm(target_vec) < 1e-12:
             raise ValueError(
@@ -366,7 +463,7 @@ class Eye:
         rest_orientation = orientation_through_target(
             orientation_facing, np.eye(3), axis_point, lambda _orientation: eye_pos, target_position
         )
-        self.set_rest_orientation(RotationMatrix(rest_orientation))
+        return RotationMatrix(rest_orientation)
 
     @property
     def position(self) -> Position3D:
@@ -392,10 +489,7 @@ class Eye:
         """Place the eye and bring its pose in line with the new placement."""
         self._placement = value
         # Eyelid follows eye translation but not rotation
-        if self.model.eyelid_enabled:
-            self.eyelid_trans[0, 3] = value.x
-            self.eyelid_trans[1, 3] = value.y
-            self.eyelid_trans[2, 3] = value.z
+        self.eyelid_trans[:3, 3] = [value.x, value.y, value.z]
         self._settle_pose()
 
     def copy(self, **overrides: object) -> "Eye":
@@ -409,7 +503,11 @@ class Eye:
         model = self.model.copy(**overrides) if overrides else self.model
         new_eye = Eye(model=model, which_eye=self.which_eye, hold_fixation=self.hold_fixation)
         new_eye.position = self.placement
-        if self._rest_orientation_explicitly_set:
+        if self._rest_definition is not None:
+            # Derived for the copy's model, as set_model does.
+            new_eye._rest_definition = self._rest_definition
+            new_eye._apply_rest_orientation(new_eye._rest_orientation_at_target(*self._rest_definition))
+        elif self._rest_orientation_explicitly_set:
             new_eye.set_rest_orientation(self.rest_orientation)
         return new_eye
 
@@ -465,9 +563,9 @@ class Eye:
                 default.
 
         """
-        method = method if method is not None else self.model.look_at_method
-        look_at_target(self, target_position, method)
-        # Recorded only once the eye has turned, so a call that raises leaves the previous target.
+        look_at_target(self, target_position, method if method is not None else self.model.look_at_method)
+        # Recorded only once the eye has turned, so a call that raises leaves the previous target. The method
+        # is recorded as given: None stays the model's default, also after the model is changed.
         self._current_target_point = target_position
         self._current_look_at_method = method
 

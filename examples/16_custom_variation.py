@@ -81,9 +81,10 @@ if __name__ == "__main__":
     )
 
     # A custom parameter variation: GenericEyeVariation sweeps any eye parameter by its dotted path, here the conic
-    # constant of the anterior cornea ("cornea.anterior_radius", "fovea_alpha_deg", etc. work the same way). The
-    # pupil is imaged through the cornea, so reshaping the cornea moves both the reflected glint and the refracted
-    # pupil. Subclass GenericEyeVariation for a named, reusable variation with its own describe().
+    # constant of the anterior cornea ("cornea.anterior_radius", "fovea_alpha_deg", etc. work the same way). Each
+    # step gives the eye a model with the new value, so the corneal apex stays where it is and only the shape of the
+    # cornea changes. The pupil is imaged through the cornea, so reshaping it moves both the reflected glint and
+    # the refracted pupil. Subclass GenericEyeVariation for a named, reusable variation with its own describe().
     cornea_k_sweep = GenericEyeVariation("cornea.anterior_k", value_range=[-0.1, -0.5], num_steps=5)
     data_gen.set_experiment_name("cornea_k_sweep")
     k_data = data_gen.execute(cornea_k_sweep)

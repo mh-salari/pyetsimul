@@ -1,18 +1,24 @@
 """Generic parameter variation for any eye model parameter."""
 
 from collections.abc import Iterable
+from dataclasses import fields
 
 import numpy as np
 
 from ..core import Eye
+from ..core.eye_model import EyeModel
 from .core import EyeParameterVariation
+
+_EYE_MODEL_FIELDS = frozenset(model_field.name for model_field in fields(EyeModel))
 
 
 class GenericEyeVariation(EyeParameterVariation):
-    """Generic parameter variation for any eye model parameter.
+    """Generic parameter variation for any eye parameter, named by a path.
 
-    Supports direct property assignment, method calls, and nested object parameters
-    through string-based parameter paths.
+    ``"pupil_diameter"`` sets the pupil size. A path that begins with a field of the eye model
+    (``"fovea_alpha_deg"``, ``"cornea.anterior_k"``) gives the eye a model with the changed value, so the
+    eye is built again for it. Any other path names an attribute of the placed eye or of one of its
+    objects (``"eyelid.openness"``).
     """
 
     def __init__(self, parameter_name: str, value_range: list[float], num_steps: int) -> None:
@@ -51,18 +57,28 @@ class GenericEyeVariation(EyeParameterVariation):
 
     @staticmethod
     def _set_parameter(eye: Eye, parameter_path: str, value: float) -> None:
-        """Set parameter value using path resolution."""
-        # Handle method calls
+        """Set the parameter that the path names on the eye.
+
+        Raises:
+            AttributeError: If the path names no parameter of the eye model and no attribute of the eye.
+
+        """
         if parameter_path == "pupil_diameter":
             eye.set_pupil_diameter(value)
             return
 
-        # Handle nested object parameters
-        if "." in parameter_path:
-            obj_name, attr_name = parameter_path.split(".", 1)
-            obj = getattr(eye, obj_name)
-            setattr(obj, attr_name, value)
+        name, _, attribute = parameter_path.partition(".")
+        if name in _EYE_MODEL_FIELDS:
+            eye.set_model(eye.model.with_parameter(parameter_path, value))
             return
 
-        # Handle direct property assignment
-        setattr(eye, parameter_path, value)
+        # State of the placed eye that is not part of its model.
+        owner, leaf = eye, name
+        if attribute and hasattr(eye, name):
+            owner, leaf = getattr(eye, name), attribute
+        if not hasattr(owner, leaf):
+            raise AttributeError(
+                f"Cannot vary {parameter_path!r}: {type(owner).__name__} has no attribute {leaf!r}, and "
+                f"{name!r} is not a field of the eye model."
+            )
+        setattr(owner, leaf, value)
