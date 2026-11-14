@@ -1,5 +1,6 @@
 """Base grid generation system for spatial parameter variations."""
 
+import math
 from abc import ABC, abstractmethod
 from collections.abc import Iterable
 
@@ -8,11 +9,15 @@ import numpy as np
 from ..types import Position3D
 
 
+def _axis_value_count(min_offset: float, max_offset: float, num_points: int) -> int:
+    """Number of values along a single axis: an axis with equal offsets has one value whatever its grid size."""
+    return 1 if min_offset == max_offset else num_points
+
+
 def _generate_axis_values(center_coord: float, min_offset: float, max_offset: float, num_points: int) -> np.ndarray:
     """Generate values along a single axis."""
-    if min_offset == max_offset or num_points == 1:
-        return np.array([center_coord + min_offset])
-    return np.linspace(center_coord + min_offset, center_coord + max_offset, num_points)
+    count = _axis_value_count(min_offset, max_offset, num_points)
+    return np.linspace(center_coord + min_offset, center_coord + max_offset, count)
 
 
 class GridGenerator(ABC):
@@ -58,6 +63,13 @@ class RegularGrid(GridGenerator):
 
         if any(n < 1 for n in self.grid_size):
             raise ValueError(f"grid_size elements must be >= 1, got {self.grid_size}")
+
+    def __len__(self) -> int:
+        """Number of positions the grid generates."""
+        return math.prod(
+            _axis_value_count(min_offset, max_offset, num_points)
+            for (min_offset, max_offset), num_points in zip((self.dx, self.dy, self.dz), self.grid_size, strict=True)
+        )
 
     def generate_positions(self) -> Iterable[Position3D]:
         """Generate regular grid positions."""

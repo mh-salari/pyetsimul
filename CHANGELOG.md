@@ -105,6 +105,12 @@ ETRA 2026 paper; this log records everything since.
   eye without foveal displacement. Now the plot draws the axis from the fovea of the eye model through the eyeball
   centre, which is the visual axis that `look_at` uses.
 
+- **Fixed: `len()` of `EyePositionVariation` and `TargetPositionVariation` could report more positions than were
+  generated.**
+  An axis whose two limits are equal produces a single value, whatever its grid size. Before, `len()` did not account
+  for this: with `dy=[0, 0]` and `grid_size=[5, 3, 4]` it reported 60 positions, while 20 were generated. The dataset
+  metadata and `describe()` carried the wrong number. Now `len()` returns the number of positions that are generated.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed

@@ -1,6 +1,5 @@
 """Target 3D position variations."""
 
-import math
 from collections.abc import Iterable
 
 from ..types import Position3D
@@ -34,7 +33,7 @@ class TargetPositionVariation(TargetVariation):
 
     def __len__(self) -> int:
         """Return the total number of target positions."""
-        return math.prod(self.grid.grid_size)
+        return len(self.grid)
 
     def generate_values(self) -> Iterable[Position3D]:
         """Generate all target positions using the grid system."""

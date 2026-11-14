@@ -1,6 +1,5 @@
 """Eye 3D position variations."""
 
-import math
 from collections.abc import Iterable
 
 from ..core import Eye
@@ -30,7 +29,7 @@ class EyePositionVariation(EyeParameterVariation):
 
     def __len__(self) -> int:
         """Return the total number of eye positions."""
-        return math.prod(self.grid.grid_size)
+        return len(self.grid)
 
     def generate_values(self) -> Iterable[Position3D]:
         """Generate all eye positions using the grid system."""
