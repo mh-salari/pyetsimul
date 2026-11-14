@@ -117,6 +117,10 @@ ETRA 2026 paper; this log records everything since.
   before, only the constructor did. A tracker saved with an earlier version has no stored method and does not load
   until `"pupil_center_method": "ellipse"` is added to its dictionary.
 
+- **Fixed: `calculate_pupil_center_methods` rejected the method `"convex_hull"`.**
+  Before, it raised `ValueError`, although `take_image` and `Eye.get_pupil_in_camera_image` accept the same three
+  methods (`"ellipse"`, `"center_of_mass"` and `"convex_hull"`). Now it accepts all three.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed

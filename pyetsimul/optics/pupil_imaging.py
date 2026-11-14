@@ -21,6 +21,7 @@ if TYPE_CHECKING:
     from ..core.eye import Eye
 
 MIN_ELLIPSE_POINTS = 5  # fewest points that determine an ellipse
+PUPIL_CENTER_METHODS = ("ellipse", "convex_hull", "center_of_mass")
 
 
 def get_pupil_boundary_image(eye: "Eye", camera: Camera, use_refraction: bool = True) -> PupilData:
@@ -168,28 +169,32 @@ def calculate_pupil_center_methods(
 ) -> PupilData:
     """Gets pupil boundary and center in camera image using specified method.
 
-    Provides unified interface for different pupil center detection methods.
-    Supports ellipse fitting and center of mass calculations.
-
     Args:
         eye: Eye object
         camera: Camera object
         use_refraction: Whether to use refraction model (default True)
         center_method: Method to use for pupil center detection (default "ellipse")
-                      Options: "ellipse", "center_of_mass"
+                      Options: "ellipse", "convex_hull", "center_of_mass"
 
     Returns:
-        PupilData object containing boundary points and center using specified method
+        PupilData object containing boundary points and center using specified method, or empty
+        PupilData when the pupil does not project into the image
 
     Raises:
         ValueError: If center_method is not recognized
 
     """
-    if center_method == "ellipse":
-        return get_pupil_ellipse_image(eye, camera, use_refraction)
-    if center_method == "center_of_mass":
-        return get_pupil_center_mass_image(eye, camera, use_refraction)
-    raise ValueError(f"Unknown center_method '{center_method}'. Use 'ellipse' or 'center_of_mass'")
+    if center_method not in PUPIL_CENTER_METHODS:
+        raise ValueError(f"Unknown center_method '{center_method}'. Use one of {PUPIL_CENTER_METHODS}")
+
+    pupil_data = get_pupil_boundary_image(eye, camera, use_refraction=use_refraction)
+    if not pupil_data.boundary_points:
+        return PupilData.empty()
+
+    pupil_center = calculate_pupil_center_from_boundary(
+        pupil_data.boundary_points, camera.camera_matrix.resolution, center_method=center_method
+    )
+    return PupilData(boundary_points=pupil_data.boundary_points, center=pupil_center)
 
 
 def project_point_to_image(
