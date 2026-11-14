@@ -405,11 +405,10 @@ class Eye:
                 default.
 
         """
-        # Update current target point
-        self._current_target_point = target_position
-
         method = method if method is not None else self.model.look_at_method
         look_at_target(self, target_position, method)
+        # Recorded only once the eye has turned, so a call that raises leaves the previous target.
+        self._current_target_point = target_position
 
     def get_pupil(self) -> PupilData:
         """Get pupil boundary points in world coordinates.

@@ -125,6 +125,10 @@ ETRA 2026 paper; this log records everything since.
   The tear film is modelled only on a `ConicCornea` or `ToricCornea` with its posterior surface. Before, on a
   `SphericalCornea` or with `use_posterior_surface=False`, the option was accepted and had no effect.
 
+- **Fixed: after a failed `look_at`, `current_target_point` named a target the eye was not looking at.**
+  Before, when `look_at` raised `ValueError` (unknown method, or a target at the eye position), the eye had not turned,
+  but `current_target_point` already held the new target. Now it keeps the previous target.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed
