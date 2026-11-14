@@ -61,6 +61,13 @@ ETRA 2026 paper; this log records everything since.
   face. Camera images of an eye with an eyelid change for every gaze direction in which the eye is turned away from its
   rest orientation.
 
+- **Fixed: a key press in the interactive plots moved the eye further than one step.**
+  In `plot_interactive_cameras`, `plot_interactive_pupil_comparison` and `create_interactive_gaze_plot`, the keyboard
+  moves the eye in steps. Before, every step also added the displacement of the corneal apex from the last eye
+  rotation, so a 1 mm step could move the eye by about 4 mm, and stepping back did not return it to its start. In
+  `create_interactive_gaze_plot`, the Space key reset the eye to a displaced position. Now a step has the stated size,
+  and Space returns the eye to its initial position.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed

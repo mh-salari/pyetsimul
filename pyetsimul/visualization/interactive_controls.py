@@ -32,7 +32,7 @@ class InteractiveControls:
             eyes: List of Eye objects to control (IJKL moves all together).
             target_point: Target point for gaze.
             step_size: Movement step size in mm.
-            initial_eye_positions: Initial positions for each eye (defaults to current).
+            initial_eye_positions: Initial positions for each eye (defaults to where each eye is placed).
             initial_target_position: Initial target position (defaults to current).
             custom_handlers: Additional key handlers.
 
@@ -41,9 +41,9 @@ class InteractiveControls:
         self.target_point = target_point
 
         self.step_size = step_size
-        self.initial_eye_positions = initial_eye_positions or [
-            Position3D(eye.position.x, eye.position.y, eye.position.z) for eye in eyes
-        ]
+        self.initial_eye_positions = (
+            [eye.placement for eye in eyes] if initial_eye_positions is None else initial_eye_positions
+        )
         self.initial_target_position = initial_target_position or Point3D(
             target_point.x, target_point.y, target_point.z
         )
@@ -105,18 +105,14 @@ class InteractiveControls:
     def _move_eyes(self, dx: float, dy: float, dz: float) -> None:
         """Move all eyes by the specified amounts (simulates head movement)."""
         for eye in self.eyes:
-            eye.trans[0, 3] += dx
-            eye.trans[1, 3] += dy
-            eye.trans[2, 3] += dz
-            eye.position = Position3D(eye.trans[0, 3], eye.trans[1, 3], eye.trans[2, 3])
+            # Stepped from the placement: the current position also holds the shift of the last look_at.
+            placement = eye.placement
+            eye.position = Position3D(placement.x + dx, placement.y + dy, placement.z + dz)
 
     def reset_positions(self) -> None:
         """Reset all eyes and target to initial positions."""
         for eye, initial_pos in zip(self.eyes, self.initial_eye_positions, strict=True):
-            eye.trans[0, 3] = initial_pos.x
-            eye.trans[1, 3] = initial_pos.y
-            eye.trans[2, 3] = initial_pos.z
-            eye.position = Position3D(eye.trans[0, 3], eye.trans[1, 3], eye.trans[2, 3])
+            eye.position = initial_pos
 
         self.target_point = Point3D(
             self.initial_target_position.x, self.initial_target_position.y, self.initial_target_position.z
