@@ -32,6 +32,10 @@ ETRA 2026 paper; this log records everything since.
 - **Removed: `ComposedVariation.description`.**
   Nothing used it. `describe()` returns the description.
 
+- **Fixed: a camera with glint noise could not be saved.**
+  Before, `Camera.serialize` raised `AttributeError` for a camera with a `GlintNoiseConfig`, so no dataset could be
+  generated with such a camera.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed

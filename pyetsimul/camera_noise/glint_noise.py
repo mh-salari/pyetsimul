@@ -75,6 +75,33 @@ class GlintNoiseConfig:
         else:
             raise ValueError(f"Unknown noise type: {self.noise_type}")
 
+    def serialize(self) -> dict:
+        """Serialize to dictionary representation."""
+        return {
+            "noise_type": self.noise_type,
+            "std": self.std,
+            "offset_x": self.offset_x,
+            "offset_y": self.offset_y,
+            "mean": None if self.mean is None else [float(value) for value in self.mean],
+            "covariance": (
+                None if self.covariance is None else [[float(value) for value in row] for row in self.covariance]
+            ),
+            "seed": self.seed,
+        }
+
+    @classmethod
+    def deserialize(cls, data: dict) -> "GlintNoiseConfig":
+        """Deserialize from dictionary representation."""
+        return cls(
+            noise_type=data["noise_type"],
+            std=data["std"],
+            offset_x=data["offset_x"],
+            offset_y=data["offset_y"],
+            mean=data["mean"],
+            covariance=data["covariance"],
+            seed=data["seed"],
+        )
+
 
 def apply_glint_noise(glint_position: Point2D, config: GlintNoiseConfig | None) -> Point2D:
     """Add noise to glint position based on the provided configuration.
