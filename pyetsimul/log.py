@@ -8,7 +8,8 @@ Usage:
 
     set_log_level(LogLevel.SILENT)     # only errors
     set_log_level(LogLevel.WARNING)    # warnings + errors
-    set_log_level(LogLevel.INFO)       # everything (default)
+    set_log_level(LogLevel.INFO)       # progress and results as well (default)
+    set_log_level(LogLevel.DEBUG)      # also one line for every glint that is not found
 
     set_log_file("simulation.log")     # also write to file
     close_log_file()                   # stop writing to file
@@ -30,6 +31,7 @@ class LogLevel(IntEnum):
     SILENT = 0
     WARNING = 1
     INFO = 2
+    DEBUG = 3
 
 
 _level: LogLevel = LogLevel.INFO
@@ -105,6 +107,16 @@ def info(*args: Any, **kwargs: Any) -> None:
     if _level >= LogLevel.INFO:
         print(*args, **kwargs)
     _write_to_file(" ".join(str(a) for a in args))
+
+
+def debug(*args: Any, **kwargs: Any) -> None:
+    """Print debug-level messages (one line per event that repeats in a simulation, such as a missing glint).
+
+    Shown only when log level is DEBUG, so a large run does not print one line per image by default.
+    """
+    if _level >= LogLevel.DEBUG:
+        print(*args, **kwargs)
+        _write_to_file(" ".join(str(a) for a in args), level="DEBUG")
 
 
 def warning(*args: Any, **kwargs: Any) -> None:

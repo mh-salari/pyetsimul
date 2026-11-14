@@ -3,7 +3,6 @@
 Implements geometric and optimization-based methods for finding glint positions on spherical and conic surfaces.
 """
 
-import warnings
 from typing import TYPE_CHECKING, cast
 
 import numpy as np
@@ -16,6 +15,7 @@ from ..geometry.intersections import (
     intersect_ray_sphere,
     point_on_conic_surface,
 )
+from ..log import debug
 from ..types import Direction3D, IntersectionResult, Point3D, Position3D, Ray
 
 if TYPE_CHECKING:
@@ -93,10 +93,9 @@ def find_reflection_sphere(
         )
         return glint_pos
     except ValueError:
-        warnings.warn(
-            f"No glint found due to degenerate geometry: Light={light_pos}, Camera={camera_pos}, Sphere center={sphere_center}",
-            RuntimeWarning,
-            stacklevel=2,
+        debug(
+            f"No glint found due to degenerate geometry: Light={light_pos}, Camera={camera_pos}, "
+            f"Sphere center={sphere_center}"
         )
         return None
 
@@ -206,6 +205,9 @@ def find_reflection_conic(
         perp_norm = np.linalg.norm(perp)
         if perp_norm < 1e-15:
             # Light and camera are collinear from center — degenerate
+            debug(
+                f"No glint found: the light at {light_pos} and the camera at {camera_pos} are in line with the conic"
+            )
             return None
         perp /= perp_norm
 
@@ -229,6 +231,7 @@ def find_reflection_conic(
         )
 
         if ier != 1:
+            debug(f"No glint found: the reflection solver did not converge. Light={light_pos}, Camera={camera_pos}")
             return None
 
         # Reconstruct the glint position from the solution
@@ -239,11 +242,7 @@ def find_reflection_conic(
         return point_on_conic_surface(conic_center, n_vec, radius, conic_constant, axx, ayy, axy)
 
     except (ValueError, TypeError):
-        warnings.warn(
-            f"No glint found on conic surface: Light={light_pos}, Camera={camera_pos}, Conic center={conic_center}",
-            RuntimeWarning,
-            stacklevel=2,
-        )
+        debug(f"No glint found on conic surface: Light={light_pos}, Camera={camera_pos}, Conic center={conic_center}")
         return None
 
 
@@ -404,6 +403,7 @@ def find_corneal_reflection(eye: "Eye", light: "Light", camera: "Camera") -> Pos
         cr = Position3D.from_point3d(cr_point3d)
         # Check if point is on visible cornea (within boundaries and not occluded by eyelid)
         if not eye.point_on_visible_cornea(cr):
+            debug(f"No glint found: the reflection of the light at {light.position} is off the visible cornea")
             cr = None
 
     return cr

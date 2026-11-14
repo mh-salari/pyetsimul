@@ -10,7 +10,7 @@ from typing import TYPE_CHECKING
 import cv2
 import numpy as np
 
-from pyetsimul.log import info, table
+from pyetsimul.log import debug, info, table
 
 from ..camera_noise import GlintNoiseConfig, apply_glint_noise
 from ..optics.glint_size import compute_glint_diameter
@@ -542,6 +542,7 @@ class Camera:
                     # Project to camera image coordinates using refactored interface
                     projection_result = self.project(cr_3d)
                     if np.any(np.isnan(projection_result.image_points)):
+                        debug(f"No glint found: the reflection of the light at {light.position} is outside the image")
                         corneal_reflections.append(None)
                         glint_sizes_px.append(None)
                     else:

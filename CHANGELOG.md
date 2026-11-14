@@ -226,6 +226,20 @@ ETRA 2026 paper; this log records everything since.
   computation, and looking at the rest target does not turn the eye. The rest orientation of an eye with foveal
   displacement changes by 0.11 deg for a target at 700 mm.
 
+- **Changed: missing glints are reported once per dataset, with a count.**
+  A light gives no glint in an image when, for example, its reflection falls outside the cornea or outside the camera
+  image. Before, the reporting was uneven: when the reflection solver found no reflection point, a `RuntimeWarning` was
+  printed for every such glint, while a glint outside the visible cornea or outside the image was not reported at all.
+  Now `DataGenerationStrategy.execute` prints one line with the number of measurements that lack a glint or the pupil
+  centre.
+
+- **Added: the reason for every missing glint can be printed, with the new log level `LogLevel.DEBUG`.**
+  `set_log_level(LogLevel.DEBUG)` prints one line for every glint that is missing from an image, with the reason. A
+  missing glint is not an error. A light gives no glint when its reflection falls outside the cornea or is covered by
+  the eyelid, when the reflection falls outside the camera image, or when no reflection point is found for the
+  positions of the light, the camera and the eye. `DEBUG` is a fourth log level, more detailed than `SILENT`, `WARNING`
+  and `INFO` (the default). Dataset generation passes the log level on to its worker processes.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed

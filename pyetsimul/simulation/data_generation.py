@@ -6,7 +6,7 @@ import multiprocessing
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from pyetsimul.log import info
+from pyetsimul.log import get_log_level, info, set_log_level, warning
 
 from ..core import Eye
 from ..types import Position3D
@@ -181,8 +181,9 @@ class DataGenerationStrategy(VariationStrategy):
                     for i, value in enumerate(variation.generate_values())
                 ]
 
-                # Use multiprocessing Pool to parallelize the generation of measurements
-                with multiprocessing.Pool() as pool:
+                # Use multiprocessing Pool to parallelize the generation of measurements. The workers get
+                # the log level of this process, which a spawned worker would not inherit.
+                with multiprocessing.Pool(initializer=set_log_level, initargs=(get_log_level(),)) as pool:
                     results = pool.map(_process_single_variation, tasks)
 
                 eye_data["measurements"] = results
@@ -190,6 +191,8 @@ class DataGenerationStrategy(VariationStrategy):
                 camera_data["eyes"].append(eye_data)
 
             all_data["cameras"].append(camera_data)
+
+        self._report_missing_features(all_data, total_measurements)
 
         # Save the collected data to a file (if requested).
         saved_files = []
@@ -205,6 +208,27 @@ class DataGenerationStrategy(VariationStrategy):
             "data": all_data,
             "parameter_variation": variation,  # Store variation for plotting
         }
+
+    @staticmethod
+    def _report_missing_features(all_data: dict[str, Any], total_measurements: int) -> None:
+        """Warn once, with counts, when measurements lack a glint or the pupil center.
+
+        A missing feature is stored as None and makes a gaze model return no prediction, so the counts say
+        how much of the dataset is affected. The per-measurement reasons are printed at the DEBUG log level.
+        """
+        measurements = [
+            measurement
+            for camera_data in all_data["cameras"]
+            for eye_data in camera_data["eyes"]
+            for measurement in eye_data["measurements"]
+        ]
+        without_glint = sum(1 for m in measurements if any(glint is None for glint in m["corneal_reflections"]))
+        without_pupil = sum(1 for m in measurements if m["pupil_center"] is None)
+        if without_glint or without_pupil:
+            warning(
+                f"Of {total_measurements} measurements, {without_glint} have no glint for at least one light and "
+                f"{without_pupil} have no pupil center."
+            )
 
     def generate_single_measurement(
         self,
