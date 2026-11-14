@@ -212,7 +212,19 @@ def find_reflection_conic(
         solution, _info, ier, _msg = fsolve(
             _reflection_residuals_conic,
             x0=np.array([0.5, 0.0]),
-            args=(to_camera, to_light, perp, light_pos, camera_pos, conic_center, radius, conic_constant, axx, ayy, axy),
+            args=(
+                to_camera,
+                to_light,
+                perp,
+                light_pos,
+                camera_pos,
+                conic_center,
+                radius,
+                conic_constant,
+                axx,
+                ayy,
+                axy,
+            ),
             full_output=True,
         )
 
