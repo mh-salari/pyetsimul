@@ -13,6 +13,7 @@ if TYPE_CHECKING:
 import numpy as np
 
 from ..core import Eye
+from ..core.cornea import ConicCornea, SphericalCornea
 from ..core.rotation_center import EyeballCenter
 from ..geometry.intersections import intersect_ray_conic, intersect_ray_sphere
 from ..types import Direction3D, Position3D
@@ -108,13 +109,14 @@ def plot_eye_anatomy(eye: Eye, ax: "Axes | None" = None) -> "Axes":
     limbus_z_local = apex_pos.z + eye.cornea.get_corneal_depth()
 
     # Generate corneal surface points using proper transformation handling
-    # Choose intersection function based on cornea type
-    if eye.cornea.cornea_type == "conic":
+    # Choose intersection function based on cornea type. A toric cornea is drawn as the conic it is built
+    # on; the difference between its two meridians is too small to show at this scale.
+    if isinstance(eye.cornea, ConicCornea):
         intersection_func = intersect_ray_conic
-    elif eye.cornea.cornea_type == "spherical":
+    elif isinstance(eye.cornea, SphericalCornea):
         intersection_func = intersect_ray_sphere
     else:
-        raise ValueError(f"Unknown cornea type: {eye.cornea.cornea_type}")
+        raise TypeError(f"Unknown cornea type: {eye.cornea.cornea_type}")
 
     anterior_points = generate_corneal_surface_points(eye, intersection_func, "anterior", n_points=50)
     posterior_points = generate_corneal_surface_points(eye, intersection_func, "posterior", n_points=50)

@@ -215,6 +215,10 @@ ETRA 2026 paper; this log records everything since.
   eyeball centre as "Rotation Center". Now the point is labelled "Eyeball Center", and the points the eye rotates about
   are marked as well.
 
+- **Fixed: `plot_eye_anatomy` failed for a toric cornea.**
+  Before, it raised `Unknown cornea type: toric`, so the `gkaModelEye` eye model could not be plotted. Now a toric
+  cornea is drawn as the conic it is built on.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed
