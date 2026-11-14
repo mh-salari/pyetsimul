@@ -87,6 +87,14 @@ ETRA 2026 paper; this log records everything since.
   later was cut to 0 without a message. A `TransformationMatrix` or `RotationMatrix` also shared its memory with the
   array it was built from, so changing one changed the other. Now each stores its own floating-point copy.
 
+- **Fixed: `look_at` aimed the visual axis about 0.1 deg beside the target (since 4.0.0).**
+  With the methods `visual_axis` and `line_of_sight`, `look_at` turns the eye until the visual axis, or the line of
+  sight, passes through the target. Before, that axis was only made parallel to the line from the corneal apex to the
+  target, so it passed beside the target: by 1.36 mm for the default eye, which is 0.13 deg at a distance of 600 mm.
+  Now it passes through the target. The gaze direction of every eye with foveal displacement (angle kappa) changes by
+  this small angle, and the simulated images change with it. The methods `optical_then_kappa` and
+  `optical_axis_target_direction`, and eyes without foveal displacement, are not affected.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed

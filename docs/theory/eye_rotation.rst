@@ -90,6 +90,10 @@ direction is measured from, and the post-rotation they apply.
        and the axis does not pass through a finite target. This is the eyePose convention of
        gkaModelEye [3].
 
+The visual axis runs from the fovea through the eyeball center, and the line of sight from the
+fovea through the pupil center. For ``visual_axis`` and ``line_of_sight`` the aim direction is
+measured from a point on the aimed axis, so the axis itself passes through the target.
+
 The model carries the magnitude of the horizontal foveal angle, and the eye applies the sign
 for its side.
 
