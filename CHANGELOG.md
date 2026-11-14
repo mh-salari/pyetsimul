@@ -4,6 +4,19 @@ All notable changes to PyEtSimul are recorded here. The format follows
 [Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version 3.0.0 is the release presented in the
 ETRA 2026 paper; this log records everything since.
 
+## [Unreleased]
+
+- **Fixed: a copy made with `Eye.copy()` was at a different position than the original eye.**
+  `Eye.position` returns the position of the corneal apex, which moves when the eye turns, because the eye turns about
+  a point behind the cornea. Before, `Eye.copy()` used this moved position for the copy, so the copy of an eye that had
+  turned was displaced. Now it uses `Eye.placement`, the position the eye was given.
+
+- **Fixed: the two eyes in `plot_interactive_pupil_comparison` drifted apart.**
+  The plot compares an eye with an elliptical pupil and an eye with a realistic pupil at the same position. Before, at
+  every redraw, the second eye was placed at the corneal apex of the first, which moves when the eye turns. After the
+  first eye rotation the two eyes were no longer at the same position. Now the two eyes stay at the position they were
+  given.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed

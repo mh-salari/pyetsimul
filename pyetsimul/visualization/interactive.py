@@ -264,7 +264,7 @@ def plot_interactive_pupil_comparison(
         controls.reset_positions()
         # Sync realistic eye and reset pupil sizes
         eye_realistic.trans = eye_elliptical.trans.copy()
-        eye_realistic.position = eye_elliptical.position
+        eye_realistic.position = eye_elliptical.placement
         eye_elliptical.set_pupil_radii(initial_pupil_radii[0], initial_pupil_radii[1])
         eye_realistic.set_pupil_radii(initial_pupil_radii[0], initial_pupil_radii[1])
 
@@ -300,7 +300,7 @@ def plot_interactive_pupil_comparison(
         """Update the visualization with current eye positions."""
         # Sync realistic eye to match elliptical eye position
         eye_realistic.trans = eye_elliptical.trans.copy()
-        eye_realistic.position = eye_elliptical.position
+        eye_realistic.position = eye_elliptical.placement
 
         # Both eyes look at the same target
         eye_elliptical.look_at(controls.target_point)

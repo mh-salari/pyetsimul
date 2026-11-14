@@ -164,7 +164,7 @@ class Eye:
         if self.decentration_config.enabled or self.off_axis_pupil.enabled:
             self._update_pupil_position()
 
-        # Capture the rest placement (globe centre) that the gaze-dependent rotation centre pivots about.
+        # Capture the rest placement that the gaze-dependent rotation centre pivots about.
         self._placement = self.position
 
     @property
@@ -219,12 +219,11 @@ class Eye:
 
     @property
     def placement(self) -> Position3D:
-        """Get the commanded eye position (read-only).
+        """Get the position the eye was placed at, the last value assigned to :attr:`position` (read-only).
 
-        The pivot anchor for the gaze-direction-dependent rotation centre. It differs from
-        :attr:`position` after a re-pivot: ``position`` is the globe centre in world coordinates, while
-        ``placement`` is the position the eye was commanded to and about which it re-pivots when turning
-        to off-axis targets.
+        The rotation centres are fixed relative to this point. With a gaze-dependent ``RotationCenter``,
+        ``look_at`` turns the eye about centres behind the corneal apex, so the eye-local origin that
+        :attr:`position` returns moves away from ``placement`` while ``placement`` itself stays put.
         """
         return self._placement
 
@@ -318,10 +317,12 @@ class Eye:
 
     @property
     def position(self) -> Position3D:
-        """Get/set the world position of the eye-local origin.
+        """Get the current world position of the eye-local origin, or set the eye's placement.
 
         The origin is the corneal apex under the "apex" placement convention and the eyeball centre
-        under the "center" convention.
+        under the "center" convention. Setting it places the eye and records the value as
+        :attr:`placement`. With a gaze-dependent ``RotationCenter``, ``look_at`` moves the origin as the
+        eye turns, so after a ``look_at`` the value read here can differ from the value set.
         """
         return Position3D.from_array(self.trans[:, 3])
 
@@ -342,13 +343,13 @@ class Eye:
         """Return a new Eye, optionally overriding model fields with a derived EyeModel.
 
         Mirrors :meth:`EyeModel.copy` at the eye level: keyword overrides are forwarded to a derived
-        copy of the model, so the shared named model is never mutated, and the placement (position,
-        rest orientation, which_eye) carries over. Dynamic state -- a changed pupil size, the current
+        copy of the model, so the shared named model is never mutated, and the placement, rest
+        orientation and which_eye carry over. Dynamic state -- a changed pupil size, the current
         gaze target, registered per-size shapes -- is not copied; the result is a freshly built eye.
         """
         model = self.model.copy(**overrides) if overrides else self.model
         new_eye = Eye(model=model, which_eye=self.which_eye)
-        new_eye.position = self.position
+        new_eye.position = self.placement
         if self._rest_orientation_explicitly_set:
             new_eye.set_rest_orientation(self.rest_orientation)
         return new_eye
