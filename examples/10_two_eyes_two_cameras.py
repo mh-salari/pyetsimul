@@ -48,7 +48,7 @@ for x in (-30, 30):
     camera = Camera()
     camera.camera_matrix.focal_length = 1500  # px; zoom in on the eye pair
     camera.position = Position3D(x, 0, 0)
-    camera.point_at_binocular(eye_left.position, eye_right.position)  # aim at the midpoint, rolled to level the eyes
+    camera.point_at_binocular(eye_left.placement, eye_right.placement)  # aim at the midpoint, rolled to level the eyes
     cameras.append(camera)
 
 # Left panel: the 3D setup. plot_setup returns the colours it gave the eyes and cameras, so the camera view can

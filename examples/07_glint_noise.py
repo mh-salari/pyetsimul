@@ -37,9 +37,10 @@ eye.set_rest_orientation_at_target(Position3D(0, 0, 100), up=Position3D(0, 0, 1)
 eye.look_at(Position3D(-50, 0, 50))  # rotate the eye to gaze at the target
 lights = [Light(position=Position3D(120, 0, 0))]  # its corneal reflection is the glint
 
-# The noise-free camera gives the pupil and the true, noise-free glint position.
+# The noise-free camera gives the pupil and the true, noise-free glint position. The cameras are aimed at where
+# the eye was placed: eye.position is the corneal apex, which has moved now that the eye is turned.
 ref_camera = Camera()
-ref_camera.point_at(eye.position)
+ref_camera.point_at(eye.placement)
 ref_image = ref_camera.take_image(eye, lights)
 true_glint = ref_image.corneal_reflections[0]
 
@@ -53,7 +54,7 @@ handles = [
 for name, config, color, marker in NOISE:
     # Giving the noise model to the camera is what applies it: take_image perturbs the glint it computes.
     camera = Camera(glint_noise_config=config)
-    camera.point_at(eye.position)
+    camera.point_at(eye.placement)
     glint = camera.take_image(eye, lights).corneal_reflections[0]
     ax.scatter(
         glint.x, glint.y, color=color, marker=marker, s=45, alpha=0.5, zorder=5, edgecolor="black", linewidth=0.3

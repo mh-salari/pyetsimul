@@ -15,6 +15,7 @@ base = get_eye_model("PyEtSimul")
 # Positions are in millimetres; +x right, +y depth (away from the camera), +z up.
 eye = Eye(model=base)
 eye.position = Position3D(0, 250, 100)  # place the eye in the scene
+eye.set_rest_orientation_at_target(Position3D(0, 0, 100), up=Position3D(0, 0, 1))  # rest it facing the scene, +z up
 target = Position3D(-50, 0, 50)  # the point the eye gazes at (move it with the arrow keys)
 
 camera = Camera()

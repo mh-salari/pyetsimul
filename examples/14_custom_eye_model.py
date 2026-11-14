@@ -2,9 +2,10 @@
 
 An eye in PyEtSimul is defined by an immutable EyeModel: its cornea, angle kappa, rotation centre, look-at
 convention and pupil. The named models ("PyEtSimul", "et_simul", "gkaModelEye") are just EyeModels, and you
-build your own the same way by setting any of those fields. This constructs a custom eye that differs from the
-built-in PyEtSimul across its cornea (a two-surface conic), angle kappa, look-at convention and rotation centre,
-renders it, then uses copy() to flatten its cornea and shows the render move.
+build your own the same way by setting any of those fields. This constructs a custom eye field by field (cornea,
+angle kappa, look-at convention, rotation centre); against the built-in PyEtSimul it changes the angle kappa, the
+look-at convention and the rotation centre. It renders the eye, then uses copy() to flatten its cornea and shows
+the render move.
 """
 
 from tabulate import tabulate
@@ -25,15 +26,15 @@ def render(model: EyeModel) -> tuple:
     eye = Eye(model=model, which_eye="left")
     eye.position = Position3D(0, 250, 100)  # place the eye in the scene
     eye.set_rest_orientation_at_target(Position3D(0, 0, 100), up=Position3D(0, 0, 1))  # rest it facing the scene
-    eye.look_at(target)  # rotate the eye to gaze at the target
     camera = Camera()
-    camera.point_at(eye.position)  # aim the camera at the eye
+    camera.point_at(eye.position)  # aim the camera at the eye, before the eye turns and its apex moves
+    eye.look_at(target)  # rotate the eye to gaze at the target
     image = camera.take_image(eye, lights)
     return image.pupil_center, image.corneal_reflections[0]
 
 
-# The built-in PyEtSimul eye is a bare EyeModel of defaults: a single-surface spherical cornea, angle kappa
-# 6/2 deg, anatomical Fick rotation centres and the visual-axis look-at.
+# The built-in PyEtSimul eye is a bare EyeModel of defaults: a two-surface conic cornea (R = 7.76 mm), angle
+# kappa 6/2 deg, anatomical Fick rotation centres and the visual-axis look-at.
 builtin = get_eye_model("PyEtSimul")
 
 # Build a custom EyeModel from scratch. An EyeModel is far more than a cornea: it also carries the look-at

@@ -43,6 +43,8 @@ if __name__ == "__main__":
     base = get_eye_model("PyEtSimul")
     eye = Eye(model=base)
     eye.position = Position3D(0.0, 700.0, 50.0)  # in front of the screen (+y), a little above its centre
+    # At rest the eye looks at the screen centre, with +z as its up direction.
+    eye.set_rest_orientation_at_target(Position3D(0.0, 0.0, 0.0), up=Position3D(0.0, 0.0, 1.0))
 
     camera = Camera()
     camera.position = Position3D(0.0, 350.0, -150.0)  # between the screen and the eye, below it, looking up
@@ -64,9 +66,10 @@ if __name__ == "__main__":
         dz=[-SCREEN_H / 2, SCREEN_H / 2],
         grid_size=[16, 1, 16],
     )
-    # Observer test: gaze target fixed, sweep the eye/head position around where it was calibrated.
+    # Observer test: gaze target fixed, sweep the eye/head position around where it was calibrated. That place is
+    # eye.placement; eye.position is the corneal apex, which the calibration has left turned to its last target.
     observer_test = EyePositionVariation(
-        center=eye.position,
+        center=eye.placement,
         dx=[-50.0, 50.0],
         dy=[-50.0, 50.0],
         dz=[0.0, 0.0],

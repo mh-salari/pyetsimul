@@ -20,6 +20,7 @@ from pyetsimul.visualization import plot_camera_view_of_eye
 # Each size carries its plot colour and the marker drawn at its decentred centre; each model its line style.
 SIZES = [("constricted", 2.5, "#1f77b4", "+"), ("dilated", 7.0, "#d62728", "x")]  # name, diameter mm, colour, marker
 MODELS = [("realistic", "-"), ("elliptical", "--")]  # name, line style
+PUPIL_SEED = 5
 
 base = get_eye_model("PyEtSimul")
 # Positions are in millimetres; +x right, +y depth (away from the camera), +z up.
@@ -34,7 +35,10 @@ def make_eye(pupil_type: str) -> Eye:
     """A left PyEtSimul eye with the given pupil model and pupil-size decentration on, looking at the target."""
     # Enabling decentration turns on the Wildenmann 2013 model: the pupil centre shifts as the diameter changes
     # (its direction is eye-specific), which is the physical cause of the PSA.
-    model = base.copy(pupil_type=pupil_type, decentration_config=PupilDecentrationConfig(enabled=True))
+    # The seed fixes the shape signature of the realistic pupil, so every run draws the same outline.
+    model = base.copy(
+        pupil_type=pupil_type, pupil_random_seed=PUPIL_SEED, decentration_config=PupilDecentrationConfig(enabled=True)
+    )
     eye = Eye(model=model, which_eye="left")
     eye.position = Position3D(0, 250, 100)  # place the eye in the scene
     # Rest the eye facing the scene so look_at is a small realistic rotation rather than a ~90 deg swing.

@@ -81,12 +81,15 @@ from pyetsimul.types import Position3D
 
 eye = Eye()  # a bare Eye() uses the default "PyEtSimul" model
 eye.position = Position3D(0, 250, 100)
-eye.look_at(Position3D(-50, 0, 50))  # fixate a point in the world
+# how the eye sits before it looks at anything: facing the camera side (toward -y), with +z up
+eye.set_rest_orientation_at_target(Position3D(0, 0, 100), up=Position3D(0, 0, 1))
 
 camera = Camera()
-camera.point_at(eye.position)  # aim the camera at the eye
+camera.point_at(eye.position)  # aim the camera at the eye, before the eye turns and its apex moves
 
 light = Light(position=Position3D(100, 0, 0))  # the glint is this light's reflection on the cornea
+
+eye.look_at(Position3D(-50, 0, 50))  # fixate a point in the world
 
 image = camera.take_image(eye, [light])
 print(image.pupil_center)             # pupil centre in image pixels

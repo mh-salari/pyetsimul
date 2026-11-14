@@ -533,6 +533,25 @@ ETRA 2026 paper; this log records everything since.
 - **Fixed: `plot_axis` raised `TypeError` on every call.**
   The function draws a labelled arrow in a 3D plot. Now it works.
 
+- **Fixed: the eye was upside down in seven examples and in the README quickstart.**
+  Examples 01, 02, 11, 12, 13, 15 and 16 and the README quickstart placed the eye without giving it a rest orientation,
+  which is the direction the eye faces before it looks at a target. The default rest orientation looks along the world
+  -z axis. In these scenes +z is up, so the eye started out looking straight down and had to turn about 90 deg to face
+  the screen. That left it upside down, with its corneal apex about 19 mm from the position it was given. Now the
+  examples call `set_rest_orientation_at_target` first, so the eye starts out facing the screen. Their printed numbers
+  change.
+
+- **Fixed: four examples aimed the camera at a displaced eye position.**
+  Before, examples 01, 04, 07 and 14 aimed the camera at `eye.position` after `look_at`. `Eye.position` is the position
+  of the corneal apex, which has moved by then. Now they aim the camera before the eye turns, or at `eye.placement`.
+  For the same reason, example 13 now centres its range of head positions on `eye.placement`. Example 05 gives its
+  realistic pupil a seed, so its output is the same in every run. The printed numbers of these examples change.
+
+- **Fixed: the first code example on the "Getting started" documentation page raised `TypeError`.**
+  The example built the eye with `Eye(eyelid_enabled=True, ...)`. Since 4.0.0 these settings are given through an
+  `EyeModel`, so the example could not be run. Now it builds the eye from an `EyeModel`. The list of examples on the
+  same page named files that no longer exist; now it lists the sixteen current examples.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed

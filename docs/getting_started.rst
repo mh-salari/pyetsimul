@@ -4,18 +4,26 @@ Getting Started
 Installation
 ------------
 
-Clone the repository and install dependencies using `uv <https://docs.astral.sh/uv/>`_:
+Install the released package from PyPI:
 
 .. code-block:: bash
 
-   git clone https://github.com/your-repo/pyetsimul.git
+   pip install pyetsimul
+
+To work on the source, clone the repository and install its dependencies with
+`uv <https://docs.astral.sh/uv/>`_:
+
+.. code-block:: bash
+
+   git clone https://github.com/mh-salari/pyetsimul.git
    cd pyetsimul
    uv sync
 
 Basic Usage
 -----------
 
-The following walkthrough is based on ``examples/basic_usage_demo.py``.
+The following walkthrough builds a scene step by step. ``examples/01_hello_PyEtSimul.py`` is the
+shortest complete script.
 
 Setting Up the Components
 ~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -26,10 +34,11 @@ Every simulation requires three core components: an **Eye**, a **Camera**, and o
 .. code-block:: python
 
    from pyetsimul.core import Eye, Camera, Light
+   from pyetsimul.core.eye_model import EyeModel
    from pyetsimul.types import Position3D, RotationMatrix
 
-   # Create an eye with eyelid modeling enabled
-   eye = Eye(eyelid_enabled=True, pupil_boundary_points=50)
+   # Create an eye with eyelid modeling enabled. The eye model holds the anatomy; the eye places it in the scene.
+   eye = Eye(model=EyeModel(eyelid_enabled=True, pupil_boundary_points=50))
    eye.eyelid.openness = 0.65
 
    # Set the eye orientation and position
@@ -42,7 +51,8 @@ Every simulation requires three core components: an **Eye**, a **Camera**, and o
    # Create a light source
    light = Light(position=Position3D(50, 0, 0))
 
-   # Create a camera and point it at the eye
+   # Create a camera and point it at the eye. Do this before the eye turns: eye.position is the
+   # corneal apex, which moves when the eye turns (eye.placement is where the eye was placed).
    camera = Camera()
    camera.point_at(eye.position)
 
@@ -81,14 +91,20 @@ Examples
 
 The ``examples/`` directory contains ready-to-run scripts covering common use cases:
 
-- ``basic_usage_demo.py`` — Minimal setup with 3D and camera view visualization
-- ``setup_visualization.py`` — 3D setup visualization with multiple eyes, cameras, and lights
-- ``eye_anatomy.py`` — Eye anatomy exploration (cornea, pupil, eyelid)
-- ``realistic_pupil.py`` — Non-circular pupil shapes based on Wyatt (1995)
-- ``cornea_comparison_figure.py`` — Spherical vs. conic cornea comparison
-- ``camera_distortion.py`` — Effect of lens distortion on pupil detection
-- ``glint_noise_demo.py`` — Corneal reflection detection noise
-- ``simple_data_generation.py`` — Generating datasets for gaze estimation evaluation
-- ``custom_gaze_model.py`` — Implementing a custom gaze estimation algorithm
-- ``experiments/`` — Full evaluation workflows (algorithm comparison, data validation)
+- ``01_hello_PyEtSimul.py`` — Build a scene and read the pupil center and glint from a rendered eye
+- ``02_visualize_setup.py`` — The 3D scene and the camera's view, with live keyboard controls
+- ``03_eye_models.py`` — The three named eye models by their parameters, renders and shape
+- ``04_cornea_models.py`` — Spherical, conic and toric corneas on one eye
+- ``05_pupil_models.py`` — Elliptical and realistic pupils across sizes, with pupil-size decentration
+- ``06_eyelid.py`` — How the eyelid occludes the pupil as it closes
+- ``07_glint_noise.py`` — Corneal reflection detection noise
+- ``08_camera_distortion.py`` — A pinhole camera next to a real eye-tracker lens
+- ``09_two_eyes_one_camera.py`` — A binocular pair imaged by one camera
+- ``10_two_eyes_two_cameras.py`` — A binocular pair imaged by two cameras
+- ``11_generate_dataset.py`` — Render an eye across many gaze targets and save the dataset
+- ``12_calibrate.py`` — Calibrate a gaze tracker on an HV9 grid, test it and explore it interactively
+- ``13_validate.py`` — Gaze accuracy across the screen and as the head moves
+- ``14_custom_eye_model.py`` — Build an eye model of your own
+- ``15_custom_gaze_model.py`` — Register a polynomial of your own and calibrate with it
+- ``16_custom_variation.py`` — Sweep any eye parameter
 

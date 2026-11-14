@@ -36,9 +36,9 @@ def render(cornea_type: str) -> tuple:
     eye = Eye(model=base.copy(cornea=cornea))
     eye.position = Position3D(0, 250, 100)  # place the eye in the scene
     eye.set_rest_orientation_at_target(Position3D(0, 0, 100), up=Position3D(0, 0, 1))  # rest it facing the scene
-    eye.look_at(target)  # rotate the eye to gaze at the target
     camera = Camera()
-    camera.point_at(eye.position)  # aim the camera at the eye
+    camera.point_at(eye.position)  # aim the camera at the eye, before the eye turns and its apex moves
+    eye.look_at(target)  # rotate the eye to gaze at the target
     return camera.take_image(eye, lights), camera
 
 

@@ -126,9 +126,9 @@ eye = Eye(model=base)
 target = Position3D(0, 0, 0)  # the point the eye gazes at (move it with the arrow keys)
 eye.position = Position3D(0, 30, 0)  # ~30 mm in front, like a head-mounted eye camera
 eye.set_rest_orientation_at_target(target, up=Position3D(0, 0, 1))  # rest it facing the camera
-eye.look_at(target)  # rotate the eye to gaze at the target
-pinhole.point_at(eye.position)  # aim both cameras at the eye
+pinhole.point_at(eye.position)  # aim both cameras at the eye, before the eye turns and its apex moves
 distorted.point_at(eye.position)
+eye.look_at(target)  # rotate the eye to gaze at the target
 
 # Compare the two cameras' parameters: same intrinsics, distortion only on the lens.
 coeffs = list(distorted.dist_coeffs) + [0.0] * 5  # pad so the first five are always present
