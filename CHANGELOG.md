@@ -36,6 +36,16 @@ ETRA 2026 paper; this log records everything since.
   Before, `Camera.serialize` raised `AttributeError` for a camera with a `GlintNoiseConfig`, so no dataset could be
   generated with such a camera.
 
+- **Fixed: a failed gaze prediction was returned as the point (0, 0, 0) and counted as a real prediction.**
+  When the pupil centre or a glint is missing, no gaze can be predicted. Before, the polynomial, Stampe and homography
+  models returned the point (0, 0, 0) with confidence 0 in this case. `accuracy_at_calibration_points` and the
+  interactive gaze plot then used the distance to (0, 0, 0) as the error of that prediction. Now the models return
+  `None`.
+
+- **Changed: predicting gaze with a tracker that is not calibrated raises `ValueError`.**
+  Before, the polynomial model failed with an error about matrix shapes, and the Stampe and homography models returned
+  the point (0, 0, 0) as if it were a prediction.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed

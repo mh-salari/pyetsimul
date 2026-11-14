@@ -11,7 +11,7 @@ import numpy as np
 from pyetsimul.core import Camera, EyeTracker, Light
 from pyetsimul.log import info
 from pyetsimul.types.algorithms import GazePrediction
-from pyetsimul.types.geometry import Point2D, Point3D, Position3D
+from pyetsimul.types.geometry import Point2D, Position3D
 from pyetsimul.types.imaging import EyeMeasurement
 
 from ...geometry.plane_detection import PlaneInfo, detect_calibration_plane, summarize_plane_detection
@@ -168,43 +168,27 @@ class HomographyNormalizationGazeModel(EyeTracker):
         self.algorithm_state.is_calibrated = True
         info(f"Homography calibration complete with {len(normalized_pupils)} points.")
 
-    def predict_gaze(self, measurement: EyeMeasurement) -> GazePrediction:
-        """Predict gaze using homography normalization."""
+    def predict_gaze(self, measurement: EyeMeasurement) -> GazePrediction | None:
+        """Predict gaze using homography normalization.
+
+        Returns None when the pupil center or a corneal reflection is missing, and raises ValueError
+        when the tracker has not been calibrated.
+        """
+        self._require_calibration()
         start_time = time.time()
+
         pc = measurement.pupil_data.center
         glints = measurement.camera_image.corneal_reflections
-        intermediate_results = {"pc": pc, "glints": glints}
+        if pc is None or glints is None:
+            return None
 
         reference_glints = self.algorithm_state.reference_glints_normalized
-        if (
-            pc is None
-            or glints is None
-            or reference_glints is None
-            or self.algorithm_state.H_s_n is None
-            or self.plane_info is None
-        ):
-            # Return failed prediction with zero confidence
-            return GazePrediction(
-                gaze_point=Point3D(0, 0, 0),
-                confidence=0.0,
-                algorithm_name="homography_normalization",
-                processing_time=time.time() - start_time,
-                intermediate_results=intermediate_results,
-            )
-
         glints_array = np.array([[g.x, g.y] for g in glints if g is not None], dtype=np.float32)
         if len(glints_array) != len(reference_glints):
-            # Return failed prediction with zero confidence
-            return GazePrediction(
-                gaze_point=Point3D(0, 0, 0),
-                confidence=0.0,
-                algorithm_name="homography_normalization",
-                processing_time=time.time() - start_time,
-                intermediate_results=intermediate_results,
-            )
+            return None
 
         ordered_glints = order_points_by_angle(glints_array)
-        intermediate_results["glints_array"] = ordered_glints
+        intermediate_results = {"pc": pc, "glints": glints, "glints_array": ordered_glints}
 
         reference_array = np.array([[p.x, p.y] for p in reference_glints], dtype=np.float32)
 

@@ -278,6 +278,11 @@ class EyeTracker(ABC):
 
         """
 
+    def _require_calibration(self) -> None:
+        """Raise when gaze is predicted before the tracker has been calibrated."""
+        if not self.algorithm_state.is_calibrated:
+            raise ValueError("Eye tracker must be calibrated before predicting gaze. Call run_calibration(eye) first.")
+
     def __str__(self) -> str:
         """Basic string representation of the eye tracker."""
         try:

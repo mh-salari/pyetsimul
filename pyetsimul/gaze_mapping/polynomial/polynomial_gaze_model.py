@@ -10,7 +10,7 @@ import numpy as np
 from pyetsimul.core import Camera, EyeTracker, Light
 from pyetsimul.log import info
 from pyetsimul.types.algorithms import GazePrediction
-from pyetsimul.types.geometry import Point3D, Position3D
+from pyetsimul.types.geometry import Position3D
 from pyetsimul.types.imaging import EyeMeasurement
 
 from ...geometry.plane_detection import PlaneInfo, detect_calibration_plane, summarize_plane_detection
@@ -264,111 +264,85 @@ class PolynomialGazeModel(EyeTracker):
         self.algorithm_state.y_coefficients = coeff_y.flatten()
         self.algorithm_state.is_calibrated = True
 
-    def predict_gaze(self, measurement: EyeMeasurement) -> GazePrediction:
+    def predict_gaze(self, measurement: EyeMeasurement) -> GazePrediction | None:
         """Predict gaze from pupil-corneal reflection vectors.
 
         Applies calibrated polynomial model to predict screen gaze coordinates.
         Computes P-CR vectors for all available glints and concatenates the
         polynomial features before applying the calibrated coefficients.
-        Handles missing data with appropriate confidence scoring.
 
         Args:
             measurement: EyeMeasurement object containing pupil and corneal reflection data
 
         Returns:
-            GazePrediction: Structured prediction result.
+            GazePrediction, or None when the pupil center or a corneal reflection is missing.
+
+        Raises:
+            ValueError: If the tracker has not been calibrated
 
         """
+        self._require_calibration()
         start_time = time.time()
 
-        # Extract pupil center and corneal reflections from measurement
         pc = measurement.pupil_data.center
         corneal_reflections = measurement.camera_image.corneal_reflections
-        polynomial_name = self.polynomial_name
+        if pc is None or not corneal_reflections or any(cr is None for cr in corneal_reflections):
+            return None
 
-        # Prepare intermediate results for debugging and analysis
+        polynomial_name = self.polynomial_name
+        pcr_vectors = [pc - cr for cr in corneal_reflections]
+        all_features = [self.polynomial_func(pcr_vector.x, pcr_vector.y) for pcr_vector in pcr_vectors]
+
+        # Intermediate results for debugging and analysis
         intermediate_results = {
             "pc": pc,
             "corneal_reflections": corneal_reflections,
             "polynomial_name": polynomial_name,
+            "pcr_vectors": pcr_vectors,
+            "polynomial_info": all_features[0],
         }
 
-        if pc is None or not corneal_reflections:
-            # Handle missing pupil or corneal reflection data
-            gaze_point = Point3D(0.0, 0.0, 0.0)
-            confidence = 0.0
+        # Determine polynomial feature type and predict gaze coordinates
+        if all_features[0].uses_same_xy_features:
+            # Same features for X and Y — single concatenated vector
+            concatenated_features = np.concatenate([f.features for f in all_features])
+            intermediate_results["feature_vector"] = concatenated_features
 
+            # Apply calibrated polynomial model with plane coordinate system
+            coefficient_matrix = np.vstack([
+                self.algorithm_state.x_coefficients,
+                self.algorithm_state.y_coefficients,
+            ])
+            gaze_2d = coefficient_matrix @ concatenated_features
         else:
-            # Calculate P-CR vectors for all glints and collect polynomial features
-            pcr_vectors = []
-            all_features = []
-            has_missing_cr = False
-
-            for cr in corneal_reflections:
-                if cr is None:
-                    has_missing_cr = True
-                    break
-                pcr_vector = pc - cr
-                pcr_vectors.append(pcr_vector)
-                poly_features = self.polynomial_func(pcr_vector.x, pcr_vector.y)
-                all_features.append(poly_features)
-
-            intermediate_results["pcr_vectors"] = pcr_vectors
-
-            if has_missing_cr or not all_features:
-                # Handle missing corneal reflection in one of the glints
-                gaze_point = Point3D(0.0, 0.0, 0.0)
-                confidence = 0.0
-            else:
-                intermediate_results["polynomial_info"] = all_features[0]
-
-                # Determine polynomial feature type and predict gaze coordinates
-                if all_features[0].uses_same_xy_features:
-                    # Same features for X and Y — single concatenated vector
-                    concatenated_features = np.concatenate([f.features for f in all_features])
-                    intermediate_results["feature_vector"] = concatenated_features
-
-                    # Apply calibrated polynomial model with plane coordinate system
-                    coefficient_matrix = np.vstack([
-                        self.algorithm_state.x_coefficients,
-                        self.algorithm_state.y_coefficients,
-                    ])
-                    gaze_2d = coefficient_matrix @ concatenated_features
+            # Different features for X and Y — concatenate per-coordinate
+            all_x_features = []
+            all_y_features = []
+            for f in all_features:
+                if f.features.dtype == object:
+                    # Handle object arrays (mixed-length coordinates)
+                    all_x_features.append(f.features[0])
+                    all_y_features.append(f.features[1])
                 else:
-                    # Different features for X and Y — concatenate per-coordinate
-                    all_x_features = []
-                    all_y_features = []
-                    for f in all_features:
-                        if f.features.dtype == object:
-                            # Handle object arrays (mixed-length coordinates)
-                            all_x_features.append(f.features[0])
-                            all_y_features.append(f.features[1])
-                        else:
-                            # Handle regular 2D arrays
-                            all_x_features.append(f.features[0, :])
-                            all_y_features.append(f.features[1, :])
-                    concat_x = np.concatenate(all_x_features)
-                    concat_y = np.concatenate(all_y_features)
-                    intermediate_results["feature_vector_x"] = concat_x
-                    intermediate_results["feature_vector_y"] = concat_y
+                    # Handle regular 2D arrays
+                    all_x_features.append(f.features[0, :])
+                    all_y_features.append(f.features[1, :])
+            concat_x = np.concatenate(all_x_features)
+            concat_y = np.concatenate(all_y_features)
+            intermediate_results["feature_vector_x"] = concat_x
+            intermediate_results["feature_vector_y"] = concat_y
 
-                    # Apply separate calibrated coefficients for X and Y coordinates
-                    gaze_2d = np.array([
-                        self.algorithm_state.x_coefficients @ concat_x,
-                        self.algorithm_state.y_coefficients @ concat_y,
-                    ])
-
-                gaze_point = self.plane_info.reconstruct_3d_point(gaze_2d[0], gaze_2d[1])
-
-                confidence = 1.0  # High confidence for successful polynomial prediction
-
-        processing_time = time.time() - start_time
+            # Apply separate calibrated coefficients for X and Y coordinates
+            gaze_2d = np.array([
+                self.algorithm_state.x_coefficients @ concat_x,
+                self.algorithm_state.y_coefficients @ concat_y,
+            ])
 
         return GazePrediction(
-            gaze_point=gaze_point,
-            confidence=confidence,
+            gaze_point=self.plane_info.reconstruct_3d_point(gaze_2d[0], gaze_2d[1]),
+            confidence=1.0,
             algorithm_name=f"polynomial_{polynomial_name}",
-            processing_time=processing_time,
+            processing_time=time.time() - start_time,
             intermediate_results=intermediate_results,
         )
 

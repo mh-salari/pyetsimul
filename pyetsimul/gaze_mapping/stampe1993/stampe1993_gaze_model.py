@@ -21,7 +21,6 @@ from pyetsimul.geometry.plane_detection import detect_calibration_plane, summari
 from pyetsimul.log import info
 from pyetsimul.types import Position3D
 from pyetsimul.types.algorithms import GazePrediction
-from pyetsimul.types.geometry import Point3D
 from pyetsimul.types.imaging import EyeMeasurement
 
 # Pyetsimul polynomial descriptor for the Stampe biquadratic shape.
@@ -89,25 +88,22 @@ class Stampe1993GazeModel(PolynomialGazeModel):
         self._stampe.fit(inner_pcr, inner_targets, outer_pcr, outer_targets)
         self.algorithm_state.is_calibrated = True
 
-    def predict_gaze(self, measurement: EyeMeasurement) -> GazePrediction:
-        """Predict gaze for one EyeMeasurement using the fitted StampeModel."""
+    def predict_gaze(self, measurement: EyeMeasurement) -> GazePrediction | None:
+        """Predict gaze for one EyeMeasurement using the fitted StampeModel.
+
+        Returns None when the pupil center or the corneal reflection is missing, and raises ValueError
+        when the tracker has not been calibrated.
+        """
+        self._require_calibration()
         start_time = time.time()
 
         pc = measurement.pupil_data.center
         cr = measurement.camera_image.corneal_reflections[0] if measurement.camera_image.corneal_reflections else None
-        intermediate: dict = {"pc": pc, "cr": cr, "polynomial_name": self.polynomial_name}
-
-        if pc is None or cr is None or self._stampe is None:
-            return GazePrediction(
-                gaze_point=Point3D(0.0, 0.0, 0.0),
-                confidence=0.0,
-                algorithm_name=self.algorithm_name,
-                processing_time=time.time() - start_time,
-                intermediate_results=intermediate,
-            )
+        if pc is None or cr is None:
+            return None
 
         pcr_vector = pc - cr
-        intermediate["pcr_vector"] = pcr_vector
+        intermediate: dict = {"pc": pc, "cr": cr, "polynomial_name": self.polynomial_name, "pcr_vector": pcr_vector}
 
         gaze_xy = self._stampe.predict(np.array([pcr_vector.x, pcr_vector.y]))
         final_x, final_y = float(gaze_xy[0]), float(gaze_xy[1])
