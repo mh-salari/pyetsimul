@@ -778,6 +778,62 @@ class ConicCornea(Cornea):
         world_glint = eye_transform @ np.array([local_glint.x, local_glint.y, local_glint.z, 1.0])
         return Point3D(world_glint[0], world_glint[1], world_glint[2])
 
+    def _refracting_surfaces(self, n_outside: float, n_cornea: float, n_aqueous: float) -> tuple[list, float]:
+        """The refracting surfaces of this cornea in its own frame, for the solvers of ``refraction_batch``.
+
+        The surfaces are listed from the pupil outward, each with the refractive index of the medium in front
+        of it, followed by the index of the medium the pupil lies in. With the posterior surface these are the
+        posterior surface, the anterior surface (toric when the lateral coefficients are not symmetric) and,
+        with a tear film, the tear surface: the anterior shape shifted forward by the film thickness. Without
+        the posterior surface the anterior surface is the only one, and the pupil lies in the corneal medium.
+        """
+        center = np.array([self.center.x, self.center.y, self.center.z])
+        anterior_shape = (self.anterior_radius, self.anterior_k, *self._anterior_lateral_coeffs())
+        if not self.use_posterior_surface:
+            return [((center, *anterior_shape), n_outside)], n_cornea
+        pc = self.get_posterior_center()
+        posterior = (np.array([pc.x, pc.y, pc.z]), self.posterior_radius, self.posterior_k)
+        if not self.use_tear_film:
+            return [(posterior, n_cornea), ((center, *anterior_shape), n_outside)], n_aqueous
+        tear_center = center.copy()
+        tear_center[2] -= self.tear_film_thickness  # toward the apex
+        return [
+            (posterior, n_cornea),
+            ((center, *anterior_shape), self.tear_refractive_index),
+            ((tear_center, *anterior_shape), n_outside),
+        ], n_aqueous
+
+    def refract_ray_inward(self, ray: Ray, n_outside: float, n_cornea: float, n_aqueous: float) -> Ray | None:
+        """Trace a ray arriving from the air inward through the cornea.
+
+        Inverse of find_refraction_batch: the ray crosses the same surfaces in the opposite order (the tear
+        film if there is one, the anterior surface with its toric shape, and the posterior surface if it is
+        used), in the frame of a tilted cornea. The returned ray continues in the medium behind the last
+        surface, in eye-local coordinates.
+        """
+        origin = np.array([ray.origin.x, ray.origin.y, ray.origin.z], dtype=float)
+        direction = np.array([ray.direction.x, ray.direction.y, ray.direction.z], dtype=float)
+        stack, n_start = self._refracting_surfaces(n_outside, n_cornea, n_aqueous)
+        if not self._tilt_active():
+            points, directions, valid = refraction_batch.refract_rays_inward(
+                origin[None, :], direction[None, :], stack, n_start
+            )
+            if not valid[0]:
+                return None
+            return Ray(origin=Point3D(*points[0]), direction=Direction3D(*directions[0]))
+
+        # The surfaces are those of the un-tilted cornea: the ray is taken into that frame and back.
+        rot = self._tilt_rotation()
+        apex = np.array([self.get_apex_position().x, self.get_apex_position().y, self.get_apex_position().z])
+        points, directions, valid = refraction_batch.refract_rays_inward(
+            ((origin - apex) @ rot + apex)[None, :], (direction @ rot)[None, :], stack, n_start
+        )
+        if not valid[0]:
+            return None
+        return Ray(
+            origin=Point3D(*((points[0] - apex) @ rot.T + apex)), direction=Direction3D(*(directions[0] @ rot.T))
+        )
+
     def find_refraction_batch(
         self,
         camera_pos: Position3D,
@@ -803,54 +859,13 @@ class ConicCornea(Cornea):
             apex = np.array([self.get_apex_position().x, self.get_apex_position().y, self.get_apex_position().z])
             cam_local = (cam_local - apex) @ rot + apex
             obj_local = (obj_local - apex) @ rot + apex
-        center = np.array([self.center.x, self.center.y, self.center.z])
+        stack, n_start = self._refracting_surfaces(n_outside, n_cornea, n_aqueous)
         if self.use_posterior_surface:
-            pc = self.get_posterior_center()
-            posterior = np.array([pc.x, pc.y, pc.z])
-            axx, ayy, axy = self._anterior_lateral_coeffs()
-            if self.use_tear_film:
-                tear_center = center.copy()
-                tear_center[2] -= (
-                    self.tear_film_thickness
-                )  # tear surface = anterior shape shifted forward (toward the apex)
-                local_points, valid = refraction_batch.find_refraction_triple_conic_batch(
-                    cam_local,
-                    obj_local,
-                    center,
-                    self.anterior_radius,
-                    self.anterior_k,
-                    posterior,
-                    self.posterior_radius,
-                    self.posterior_k,
-                    tear_center,
-                    n_outside,
-                    n_cornea,
-                    n_aqueous,
-                    self.tear_refractive_index,
-                    ant_axx=axx,
-                    ant_ayy=ayy,
-                    ant_axy=axy,
-                )
-            else:
-                local_points, valid = refraction_batch.find_refraction_dual_conic_batch(
-                    cam_local,
-                    obj_local,
-                    center,
-                    self.anterior_radius,
-                    self.anterior_k,
-                    posterior,
-                    self.posterior_radius,
-                    self.posterior_k,
-                    n_outside,
-                    n_cornea,
-                    n_aqueous,
-                    ant_axx=axx,
-                    ant_ayy=ayy,
-                    ant_axy=axy,
-                )
+            local_points, valid = refraction_batch.find_refraction_stack_batch(cam_local, obj_local, stack, n_start)
         else:
+            (center, radius, k, axx, ayy, axy), _n_in_front = stack[0]
             local_points, valid = refraction_batch.find_refraction_conic_batch(
-                cam_local, obj_local, center, self.anterior_radius, self.anterior_k, n_outside, n_cornea
+                cam_local, obj_local, center, radius, k, n_outside, n_cornea, axx, ayy, axy
             )
         if tilt:
             local_points = (local_points - apex) @ rot.T + apex

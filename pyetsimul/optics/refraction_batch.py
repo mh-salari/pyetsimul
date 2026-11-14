@@ -308,6 +308,34 @@ def _solve_launch(
     return ep, valid
 
 
+def find_refraction_stack_batch(
+    camera: np.ndarray, objects: np.ndarray, stack: _SurfaceStack, n_start: float, conic: bool = True
+) -> tuple[np.ndarray, np.ndarray]:
+    """Exit points on the outermost surface of a stack of refracting surfaces, for ``(N, 3)`` object points.
+
+    ``stack`` lists the surfaces from the object side outward, each with the refractive index of the medium in
+    front of it; ``n_start`` is the index of the medium the objects lie in. A conic surface is ``(center, radius,
+    conic constant)``, with the lateral coefficients ``axx, ayy, axy`` appended for a toric surface.
+    """
+    return _solve_launch(camera, objects, stack, n_start, conic)
+
+
+def refract_rays_inward(
+    origins: np.ndarray, directions: np.ndarray, stack: _SurfaceStack, n_start: float, conic: bool = True
+) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+    """Trace ``(N, 3)`` rays that arrive from outside inward through a stack of refracting surfaces.
+
+    The inverse of the search in ``find_refraction_stack_batch``, with the same ``stack`` and ``n_start``: the
+    rays cross the surfaces in the opposite order, from the medium in front of the outermost surface into the
+    medium the objects lie in. Returns (points on the innermost surface, directions behind it, valid).
+    """
+    surfaces = [surface for surface, _n_in_front in stack]
+    # The medium behind each surface is the one in front of the next surface inward, and n_start for the innermost.
+    n_behind = [n_start, *(n_in_front for _surface, n_in_front in stack[:-1])]
+    inward = list(zip(reversed(surfaces), reversed(n_behind), strict=True))
+    return _trace_stack(directions, origins, inward, stack[-1][1], conic)
+
+
 def find_refraction_dual_conic_batch(
     camera: np.ndarray,
     objects: np.ndarray,
@@ -399,15 +427,17 @@ def _snell_residual_conic(
     k: float,
     n_out: float,
     n_conic: float,
+    lateral: tuple[float, float, float],
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
     """Snell residual ``n_out sin θ_cam - n_conic sin θ_obj`` for candidate refraction directions.
 
     Each direction points from the conic centre to a trial surface point; the residual is zero when the
     incidence and transmission angles at that point satisfy Snell's law for the object-to-camera path.
     Also returns the surface point, normal, and the two ray directions for the caller's Newton step.
+    ``lateral`` holds the lateral coefficients ``(axx, ayy, axy)`` of the surface.
     """
-    point, ok = _point_on_conic(center, direction, radius, k)
-    normal = _conic_normal(point, center, radius, k)
+    point, ok = _point_on_conic(center, direction, radius, k, *lateral)
+    normal = _conic_normal(point, center, radius, k, *lateral)
     d_obj = _unit(point - objects)
     d_cam = _unit(camera[None, :] - point)
     cos_cam = np.einsum("ij,ij->i", normal, d_cam)
@@ -425,6 +455,9 @@ def find_refraction_conic_batch(
     k: float,
     n_outside: float,
     n_conic: float,
+    axx: float = 1.0,
+    ayy: float = 1.0,
+    axy: float = 0.0,
 ) -> tuple[np.ndarray, np.ndarray]:
     """Refraction points on a single conic surface for ``(N, 3)`` object points.
 
@@ -434,8 +467,10 @@ def find_refraction_conic_batch(
     spherical approximation). Stage 2 handles the asphere: when ``k != 0`` the refraction point leaves the
     camera-centre-object plane slightly, so a 2D Newton in ``(alpha, beta)`` adds an out-of-plane offset
     ``beta`` along ``perp``, driving both the Snell residual and the coplanarity residual
-    ``normal . (d_obj x d_cam)`` to zero.
+    ``normal . (d_obj x d_cam)`` to zero. ``axx``/``ayy``/``axy`` make the surface toric (astigmatic); the
+    defaults keep it rotationally symmetric.
     """
+    lateral = (axx, ayy, axy)
     to_cam = _unit((camera - center)[None, :].repeat(objects.shape[0], 0))
     to_obj = _unit(objects - center)
 
@@ -444,7 +479,15 @@ def find_refraction_conic_batch(
 
     def snell(alpha: np.ndarray) -> np.ndarray:
         return _snell_residual_conic(
-            direction(alpha, np.zeros_like(alpha), 0.0), camera, objects, center, radius, k, n_outside, n_conic
+            direction(alpha, np.zeros_like(alpha), 0.0),
+            camera,
+            objects,
+            center,
+            radius,
+            k,
+            n_outside,
+            n_conic,
+            lateral,
         )[0]
 
     # Stage 1: in-plane Snell root in alpha in [0, 1] by vectorised bisection.
@@ -473,7 +516,7 @@ def find_refraction_conic_batch(
 
     def residual2(alpha: np.ndarray, beta: np.ndarray) -> np.ndarray:
         snell_r, _p, normal, d_obj, d_cam, _ok = _snell_residual_conic(
-            direction(alpha, beta, perp), camera, objects, center, radius, k, n_outside, n_conic
+            direction(alpha, beta, perp), camera, objects, center, radius, k, n_outside, n_conic, lateral
         )
         coplanar = np.einsum("ij,ij->i", normal, _cross(d_obj, d_cam))
         return np.stack([snell_r, coplanar], -1)
@@ -491,7 +534,7 @@ def find_refraction_conic_batch(
         alpha += d_alpha
         beta += d_beta
 
-    point, ok = _point_on_conic(center, direction(alpha, beta, perp), radius, k)
+    point, ok = _point_on_conic(center, direction(alpha, beta, perp), radius, k, *lateral)
     valid = ok & (np.max(np.abs(residual2(alpha, beta)), axis=-1) < 1e-6)
     return np.where(valid[:, None], point, np.nan), valid
 

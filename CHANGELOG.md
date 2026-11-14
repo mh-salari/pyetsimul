@@ -432,6 +432,18 @@ ETRA 2026 paper; this log records everything since.
   handles every light position. Glints that were found before move by less than 1e-9 mm. A spherical cornea was not
   affected.
 
+- **Fixed: back-projecting a pupil contour through a conic cornea ignored its tilt, astigmatism and tear film.**
+  `backproject_contour`, `set_pupil_from_contour` and `register_pupil_shape(apparent=True)` convert a pupil outline
+  seen in the camera image into the physical pupil behind the cornea. Before, they traced the rays through a symmetric,
+  untilted cornea without a tear film, even when the cornea of the eye was tilted, astigmatic or covered by a tear
+  film. An outline that was projected to the image and back therefore did not return to its place. It was off by 0.06
+  mm for a cornea tilted by 3 deg, 0.007 mm for 0.3 mm of astigmatism, 0.0005 mm for a tear film, and 0.004 mm for the
+  `gkaModelEye` cornea. Now it returns to within 3e-11 mm for every cornea. The default cornea is not affected.
+
+- **Fixed: a toric cornea without posterior surface refracted as if it had no astigmatism.**
+  Before, with `use_posterior_surface=False`, the refraction through a `ToricCornea` used only its symmetric conic
+  shape, so the pupil was imaged as through a cornea without astigmatism. Now the toric shape is used.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed
