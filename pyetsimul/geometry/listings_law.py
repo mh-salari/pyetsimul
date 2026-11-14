@@ -23,6 +23,9 @@ def calculate_eye_rotation(out_rest: Vector3D, out_new: Vector3D) -> RotationMat
     Returns:
         3x3 rotation matrix A representing the eye rotation
 
+    Raises:
+        ValueError: If the new direction is opposite to the rest direction, where the rotation axis is undefined.
+
     """
     # Normalize input vectors
     out_rest_norm = out_rest.normalize()
@@ -31,10 +34,16 @@ def calculate_eye_rotation(out_rest: Vector3D, out_new: Vector3D) -> RotationMat
     # Calculate rotation axis as cross product
     axis = out_new_norm.cross(out_rest_norm)
 
-    # The cross-product magnitude is sin(angle) between the axes. Below 1e-9 the axes are
-    # parallel to floating-point precision and need no rotation; normalizing such a
-    # near-zero vector would produce a non-orthonormal matrix.
+    # The cross-product magnitude is sin(angle) between the axes. Below 1e-9 the axes are parallel
+    # to floating-point precision, and normalizing such a near-zero vector would produce a
+    # non-orthonormal matrix. The same direction needs no rotation; the opposite direction is a
+    # half turn about any axis, so Listing's law does not determine it.
     if axis.magnitude() < 1e-9:
+        if out_new_norm.dot(out_rest_norm) < 0:
+            raise ValueError(
+                "Cannot rotate the eye onto the direction opposite to its rest direction: the rotation axis is "
+                "undefined."
+            )
         return np.eye(3)
 
     # Normalize the rotation axis

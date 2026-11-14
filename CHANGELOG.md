@@ -133,6 +133,10 @@ ETRA 2026 paper; this log records everything since.
   No direction can be computed for such a target. Before, the call returned without doing anything, so the eye kept its
   previous rest orientation and nothing showed that the call had failed.
 
+- **Changed: `look_at` raises `ValueError` for a target exactly behind the eye.**
+  A turn of exactly 180 deg from the rest direction has no defined rotation axis under Listing's law. Before, `look_at`
+  left the eye facing away from the target, without an error.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed
