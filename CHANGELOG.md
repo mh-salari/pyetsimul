@@ -146,6 +146,11 @@ ETRA 2026 paper; this log records everything since.
   Before, `str()` and `pprint()` of a cornea that was created on its own failed, because its centre is not set yet. Now
   they show the centre as `unset`.
 
+- **Changed: evaluating a dataset without measurements raises `ValueError`.**
+  Before, `evaluate_gaze_accuracy` returned an empty result whose `pprint()` then failed with `ZeroDivisionError`, and
+  `compare_algorithms` failed in the same way. Now `evaluate_gaze_accuracy` and `compare_algorithms` report that the
+  dataset holds no measurements for the selected camera and eye.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed

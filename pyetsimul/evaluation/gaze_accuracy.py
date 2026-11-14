@@ -81,12 +81,19 @@ def evaluate_gaze_accuracy(
     Returns:
         GazeAccuracyResult with errors and statistics
 
+    Raises:
+        ValueError: If the tracker is not calibrated, or the dataset has no measurements for this camera and eye.
+
     """
     if not eye_tracker.algorithm_state.is_calibrated:
         raise ValueError("Eye tracker must be calibrated before evaluation")
 
     # Extract dataset components
     _, measurements, variation, camera_resolution = _extract_dataset_components(dataset, camera_id, eye_id)
+    if not measurements:
+        raise ValueError(
+            f"The dataset has no measurements for camera {camera_id} and eye {eye_id}; nothing to evaluate"
+        )
 
     # Process all measurements
     (errors_3d, errors_angular, predicted_points, ground_truth_points, observer_positions, successful_predictions) = (
