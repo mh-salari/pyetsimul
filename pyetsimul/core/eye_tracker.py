@@ -156,7 +156,7 @@ class EyeTracker(ABC):
         if failed_points:
             warning(f"\n{len(failed_points)}/{n_points} calibration points failed:")
             for point_num, point, reason in failed_points:
-                warning(f"  Point {point_num} ({point.x:.0f}mm, {point.z:.0f}mm): {reason}")
+                warning(f"  Point {point_num} ({point.x:.0f}, {point.y:.0f}, {point.z:.0f}) mm: {reason}")
             warning(f"  Calibration will proceed with {n_points - len(failed_points)} valid points.\n")
 
         return measurements

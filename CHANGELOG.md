@@ -174,6 +174,10 @@ ETRA 2026 paper; this log records everything since.
 - **Fixed: the algorithm comparison printed its amplitude differences in degrees.**
   The values are differences of distances. Now they are printed in mm.
 
+- **Fixed: the warning about failed calibration points left out the y coordinate.**
+  Before, it printed x and z of each failed point, which identifies the point only for a screen in the x-z plane. Now
+  all three coordinates are printed.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed
