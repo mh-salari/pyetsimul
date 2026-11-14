@@ -24,6 +24,7 @@ from .eyelid import Eyelid, create_eyelid
 from .off_axis_pupil import OffAxisPupilConfig
 from .pupil import EllipticalPupil, Pupil, RealisticPupilParams, create_pupil
 from .pupil_decentration import PupilDecentrationConfig, PupilDecentrationRegistry
+from .rotation_center import EyeballCenter
 
 if TYPE_CHECKING:
     from .camera import Camera
@@ -233,7 +234,16 @@ class Eye:
 
         The point the rigid eye pivots about for horizontal gaze, placed by the eye's rest pose.
         Requires a gaze-dependent rotation centre.
+
+        Raises:
+            TypeError: If the eye model pivots at a fixed ``EyeballCenter``, which has no azimuth centre.
+
         """
+        if isinstance(self.model.rotation_center, EyeballCenter):
+            raise TypeError(
+                "rotation_centre needs an eye model with a gaze-dependent RotationCenter; this one pivots at a "
+                "fixed EyeballCenter."
+            )
         local = self._azimuth_rotation_centre_local()
         world = np.asarray(self.rest_orientation, float) @ local
         world += np.array([self.placement.x, self.placement.y, self.placement.z], dtype=float)
