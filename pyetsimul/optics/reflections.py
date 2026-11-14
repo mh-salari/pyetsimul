@@ -100,48 +100,39 @@ def find_reflection_sphere(
         return None
 
 
-def _reflection_residuals_conic(
+# Conic reflection solve.
+_REFLECTION_SOLVER_XTOL = 1e-13  # relative step at which the root finder stops
+# Largest accepted length of the difference between the unit direction of the reflected ray and the unit
+# direction from the glint to the camera.
+_REFLECTION_TOL = 1e-10
+_NO_SURFACE_RESIDUAL = 1e10  # residual of a search direction that does not meet the surface
+_OPPOSITE_DIRECTIONS_TOL = 1e-12  # length of the bisector below which the light and the camera are opposite
+
+
+def _reflection_mismatch_conic(
     params: np.ndarray,
-    to_camera: np.ndarray,
-    to_light: np.ndarray,
-    perp: np.ndarray,
+    bisector: np.ndarray,
+    across: tuple[np.ndarray, np.ndarray],
     light_pos: Position3D,
     camera_pos: Position3D,
     conic_center: Position3D,
     radius: float,
     conic_constant: float,
-    axx: float = 1.0,
-    ayy: float = 1.0,
-    axy: float = 0.0,
-) -> np.ndarray:
-    """Residual function for 2D reflection finding on conic surface.
+    lateral: tuple[float, float, float],
+) -> tuple[np.ndarray, Point3D] | None:
+    """Reflection-law mismatch at the surface point that the search parameters name, and that point.
 
-    Uses (alpha, beta) parameterization where alpha interpolates between light
-    and camera directions, and beta adds an out-of-plane component. This 2D
-    search is necessary because aspherical conic surfaces (k != 0) can have
-    reflection points outside the light-center-camera plane. The lateral coefficients
-    (axx, ayy, axy), default (1, 1, 0), make the surface toric.
-
-    Returns a 2-element residual vector:
-        [0]: Equal angles condition (N dot d_incident + N dot d_camera)
-        [1]: Coplanarity condition (N dot (d_incident x d_camera))
-
+    The point lies in the direction ``bisector + a * across[0] + b * across[1]`` from the conic centre. The
+    mismatch is the unit direction of the ray reflected there minus the unit direction from the point to the
+    camera; it is the zero vector at the glint. None if the direction does not meet the surface.
     """
-    alpha, beta = params
-
-    # Search direction: in-plane interpolation + out-of-plane offset
-    direction = to_camera * alpha + to_light * (1 - alpha) + perp * beta
-    norm = np.linalg.norm(direction)
-    if norm < 1e-15:
-        return np.array([1e10, 1e10])
-    direction /= norm
-
+    direction = bisector + params[0] * across[0] + params[1] * across[1]
     n_vec = Direction3D(direction[0], direction[1], direction[2])
-    glint_pos = point_on_conic_surface(conic_center, n_vec, radius, conic_constant, axx, ayy, axy)
+    glint_pos = point_on_conic_surface(conic_center, n_vec, radius, conic_constant, *lateral)
     if glint_pos is None:
-        return np.array([1e10, 1e10])
+        return None
 
-    surface_normal = conic_surface_normal(glint_pos, conic_center, radius, conic_constant, axx, ayy, axy)
+    surface_normal = conic_surface_normal(glint_pos, conic_center, radius, conic_constant, *lateral)
     n = np.array([surface_normal.x, surface_normal.y, surface_normal.z])
 
     # Incident direction: light -> glint (pointing inward)
@@ -152,13 +143,25 @@ def _reflection_residuals_conic(
     d_cam = np.array([camera_pos.x - glint_pos.x, camera_pos.y - glint_pos.y, camera_pos.z - glint_pos.z])
     d_cam /= np.linalg.norm(d_cam)
 
-    # Condition 1: equal angles — N·d_in = -(N·d_cam)
-    residual_angle = np.dot(n, d_in) + np.dot(n, d_cam)
+    reflected = d_in - 2.0 * (n @ d_in) * n
+    return reflected - d_cam, glint_pos
 
-    # Condition 2: coplanarity — N·(d_in x d_cam) = 0
-    residual_coplanar = np.dot(n, np.cross(d_in, d_cam))
 
-    return np.array([residual_angle, residual_coplanar])
+def _reflection_residuals_conic(
+    params: np.ndarray, bisector: np.ndarray, across: tuple[np.ndarray, np.ndarray], *surface: object
+) -> np.ndarray:
+    """Residual function for 2D reflection finding on conic surface.
+
+    The two components of the reflection-law mismatch along the two search directions. Both are zero where
+    the ray from the light reflects to the camera, also for a light at the camera position, where the ray
+    returns along the surface normal. ``surface`` holds the remaining arguments of
+    ``_reflection_mismatch_conic``.
+    """
+    found = _reflection_mismatch_conic(params, bisector, across, *surface)
+    if found is None:
+        return np.array([_NO_SURFACE_RESIDUAL, _NO_SURFACE_RESIDUAL])
+    mismatch, _ = found
+    return np.array([mismatch @ across[0], mismatch @ across[1]])
 
 
 def find_reflection_conic(
@@ -173,11 +176,10 @@ def find_reflection_conic(
 ) -> Point3D | None:
     """Find reflection point on conic surface.
 
-    Uses 2D root-finding to find the point where light ray reflects to camera.
-    The search is parameterized by (alpha, beta) where alpha interpolates between
-    light and camera directions and beta adds an out-of-plane component, necessary
-    for aspherical surfaces where the reflection point may not lie in the
-    light-center-camera plane.
+    Uses 2D root-finding to find the point where light ray reflects to camera. The search starts in the
+    direction that bisects the directions from the conic centre to the light and to the camera, and moves
+    along two directions perpendicular to it. Two are needed because on an aspherical surface the reflection
+    point does not have to lie in the light-center-camera plane.
 
     Args:
         light_pos: Light source position
@@ -200,46 +202,35 @@ def find_reflection_conic(
         to_camera = np.array([to_camera_dir.x, to_camera_dir.y, to_camera_dir.z])
         to_light = np.array([to_light_dir.x, to_light_dir.y, to_light_dir.z])
 
-        # Perpendicular to the light-center-camera plane
-        perp = np.cross(to_camera, to_light)
-        perp_norm = np.linalg.norm(perp)
-        if perp_norm < 1e-15:
-            # Light and camera are collinear from center — degenerate
+        bisector = to_camera + to_light
+        bisector_norm = np.linalg.norm(bisector)
+        if bisector_norm < _OPPOSITE_DIRECTIONS_TOL:
             debug(
-                f"No glint found: the light at {light_pos} and the camera at {camera_pos} are in line with the conic"
+                f"No glint found: the light at {light_pos} and the camera at {camera_pos} are on opposite sides "
+                "of the conic"
             )
             return None
-        perp /= perp_norm
+        bisector /= bisector_norm
 
-        solution, _info, ier, _msg = fsolve(
-            _reflection_residuals_conic,
-            x0=np.array([0.5, 0.0]),
-            args=(
-                to_camera,
-                to_light,
-                perp,
-                light_pos,
-                camera_pos,
-                conic_center,
-                radius,
-                conic_constant,
-                axx,
-                ayy,
-                axy,
-            ),
-            full_output=True,
+        # Two unit directions perpendicular to the bisector and to each other, built from the coordinate
+        # axis that is least aligned with it.
+        axis = np.eye(3)[np.argmin(np.abs(bisector))]
+        first = axis - (axis @ bisector) * bisector
+        first /= np.linalg.norm(first)
+        across = (first, np.cross(bisector, first))
+
+        search = (bisector, across, light_pos, camera_pos, conic_center, radius, conic_constant, (axx, ayy, axy))
+        # With full_output the root finder reports how it stopped as a value and not as a warning. The solution
+        # is judged by its mismatch: at this step tolerance the finder also stops where rounding leaves it no
+        # further progress, which is a solution, and on directions that miss the surface, which is not.
+        solution, *_ = fsolve(
+            _reflection_residuals_conic, x0=np.zeros(2), args=search, xtol=_REFLECTION_SOLVER_XTOL, full_output=True
         )
-
-        if ier != 1:
+        found = _reflection_mismatch_conic(solution, *search)
+        if found is None or np.linalg.norm(found[0]) > _REFLECTION_TOL:
             debug(f"No glint found: the reflection solver did not converge. Light={light_pos}, Camera={camera_pos}")
             return None
-
-        # Reconstruct the glint position from the solution
-        alpha, beta = solution
-        direction = to_camera * alpha + to_light * (1 - alpha) + perp * beta
-        direction /= np.linalg.norm(direction)
-        n_vec = Direction3D(direction[0], direction[1], direction[2])
-        return point_on_conic_surface(conic_center, n_vec, radius, conic_constant, axx, ayy, axy)
+        return found[1]
 
     except (ValueError, TypeError):
         debug(f"No glint found on conic surface: Light={light_pos}, Camera={camera_pos}, Conic center={conic_center}")

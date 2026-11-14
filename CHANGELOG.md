@@ -426,6 +426,12 @@ ETRA 2026 paper; this log records everything since.
   from the principal point. Assigning `camera_matrix.resolution` still sets the image size of a pinhole camera and puts
   the principal point at the image centre.
 
+- **Fixed: no glint for a light source at the camera position on a conic or toric cornea.**
+  Before, the reflection solver found no glint for a light at the same position as the camera (coaxial illumination),
+  or within about a micrometre of it. The default cornea is conic, so this affected the default eye. Now the solver
+  handles every light position. Glints that were found before move by less than 1e-9 mm. A spherical cornea was not
+  affected.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed
