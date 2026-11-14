@@ -203,17 +203,20 @@ class Cornea(ABC):
 
     def __str__(self) -> str:
         """Basic string representation of the cornea."""
-        center_str = f"({self.center.x:.1f}, {self.center.y:.1f}, {self.center.z:.1f})mm" if self.center else "unset"
+        # _center is read directly: the center property raises until the cornea is set up in an eye.
+        center = self._center
+        center_str = f"({center.x:.1f}, {center.y:.1f}, {center.z:.1f})mm" if center is not None else "unset"
         return f"{self.__class__.__name__}(center={center_str}, type={self.cornea_type})"
 
     def pprint(self) -> None:
         """Print detailed cornea parameters in a formatted table."""
-        # Base parameters
+        # _center is read directly: the center property raises until the cornea is set up in an eye.
+        center = self._center
         data = [
             ["Cornea type", self.cornea_type],
             [
                 "Center (x,y,z) mm",
-                f"({self.center.x:.3f}, {self.center.y:.3f}, {self.center.z:.3f})" if self.center else "unset",
+                f"({center.x:.3f}, {center.y:.3f}, {center.z:.3f})" if center is not None else "unset",
             ],
         ]
 
@@ -227,7 +230,7 @@ class Cornea(ABC):
                 ["Corneal depth (mm)", f"{self.get_corneal_depth():.3f}"],
             ])
 
-            if self.center:
+            if center is not None:
                 apex = self.get_apex_position()
                 data.append([
                     "Apex position (x,y,z) mm",

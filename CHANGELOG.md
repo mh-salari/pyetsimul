@@ -142,6 +142,10 @@ ETRA 2026 paper; this log records everything since.
   without it, the next pupil size change failed with `TypeError: unsupported operand type(s) for *`. Now the error
   names the missing coefficient.
 
+- **Fixed: printing a cornea that is not part of an eye raised `ValueError`.**
+  Before, `str()` and `pprint()` of a cornea that was created on its own failed, because its centre is not set yet. Now
+  they show the centre as `unset`.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed
