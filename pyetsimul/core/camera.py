@@ -77,7 +77,7 @@ class Camera:
     Usage:
     - Default pinhole: Camera()
     - Custom pinhole: c = Camera(); c.camera_matrix.focal_length = 1000
-    - Realistic camera: Camera(camera_matrix=CameraMatrix(matrix), dist_coeffs=coeffs)
+    - Realistic camera: Camera(camera_matrix=CameraMatrix(matrix, Point2D(width, height)), dist_coeffs=coeffs)
     """
 
     camera_matrix: CameraMatrix = field(default_factory=CameraMatrix)
@@ -203,12 +203,11 @@ class Camera:
             points_3d_opencv, np.zeros(3), np.zeros(3), self.camera_matrix.matrix, self.dist_coeffs
         )
 
-        # Convert to center-origin coordinate system
-        cx = self.camera_matrix.matrix[0, 2]
-        cy = self.camera_matrix.matrix[1, 2]
+        # Convert to center-origin coordinate system: the origin is the centre of the image
+        resolution = self.camera_matrix.resolution
         x = points_2d.reshape(-1, 2).T
-        x[0, :] -= cx
-        x[1, :] -= cy
+        x[0, :] -= resolution.x / 2
+        x[1, :] -= resolution.y / 2
 
         # Add error based on error type
         rng = self._err_rng
@@ -221,7 +220,6 @@ class Camera:
 
         # Check which points are within image bounds and in front of camera
         # Small tolerance for floating-point boundary comparisons
-        resolution = self.camera_matrix.resolution
         boundary_tol = 1e-10
         condition = (
             (x[0, :] >= -resolution.x / 2 - boundary_tol)
@@ -338,11 +336,10 @@ class Camera:
         d = np.full(n, distance) if isinstance(distance, (int, float)) else np.asarray(distance)
 
         # Convert from center-origin to top-left-origin coordinate system
-        cx = self.camera_matrix.matrix[0, 2]
-        cy = self.camera_matrix.matrix[1, 2]
+        resolution = self.camera_matrix.resolution
         x_opencv = x.copy().astype(np.float64)
-        x_opencv[0, :] += cx
-        x_opencv[1, :] += cy
+        x_opencv[0, :] += resolution.x / 2
+        x_opencv[1, :] += resolution.y / 2
 
         points_2d_normalized = cv2.undistortPoints(
             x_opencv.T.reshape(-1, 1, 2).astype(np.float64), self.camera_matrix.matrix, self.dist_coeffs
@@ -664,7 +661,7 @@ class Camera:
         camera.orientation = RotationMatrix(np.array(data["orientation"]))
 
         # Restore camera matrix
-        camera.camera_matrix = CameraMatrix(np.array(data["camera_matrix"]))
+        camera.camera_matrix = CameraMatrix(np.array(data["camera_matrix"]), Point2D.deserialize(data["resolution"]))
 
         # Restore distortion coefficients
         camera.dist_coeffs = np.array(data["distortion_coefficients"])

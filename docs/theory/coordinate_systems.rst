@@ -160,7 +160,7 @@ After projection, 2D feature positions are expressed in the **image coordinate s
    :stub-columns: 1
 
    * - **Origin**
-     - Center of the image (at the principal point :math:`(c_x, c_y)`)
+     - Center of the image
    * - :math:`+X`
      - Right
    * - :math:`+Y`
@@ -177,6 +177,12 @@ After projection, 2D feature positions are expressed in the **image coordinate s
       -\frac{w}{2} \le x \le \frac{w}{2}, \qquad -\frac{h}{2} \le y \le \frac{h}{2}
 
    where :math:`w` and :math:`h` are the image width and height in pixels.
+
+The image size is the ``resolution`` of the camera's ``CameraMatrix``. It is stored next to the
+matrix, because the matrix does not hold it: the principal point :math:`(c_x, c_y)` of a
+calibrated camera is not at the center of its image. A pinhole camera has its principal point at
+the image center, and setting ``camera.camera_matrix.resolution`` keeps it there. A calibrated
+camera takes both together, as ``CameraMatrix(matrix, Point2D(width, height))``.
 
 Points that fall outside the image bounds or behind the camera are marked as invalid
 (``NaN``) in the returned ``ProjectionResult``.

@@ -411,6 +411,21 @@ ETRA 2026 paper; this log records everything since.
 - **Removed: the `"focal_length"` key of a saved camera.**
   The focal length is part of the saved camera matrix.
 
+- **Fixed: wrong image size for a camera with a calibrated camera matrix.**
+  Before, `CameraMatrix.resolution` returned twice the principal point. That is the image size only when the principal
+  point is exactly at the image centre. For the 640 x 480 camera of `examples/08_camera_distortion.py`, whose principal
+  point is at (316.7, 259.2), it returned 633 x 518. As a result, `Camera.project` treated points near the image border
+  as outside the image, and the centre-of-mass pupil centre was computed on an image of the wrong size. Now the
+  resolution is stored together with the matrix. Cameras whose principal point is at the image centre, which includes
+  the default camera, give the same images as before.
+
+- **Changed: a `CameraMatrix` has to be created with the image resolution, as `CameraMatrix(matrix, Point2D(width,
+  height))`.**
+  `CameraMatrix(matrix)` raises `ValueError`. For a calibrated camera whose principal point is not at the image centre,
+  the image coordinates also change: they are now measured from the centre of the image; before, they were measured
+  from the principal point. Assigning `camera_matrix.resolution` still sets the image size of a pinhole camera and puts
+  the principal point at the image centre.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed

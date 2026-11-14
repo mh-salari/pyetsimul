@@ -14,12 +14,12 @@ from tabulate import tabulate
 
 from pyetsimul.core import Camera, Eye
 from pyetsimul.core.eye_model import get_eye_model
-from pyetsimul.types import CameraMatrix, Position3D
+from pyetsimul.types import CameraMatrix, Point2D, Position3D
 from pyetsimul.visualization import plot_interactive_cameras
 
 # Published OpenCV calibrations (camera matrix + radial/tangential distortion) of real eye-tracker cameras, from
-# Pupil Labs' camera_models (https://github.com/pupil-labs/pupil). Coefficients are in OpenCV order
-# (k1, k2, p1, p2, k3, ...). Each entry is one lens the menu can pick.
+# Pupil Labs' camera_models (https://github.com/pupil-labs/pupil), each with the image size it was calibrated at.
+# Coefficients are in OpenCV order (k1, k2, p1, p2, k3, ...). Each entry is one lens the menu can pick.
 CAMERA_CONFIGS = [
     {
         "name": "Pupil Cam1 ID2 (low res)",
@@ -28,7 +28,8 @@ CAMERA_CONFIGS = [
                 [395.60662814306596, 0.0, 316.72212558212516],
                 [0.0, 395.56975615889445, 259.206579702132],
                 [0.0, 0.0, 1.0],
-            ])
+            ]),
+            Point2D(640, 480),
         ),
         "dist_coeffs": np.array([
             -0.2430487205352619,
@@ -48,7 +49,8 @@ CAMERA_CONFIGS = [
                 [794.3311439869655, 0.0, 633.0104437728625],
                 [0.0, 793.5290139393004, 397.36927353414865],
                 [0.0, 0.0, 1.0],
-            ])
+            ]),
+            Point2D(1280, 720),
         ),
         "dist_coeffs": np.array([
             -0.3758628065070806,
@@ -68,7 +70,8 @@ CAMERA_CONFIGS = [
                 [140.68445787837342, 0.0, 99.42393317744813],
                 [0.0, 140.67571954970256, 96.235134525304],
                 [0.0, 0.0, 1.0],
-            ])
+            ]),
+            Point2D(384, 192),
         ),
         "dist_coeffs": np.array([
             0.05449484235207129,
@@ -88,7 +91,8 @@ CAMERA_CONFIGS = [
                 [282.976877, 0.0, 96.0],
                 [0.0, 283.561467, 96.0],
                 [0.0, 0.0, 1.0],
-            ])
+            ]),
+            Point2D(192, 192),
         ),
         "dist_coeffs": np.zeros(5),
     },

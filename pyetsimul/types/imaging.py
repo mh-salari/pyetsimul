@@ -88,17 +88,34 @@ class ProjectionResult:
 
 
 class CameraMatrix:
-    """3x3 camera matrix with convenient properties for focal_length and resolution."""
+    """3x3 camera matrix and the image resolution, with convenient properties for focal_length and resolution.
 
-    def __init__(self, matrix: np.ndarray | None = None) -> None:
+    The resolution is the size of the image in pixels. It is kept next to the matrix because the matrix does
+    not hold it: the principal point of a calibrated camera is not at the centre of its image.
+    """
+
+    def __init__(self, matrix: np.ndarray | None = None, resolution: Point2D | None = None) -> None:
         """Initialize camera matrix.
 
         Args:
-            matrix: Optional 3x3 camera matrix. If None, uses defaults.
+            matrix: Optional 3x3 camera matrix. If None, uses the default pinhole camera, with the principal
+                point at the centre of the default image.
+            resolution: Image width (x) and height (y) in pixels. Required with a matrix, and left out
+                without one.
+
+        Raises:
+            ValueError: If a matrix is given without a resolution, or a resolution without a matrix.
 
         """
+        if (matrix is None) != (resolution is None):
+            raise ValueError(
+                "A camera matrix and the image resolution are given together: "
+                "CameraMatrix(matrix, Point2D(width, height)). For a pinhole camera with another image size, set "
+                "the resolution of the default: CameraMatrix().resolution = Point2D(width, height)."
+            )
         if matrix is not None:
             self._matrix = np.asarray(matrix, dtype=np.float64)
+            self._resolution = Point2D(x=int(resolution.x), y=int(resolution.y))
         else:
             self._matrix = np.array(
                 [
@@ -108,6 +125,7 @@ class CameraMatrix:
                 ],
                 dtype=np.float64,
             )
+            self._resolution = Point2D(x=CameraDefaults.RESOLUTION_WIDTH, y=CameraDefaults.RESOLUTION_HEIGHT)
 
     @property
     def focal_length(self) -> float:
@@ -125,12 +143,16 @@ class CameraMatrix:
 
     @property
     def resolution(self) -> Point2D:
-        """Get the camera resolution in pixels."""
-        cx, cy = self._matrix[0, 2], self._matrix[1, 2]
-        return Point2D(x=int(2 * cx), y=int(2 * cy))
+        """Get the image resolution in pixels, or set that of a pinhole camera.
+
+        Setting it also puts the principal point at the centre of the image, which is where a pinhole camera
+        has it. A calibrated camera takes its matrix and its resolution together, in the constructor.
+        """
+        return Point2D(x=self._resolution.x, y=self._resolution.y)
 
     @resolution.setter
     def resolution(self, value: Point2D) -> None:
+        self._resolution = Point2D(x=int(value.x), y=int(value.y))
         self._matrix[0, 2] = value.x / 2.0
         self._matrix[1, 2] = value.y / 2.0
 
