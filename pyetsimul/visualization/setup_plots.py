@@ -355,13 +355,24 @@ def plot_axis(
     color: str,
     length: float = 3,
 ) -> None:
-    """Plot a single axis with arrow and label"""
+    """Plot one axis of a local frame as an arrow from ``center``, with its label at the tip.
+
+    Args:
+        ax: 3D matplotlib axis
+        center: World position the arrow starts at
+        trans_matrix: Local-to-world transformation of the frame
+        axis_idx: Which local axis to draw: 0 (x), 1 (y) or 2 (z)
+        label: Text drawn at the tip of the arrow
+        color: Color of the arrow and the label
+        length: Length of the arrow in mm
+
+    """
     config = create_plot_config()
 
     axis_local = np.zeros(4)
     axis_local[axis_idx] = 1
     axis_world = trans_matrix @ axis_local
-    axis_end = center + length * axis_world[:3]
+    axis_end = np.array([center.x, center.y, center.z]) + length * np.asarray(axis_world[:3])
 
     ax.quiver(
         center.x,
@@ -376,9 +387,9 @@ def plot_axis(
         alpha=config.lines.secondary_alpha,
     )
     ax.text(
-        axis_end.x,
-        axis_end.y,
-        axis_end.z,
+        axis_end[0],
+        axis_end[1],
+        axis_end[2],
         label,
         fontsize=config.fonts.legend,
         color=color,

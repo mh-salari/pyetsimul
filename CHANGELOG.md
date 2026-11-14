@@ -530,6 +530,9 @@ ETRA 2026 paper; this log records everything since.
   Before, `calib_points` was a list of 2D points, which were always drawn in the plane y = 0. Now it is the list of 3D
   calibration positions, which are drawn where they are.
 
+- **Fixed: `plot_axis` raised `TypeError` on every call.**
+  The function draws a labelled arrow in a 3D plot. Now it works.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed
