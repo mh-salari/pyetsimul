@@ -51,7 +51,7 @@ class EyeModel:
     # "optical_axis_target_direction" aims the optical axis along the direction from the rest apex to the target,
     # independent of the target distance (the eyePose convention of gkaModelEye).
     look_at_method: str = "visual_axis"
-    torsion_deg: float = 0.0  # extra roll about the line of sight on top of Listing's law
+    torsion_deg: float = 0.0  # extra roll about the axis look_at aims at the target, on top of Listing's law
     # Pupil-plane tilt off the optical axis (deg): a z-shear of the boundary about the pupil centre, so
     # the disc plane tilts instead of lying perpendicular to the optical axis. Eye-fixed (rotates with gaze).
     pupil_tilt_x_deg: float = 0.0

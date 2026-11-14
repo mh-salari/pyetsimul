@@ -476,7 +476,7 @@ class Eye:
         # The visual axis passes through axis_point, which turns with the eye, so the orientation is solved
         # together with the direction from that point to the target, as look_at does.
         rest_orientation = orientation_through_target(
-            orientation_facing, np.eye(3), axis_point, lambda _orientation: eye_pos, target_position
+            orientation_facing, np.eye(3), lambda orientation: eye_pos + orientation @ axis_point, target_position
         )
         return RotationMatrix(rest_orientation)
 

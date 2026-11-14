@@ -374,6 +374,14 @@ ETRA 2026 paper; this log records everything since.
   Before, both raised an error for such an eye. Now they work. The new `Eye.rotation_centre_depth_mm` returns how far
   the rotation centre lies behind the corneal apex.
 
+- **Fixed: a non-zero `torsion_deg` turned the eye away from its target.**
+  `torsion_deg` rolls the eye about its gaze direction. Before, the roll was made about the optical axis, which differs
+  from the visual axis by angle kappa. With the `visual_axis` method, 5 deg of torsion turned the visual axis 0.55 deg
+  away from the target (8 mm at 830 mm). The methods `line_of_sight` and `optical_then_kappa` ignored `torsion_deg`
+  without a message. Now the eye rolls about the axis that `look_at` aims at the target, with every method, so it keeps
+  looking at the target. Results change only for a non-zero `torsion_deg` (the default is 0), and not for
+  `optical_axis_target_direction` or for `visual_axis` without foveal displacement.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed

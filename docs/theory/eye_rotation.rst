@@ -56,9 +56,12 @@ produce a matrix that is not orthonormal.
 Deliberate Torsion
 ^^^^^^^^^^^^^^^^^^
 
-Real eyes deviate from Listing's law, so ``torsion_deg`` adds a roll about the eye-local optical
-axis on top of the Listing rotation. It applies to the ``visual_axis`` and
-``optical_axis_target_direction`` constructions and defaults to zero.
+Real eyes deviate from Listing's law, so ``torsion_deg`` adds a roll on top of the Listing
+rotation. The eye rolls about the axis that ``look_at`` aims at the target: the visual axis for
+``visual_axis``, the line of sight for ``line_of_sight``, and the optical axis for the other two
+constructions. The aimed axis therefore stays where the Listing rotation put it, and for the first
+two constructions it still passes through the target. The roll is counted about the axis
+direction that points into the eye. It defaults to zero.
 
 Aiming the Eye
 --------------

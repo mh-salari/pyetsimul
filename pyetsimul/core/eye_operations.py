@@ -26,11 +26,16 @@ _POSE_MAX_ITERS = 100
 _POSE_TOL = 1e-13  # largest change of an orientation-matrix entry between two steps
 
 
-def _roll_about_optical_axis(deg: float) -> np.ndarray:
-    """Rotation about the eye-local optical axis (z), applied as a torsion deviation from Listing's law."""
+def _roll_about_aimed_axis(aimed_axis: np.ndarray, deg: float) -> np.ndarray:
+    """Eye-local rotation about the aimed axis, applied as a torsion deviation from Listing's law.
+
+    ``aimed_axis`` is the unit eye-local direction of the axis, pointing out of the eye. The roll is counted
+    about the opposite direction, into the eye, which for the optical axis is eye-local +z.
+    """
     t = np.radians(deg)
-    c, s = np.cos(t), np.sin(t)
-    return np.array([[c, -s, 0.0], [s, c, 0.0], [0.0, 0.0, 1.0]])
+    x, y, z = -aimed_axis
+    cross = np.array([[0.0, -z, y], [z, 0.0, -x], [-y, x, 0.0]])
+    return np.eye(3) + np.sin(t) * cross + (1.0 - np.cos(t)) * (cross @ cross)
 
 
 LOOK_AT_METHODS = ("visual_axis", "line_of_sight", "optical_then_kappa", "optical_axis_target_direction")
@@ -42,7 +47,8 @@ def look_at_target(eye: "Eye", target_position: Position3D, method: str = "visua
     Each method aligns a rest-frame axis to the target with Listing's law and pivots about the model's
     rotation centre (a gaze-dependent ``RotationCenter`` or a fixed ``EyeballCenter``). They differ
     only in which axis is aimed, where the aim direction is measured
-    from, and the post-rotation applied:
+    from, and the post-rotation applied. The model's ``torsion_deg`` then rolls the eye about the aimed
+    axis, which leaves that axis where it is:
 
     - ``visual_axis``: the visual axis (the optical axis when fovea displacement is off) to the target.
     - ``line_of_sight``: the fovea-through-pupil-centre axis to the target; the pupil centre carries the
@@ -73,28 +79,30 @@ def look_at_target(eye: "Eye", target_position: Position3D, method: str = "visua
         fovea, pupil = eye.fovea_position, eye.pupil.pos_pupil
         los = np.array([pupil.x - fovea.x, pupil.y - fovea.y, pupil.z - fovea.z])
         los /= np.linalg.norm(los)
-        rest_axis = Vector3D.from_array(eye.rest_orientation @ los)
+        local_axis = los
         axis_point = axis_point_nearest_origin(np.array([pupil.x, pupil.y, pupil.z], dtype=float), los)
     elif method == "visual_axis" and eye.model.fovea_displacement:
         # Visual axis from the foveal displacement angles (alpha horizontal, signed by eye side; beta vertical).
         # It runs from the fovea through the eyeball centre.
         alpha, beta = eye._signed_alpha_rad, np.radians(eye.model.fovea_beta_deg)
-        v_local = np.array([-np.sin(alpha) * np.cos(beta), -np.sin(beta), -np.cos(alpha) * np.cos(beta)])
-        rest_axis = Vector3D.from_array(eye.rest_orientation @ v_local)
-        axis_point = axis_point_nearest_origin(np.array([0.0, 0.0, eye.eyeball_center_z], dtype=float), v_local)
+        local_axis = np.array([-np.sin(alpha) * np.cos(beta), -np.sin(beta), -np.cos(alpha) * np.cos(beta)])
+        axis_point = axis_point_nearest_origin(np.array([0.0, 0.0, eye.eyeball_center_z], dtype=float), local_axis)
     else:
         # Optical axis is -Z in local coordinates and passes through the eye-local origin.
-        rest_axis = Vector3D.from_array(eye.rest_orientation @ np.array([0.0, 0.0, -1.0]))
+        local_axis = np.array([0.0, 0.0, -1.0])
         axis_point = np.zeros(3)
 
+    rest_axis = Vector3D.from_array(eye.rest_orientation @ local_axis)
     rest = np.asarray(eye.rest_orientation, dtype=float)
     origin_for = _origin_for_orientation(eye, target_position)
+    torsion = _roll_about_aimed_axis(local_axis, eye.model.torsion_deg) if eye.model.torsion_deg else None
 
     def orientation_facing(direction: Vector3D) -> np.ndarray:
         return calculate_eye_rotation(rest_axis, direction) @ rest
 
     def posed(aimed: np.ndarray) -> np.ndarray:
-        """Eye orientation for an aimed orientation: the rotation the method applies after the aim."""
+        """Eye orientation for an aimed orientation: the torsion, then the rotation the method applies."""
+        rolled = aimed if torsion is None else aimed @ torsion
         if method == "optical_then_kappa" and eye.model.fovea_displacement:
             # Foveal (kappa) post-rotation lands the fovea on the target after the optical axis is aimed.
             alpha, beta = eye._signed_alpha_rad, np.radians(eye.model.fovea_beta_deg)
@@ -104,10 +112,12 @@ def look_at_target(eye: "Eye", target_position: Position3D, method: str = "visua
                 [np.sin(alpha), 0.0, np.cos(alpha)],
             ])
             rot_y = np.array([[1.0, 0.0, 0.0], [0.0, np.cos(beta), np.sin(beta)], [0.0, -np.sin(beta), np.cos(beta)]])
-            return aimed @ rot_y @ rot_x
-        if eye.model.torsion_deg and method in {"visual_axis", "optical_axis_target_direction"}:
-            return aimed @ _roll_about_optical_axis(eye.model.torsion_deg)
-        return aimed
+            return rolled @ rot_y @ rot_x
+        return rolled
+
+    def axis_point_world(aimed: np.ndarray) -> np.ndarray:
+        orientation = posed(aimed)
+        return origin_for(orientation) + orientation @ axis_point
 
     if method == "optical_axis_target_direction":
         # The direction is taken from the fixed rest apex, so the pose does not depend on the target
@@ -116,9 +126,7 @@ def look_at_target(eye: "Eye", target_position: Position3D, method: str = "visua
     else:
         # The direction is taken from the point of the posed eye that the aimed axis passes through, so
         # that the axis itself passes through the target.
-        aimed = orientation_through_target(
-            orientation_facing, rest, axis_point, lambda orientation: origin_for(posed(orientation)), target_position
-        )
+        aimed = orientation_through_target(orientation_facing, rest, axis_point_world, target_position)
     orientation = posed(aimed)
     eye.orientation = RotationMatrix(orientation, validate_handedness=False)
     # Write the translation directly so the rest placement (which anchors the rotation centre) is kept.
@@ -156,17 +164,15 @@ def axis_point_nearest_origin(point: np.ndarray, direction: np.ndarray) -> np.nd
 def orientation_through_target(
     orientation_facing: Callable[[Vector3D], np.ndarray],
     start: np.ndarray,
-    axis_point: np.ndarray,
-    origin_for: Callable[[np.ndarray], np.ndarray],
+    axis_point_world: Callable[[np.ndarray], np.ndarray],
     target_position: Position3D,
 ) -> np.ndarray:
     """Orientation for which the aimed axis passes through the target.
 
-    ``orientation_facing`` gives the orientation that points the aimed axis along a world direction. The
-    axis passes through ``axis_point`` (eye-local), and ``origin_for`` gives the world position of the
-    eye-local origin for an orientation. The world position of the axis point therefore depends on the
-    orientation, so the direction from that point to the target and the orientation are iterated to a
-    fixed point, beginning at ``start``.
+    ``orientation_facing`` gives the orientation that points the aimed axis along a world direction, and
+    ``axis_point_world`` gives the world position of a point of that axis for such an orientation. The
+    point turns and shifts with the eye, so the direction from it to the target and the orientation are
+    iterated to a fixed point, beginning at ``start``.
 
     Raises:
         ValueError: If the iteration does not settle, which happens for a target about as near to the eye
@@ -175,7 +181,7 @@ def orientation_through_target(
     """
     orientation = start
     for _ in range(_POSE_MAX_ITERS):
-        point = origin_for(orientation) + orientation @ axis_point
+        point = axis_point_world(orientation)
         direction = _direction_to_target(target_position, Position3D(point[0], point[1], point[2]))
         updated = np.asarray(orientation_facing(direction), dtype=float)
         if np.max(np.abs(updated - orientation)) < _POSE_TOL:
