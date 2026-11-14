@@ -44,10 +44,12 @@ class InteractiveControls:
         self.initial_eye_positions = (
             [eye.placement for eye in eyes] if initial_eye_positions is None else initial_eye_positions
         )
-        self.initial_target_position = initial_target_position or Point3D(
-            target_point.x, target_point.y, target_point.z
+        self.initial_target_position = (
+            Point3D(target_point.x, target_point.y, target_point.z)
+            if initial_target_position is None
+            else initial_target_position
         )
-        self.custom_handlers = custom_handlers or {}
+        self.custom_handlers = {} if custom_handlers is None else custom_handlers
         self._update_callback: Callable | None = None
 
     def set_update_callback(self, callback: Callable) -> None:
