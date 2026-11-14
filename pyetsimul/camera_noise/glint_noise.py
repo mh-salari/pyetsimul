@@ -23,6 +23,9 @@ class GlintNoiseConfig:
         covariance: [[var_x, cov_xy], [cov_xy, var_y]] - 2x2 covariance matrix
 
     If mean and covariance are provided, advanced mode is used.
+
+    The config draws from one random generator. With a seed the sequence of draws is the same in every run;
+    without one it differs from run to run.
     """
 
     # Simple interface
@@ -40,6 +43,8 @@ class GlintNoiseConfig:
 
     def __post_init__(self) -> None:
         """Validate noise configuration after initialization."""
+        self.restart()
+
         # Check if advanced mode is used
         if self.mean is not None or self.covariance is not None:
             if self.mean is None or self.covariance is None:
@@ -74,6 +79,16 @@ class GlintNoiseConfig:
                 raise ValueError("'constant_offset' noise type requires 'offset_x' and 'offset_y' to be specified")
         else:
             raise ValueError(f"Unknown noise type: {self.noise_type}")
+
+    def restart(self, *stream: int) -> None:
+        """Start the sequence of random draws again.
+
+        With a seed, the sequence is the same every time it is started with the same stream numbers, and
+        different stream numbers give independent sequences. Dataset generation starts one stream per
+        measurement, so the noise of a measurement does not depend on the worker process that takes it.
+        Without a seed every start gives a new sequence.
+        """
+        self._rng = np.random.default_rng(None if self.seed is None else [self.seed, *stream])
 
     def serialize(self) -> dict:
         """Serialize to dictionary representation."""
@@ -117,8 +132,7 @@ def apply_glint_noise(glint_position: Point2D, config: GlintNoiseConfig | None) 
     if config is None or config.noise_type is None:
         return glint_position
 
-    # Create random generator with seed for reproducible noise
-    rng = np.random.default_rng(config.seed)
+    rng = config._rng  # noqa: SLF001
 
     if config.noise_type == "advanced":
         noise = rng.multivariate_normal(config.mean_array, config.cov_matrix)

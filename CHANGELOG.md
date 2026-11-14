@@ -253,6 +253,11 @@ ETRA 2026 paper; this log records everything since.
   decentration, was zero in every sample. With the population-mean coefficients the sweep did not run at all. Now both
   cases produce the expected decentration. The configuration object passed to the variation is no longer modified.
 
+- **Fixed: glint noise with a seed shifted every glint by the same amount.**
+  Before, with a seed in `GlintNoiseConfig`, the same random numbers were drawn for every glint in every image, so all
+  glints were shifted identically. Now the shifts differ between glints and are the same in every run, also with
+  several worker processes. `examples/07_glint_noise.py` uses a seed and now shows scattered glints.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed

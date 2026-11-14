@@ -30,9 +30,15 @@ def _process_single_variation(args: tuple[Any, ...]) -> dict[str, Any]:
         gaze_target,
         use_refraction,
         pupil_center_method,
+        camera_index,
+        eye_index,
     ) = args
 
     eye_copy = copy.deepcopy(eye)
+    # Every task receives the camera with the same generator state, so each measurement starts its own
+    # noise stream; the stream numbers make it the same in every run and different between measurements.
+    if camera.glint_noise_config is not None:
+        camera.glint_noise_config.restart(camera_index, eye_index, index)
 
     # This re-instantiates a minimal strategy object inside the worker process
     # to avoid pickling the entire parent object.
@@ -177,6 +183,8 @@ class DataGenerationStrategy(VariationStrategy):
                         self.gaze_target,
                         self.use_refraction,
                         self.pupil_center_method,
+                        camera_idx,
+                        eye_idx,
                     )
                     for i, value in enumerate(variation.generate_values())
                 ]
