@@ -17,7 +17,7 @@ Usage:
 import multiprocessing
 import pathlib
 import warnings
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import IntEnum
 from typing import Any
 
@@ -78,7 +78,7 @@ def _write_to_file(text: str, level: str = "INFO") -> None:
     # Skip lines that are only dashes (visual separators)
     if stripped and all(c == "-" for c in stripped):
         return
-    timestamp = datetime.now(tz=datetime.UTC).strftime("%Y-%m-%d %H:%M:%S")
+    timestamp = datetime.now(tz=UTC).strftime("%Y-%m-%d %H:%M:%S")
     with _log_file_path.open("a", encoding="utf-8") as f:
         f.write(f"--- [{timestamp}] [{level}] ---\n")
         f.write(stripped + "\n")

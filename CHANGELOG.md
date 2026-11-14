@@ -17,6 +17,9 @@ ETRA 2026 paper; this log records everything since.
   first eye rotation the two eyes were no longer at the same position. Now the two eyes stay at the position they were
   given.
 
+- **Fixed: writing the log to a file raised `AttributeError`.**
+  Before, after `set_log_file`, the first log message failed, so no log file could be written.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed
