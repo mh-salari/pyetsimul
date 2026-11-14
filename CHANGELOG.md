@@ -100,6 +100,11 @@ ETRA 2026 paper; this log records everything since.
   mm from the origin, the rotation centre was drawn 828.8 mm behind the corneal apex. Now it is drawn at its depth in
   the eye model.
 
+- **Fixed: `plot_eye_cross_section` drew a visual axis that differed from the one the simulation uses.**
+  Before, the fovea was drawn 0.5 mm from its position in the eye model, and a tilted visual axis was drawn even for an
+  eye without foveal displacement. Now the plot draws the axis from the fovea of the eye model through the eyeball
+  centre, which is the visual axis that `look_at` uses.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed

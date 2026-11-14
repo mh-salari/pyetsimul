@@ -46,8 +46,9 @@ def plot_eye_cross_section(
 ) -> "Axes":
     """Draw a horizontal cross-section of the eye along the optical axis.
 
-    The optical axis runs along x with the corneal apex at 0; the visual axis is tilted by the horizontal angle
-    kappa (alpha) and ends at the fovea on the retina, so the vertical kappa (beta) is out of this plane. The
+    The optical axis runs along x with the corneal apex at 0; the visual axis runs through the eyeball centre,
+    tilted by the horizontal angle kappa (alpha), and ends at the fovea, so the vertical kappa (beta) is out of
+    this plane. The
     anterior cornea is always drawn; the posterior cornea and tear film appear for two-surface corneas. The
     apex, pupil, corneal centre and rotation centre are marked along the optical axis. The eye's current pose is
     not used: the schematic is in the eye's own frame, so it needs no prior ``look_at``.
@@ -76,9 +77,7 @@ def plot_eye_cross_section(
     radius = cornea.anterior_radius
     k = getattr(cornea, "anterior_k", None) or 0.0
     apex_z = cornea.get_apex_position().z
-    alpha = np.radians(eye.model.fovea_alpha_deg)
     axial = eye.model.axial_length
-    nodal = 0.29 * axial  # approximate second nodal point, where the optical and visual axes cross
 
     def depth(z: float) -> float:
         return abs(z - apex_z)
@@ -132,14 +131,18 @@ def plot_eye_cross_section(
     for s in (1, -1):  # iris: the aperture edges from the pupil rim out to the limbus
         ax.plot([acd, acd], [s * pupil_d / 2, s * limbus_r * 0.96], color=color["iris"], lw=3.5)
 
-    ca, sa = np.cos(alpha), np.sin(alpha)
-    ax.plot([-3, axial], [0, 0], color=color["optical_axis"], ls="--", lw=0.8, zorder=1, label="optical axis")
-    dx0 = nodal - globe_c
-    t_back = -dx0 * ca + np.sqrt(globe_r**2 - (dx0 * sa) ** 2)  # visual axis meets the retina (globe sphere)
-    fovea = (nodal + t_back * ca, t_back * sa)
+    front = -3.0  # both axes and the figure start this far in front of the apex (mm)
+    ax.plot([front, axial], [0, 0], color=color["optical_axis"], ls="--", lw=0.8, zorder=1, label="optical axis")
+    # The visual axis is the line from the fovea through the eyeball centre. The fovea is temporal in both
+    # eyes, so its offset is mirrored for the left eye and the figure is the same for either side.
+    fovea_local = eye.fovea_position
+    temporal = -fovea_local.x if eye.which_eye == "left" else fovea_local.x
+    fovea = (depth(fovea_local.z), temporal)
+    centre_depth = depth(eye.eyeball_center_z)
+    slope = fovea[1] / (fovea[0] - centre_depth)
     ax.plot(
-        [-3, fovea[0]],
-        [np.tan(alpha) * (-3 - nodal), fovea[1]],
+        [front, fovea[0]],
+        [slope * (front - centre_depth), fovea[1]],
         color=color["visual_axis"],
         ls="-.",
         lw=1.2,
@@ -169,7 +172,7 @@ def plot_eye_cross_section(
         )
 
     ax.set_aspect("equal")
-    ax.set_xlim(-3, axial + 1.5)
+    ax.set_xlim(front, axial + 1.5)
     ax.set_ylim(-(limbus_r + 5.0), limbus_r + 3.7)
     ax.set_yticks([])
     ax.set_xlabel("mm from corneal apex")
