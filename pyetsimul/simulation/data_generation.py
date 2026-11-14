@@ -304,7 +304,11 @@ class DataGenerationStrategy(VariationStrategy):
         variation: ParameterVariation,
         value: Any,  # noqa: ANN401
     ) -> Position3D | None:
-        """Apply parameter variation to eye copy and return gaze target.
+        """Apply parameter variation to eye copy, turn the eye to its target and return that target.
+
+        The eye is turned once, after every eye parameter is set, so the order of combined variations does
+        not matter. The target is the varied one, else the strategy's gaze target, else the target the eye
+        was looking at before the variation. An eye with none of these keeps its rest pose.
 
         Args:
             eye_copy: Eye object to modify
@@ -312,33 +316,37 @@ class DataGenerationStrategy(VariationStrategy):
             value: Variation value to apply
 
         Returns:
-            Current gaze target position after applying variation
+            Gaze target the eye looks at after the variation, or None for an eye in its rest pose
 
         """
-        current_gaze_target = self.gaze_target
+        # Read before the variation is applied: placing an eye with hold_fixation off clears its target.
+        held_target = eye_copy.current_target_point
 
         if isinstance(variation, ComposedVariation):
-            current_gaze_target = self._handle_composed_variation(eye_copy, variation, value)
+            varied_target = self._apply_composed_variation(eye_copy, variation, value)
         elif isinstance(variation, SequentialVariation):
-            current_gaze_target = self._handle_sequential_variation(eye_copy, variation, value)
+            varied_target = self._apply_sequential_variation(eye_copy, variation, value)
         elif isinstance(variation, EyeParameterVariation):
-            current_gaze_target = self._handle_eye_parameter_variation(eye_copy, variation, value)
+            variation.apply_to_eye(eye_copy, value)
+            varied_target = None
         elif isinstance(variation, TargetVariation):
-            current_gaze_target = self._handle_target_variation(eye_copy, value)
+            varied_target = value
         else:
             raise TypeError(f"Unknown variation type: {type(variation)}")
 
-        return current_gaze_target
+        target = varied_target if varied_target is not None else self.gaze_target
+        if target is None:
+            target = held_target
+        if target is not None:
+            eye_copy.look_at(target)
+        return target
 
-    def _handle_composed_variation(
-        self, eye_copy: Eye, variation: ComposedVariation, value: dict
-    ) -> Position3D | None:
-        """Handle ComposedVariation by applying each inner variation."""
+    @staticmethod
+    def _apply_composed_variation(eye_copy: Eye, variation: ComposedVariation, value: dict) -> Position3D | None:
+        """Apply each eye parameter of a composition and return its varied target, if it has one."""
         varied_target = None
 
-        # The eye is turned once, after every eye parameter is set, so the order of the inner variations
-        # does not matter. This supports combining different types of variations (e.g., eye position and
-        # target position).
+        # This supports combining different types of variations (e.g., eye position and target position).
         for v_inner in variation.variations:
             inner_value = value[v_inner.param_name]
             if isinstance(v_inner, EyeParameterVariation):
@@ -348,49 +356,19 @@ class DataGenerationStrategy(VariationStrategy):
             else:
                 raise TypeError(f"A composition cannot hold a variation of type {type(v_inner).__name__}")
 
-        return self._aim_eye(eye_copy, varied_target)
+        return varied_target
 
-    def _handle_sequential_variation(
-        self, eye_copy: Eye, variation: SequentialVariation, value: dict
-    ) -> Position3D | None:
-        """Handle SequentialVariation by applying one variation from the sequence."""
-        # For SequentialVariation, apply one variation at a time from the sequence.
+    @staticmethod
+    def _apply_sequential_variation(eye_copy: Eye, variation: SequentialVariation, value: dict) -> Position3D | None:
+        """Apply the one variation of a sequence that this value belongs to and return its varied target."""
         v_inner = variation.variations[value["variation_index"]]
         inner_value = value["value"]
         if isinstance(v_inner, EyeParameterVariation):
             v_inner.apply_to_eye(eye_copy, inner_value)
-            return self._aim_eye(eye_copy, None)
+            return None
         if isinstance(v_inner, TargetVariation):
-            return self._aim_eye(eye_copy, inner_value)
+            return inner_value
         raise TypeError(f"A sequence cannot hold a variation of type {type(v_inner).__name__}")
-
-    def _handle_eye_parameter_variation(
-        self,
-        eye_copy: Eye,
-        variation: EyeParameterVariation,
-        value: Any,  # noqa: ANN401
-    ) -> Position3D | None:
-        """Handle simple EyeParameterVariation."""
-        variation.apply_to_eye(eye_copy, value)
-        return self._aim_eye(eye_copy, None)
-
-    def _handle_target_variation(self, eye_copy: Eye, value: Any) -> Position3D:  # noqa: ANN401
-        """Handle TargetVariation."""
-        # For a target variation, the value itself is the gaze target.
-        return self._aim_eye(eye_copy, value)
-
-    def _aim_eye(self, eye_copy: Eye, varied_target: Position3D | None) -> Position3D | None:
-        """Turn the eye to its target once its parameters are set, and return that target.
-
-        The target is the varied one, else the strategy's gaze target, else the target the eye was already
-        looking at. An eye with none of these keeps its rest pose.
-        """
-        target = varied_target if varied_target is not None else self.gaze_target
-        if target is None:
-            target = eye_copy.current_target_point
-        if target is not None:
-            eye_copy.look_at(target)
-        return target
 
     def _serialize_param_value(self, param_value: Any) -> Any:  # noqa: ANN401
         """Serialize parameter values for JSON storage."""

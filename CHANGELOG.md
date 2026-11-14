@@ -284,6 +284,21 @@ ETRA 2026 paper; this log records everything since.
   away from the pupil, the returned point is seen 373 px away from the requested position. Now `ValueError` is raised
   in that case. For positions that have a solution, the result is more exact (within 1e-11 px; before, about 1e-5 px).
 
+- **Fixed: an eye that was moved after `look_at` no longer looked at its target.**
+  Before, assigning `Eye.position` after a `look_at` moved the eye but kept the rotation it had at its old position.
+  The visual axis then missed the target, by 100 mm for an eye that was moved by 140 mm at about 730 mm from the
+  target. `set_rest_orientation` and `set_rest_orientation_at_target` after a `look_at` had a related problem: they
+  kept the shift in eye position that the earlier rotation had caused. The same calls in a different order gave eye
+  positions that differed by up to 4.4 mm. Now the eye turns to its target again after each of these calls, so the
+  result does not depend on their order. If the eye cannot turn to the target from its new position, the call raises
+  `ValueError` and leaves the eye in its rest orientation without a target.
+
+- **Added: an eye can be moved without turning back to its target, with `Eye(hold_fixation=False)`.**
+  By default, an eye that looks at a target keeps looking at it: after `eye.look_at(target)`, giving the eye a new
+  position or a new rest orientation turns it so that it looks at the same target again. With `hold_fixation=False`,
+  the eye goes to its rest orientation instead, which is the direction it faces when it looks at no target. It then has
+  no target until the next `look_at`.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed

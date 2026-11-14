@@ -39,6 +39,13 @@ class Eye:
     fovea displacement and the rotation centre. The eye adds its side, its placement and its pose. The
     eye-local optical axis runs along the negative z-axis, and ``look_at`` turns the eye to a target with
     Listing's law.
+
+    The pose follows from three things: where the eye is placed (``position``), its rest orientation
+    (``set_rest_orientation``, ``set_rest_orientation_at_target``) and the target it looks at
+    (``look_at``). Placing the eye or setting its rest orientation while it looks at a target makes it
+    turn to that target again, so these calls give the same pose in any order. With
+    ``hold_fixation=False`` such a call returns the eye to its rest pose and clears the target instead,
+    and the eye stays at rest until the next ``look_at``.
     """
 
     # The eye-model specification. Accepts an EyeModel or a registered model name (case-insensitive,
@@ -49,6 +56,9 @@ class Eye:
     # horizontal kappa flips sign between them and the pupil-decentration coefficients are mirrored;
     # which_eye applies both signs to the model's unsigned magnitudes.
     which_eye: str = "right"
+    # Whether an eye that looks at a target turns to it again when it is placed or its rest orientation is
+    # set. Off, such a call returns the eye to its rest pose and clears the target.
+    hold_fixation: bool = True
 
     # Per-eye working instances, built in __post_init__ from the (shared, frozen) model spec. The model
     # holds the spec; these are this eye's mutable working copies -- the cornea is set up for the axial
@@ -67,6 +77,7 @@ class Eye:
     _rest_orientation: RotationMatrix = field(init=False)
     _rest_orientation_explicitly_set: bool = field(init=False, default=False)  # Track if user set rest orientation
     _current_target_point: Position3D | None = field(init=False, default=None)  # Updated by look_at()
+    _current_look_at_method: str | None = field(init=False, default=None)  # method of that look_at()
     # Rest globe-centre placement; the gaze-dependent rotation centre re-pivots about it.
     _placement: Position3D = field(init=False)
     # {pupil diameter (mm): physical eye-local boundary (N x 2)} registered via register_pupil_shape;
@@ -183,27 +194,41 @@ class Eye:
         self.trans[:3, :3] = value
 
     def set_rest_orientation(self, value: RotationMatrix) -> None:
-        """Set the rest orientation and initialize current orientation to match.
+        """Set the rest orientation, the reference orientation that ``look_at`` turns the eye from.
 
-        Establishes reference orientation for eye rotation calculations.
-        Validates right-handed rotation matrix with determinant = +1.
+        An eye that looks at a target turns to it again from the new rest orientation. With
+        ``hold_fixation`` off, or with no target, the eye takes its rest pose.
 
         Args:
             value: 3x3 rotation matrix (must be right-handed with determinant = +1)
 
         Raises:
-            ValueError: If the matrix is not right-handed (det ≠ +1)
+            ValueError: If the eye cannot turn to its target from the new rest orientation. The eye is then
+                left in its rest pose with no target.
 
         """
-        # RotationMatrix type already validates during construction
-
         self._rest_orientation = value.copy()
         self._rest_orientation_explicitly_set = True
-        self.trans[:3, :3] = value
 
         # Keep eyelid orientation aligned to rest orientation (stationary relative to eye rotation)
         if self.model.eyelid_enabled:
             self.eyelid_trans[:3, :3] = value
+
+        self._settle_pose()
+
+    def _settle_pose(self) -> None:
+        """Bring the pose in line with the placement and the rest orientation after one of them changed.
+
+        The eye takes its rest pose. If it was looking at a target and ``hold_fixation`` is on, it then turns
+        to that target again with the method of its last ``look_at``; otherwise it has no target afterwards.
+        """
+        target, method = self._current_target_point, self._current_look_at_method
+        self.trans[:3, :3] = self._rest_orientation
+        self.trans[:3, 3] = [self._placement.x, self._placement.y, self._placement.z]
+        self._current_target_point = None
+        self._current_look_at_method = None
+        if target is not None and self.hold_fixation:
+            self.look_at(target, method)
 
     @property
     def rest_orientation(self) -> RotationMatrix:
@@ -255,8 +280,9 @@ class Eye:
     def current_target_point(self) -> Position3D | None:
         """Get the current target point (read-only).
 
-        Returns the target position that was last used with look_at(), or None if
-        the eye has not been oriented toward any target yet.
+        Returns the target the eye looks at, set by look_at(), or None for an eye in its rest pose: one that
+        has not looked at a target, or one with ``hold_fixation`` off that was placed or given a rest
+        orientation since.
         """
         return self._current_target_point
 
@@ -269,16 +295,19 @@ class Eye:
         with ``up`` (the world up direction); ``up`` defaults to +Y when not given, and
         must not be parallel to the gaze direction.
 
+        The rest pose is that of the eye at its placement, so place the eye first. An eye that looks at a
+        target turns to it again from the new rest orientation, as for ``set_rest_orientation``.
+
         Raises:
-            ValueError: If the target is at the eye position, which gives no direction to face.
+            ValueError: If the target is at the eye's placement, which gives no direction to face.
 
         """
-        # Eye position and target (world)
-        eye_pos = np.array([self.trans[0, 3], self.trans[1, 3], self.trans[2, 3]], dtype=float)
+        # Eye placement and target (world)
+        eye_pos = np.array([self._placement.x, self._placement.y, self._placement.z], dtype=float)
         target_vec = np.array([target_position.x, target_position.y, target_position.z], dtype=float) - eye_pos
         if np.linalg.norm(target_vec) < 1e-12:
             raise ValueError(
-                f"Cannot set the rest orientation at target {target_position}: it is at the eye position."
+                f"Cannot set the rest orientation at target {target_position}: it is at the eye's placement."
             )
 
         # Eye-local visual axis direction (unit, pointing outward toward cornea), and the point of that axis
@@ -347,32 +376,38 @@ class Eye:
         under the "center" convention. Setting it places the eye and records the value as
         :attr:`placement`. With a gaze-dependent ``RotationCenter``, ``look_at`` moves the origin as the
         eye turns, so after a ``look_at`` the value read here can differ from the value set.
+
+        An eye that looks at a target turns to it again from its new place. With ``hold_fixation`` off, or
+        with no target, the placed eye takes its rest pose.
+
+        Raises:
+            ValueError: On setting, if the eye cannot turn to its target from the new place. The eye is then
+                left in its rest pose with no target.
+
         """
         return Position3D.from_array(self.trans[:, 3])
 
     @position.setter
     def position(self, value: Position3D) -> None:
-        """Set the eye's position and update transformation matrix."""
-        self.trans[:, 3] = np.array(value)
-        # Record the placement as the rest origin so look_at can re-pivot about a gaze-dependent
-        # rotation centre relative to it (look_at writes trans directly, not here).
+        """Place the eye and bring its pose in line with the new placement."""
         self._placement = value
         # Eyelid follows eye translation but not rotation
         if self.model.eyelid_enabled:
             self.eyelid_trans[0, 3] = value.x
             self.eyelid_trans[1, 3] = value.y
             self.eyelid_trans[2, 3] = value.z
+        self._settle_pose()
 
     def copy(self, **overrides: object) -> "Eye":
         """Return a new Eye, optionally overriding model fields with a derived EyeModel.
 
         Mirrors :meth:`EyeModel.copy` at the eye level: keyword overrides are forwarded to a derived
         copy of the model, so the shared named model is never mutated, and the placement, rest
-        orientation and which_eye carry over. Dynamic state -- a changed pupil size, the current
-        gaze target, registered per-size shapes -- is not copied; the result is a freshly built eye.
+        orientation, which_eye and hold_fixation carry over. Dynamic state -- a changed pupil size, the
+        current gaze target, registered per-size shapes -- is not copied; the result is a freshly built eye.
         """
         model = self.model.copy(**overrides) if overrides else self.model
-        new_eye = Eye(model=model, which_eye=self.which_eye)
+        new_eye = Eye(model=model, which_eye=self.which_eye, hold_fixation=self.hold_fixation)
         new_eye.position = self.placement
         if self._rest_orientation_explicitly_set:
             new_eye.set_rest_orientation(self.rest_orientation)
@@ -417,7 +452,8 @@ class Eye:
         """Rotates an eye to look at a given position in space.
 
         Delegates to eye_operations module for gaze control.
-        Updates current_target_point to track the target position.
+        Updates current_target_point to track the target position. With ``hold_fixation`` on, the eye turns
+        to this target again, with the same method, when it is placed or its rest orientation is set.
 
         Args:
             target_position: Position in world coordinates to look at
@@ -433,6 +469,7 @@ class Eye:
         look_at_target(self, target_position, method)
         # Recorded only once the eye has turned, so a call that raises leaves the previous target.
         self._current_target_point = target_position
+        self._current_look_at_method = method
 
     def get_pupil(self) -> PupilData:
         """Get pupil boundary points in world coordinates.
@@ -1189,6 +1226,8 @@ class Eye:
             "transformation_matrix": self.trans.tolist(),
             "rest_orientation": self._rest_orientation.tolist(),
             "current_target_point": self._current_target_point.serialize() if self._current_target_point else None,
+            "current_look_at_method": self._current_look_at_method,
+            "hold_fixation": self.hold_fixation,
             # Anatomical parameters
             "axial_length": float(self.model.axial_length),
             "n_aqueous_humor": float(self.model.n_aqueous_humor),
@@ -1245,7 +1284,7 @@ class Eye:
             pupil_random_seed=data["pupil_random_seed"],
             eyelid_enabled=data["eyelid_enabled"],
         )
-        eye = cls(model=model, which_eye=data.get("which_eye", "right"))
+        eye = cls(model=model, which_eye=data.get("which_eye", "right"), hold_fixation=data["hold_fixation"])
 
         # Restore position and orientation
         if data["position"]:
@@ -1257,6 +1296,7 @@ class Eye:
 
         if data["current_target_point"]:
             eye._current_target_point = Position3D.deserialize(data["current_target_point"])
+            eye._current_look_at_method = data["current_look_at_method"]
 
         # Restore the working cornea, live pupil and eyelid to their exact serialized state.
         if data.get("cornea"):

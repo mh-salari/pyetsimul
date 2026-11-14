@@ -201,6 +201,27 @@ Placement versus Position
 eye turns to off-axis targets. ``rotation_centre`` reports the azimuth center in world
 coordinates.
 
+Placing an Eye That Looks at a Target
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+The pose of an eye follows from three things: its placement, its rest orientation, and the target
+it looks at. Three calls change the first two: assigning ``position``, ``set_rest_orientation``
+and ``set_rest_orientation_at_target``. When one of them is made on an eye that looks at a
+target, the eye turns to that target again from its new placement or rest orientation, with the
+``look_at`` method of its last ``look_at``. The calls therefore give the same pose in any order:
+
+.. code-block:: python
+
+   eye.look_at(target)
+   eye.position = Position3D(40.0, 60.0, 700.0)  # the eye still looks at the target
+
+``Eye(hold_fixation=False)`` switches this off. Such a call then returns the eye to its rest pose
+and clears ``current_target_point``, and the eye stays at rest until the next ``look_at``. In both
+modes an eye that has not looked at a target takes its rest pose at the new placement.
+
+``set_rest_orientation_at_target`` builds the rest pose for the eye at its placement, so the eye
+has to be placed first.
+
 Fick Centers
 ------------
 
