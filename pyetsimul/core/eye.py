@@ -833,6 +833,7 @@ class Eye:
         """
         contour = self.backproject_contour(boundary, camera, apparent=apparent)
         self.pupil = create_pupil("contour", self.get_pupil_position(), None, None, contour=contour)
+        self._update_pupil_position()
 
     def register_pupil_shape(
         self,

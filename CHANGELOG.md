@@ -68,6 +68,10 @@ ETRA 2026 paper; this log records everything since.
   `create_interactive_gaze_plot`, the Space key reset the eye to a displaced position. Now a step has the stated size,
   and Space returns the eye to its initial position.
 
+- **Fixed: a pupil set from a measured contour was centred on the optical axis.**
+  Before, `Eye.set_pupil_from_contour` ignored the off-axis position and the decentration of the pupil that the eye is
+  configured with, until the pupil size was set again. Now a contour pupil gets the same position as any other pupil.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed
