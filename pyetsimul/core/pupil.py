@@ -5,7 +5,7 @@ Defines abstract and concrete pupil models (elliptical, realistic) for boundary 
 
 import math
 from abc import ABC, abstractmethod
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 
 import numpy as np
 
@@ -366,7 +366,9 @@ class RealisticPupil(Pupil):
 
         """
         super().__init__(pos_pupil, x_pupil, y_pupil, n)
-        self.params = params or RealisticPupilParams()
+        # The pupil writes its size and ellipse orientation into its parameters, so it keeps its own copy
+        # and leaves the caller's object as it was.
+        self.params = RealisticPupilParams() if params is None else replace(params)
 
         # Extract current pupil size from elliptical parameters
         current_radius_x = x_pupil.magnitude()

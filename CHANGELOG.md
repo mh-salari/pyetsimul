@@ -72,6 +72,11 @@ ETRA 2026 paper; this log records everything since.
   Before, `Eye.set_pupil_from_contour` ignored the off-axis position and the decentration of the pupil that the eye is
   configured with, until the pupil size was set again. Now a contour pupil gets the same position as any other pupil.
 
+- **Fixed: changing the pupil size of one eye changed the realistic pupil of other eyes built from the same eye
+  model.**
+  Before, when an `EyeModel` had `realistic_pupil_params`, every eye built from it, and every `Eye.copy()`, used the
+  same parameter object. Now every pupil has its own copy of the parameters.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed
