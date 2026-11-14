@@ -21,7 +21,6 @@ def pprint_polynomial_parameters(et: EyeTracker) -> None:
         info("-" * 40)
         if et.algorithm_state.is_calibrated:
             info("Calibration status: Calibrated")
-            info("Algorithm: Geometric gaze estimation (non-polynomial)")
         else:
             warning("Calibration status: [X] Not calibrated")
         return
@@ -54,29 +53,33 @@ def pprint_polynomial_parameters(et: EyeTracker) -> None:
         poly_info = get_polynomial_info(et.polynomial_name)
         term_descriptions = poly_info.descriptor.get_term_descriptions()
 
-        if poly_info.descriptor.uses_different_xy_features:
-            # Different features for x and y: show separate tables for X and Y coordinates
-            coeff_headers = ["Term", "Coefficient"]
+        different_xy = poly_info.descriptor.uses_different_xy_features
+        x_terms, y_terms = term_descriptions if different_xy else (term_descriptions, term_descriptions)
 
-            info("\nX Coordinate Terms:")
-            x_coeff_data = []
-            x_terms = term_descriptions[0]
-            for term, coeff in zip(x_terms, state.x_coefficients, strict=False):
-                x_coeff_data.append([term, f"{coeff:8.6f}"])
-            table(x_coeff_data, headers=coeff_headers, tablefmt="grid")
+        # The coefficients hold the terms of one glint after the other, one block per light.
+        n_glints = len(state.x_coefficients) // len(x_terms)
+        for glint in range(n_glints):
+            if n_glints > 1:
+                info(f"\nGlint {glint + 1} of {n_glints}:")
+            x_values = state.x_coefficients[glint * len(x_terms) : (glint + 1) * len(x_terms)]
+            y_values = state.y_coefficients[glint * len(y_terms) : (glint + 1) * len(y_terms)]
 
-            info("\nY Coordinate Terms:")
-            y_coeff_data = []
-            y_terms = term_descriptions[1]
-            for term, coeff in zip(y_terms, state.y_coefficients, strict=False):
-                y_coeff_data.append([term, f"{coeff:8.6f}"])
-            table(y_coeff_data, headers=coeff_headers, tablefmt="grid")
-        else:
-            # same features for x and y: show combined table with shared terms
-            coeff_headers = ["Term", "X Coefficient", "Y Coefficient"]
-            coeff_data = []
-            for term, x_val, y_val in zip(term_descriptions, state.x_coefficients, state.y_coefficients, strict=False):
-                coeff_data.append([term, f"{x_val:8.6f}", f"{y_val:8.6f}"])
-            table(coeff_data, headers=coeff_headers, tablefmt="grid")
+            if different_xy:
+                # Different features for x and y: show separate tables for X and Y coordinates
+                coeff_headers = ["Term", "Coefficient"]
+                info("\nX Coordinate Terms:")
+                x_coeff_data = [[term, f"{coeff:8.6f}"] for term, coeff in zip(x_terms, x_values, strict=True)]
+                table(x_coeff_data, headers=coeff_headers, tablefmt="grid")
+                info("\nY Coordinate Terms:")
+                y_coeff_data = [[term, f"{coeff:8.6f}"] for term, coeff in zip(y_terms, y_values, strict=True)]
+                table(y_coeff_data, headers=coeff_headers, tablefmt="grid")
+            else:
+                # same features for x and y: show combined table with shared terms
+                coeff_headers = ["Term", "X Coefficient", "Y Coefficient"]
+                coeff_data = [
+                    [term, f"{x_val:8.6f}", f"{y_val:8.6f}"]
+                    for term, x_val, y_val in zip(x_terms, x_values, y_values, strict=True)
+                ]
+                table(coeff_data, headers=coeff_headers, tablefmt="grid")
     else:
         warning("No calibration parameters found (tracker not calibrated)")

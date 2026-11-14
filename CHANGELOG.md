@@ -203,6 +203,11 @@ ETRA 2026 paper; this log records everything since.
   was placed at NaN in every step, without an error. Now any of the ranges may be constant, and `ValueError` is raised
   when all of them are.
 
+- **Fixed: the calibration report showed the coefficients of the first glint only.**
+  Before, with several light sources, the coefficient tables of the other glints were missing. Now every glint has its
+  own table. For the homography and the Stampe model, the report also printed the line "Geometric gaze estimation
+  (non-polynomial)", which describes neither model; that line is removed.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed
