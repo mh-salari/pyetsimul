@@ -219,6 +219,13 @@ ETRA 2026 paper; this log records everything since.
   Before, it raised `Unknown cornea type: toric`, so the `gkaModelEye` eye model could not be plotted. Now a toric
   cornea is drawn as the conic it is built on.
 
+- **Fixed: `set_rest_orientation_at_target` aimed the visual axis about 0.1 deg beside its target.**
+  `set_rest_orientation_at_target` sets the rest orientation of the eye so that the resting eye looks at a given
+  target. Before, the visual axis of the resting eye passed 1.36 mm beside that target, and a `look_at` at the same
+  target still turned the eye by about 0.1 deg. Now `set_rest_orientation_at_target` and `look_at` use the same
+  computation, and looking at the rest target does not turn the eye. The rest orientation of an eye with foveal
+  displacement changes by 0.11 deg for a target at 700 mm.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed

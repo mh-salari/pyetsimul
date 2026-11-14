@@ -80,14 +80,14 @@ def look_at_target(eye: "Eye", target_position: Position3D, method: str = "visua
         los = np.array([pupil.x - fovea.x, pupil.y - fovea.y, pupil.z - fovea.z])
         los /= np.linalg.norm(los)
         rest_axis = Vector3D.from_array(eye.rest_orientation @ los)
-        axis_point = _axis_point_nearest_origin(np.array([pupil.x, pupil.y, pupil.z], dtype=float), los)
+        axis_point = axis_point_nearest_origin(np.array([pupil.x, pupil.y, pupil.z], dtype=float), los)
     elif method == "visual_axis" and eye.model.fovea_displacement:
         # Visual axis from the foveal displacement angles (alpha horizontal, signed by eye side; beta vertical).
         # It runs from the fovea through the eyeball centre.
         alpha, beta = eye._signed_alpha_rad, np.radians(eye.model.fovea_beta_deg)
         v_local = np.array([-np.sin(alpha) * np.cos(beta), -np.sin(beta), -np.cos(alpha) * np.cos(beta)])
         rest_axis = Vector3D.from_array(eye.rest_orientation @ v_local)
-        axis_point = _axis_point_nearest_origin(np.array([0.0, 0.0, eye.eyeball_center_z], dtype=float), v_local)
+        axis_point = axis_point_nearest_origin(np.array([0.0, 0.0, eye.eyeball_center_z], dtype=float), v_local)
     else:
         # Optical axis is -Z in local coordinates and passes through the eye-local origin.
         rest_axis = Vector3D.from_array(eye.rest_orientation @ np.array([0.0, 0.0, -1.0]))
@@ -98,12 +98,19 @@ def look_at_target(eye: "Eye", target_position: Position3D, method: str = "visua
     # passes through, so that the axis itself passes through the target.
     from_fixed_apex = method == "optical_axis_target_direction"
 
+    rest = np.asarray(eye.rest_orientation, dtype=float)
+
+    def orientation_facing(direction: Vector3D) -> np.ndarray:
+        return calculate_eye_rotation(rest_axis, direction) @ rest
+
     def orientation_from(eye_position: Position3D) -> np.ndarray:
         if from_fixed_apex:
             direction = _direction_to_target(target_position, eye.placement)
             orientation = calculate_eye_rotation(rest_axis, direction) @ eye.rest_orientation
         else:
-            orientation = _orientation_through_target(eye, rest_axis, axis_point, eye_position, target_position)
+            orientation = orientation_through_target(
+                orientation_facing, rest, axis_point, eye_position, target_position
+            )
         if method == "optical_then_kappa" and eye.model.fovea_displacement:
             # Foveal (kappa) post-rotation lands the fovea on the target after the optical axis is aimed.
             alpha, beta = eye._signed_alpha_rad, np.radians(eye.model.fovea_beta_deg)
@@ -141,7 +148,7 @@ def _direction_to_target(target_position: Position3D, eye_position: Position3D) 
     return direction.normalize()
 
 
-def _axis_point_nearest_origin(point: np.ndarray, direction: np.ndarray) -> np.ndarray:
+def axis_point_nearest_origin(point: np.ndarray, direction: np.ndarray) -> np.ndarray:
     """Point nearest the eye-local origin on the line through ``point`` along the unit ``direction``.
 
     Any point of the aimed axis gives the same pose; the aim solve settles fastest with the nearest one.
@@ -149,13 +156,19 @@ def _axis_point_nearest_origin(point: np.ndarray, direction: np.ndarray) -> np.n
     return point - (point @ direction) * direction
 
 
-def _orientation_through_target(
-    eye: "Eye", rest_axis: Vector3D, axis_point: np.ndarray, eye_position: Position3D, target_position: Position3D
+def orientation_through_target(
+    orientation_facing: Callable[[Vector3D], np.ndarray],
+    start: np.ndarray,
+    axis_point: np.ndarray,
+    eye_position: Position3D,
+    target_position: Position3D,
 ) -> np.ndarray:
-    """Listing orientation for which the aimed axis passes through the target, for one eye position.
+    """Orientation for which the aimed axis passes through the target, for one eye position.
 
-    The axis passes through ``axis_point`` (eye-local), whose world position depends on the orientation,
-    so the direction from that point to the target and the orientation are iterated to a fixed point.
+    ``orientation_facing`` gives the orientation that points the aimed axis along a world direction. The
+    axis passes through ``axis_point`` (eye-local), whose world position depends on the orientation, so
+    the direction from that point to the target and the orientation are iterated to a fixed point,
+    beginning at ``start``.
 
     Raises:
         ValueError: If the iteration does not settle, which happens for a target nearer to the eye than
@@ -163,14 +176,13 @@ def _orientation_through_target(
 
     """
     origin = np.array([eye_position.x, eye_position.y, eye_position.z], dtype=float)
-    rest = np.asarray(eye.rest_orientation, dtype=float)
     # A point at the eye-local origin does not move with the orientation, so its first step is the answer.
     point_is_origin = not axis_point.any()
-    orientation = rest
+    orientation = start
     for _ in range(_AIM_MAX_ITERS):
         point = origin + orientation @ axis_point
         direction = _direction_to_target(target_position, Position3D(point[0], point[1], point[2]))
-        updated = np.asarray(calculate_eye_rotation(rest_axis, direction) @ rest, dtype=float)
+        updated = np.asarray(orientation_facing(direction), dtype=float)
         if point_is_origin or np.max(np.abs(updated - orientation)) < _AIM_TOL:
             return updated
         orientation = updated

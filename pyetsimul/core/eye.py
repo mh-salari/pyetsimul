@@ -15,11 +15,11 @@ from pyetsimul.log import info, table
 from ..optics.pupil_imaging import calculate_pupil_center_from_boundary, calculate_pupil_diameter_from_boundary
 from ..optics.reflections import find_corneal_reflection
 from ..optics.refractions import find_refraction_point
-from ..types import Direction3D, Point2D, Position3D, PupilData, Ray, RotationMatrix, TransformationMatrix
+from ..types import Direction3D, Point2D, Position3D, PupilData, Ray, RotationMatrix, TransformationMatrix, Vector3D
 from .cornea import ConicCornea, SphericalCornea
 from .default_configs import EyeAnatomyDefaults
 from .eye_model import EyeModel, get_eye_model
-from .eye_operations import look_at_target
+from .eye_operations import axis_point_nearest_origin, look_at_target, orientation_through_target
 from .eyelid import Eyelid, create_eyelid
 from .off_axis_pupil import OffAxisPupilConfig
 from .pupil import EllipticalPupil, Pupil, RealisticPupilParams, create_pupil
@@ -261,11 +261,11 @@ class Eye:
         return self._current_target_point
 
     def set_rest_orientation_at_target(self, target_position: Position3D, up: Position3D | None = None) -> None:
-        """Set rest orientation so the VISUAL axis points to the target.
+        """Set rest orientation so the VISUAL axis passes through the target.
 
-        Aligns the eye-local visual axis (derived from fovea angles when enabled,
-        or equals the optical axis when disabled) with the world-space direction
-        from eye position to target. Keeps the eye-local +Y axis approximately aligned
+        Turns the rest pose so that the visual axis (the fovea-through-eyeball-centre axis when fovea
+        displacement is enabled, the optical axis when it is disabled) passes through the target, the
+        way ``look_at`` aims it. Keeps the eye-local +Y axis approximately aligned
         with ``up`` (the world up direction); ``up`` defaults to +Y when not given, and
         must not be parallel to the gaze direction.
 
@@ -273,17 +273,16 @@ class Eye:
             ValueError: If the target is at the eye position, which gives no direction to face.
 
         """
-        # Eye position and target direction (world)
+        # Eye position and target (world)
         eye_pos = np.array([self.trans[0, 3], self.trans[1, 3], self.trans[2, 3]], dtype=float)
         target_vec = np.array([target_position.x, target_position.y, target_position.z], dtype=float) - eye_pos
-        norm = np.linalg.norm(target_vec)
-        if norm < 1e-12:
+        if np.linalg.norm(target_vec) < 1e-12:
             raise ValueError(
                 f"Cannot set the rest orientation at target {target_position}: it is at the eye position."
             )
-        z_world = target_vec / norm
 
-        # Eye-local visual axis direction (unit, pointing outward toward cornea)
+        # Eye-local visual axis direction (unit, pointing outward toward cornea), and the point of that axis
+        # nearest the eye-local origin
         if self.model.fovea_displacement:
             alpha = self._signed_alpha_rad
             beta = self.model.fovea_beta_deg * np.pi / 180.0
@@ -296,8 +295,11 @@ class Eye:
                 dtype=float,
             )
             v_local = -v_local / (np.linalg.norm(v_local) + 1e-12)
+            # The visual axis runs from the fovea through the eyeball centre.
+            axis_point = axis_point_nearest_origin(np.array([0.0, 0.0, self.eyeball_center_z], dtype=float), v_local)
         else:
             v_local = np.array([0.0, 0.0, -1.0], dtype=float)
+            axis_point = np.zeros(3)
 
         # Build local visual basis
         y_local_pref = np.array([0.0, 1.0, 0.0], dtype=float)
@@ -311,19 +313,30 @@ class Eye:
 
         local_rotation_matrix = np.column_stack([x_local, y_local, v_local])  # maps basis to canonical
 
-        # Build world visual basis (target dir as z)
-        world_up = np.array([0.0, 1.0, 0.0]) if up is None else np.array([up.x, up.y, up.z], dtype=float)
-        y_world = world_up - np.dot(world_up, z_world) * z_world
-        if np.linalg.norm(y_world) < 1e-12:
-            world_up = np.array([1.0, 0.0, 0.0], dtype=float)
-            y_world = world_up - np.dot(world_up, z_world) * z_world
-        y_world /= np.linalg.norm(y_world)
-        x_world = np.cross(y_world, z_world)
-        x_world /= np.linalg.norm(x_world)
-        world_rotation_matrix = np.column_stack([x_world, y_world, z_world])
+        preferred_up = np.array([0.0, 1.0, 0.0]) if up is None else np.array([up.x, up.y, up.z], dtype=float)
 
-        # Rotation mapping local visual basis to world visual basis
-        rest_orientation = world_rotation_matrix @ local_rotation_matrix.T
+        def orientation_facing(direction: Vector3D) -> np.ndarray:
+            """Rest orientation whose visual axis points along ``direction``, with eye-local +Y kept near up."""
+            # Build world visual basis (target dir as z)
+            z_world = np.array([direction.x, direction.y, direction.z], dtype=float)
+            world_up = preferred_up
+            y_world = world_up - np.dot(world_up, z_world) * z_world
+            if np.linalg.norm(y_world) < 1e-12:
+                world_up = np.array([1.0, 0.0, 0.0], dtype=float)
+                y_world = world_up - np.dot(world_up, z_world) * z_world
+            y_world /= np.linalg.norm(y_world)
+            x_world = np.cross(y_world, z_world)
+            x_world /= np.linalg.norm(x_world)
+            world_rotation_matrix = np.column_stack([x_world, y_world, z_world])
+
+            # Rotation mapping local visual basis to world visual basis
+            return world_rotation_matrix @ local_rotation_matrix.T
+
+        # The visual axis passes through axis_point, which turns with the eye, so the orientation is solved
+        # together with the direction from that point to the target, as look_at does.
+        rest_orientation = orientation_through_target(
+            orientation_facing, np.eye(3), axis_point, Position3D(eye_pos[0], eye_pos[1], eye_pos[2]), target_position
+        )
         self.set_rest_orientation(RotationMatrix(rest_orientation))
 
     @property
