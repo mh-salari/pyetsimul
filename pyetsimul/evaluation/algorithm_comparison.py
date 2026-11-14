@@ -202,7 +202,11 @@ def _calculate_pairwise_cosine_similarities(results: dict) -> dict[str, dict[str
                 if algo1 == algo2:
                     pairwise_sims[algo1][algo2] = 1.0
                 else:
-                    sim = cosine_similarity_average(results[algo1].predicted_points, results[algo2].predicted_points)
+                    sim = cosine_similarity_average(
+                        results[algo1].predicted_points,
+                        results[algo2].predicted_points,
+                        results[algo1].observer_positions,
+                    )
                     pairwise_sims[algo1][algo2] = sim
                 pbar.update(1)
 
@@ -221,7 +225,11 @@ def _calculate_pairwise_amplitude_differences(results: dict) -> dict[str, dict[s
                 if algo1 == algo2:
                     pairwise_amps[algo1][algo2] = {"mean": 0.0, "std": 0.0, "max": 0.0}
                 else:
-                    amp_stats = amplitude_agreement(results[algo1].predicted_points, results[algo2].predicted_points)
+                    amp_stats = amplitude_agreement(
+                        results[algo1].predicted_points,
+                        results[algo2].predicted_points,
+                        results[algo1].observer_positions,
+                    )
                     pairwise_amps[algo1][algo2] = amp_stats
                 pbar.update(1)
 
@@ -248,18 +256,24 @@ def point_wise_angular_difference(
     return float(np.mean(differences) if differences else np.nan)
 
 
-def cosine_similarity_average(predictions1: list[Position3D], predictions2: list[Position3D]) -> float:
-    """Average cosine similarity between prediction vectors."""
-    if len(predictions1) != len(predictions2):
+def cosine_similarity_average(
+    predictions1: list[Position3D], predictions2: list[Position3D], eye_positions: list[Position3D]
+) -> float:
+    """Average cosine similarity between the gaze vectors of two algorithms.
+
+    A gaze vector runs from the eye position to the predicted point, so the measure does not depend on where
+    the world origin lies.
+    """
+    if len(predictions1) != len(predictions2) or len(predictions1) != len(eye_positions):
         return np.nan
 
     similarities = []
-    for p1, p2 in zip(predictions1, predictions2, strict=False):
+    for p1, p2, eye_pos in zip(predictions1, predictions2, eye_positions, strict=False):
         if p1 is None or p2 is None:
             continue
 
-        vec1 = np.array([p1.x, p1.y, p1.z])
-        vec2 = np.array([p2.x, p2.y, p2.z])
+        vec1 = np.array([p1.x - eye_pos.x, p1.y - eye_pos.y, p1.z - eye_pos.z])
+        vec2 = np.array([p2.x - eye_pos.x, p2.y - eye_pos.y, p2.z - eye_pos.z])
 
         norm1 = np.linalg.norm(vec1)
         norm2 = np.linalg.norm(vec2)
@@ -273,18 +287,24 @@ def cosine_similarity_average(predictions1: list[Position3D], predictions2: list
     return float(np.mean(similarities) if similarities else np.nan)
 
 
-def amplitude_agreement(predictions1: list[Position3D], predictions2: list[Position3D]) -> dict[str, float]:
-    """Compare prediction magnitudes."""
-    if len(predictions1) != len(predictions2):
+def amplitude_agreement(
+    predictions1: list[Position3D], predictions2: list[Position3D], eye_positions: list[Position3D]
+) -> dict[str, float]:
+    """Compare the lengths of the gaze vectors of two algorithms, in mm.
+
+    A gaze vector runs from the eye position to the predicted point, so the measure does not depend on where
+    the world origin lies.
+    """
+    if len(predictions1) != len(predictions2) or len(predictions1) != len(eye_positions):
         return {"mean": np.nan, "std": np.nan, "max": np.nan}
 
     amp_differences = []
-    for p1, p2 in zip(predictions1, predictions2, strict=False):
+    for p1, p2, eye_pos in zip(predictions1, predictions2, eye_positions, strict=False):
         if p1 is None or p2 is None:
             continue
 
-        amp1 = np.sqrt(p1.x**2 + p1.y**2 + p1.z**2)
-        amp2 = np.sqrt(p2.x**2 + p2.y**2 + p2.z**2)
+        amp1 = np.sqrt((p1.x - eye_pos.x) ** 2 + (p1.y - eye_pos.y) ** 2 + (p1.z - eye_pos.z) ** 2)
+        amp2 = np.sqrt((p2.x - eye_pos.x) ** 2 + (p2.y - eye_pos.y) ** 2 + (p2.z - eye_pos.z) ** 2)
         amp_differences.append(abs(amp1 - amp2))
 
     if not amp_differences:

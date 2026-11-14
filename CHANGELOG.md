@@ -498,6 +498,13 @@ ETRA 2026 paper; this log records everything since.
   plane, which all examples use, the second value was therefore always 0, and the error along z was not reported. Now
   the function returns the error along the two axes of the calibration plane.
 
+- **Fixed: two measures of `compare_algorithms` depended on where the origin of the world coordinate system is.**
+  Before, the cosine similarity and the amplitude difference between the predictions of two algorithms were computed on
+  vectors from the world origin to the predicted gaze points. The same predictions therefore gave different values in
+  different coordinate systems: a cosine similarity of 0.99652 with the origin at the screen centre, and 0.9999997 with
+  the origin 6 m away. Now the vectors run from the eye to the predicted gaze point. `cosine_similarity_average` and
+  `amplitude_agreement` take the eye positions as a third argument.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed
