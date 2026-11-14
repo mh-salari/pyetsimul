@@ -193,6 +193,11 @@ ETRA 2026 paper; this log records everything since.
   depth of the rotation centre behind the corneal apex, which is 14.8 mm for horizontal and 12.2 mm for vertical
   rotation in the default eye.
 
+- **Changed: generated datasets are saved to `outputs/` by default, instead of `output/`.**
+  Before, `DataGenerationStrategy` wrote to `output/`, while `load_experiment_data` and `ExperimentConfig` read from
+  `outputs/`. A dataset generated with the defaults was therefore not found by the loader with its defaults.
+  `output_dir="output"` keeps the old folder.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed

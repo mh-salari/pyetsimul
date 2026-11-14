@@ -87,7 +87,7 @@ class DataGenerationStrategy(VariationStrategy):
         lights: list,
         experiment_name: str,
         gaze_target: Position3D | None = None,
-        output_dir: str = "output",
+        output_dir: str = "outputs",
         save_to_file: bool = True,
         use_refraction: bool = True,
         pupil_center_method: str = "ellipse",
