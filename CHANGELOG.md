@@ -178,6 +178,11 @@ ETRA 2026 paper; this log records everything since.
   Before, it printed x and z of each failed point, which identifies the point only for a screen in the x-z plane. Now
   all three coordinates are printed.
 
+- **Changed: gaze predictions of the homography model are named `"homography_normalization"` instead of
+  `"homography"`.**
+  This name is the `algorithm_name` of a prediction. It now matches the name of the tracker. Code that compares
+  `algorithm_name` with `"homography"` needs the new name.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed

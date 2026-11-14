@@ -224,7 +224,7 @@ class HomographyNormalizationGazeModel(EyeTracker):
         return GazePrediction(
             gaze_point=gaze_point,
             confidence=1.0,
-            algorithm_name="homography",
+            algorithm_name=self.algorithm_name,
             processing_time=time.perf_counter() - start_time,
             intermediate_results=intermediate_results,
         )
