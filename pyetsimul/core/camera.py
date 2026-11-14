@@ -189,9 +189,6 @@ class Camera:
             - valid_mask: 1xn boolean array indicating points within image bounds
 
         """
-        if self._fick_projection is not None:
-            return self._project_fick(pos)
-
         # Convert input to homogeneous coordinates matrix
         if isinstance(pos, Position3D):
             # Single position
@@ -202,33 +199,24 @@ class Camera:
         else:
             raise ValueError(f"Position must be Position3D or list of Position3D objects, got: {type(pos)}")
 
-        # Transform to camera coordinates
-        pos_camera = np.linalg.solve(self.trans, pos_homogeneous)
-
-        # Calculate distances along optical axis
-        dist = -pos_camera[2, :]
-
-        points_3d = pos_camera[:3, :].T
-        points_3d_opencv = points_3d.copy()
-        points_3d_opencv[:, 2] = -points_3d_opencv[:, 2]  # Flip Z coordinate system
-        points_3d_opencv = points_3d_opencv.reshape(-1, 1, 3).astype(np.float64)
-
-        points_2d, _ = cv2.projectPoints(
-            points_3d_opencv, np.zeros(3), np.zeros(3), self.camera_matrix.matrix, self.dist_coeffs
-        )
+        # Pixel coordinates counted from the top-left corner, and distances along the optical axis
+        if self._fick_projection is not None:
+            x, dist = self._project_fick(pos_homogeneous)
+        else:
+            x, dist = self._project_pinhole(pos_homogeneous)
 
         # Convert to center-origin coordinate system: the origin is the centre of the image
         resolution = self.camera_matrix.resolution
-        x = points_2d.reshape(-1, 2).T
         x[0, :] -= resolution.x / 2
         x[1, :] -= resolution.y / 2
 
         # Add error based on error type
         rng = self._err_rng
+        n_points = pos_homogeneous.shape[1]
         if self.err_type == "uniform":
-            x += self.err * (2 * rng.random((2, pos_camera.shape[1])) - 1)
+            x += self.err * (2 * rng.random((2, n_points)) - 1)
         elif self.err_type == "gaussian":
-            x += self.err * rng.normal(0, 1, (pos_camera.shape[1], 2)).T
+            x += self.err * rng.normal(0, 1, (n_points, 2)).T
         else:
             raise ValueError(f"Unknown error type: {self.err_type}")
 
@@ -249,6 +237,27 @@ class Camera:
 
         return ProjectionResult(image_points=x, distances=dist, valid_mask=condition)
 
+    def _project_pinhole(self, pos_homogeneous: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        """Pixel coordinates (2xn, top-left origin) and distances along the optical axis for world points.
+
+        Uses OpenCV with the camera matrix and the distortion coefficients.
+        """
+        # Transform to camera coordinates
+        pos_camera = np.linalg.solve(self.trans, pos_homogeneous)
+
+        # Calculate distances along optical axis
+        dist = -pos_camera[2, :]
+
+        points_3d = pos_camera[:3, :].T
+        points_3d_opencv = points_3d.copy()
+        points_3d_opencv[:, 2] = -points_3d_opencv[:, 2]  # Flip Z coordinate system
+        points_3d_opencv = points_3d_opencv.reshape(-1, 1, 3).astype(np.float64)
+
+        points_2d, _ = cv2.projectPoints(
+            points_3d_opencv, np.zeros(3), np.zeros(3), self.camera_matrix.matrix, self.dist_coeffs
+        )
+        return points_2d.reshape(-1, 2).T, dist
+
     def _set_fick_projection(
         self,
         reference_origin: Position3D,
@@ -262,7 +271,8 @@ class Camera:
         optical axis, an elevation rotation about the horizontal axis and an azimuth rotation about the
         vertical axis. The azimuth term carries matching (both-negative) off-diagonal signs, so it is not a
         pure rotation: it scales the image as well as turning it, magnifying points more the further they
-        fall from the centre. Everything else is an ordinary pinhole; lens distortion is not applied.
+        fall from the centre. This is the projection of gkaModelEye (``projectToImagePlane.m``), which the
+        mode reproduces. Everything else is an ordinary pinhole without lens distortion.
 
         Args:
             reference_origin: World point that is the origin of the projection's reference frame.
@@ -289,22 +299,33 @@ class Camera:
         # Keep the world position consistent with the projection for the optics that read it.
         self.position = Position3D(*(origin + _REFERENCE_AXES.T @ translation))
 
-    def _project_fick(self, pos: Position3D | list[Position3D]) -> ProjectionResult:
-        """Project world points to pixels using the configured FickRotation projection."""
-        if isinstance(pos, Position3D):
-            world_homogeneous = np.array(pos).reshape(-1, 1)
-        else:
-            world_homogeneous = np.column_stack([np.array(p) for p in pos])
-        projected = self._fick_projection @ world_homogeneous
+    def _project_fick(self, pos_homogeneous: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+        """Pixel coordinates (2xn, top-left origin) and depths of world points in the FickRotation projection.
+
+        The depth is the third component of the projected point, which stands in for the distance along the
+        optical axis.
+        """
+        projected = self._fick_projection @ pos_homogeneous
         depth = projected[2, :]
-        return ProjectionResult(image_points=projected[:2, :] / depth, distances=depth, valid_mask=depth > 0)
+        return projected[:2, :] / depth, depth
 
     def _aim_fick(self, eye: "Eye") -> None:
         """Configure the FickRotation projection aimed at ``eye``'s rotation centre.
 
         The rotation and the reference-frame translation are derived from this camera's own world position
-        and the eye -- nothing precomputed is supplied -- and the camera's intrinsic is used as-is.
+        and the eye -- nothing precomputed is supplied -- and the camera's intrinsic is used as-is. The
+        camera pose is aimed at the same point as a pinhole camera would be, so that its orientation, which
+        the projection does not use, describes a camera that faces the eye.
+
+        Raises:
+            ValueError: If the camera has lens distortion, which the FickRotation projection does not model.
+
         """
+        if np.any(self.dist_coeffs):
+            raise ValueError(
+                "The FickRotation projection does not model lens distortion; use a camera without distortion "
+                "coefficients, or the ordinary point_at."
+            )
         origin = np.array([eye.placement.x, eye.placement.y, eye.placement.z], dtype=float)
         camera = np.array([self.position.x, self.position.y, self.position.z], dtype=float)
         centre = eye.rotation_centre
@@ -312,6 +333,7 @@ class Camera:
         translation = _REFERENCE_AXES @ (camera - origin)
         rotation = _fick_rotation_angles(translation, _REFERENCE_AXES @ (target - origin))
         self._set_fick_projection(eye.placement, rotation, list(translation), self.camera_matrix.matrix)
+        self.pan_tilt(centre)
 
     def unproject(
         self, image_points: Point2D | list[Point2D], distance: float | np.ndarray
@@ -320,7 +342,8 @@ class Camera:
 
         Reconstructs 3D positions from 2D image points at specified distance.
         Uses inverse projection to map image coordinates to world coordinates.
-        Uses OpenCV to undo the lens distortion given by the distortion coefficients.
+        Uses OpenCV to undo the lens distortion given by the distortion coefficients, or the inverse of the
+        FickRotation projection when the camera is in that mode.
 
         Args:
             image_points: 2D image points. Can be:
@@ -354,6 +377,15 @@ class Camera:
         x_opencv = x.copy().astype(np.float64)
         x_opencv[0, :] += resolution.x / 2
         x_opencv[1, :] += resolution.y / 2
+
+        if self._fick_projection is not None:
+            # The projection maps a world point X to depth * (u, v, 1) = M X + p; solve it for X.
+            linear, shift = self._fick_projection[:, :3], self._fick_projection[:, 3]
+            pixels = np.vstack([x_opencv, np.ones(n)])
+            world = np.linalg.solve(linear, d * pixels - shift[:, None])
+            if single_point:
+                return Position3D(*world[:, 0])
+            return [Position3D(*world[:, i]) for i in range(n)]
 
         points_2d_normalized = cv2.undistortPoints(
             x_opencv.T.reshape(-1, 1, 2).astype(np.float64), self.camera_matrix.matrix, self.dist_coeffs

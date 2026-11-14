@@ -458,6 +458,14 @@ ETRA 2026 paper; this log records everything since.
   dictionary of an eye has a different layout and cannot be converted. Datasets generated with an earlier version have
   to be generated again before `evaluate_gaze_accuracy` can read them.
 
+- **Fixed: a camera aimed with `point_at(eye, mode="fick")` did not behave like other cameras.**
+  This mode reproduces the camera projection of gkaModelEye. Before, in this mode, `project` returned pixel coordinates
+  measured from the top-left corner of the image instead of its centre, did not mark points outside the image, and did
+  not add the noise set with `err`. `unproject` returned wrong points, `backproject_contour` failed, the centre-of-mass
+  pupil centre was wrong (22 px from the ellipse centre in a test), and `Camera.orientation` pointed 115 deg away from
+  the eye. Now all of these behave as for a pinhole camera. Lens distortion is not supported in this mode and raises
+  `ValueError`. The projection itself is unchanged.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed

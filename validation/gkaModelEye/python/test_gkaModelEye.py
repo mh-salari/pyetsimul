@@ -29,6 +29,10 @@ REFERENCE = Path(__file__).resolve().parent.parent / "reference.json"
 # reflection and the refraction batch), so the agreement is sub-pixel rather than the exact 1e-3 the
 # et_simul reproduction reaches.
 TOLERANCE_PX = 0.05
+# Sensor of gkaModelEye's default scene geometry (createSceneGeometry, 'sensorResolution'). gkaModelEye counts
+# pixels from the top-left corner of the image and PyEtSimul from its centre.
+SENSOR_RESOLUTION = Point2D(640, 480)
+IMAGE_CENTRE_PX = np.array([SENSOR_RESOLUTION.x / 2.0, SENSOR_RESOLUTION.y / 2.0])
 
 
 def build_eye(eye_pos: np.ndarray) -> Eye:
@@ -54,7 +58,7 @@ def build_camera(scene: dict, eye: Eye) -> Camera:
     precomputed angles are taken from reference.json, which supplies only the camera's physical placement
     and intrinsic and otherwise serves as the answer key for the pixels.
     """
-    camera = Camera(camera_matrix=CameraMatrix(np.array(scene["intrinsic_matrix"], float)))
+    camera = Camera(camera_matrix=CameraMatrix(np.array(scene["intrinsic_matrix"], float), SENSOR_RESOLUTION))
     camera.position = Position3D(*np.array(scene["camera_position_mm"], float))
     camera.point_at(eye, mode="fick")
     return camera
@@ -78,7 +82,7 @@ def pupil_centre(rim_px: np.ndarray) -> np.ndarray:
 
 
 def render_target(eye: Eye, camera: Camera, light: Light, target: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
-    """(pupil centre, glint) in image pixels for one gaze target.
+    """(pupil centre, glint) in gkaModelEye's image pixels (top-left origin) for one gaze target.
 
     look_at uses the gkaModelEye model's own default method (optical_axis_target_direction), so the eye is
     posed by gka's eyePose convention and the comparison is the eye optics alone.
@@ -88,7 +92,7 @@ def render_target(eye: Eye, camera: Camera, light: Light, target: np.ndarray) ->
     rim_px = camera.project(list(starmap(Position3D, rim))).image_points.T
     glint_3d = np.asarray(eye.find_cr(light, camera), float).ravel()[:3]
     glint_px = camera.project(Position3D(*glint_3d)).image_points[:, 0]
-    return pupil_centre(rim_px), glint_px
+    return pupil_centre(rim_px) + IMAGE_CENTRE_PX, glint_px + IMAGE_CENTRE_PX
 
 
 def test_gkaModelEye_matches_reference() -> None:  # noqa: N802  (named after the gkaModelEye model)
