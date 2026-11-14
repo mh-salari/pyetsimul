@@ -167,6 +167,10 @@ ETRA 2026 paper; this log records everything since.
   `Eye.set_pupil_from_contour(..., apparent=False)` or `Eye.register_pupil_shape` was therefore changed for the caller.
   Now the pupil works on a copy.
 
+- **Fixed: `Camera.pprint` gave the lens distortion coefficients the wrong names.**
+  The camera stores five coefficients in the OpenCV order `k1`, `k2`, `p1`, `p2`, `k3`. Before, the fourth and fifth
+  were printed as `p1` and `p2`, and the real `p1` was not printed. Now all five are printed with their own names.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed

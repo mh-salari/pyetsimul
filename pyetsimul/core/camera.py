@@ -593,13 +593,10 @@ class Camera:
         matrix = self.camera_matrix.matrix
         res = self.camera_matrix.resolution
 
-        # Prepare distortion coefficients display
+        # Prepare distortion coefficients display, in OpenCV order
         if self.dist_coeffs is not None:
-            dist_info = f"k1={self.dist_coeffs[0]:.3f}"
-            if len(self.dist_coeffs) > 1:
-                dist_info += f", k2={self.dist_coeffs[1]:.3f}"
-            if len(self.dist_coeffs) > 4:
-                dist_info += f", p1={self.dist_coeffs[3]:.3f}, p2={self.dist_coeffs[4]:.3f}"
+            names = ("k1", "k2", "p1", "p2", "k3")
+            dist_info = ", ".join(f"{name}={value:.3f}" for name, value in zip(names, self.dist_coeffs, strict=False))
         else:
             dist_info = "None (pinhole)"
 
