@@ -33,17 +33,12 @@ if TYPE_CHECKING:
 
 @dataclass
 class Eye:
-    """Eye model for eye tracking simulation.
+    """An eye placed in the scene, built from an eye model.
 
-    Implements spherical eye model with optical axis along negative z-axis.
-    Includes cornea, pupil, fovea displacement, and Listing's law mechanics.
-    Based on Böhme et al. 2008 with nodal point at cornea center.
-
-    Eye Model Components:
-    - Cornea: Spherical surface with configurable radius and refractive index
-    - Pupil: Elliptical aperture with configurable size and position
-    - Fovea displacement: Visual axis offset from optical axis
-    - Listing's law: Eye rotation mechanics for realistic torsion
+    The anatomy comes from the ``EyeModel``: the cornea (spherical, conic or toric), the pupil, the
+    fovea displacement and the rotation centre. The eye adds its side, its placement and its pose. The
+    eye-local optical axis runs along the negative z-axis, and ``look_at`` turns the eye to a target with
+    Listing's law.
     """
 
     # The eye-model specification. Accepts an EyeModel or a registered model name (case-insensitive,
@@ -1002,7 +997,7 @@ class Eye:
 
     def get_pupil_in_camera_image(
         self, camera: "Camera", use_refraction: bool = True, center_method: str = "ellipse"
-    ) -> tuple[np.ndarray | None, Point2D | None]:
+    ) -> tuple[list[Point2D] | None, Point2D | None]:
         """Projects pupil boundary points to camera image coordinates.
 
         Handles corneal refraction effects and camera projection.
@@ -1012,11 +1007,11 @@ class Eye:
             camera: Camera object to project into
             use_refraction: Whether to apply refraction effects (default True)
             center_method: Method to use for pupil center detection (default "ellipse")
-                          Options: "ellipse", "center_of_mass"
+                          Options: "ellipse", "convex_hull", "center_of_mass"
 
         Returns:
             Tuple of (pupil_boundary, pupil_center) where:
-            - pupil_boundary: numpy array of boundary points (2xN)
+            - pupil_boundary: list of Point2D boundary points, or None if no point is in the image
             - pupil_center: Point2D object of pupil center, or None if invalid
 
         """

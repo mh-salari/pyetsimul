@@ -670,7 +670,7 @@ class ContourPupil(Pupil):
 
 
 def create_pupil(
-    pupil_type: str, pos_pupil: Position3D, x_pupil: Direction3D, y_pupil: Direction3D, **kwargs: float
+    pupil_type: str, pos_pupil: Position3D, x_pupil: Direction3D, y_pupil: Direction3D, **kwargs: object
 ) -> Pupil:
     """Factory function to create pupil instances.
 
@@ -685,6 +685,7 @@ def create_pupil(
         **kwargs: Additional parameters for specific pupil types
                  - n: Number of boundary points (default: 100 for elliptical, 360 for realistic)
                  - params: RealisticPupilParams for realistic pupil (including random_seed for deterministic shapes)
+                 - contour: (N, 2) boundary points in the pupil plane; required for the contour pupil
 
     Returns:
         Pupil instance of the requested type

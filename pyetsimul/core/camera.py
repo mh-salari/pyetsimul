@@ -146,7 +146,8 @@ class Camera:
 
         Transforms 3D positions to camera coordinates and projects to image plane.
         Adds random error based on camera settings and validates image bounds.
-        Uses OpenCV for realistic camera projection when pinhole_mode=False.
+        Uses OpenCV with the camera matrix and the distortion coefficients, or the FickRotation
+        projection when the camera is in that mode.
 
         Args:
             pos: 3D positions to project. Can be:
@@ -293,7 +294,7 @@ class Camera:
 
         Reconstructs 3D positions from 2D image points at specified distance.
         Uses inverse projection to map image coordinates to world coordinates.
-        Uses OpenCV for realistic camera unprojection when pinhole_mode=False.
+        Uses OpenCV to undo the lens distortion given by the distortion coefficients.
 
         Args:
             image_points: 2D image points. Can be:
@@ -519,7 +520,7 @@ class Camera:
             lights: list of light source objects (optional, if None no CRs are computed)
             use_refraction: Whether to use refraction model for pupil (default True)
             center_method: Method to use for pupil center detection (default "ellipse")
-                          Options: "ellipse", "center_of_mass"
+                          Options: "ellipse", "convex_hull", "center_of_mass"
 
         Returns:
             CameraImage object containing corneal reflections, pupil boundary, and pupil center

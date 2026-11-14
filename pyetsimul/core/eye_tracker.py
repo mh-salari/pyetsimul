@@ -45,7 +45,7 @@ class EyeTracker(ABC):
     # Refraction setting
     use_refraction: bool = True
 
-    # Pupil center calculation method: "ellipse" (default) or "center_of_mass"
+    # Pupil center calculation method: "ellipse" (default), "convex_hull" or "center_of_mass"
     pupil_center_method: str = "ellipse"
 
     # Calibration diagnostics: list of (point_number, position, reason) for failed points

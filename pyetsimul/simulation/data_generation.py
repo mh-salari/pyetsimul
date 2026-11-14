@@ -103,7 +103,8 @@ class DataGenerationStrategy(VariationStrategy):
             experiment_name: Base name for experiment files
             save_to_file: Whether to save datasets to disk
             use_refraction: Enable corneal refraction in image capture
-            pupil_center_method: Method for pupil center calculation ("ellipse" or "center_of_mass")
+            pupil_center_method: Method for pupil center calculation ("ellipse", "convex_hull" or
+                "center_of_mass")
 
         """
         self.eyes = eyes

@@ -89,7 +89,7 @@ def calculate_pupil_center_from_boundary(
     Args:
         boundary_points: List of Point2D boundary points in image coordinates
         camera_resolution: Camera resolution as Point2D
-        center_method: Method to use for center detection ("ellipse" or "center_of_mass")
+        center_method: Method to use for center detection ("ellipse", "convex_hull" or "center_of_mass")
 
     Returns:
         Point2D with pupil center coordinates, or None if calculation fails

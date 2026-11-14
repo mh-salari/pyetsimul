@@ -565,12 +565,11 @@ class ConicCornea(Cornea):
         # Calculate posterior apex position relative to posterior center
         posterior_apex_offset = -self.posterior_radius / (1 + self.posterior_k)
 
-        # For cornea facing -z direction:
-        # - Anterior apex is the foremost point (closest to +z)
-        # - Posterior apex should be thickness_offset BEHIND anterior apex (more negative z)
+        # The cornea faces -z, so the anterior apex is the point with the most negative z, and the
+        # posterior apex lies thickness_offset behind it, at a more positive z:
         #
         # anterior_apex_z = anterior_center_z + anterior_apex_offset
-        # posterior_apex_z = anterior_apex_z - thickness_offset  (more negative = behind)
+        # posterior_apex_z = anterior_apex_z + thickness_offset
         # posterior_center_z = posterior_apex_z - posterior_apex_offset
 
         anterior_apex_z = self.center.z + anterior_apex_offset

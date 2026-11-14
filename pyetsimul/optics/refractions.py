@@ -70,7 +70,8 @@ def refract_ray_sphere(
     Returns:
         Tuple of (intersection_result, refracted_ray) where intersection_result contains
         the intersection point and refracted_ray is the refracted ray.
-        Returns (None, None) if no intersection or total internal reflection.
+        Returns (None, None) if there is no intersection, and (intersection_result, None) on total
+        internal reflection.
 
     """
     # Find point of intersection
@@ -126,7 +127,8 @@ def refract_ray_conic(
         - intersection_result: Contains intersection point on conic surface
         - refracted_ray: Refracted ray
 
-        Returns (None, None) if no intersection or total internal reflection.
+        Returns (None, None) if there is no intersection, and (intersection_result, None) on total
+        internal reflection.
 
     """
     # Find intersection point
