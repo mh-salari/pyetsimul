@@ -109,6 +109,9 @@ def _prepare_single_eye_data(eye: Eye, look_at_target: Position3D) -> dict[str, 
     # Transform anatomical points to world coordinates
     cornea_center_world = transform_point(cornea_center)
     pupil_world = transform_point(pupil_center)
+    # The visual axis runs from the fovea through the eyeball centre.
+    fovea_world = transform_point(eye.fovea_position)
+    eyeball_center_world = transform_point(Position3D(0.0, 0.0, eye.eyeball_center_z))
 
     # Draw corneal surface
     u = np.linspace(0, 2 * np.pi, 20)
@@ -152,5 +155,7 @@ def _prepare_single_eye_data(eye: Eye, look_at_target: Position3D) -> dict[str, 
         "cornea_surface_z": cornea_surface_z,
         "cornea_center_world": cornea_center_world,
         "pupil_world": pupil_world,
+        "fovea_world": fovea_world,
+        "eyeball_center_world": eyeball_center_world,
         "optical_axis_end": optical_axis_end,
     }

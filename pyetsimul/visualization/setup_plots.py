@@ -159,11 +159,17 @@ def plot_setup(
             label=f"Eye {eye_idx + 1} Optical Axis",
         )
 
-        # Draw visual axis to target
+        # Draw the visual axis: from the fovea through the eyeball centre, out to the target's distance.
+        # It ends on the target when look_at aimed the visual axis, and beside it for other look_at methods.
+        fovea = np.array(eye_data["fovea_world"])[:3]
+        eyeball_center = np.array(eye_data["eyeball_center_world"])[:3]
+        visual_axis_direction = (eyeball_center - fovea) / np.linalg.norm(eyeball_center - fovea)
+        target_distance = np.linalg.norm(np.array([target.x, target.y, target.z]) - eyeball_center)
+        visual_axis_end = eyeball_center + visual_axis_direction * target_distance
         ax1.plot(
-            [pupil_center.x, target.x],
-            [pupil_center.y, target.y],
-            [pupil_center.z, target.z],
+            [fovea[0], visual_axis_end[0]],
+            [fovea[1], visual_axis_end[1]],
+            [fovea[2], visual_axis_end[2]],
             color=config.colors.visual_axis,
             linestyle=config.lines.dashed,
             linewidth=config.lines.standard_lines,

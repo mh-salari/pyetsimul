@@ -208,6 +208,13 @@ ETRA 2026 paper; this log records everything since.
   own table. For the homography and the Stampe model, the report also printed the line "Geometric gaze estimation
   (non-polynomial)", which describes neither model; that line is removed.
 
+- **Fixed: `plot_setup` drew a line that is not the visual axis, and `plot_eye_anatomy` mislabelled the eyeball
+  centre.**
+  Before, `plot_setup` drew a line from the pupil centre to the target and labelled it as the visual axis. Now it draws
+  the visual axis of the eye model, from the fovea through the eyeball centre. Before, `plot_eye_anatomy` labelled the
+  eyeball centre as "Rotation Center". Now the point is labelled "Eyeball Center", and the points the eye rotates about
+  are marked as well.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed

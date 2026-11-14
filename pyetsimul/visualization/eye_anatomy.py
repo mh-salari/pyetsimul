@@ -13,6 +13,7 @@ if TYPE_CHECKING:
 import numpy as np
 
 from ..core import Eye
+from ..core.rotation_center import EyeballCenter
 from ..geometry.intersections import intersect_ray_conic, intersect_ray_sphere
 from ..types import Direction3D, Position3D
 from ..utils.eye_surface_points import generate_corneal_surface_points, get_transformed_corneal_landmarks
@@ -37,6 +38,31 @@ def _filter_points_by_eyelid_occlusion(points_world: np.ndarray, eye: Eye) -> np
         visible_mask.append(is_visible)
     visible_mask = np.array(visible_mask)
     return points_world[visible_mask]
+
+
+def _rotation_centres_world(eye: Eye) -> list[tuple[str, np.ndarray]]:
+    """Label and world position of every point the eye pivots about.
+
+    The centres are fixed in the head: the placement and the rest orientation place them, and they do not
+    turn with the eye.
+    """
+    rotation_center = eye.model.rotation_center
+    placement = np.array([eye.placement.x, eye.placement.y, eye.placement.z], dtype=float)
+    if isinstance(rotation_center, EyeballCenter):
+        # A fixed pivot is the eye-local origin, which stays at the placement.
+        return [("Rotation Center", placement)]
+
+    horizontal = eye.rotation_centre
+    # The vertical centre, placed the way the horizontal one is: its depth is given from the corneal apex.
+    apex_to_origin = abs(eye.cornea.get_apex_position().z)
+    vertical_local = np.array(
+        [0.0, rotation_center.vertical_superior_mm, rotation_center.vertical_depth_mm - apex_to_origin], dtype=float
+    )
+    vertical = placement + np.asarray(eye.rest_orientation, dtype=float) @ vertical_local
+    return [
+        ("Rotation Center (horizontal gaze)", np.array([horizontal.x, horizontal.y, horizontal.z], dtype=float)),
+        ("Rotation Center (vertical gaze)", vertical),
+    ]
 
 
 def plot_eye_anatomy(eye: Eye, ax: "Axes | None" = None) -> "Axes":
@@ -65,7 +91,7 @@ def plot_eye_anatomy(eye: Eye, ax: "Axes | None" = None) -> "Axes":
     # Calculate all key points in WORLD coordinates using structured types. The eye-local origin is the
     # corneal apex under the "apex" convention, so the eyeball (globe) centre is axial_length/2 behind it.
     eyeball_center_local = Position3D(0.0, 0.0, eye.eyeball_center_z)
-    eye_rotation_center = Position3D.from_array(eye.trans @ np.array(eyeball_center_local))
+    eyeball_center_world = Position3D.from_array(eye.trans @ np.array(eyeball_center_local))
     cornea_center = eye.cornea.center
     cornea_inner_center = eye.cornea.get_posterior_center()
     pupil_position = eye.pupil.pos_pupil
@@ -124,9 +150,9 @@ def plot_eye_anatomy(eye: Eye, ax: "Axes | None" = None) -> "Axes":
     optical_axis_unit = optical_axis_world / np.linalg.norm(optical_axis_world)
 
     limbus_point_world = eye.trans @ np.array([0, 0, limbus_z_local, 1])
-    limbus_projection = np.dot(limbus_point_world[:3] - np.array(eye_rotation_center)[:3], optical_axis_unit[:3])
+    limbus_projection = np.dot(limbus_point_world[:3] - np.array(eyeball_center_world)[:3], optical_axis_unit[:3])
 
-    eye_vectors = np.stack([x_eye_world, y_eye_world, z_eye_world]) - np.array(eye_rotation_center)[:3].reshape(
+    eye_vectors = np.stack([x_eye_world, y_eye_world, z_eye_world]) - np.array(eyeball_center_world)[:3].reshape(
         3, 1, 1
     )
     projections = np.einsum("i,ijk->jk", optical_axis_unit[:3], eye_vectors)
@@ -141,11 +167,11 @@ def plot_eye_anatomy(eye: Eye, ax: "Axes | None" = None) -> "Axes":
 
     # Optical axis using structured types
     optical_axis_vec = Direction3D.from_array(optical_axis_unit[:3])
-    optical_axis_end = eye_rotation_center + optical_axis_vec * axis_length
+    optical_axis_end = eyeball_center_world + optical_axis_vec * axis_length
 
     # Visual axis using structured types and vector arithmetic
-    visual_axis_direction = (eye_rotation_center - fovea_world).normalize()
-    visual_axis_end = eye_rotation_center + visual_axis_direction * axis_length
+    visual_axis_direction = (eyeball_center_world - fovea_world).normalize()
+    visual_axis_end = eyeball_center_world + visual_axis_direction * axis_length
 
     config = create_plot_config()
 
@@ -189,14 +215,24 @@ def plot_eye_anatomy(eye: Eye, ax: "Axes | None" = None) -> "Axes":
 
     # Plot key points using structured types
     ax.scatter(
-        eye_rotation_center.x,
-        eye_rotation_center.y,
-        eye_rotation_center.z,
+        eyeball_center_world.x,
+        eyeball_center_world.y,
+        eyeball_center_world.z,
         color=config.colors.rotation_center,
         s=config.markers.small_details,
         marker="o",
-        label="Rotation Center",
+        label="Eyeball Center",
     )
+    for rotation_label, rotation_centre in _rotation_centres_world(eye):
+        ax.scatter(
+            rotation_centre[0],
+            rotation_centre[1],
+            rotation_centre[2],
+            color=config.colors.rotation_center,
+            s=config.markers.small_details,
+            marker="x",
+            label=rotation_label,
+        )
     ax.scatter(
         cornea_center_world.x,
         cornea_center_world.y,
@@ -269,9 +305,9 @@ def plot_eye_anatomy(eye: Eye, ax: "Axes | None" = None) -> "Axes":
 
     # Plot axes using structured types
     ax.plot(
-        [eye_rotation_center.x, optical_axis_end.x],
-        [eye_rotation_center.y, optical_axis_end.y],
-        [eye_rotation_center.z, optical_axis_end.z],
+        [eyeball_center_world.x, optical_axis_end.x],
+        [eyeball_center_world.y, optical_axis_end.y],
+        [eyeball_center_world.z, optical_axis_end.z],
         color=config.colors.optical_axis,
         linestyle=config.lines.dashed,
         linewidth=config.lines.standard_lines,
