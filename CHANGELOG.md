@@ -49,6 +49,11 @@ ETRA 2026 paper; this log records everything since.
 - **Removed: `PolynomialFeatures.predict`.**
   Nothing called it. `PolynomialGazeModel.predict_gaze` computes the prediction.
 
+- **Fixed: a saved camera was not restored exactly.**
+  Before, the orientation matrix was normalised when the camera was saved, which could change its last digits. Gaze
+  predictions of a loaded tracker differed from those of the original by about 1e-10 mm. Now the matrix is saved
+  unchanged.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed

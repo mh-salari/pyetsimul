@@ -622,7 +622,9 @@ class Camera:
         """Serialize to dictionary representation."""
         return {
             "position": self.position.serialize(),
-            "orientation": self.orientation.tolist(),
+            # Taken from trans, not from the orientation getter, which normalises the columns and so
+            # changes their last bits.
+            "orientation": self.trans[:3, :3].tolist(),
             "focal_length": float(self.camera_matrix.focal_length),
             "resolution": self.camera_matrix.resolution.serialize(),
             "camera_matrix": self.camera_matrix.matrix.tolist(),
