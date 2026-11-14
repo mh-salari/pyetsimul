@@ -867,12 +867,13 @@ class Eye:
                 "Call set_rest_orientation_at_target(target) before using eyelid features."
             )
 
-        # Transform world point to eye position
-        p_relative_to_eye = np.array(p) - np.array(self.position)
+        # Relative to the placement, not the current position: the eyelid stays on the face while
+        # look_at moves the eye-local origin.
+        p_relative_to_placement = np.array(p) - np.array(self.placement)
 
         # Transform to canonical eye coordinates (undo rest orientation)
         rest_inv = np.linalg.inv(self._rest_orientation)
-        p_canonical = Position3D.from_array(rest_inv @ p_relative_to_eye[:3])
+        p_canonical = Position3D.from_array(rest_inv @ p_relative_to_placement[:3])
 
         # Do eyelid calculation in canonical space where +Y is anatomical up
         return self.eyelid.point_within_eyelid(p_canonical)

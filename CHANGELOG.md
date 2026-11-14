@@ -54,6 +54,13 @@ ETRA 2026 paper; this log records everything since.
   predictions of a loaded tracker differed from those of the original by about 1e-10 mm. Now the matrix is saved
   unchanged.
 
+- **Fixed: the eyelid moved with the eye when the eye turned.**
+  Before, the eyelid was positioned relative to the corneal apex, which moves when the eye turns. After a `look_at`,
+  the eyelid in the camera image had moved with the eye, and no longer matched the eyelid drawn by `plot_eye_anatomy`.
+  Now the eyelid is positioned relative to `Eye.placement`, the position the eye was given, so it stays fixed to the
+  face. Camera images of an eye with an eyelid change for every gaze direction in which the eye is turned away from its
+  rest orientation.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed
