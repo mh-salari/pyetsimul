@@ -40,8 +40,8 @@ def look_at_target(eye: "Eye", target_position: Position3D, method: str = "visua
     """Rotate the eye to look at a target by one of several gaze constructions.
 
     Each method aligns a rest-frame axis to the target with Listing's law and pivots about the model's
-    rotation centre (a gaze-dependent ``RotationCenter`` or a fixed ``EyeballCenter``, see
-    ``rotation_center.py``). They differ only in which axis is aimed, where the aim direction is measured
+    rotation centre (a gaze-dependent ``RotationCenter`` or a fixed ``EyeballCenter``). They differ
+    only in which axis is aimed, where the aim direction is measured
     from, and the post-rotation applied:
 
     - ``visual_axis``: the visual axis (the optical axis when fovea displacement is off) to the target.
@@ -190,16 +190,27 @@ def orientation_through_target(
 def _origin_for_orientation(eye: "Eye", target_position: Position3D) -> Callable[[np.ndarray], np.ndarray]:
     """World position of the eye-local origin as a function of the eye orientation.
 
-    An ``EyeballCenter`` leaves the origin where it is. A ``RotationCenter`` turns the eye about a centre
-    behind the corneal apex that is anchored to the rest placement, so the origin shifts as the eye turns.
+    The eye turns about a centre that is anchored to the rest placement. Unless that centre is the
+    eye-local origin itself, the origin shifts as the eye turns.
     """
     rotation_center = eye.model.rotation_center
     if isinstance(rotation_center, EyeballCenter):
-        origin = np.array([eye.position.x, eye.position.y, eye.position.z], dtype=float)
-        return lambda _orientation: origin
+        return _fixed_centre_origin(eye)
     if rotation_center.fick:
         return _fick_origin(eye)
     return _blended_centre_origin(eye, target_position)
+
+
+def _fixed_centre_origin(eye: "Eye") -> Callable[[np.ndarray], np.ndarray]:
+    """Origin of an eye that turns about the one fixed centre of an ``EyeballCenter``."""
+    placement = np.array([eye.placement.x, eye.placement.y, eye.placement.z], dtype=float)
+    rest = np.asarray(eye.rest_orientation, dtype=float)
+    centre = eye._fixed_rotation_centre_local()
+
+    def origin(orientation: np.ndarray) -> np.ndarray:
+        return placement + (rest - orientation) @ centre
+
+    return origin
 
 
 def _horizontal_fraction(eye: "Eye", target_position: Position3D) -> float:

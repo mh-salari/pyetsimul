@@ -28,7 +28,7 @@ ET_SIMUL = EyeModel(
     torsion_deg=0.0,
     pupil_tilt_x_deg=0.0,
     pupil_tilt_y_deg=0.0,
-    rotation_center=EyeballCenter(),  # single fixed pivot at the eyeball centre
+    rotation_center=EyeballCenter(),  # single fixed pivot at the eye-local origin
     decentration_config=PupilDecentrationConfig(enabled=False),  # no size-dependent pupil decentration
     off_axis_pupil=OffAxisPupilConfig(enabled=False),  # no static off-axis pupil
     pupil_type="elliptical",

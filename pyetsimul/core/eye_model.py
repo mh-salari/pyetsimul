@@ -58,7 +58,8 @@ class EyeModel:
     pupil_tilt_y_deg: float = 0.0
     # Rotation centre the rigid eye pivots about, defaulting to the anatomical Fick centres measured by
     # Fry & Hill: azimuth 14.8 mm / 0.79 mm nasal, elevation 12.2 mm / 0.33 mm superior behind the
-    # corneal apex. An EyeballCenter() instead gives a single fixed pivot at the eyeball centre.
+    # corneal apex. An EyeballCenter() instead gives a single fixed pivot: the centre of the globe for an eye
+    # whose origin is its corneal apex, the eye-local origin under the "center" placement convention.
     rotation_center: EyeballCenter | RotationCenter = field(
         default_factory=lambda: RotationCenter(
             horizontal_depth_mm=14.8,

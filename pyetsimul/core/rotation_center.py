@@ -4,11 +4,11 @@ The human eye has no unique centre of rotation: it lies about 15 mm behind the c
 gaze and about 12.5 mm in vertical gaze (Atchison & Smith, *Optics of the Human Eye*, 2nd ed., 2023,
 Section 1.7, after Fry & Hill 1962 and Ohlendorf et al. 2022).
 
-Two models are provided. :class:`EyeballCenter` rotates the whole eye rigidly about its origin (the
-eyeball centre), the same point for every gaze direction. :class:`RotationCenter` makes the
-rotation-centre depth (corneal apex to pivot, in millimetres) depend on the gaze direction, blending
-the horizontal and vertical values by the horizontal fraction of the gaze eccentricity. Both change
-only *where* the rigid eye pivots; the cornea, pupil and every optical surface are left untouched.
+Two models are provided. :class:`EyeballCenter` rotates the whole eye rigidly about one centre, the
+same point for every gaze direction. :class:`RotationCenter` makes the rotation-centre depth (corneal
+apex to pivot, in millimetres) depend on the gaze direction, blending the horizontal and vertical
+values by the horizontal fraction of the gaze eccentricity. Both change only *where* the rigid eye
+pivots; the cornea, pupil and every optical surface are left untouched.
 """
 
 from dataclasses import dataclass
@@ -16,12 +16,14 @@ from dataclasses import dataclass
 
 @dataclass
 class EyeballCenter:
-    """A single fixed rotation centre at the eye-local origin.
+    """A single fixed rotation centre on the optical axis.
 
-    The eye rotates rigidly about its origin for every gaze direction -- the simplest rotation model,
-    carrying no depth or lateral offset (unlike the gaze-dependent :class:`RotationCenter`). The origin
-    coincides with the eyeball centre only under the "center" placement convention; for an apex-origin
-    eye, use :class:`RotationCenter` rather than pivoting about the apex.
+    The eye rotates rigidly about one point for every gaze direction -- the simplest rotation model,
+    carrying no depth or lateral offset of its own (unlike the gaze-dependent :class:`RotationCenter`).
+    Where the point lies follows the cornea's placement convention. Under "center" it is the eye-local
+    origin, which that convention defines as the centre the eye turns about, so the origin stays at the
+    eye's placement. Under "apex" the origin is the corneal apex, and the centre is the centre of the
+    globe, half the axial length behind the apex.
     """
 
 

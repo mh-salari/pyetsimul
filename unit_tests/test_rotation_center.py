@@ -4,7 +4,7 @@ import numpy as np
 import numpy.testing as npt
 
 from pyetsimul.core.eye import Eye
-from pyetsimul.core.eye_model import EyeModel
+from pyetsimul.core.eye_model import EyeModel, get_eye_model
 from pyetsimul.core.rotation_center import EyeballCenter, RotationCenter
 from pyetsimul.types import Position3D
 
@@ -27,7 +27,7 @@ def test_depth_for_blends_linearly() -> None:
 
 
 def test_equal_depths_reproduce_single_center() -> None:
-    """A RotationCenter with both depths at the geometric apex-to-centre value == an EyeballCenter."""
+    """A RotationCenter with both depths at the apex-to-globe-centre distance == an EyeballCenter."""
     target = Position3D(12000, -7000, -30000)
     placement = Position3D(5.0, 3.0, 40.0)
 
@@ -35,7 +35,7 @@ def test_equal_depths_reproduce_single_center() -> None:
     baseline.position = placement
     baseline.look_at(target)
 
-    d0 = _apex_to_center(Eye(model=EyeModel(fovea_displacement=False)))
+    d0 = EyeModel().axial_length / 2.0  # the eyeball centre of an eye whose origin is its corneal apex
     configured = Eye(model=EyeModel(fovea_displacement=False, rotation_center=RotationCenter(d0, d0)))
     configured.position = placement
     configured.look_at(target)
@@ -44,12 +44,25 @@ def test_equal_depths_reproduce_single_center() -> None:
     npt.assert_allclose(_xyz(configured.position), _xyz(baseline.position), atol=1e-12)
 
 
-def test_eyeball_center_leaves_position_unchanged() -> None:
-    """With an EyeballCenter, look_at never moves the eye position (single fixed centre)."""
-    eye = Eye(model=EyeModel(fovea_displacement=False, rotation_center=EyeballCenter()))
+def test_eyeball_center_at_origin_leaves_position_unchanged() -> None:
+    """With an EyeballCenter and the origin at the centre ("center" convention), look_at never moves the eye."""
+    eye = Eye(model=get_eye_model("et_simul"))
     eye.position = Position3D(5.0, 3.0, 40.0)
     eye.look_at(Position3D(15.0, 10.0, 0.0))
     npt.assert_allclose(_xyz(eye.position), [5.0, 3.0, 40.0], atol=1e-12)
+
+
+def test_eyeball_center_of_apex_origin_eye_is_the_globe_centre() -> None:
+    """With an EyeballCenter and the origin at the apex, the eye turns about the centre of its globe."""
+    eye = Eye(model=EyeModel(fovea_displacement=False, rotation_center=EyeballCenter()))
+    eye.position = Position3D(5.0, 3.0, 40.0)
+    globe_centre = np.array([0.0, 0.0, eye.eyeball_center_z, 1.0])
+    before = (np.asarray(eye.trans) @ globe_centre)[:3]
+
+    eye.look_at(Position3D(15.0, 10.0, 0.0))
+
+    npt.assert_allclose((np.asarray(eye.trans) @ globe_centre)[:3], before, atol=1e-12)
+    assert np.linalg.norm(_xyz(eye.position) - np.array([5.0, 3.0, 40.0])) > 1.0  # the apex swings about it
 
 
 def test_horizontal_target_shifts_globe_center_toward_gaze() -> None:

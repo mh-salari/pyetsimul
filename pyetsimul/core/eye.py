@@ -329,32 +329,44 @@ class Eye:
     def placement(self) -> Position3D:
         """Get the position the eye was placed at, the last value assigned to :attr:`position` (read-only).
 
-        The rotation centres are fixed relative to this point. With a gaze-dependent ``RotationCenter``,
-        ``look_at`` turns the eye about centres behind the corneal apex, so the eye-local origin that
+        The rotation centres are fixed relative to this point. For an eye whose origin is its corneal apex,
+        ``look_at`` turns the eye about centres behind the apex, so the eye-local origin that
         :attr:`position` returns moves away from ``placement`` while ``placement`` itself stays put.
         """
         return self._placement
 
     @property
     def rotation_centre(self) -> Position3D:
-        """Azimuth rotation centre in world coordinates.
+        """Rotation centre for horizontal gaze, in world coordinates.
 
-        The point the rigid eye pivots about for horizontal gaze, placed by the eye's rest pose.
-        Requires a gaze-dependent rotation centre.
-
-        Raises:
-            TypeError: If the eye model pivots at a fixed ``EyeballCenter``, which has no azimuth centre.
-
+        The point the rigid eye pivots about for horizontal gaze, placed by the eye's rest pose: the azimuth
+        centre of a gaze-dependent ``RotationCenter``, or the one centre of a fixed ``EyeballCenter``.
         """
         if isinstance(self.model.rotation_center, EyeballCenter):
-            raise TypeError(
-                "rotation_centre needs an eye model with a gaze-dependent RotationCenter; this one pivots at a "
-                "fixed EyeballCenter."
-            )
-        local = self._azimuth_rotation_centre_local()
+            local = self._fixed_rotation_centre_local()
+        else:
+            local = self._azimuth_rotation_centre_local()
         world = np.asarray(self.rest_orientation, float) @ local
         world += np.array([self.placement.x, self.placement.y, self.placement.z], dtype=float)
         return Position3D(world[0], world[1], world[2])
+
+    @property
+    def rotation_centre_depth_mm(self) -> float:
+        """Depth of the rotation centre for horizontal gaze behind the corneal apex, in mm."""
+        if isinstance(self.model.rotation_center, EyeballCenter):
+            return float(self._fixed_rotation_centre_local()[2] - self.cornea.get_apex_position().z)
+        return self.model.rotation_center.horizontal_depth_mm
+
+    def _fixed_rotation_centre_local(self) -> np.ndarray:
+        """Eye-local point that an ``EyeballCenter`` turns the eye about.
+
+        Under the "center" placement convention it is the eye-local origin, which that convention defines
+        as the centre the eye turns about. Under the "apex" convention the origin is the corneal apex, and
+        the centre is the centre of the globe, half the axial length behind the apex.
+        """
+        if self.cornea.placement_convention == "center":
+            return np.zeros(3)
+        return np.array([0.0, 0.0, self.eyeball_center_z], dtype=float)
 
     def _azimuth_rotation_centre_local(self) -> np.ndarray:
         """Azimuth rotation centre in eye-local coordinates: nasal-signed lateral plus depth behind the apex."""
@@ -472,9 +484,9 @@ class Eye:
     def position(self) -> Position3D:
         """Get the current world position of the eye-local origin, or set the eye's placement.
 
-        The origin is the corneal apex under the "apex" placement convention and the eyeball centre
-        under the "center" convention. Setting it places the eye and records the value as
-        :attr:`placement`. With a gaze-dependent ``RotationCenter``, ``look_at`` moves the origin as the
+        The origin is the corneal apex under the "apex" placement convention and the centre the eye
+        turns about under the "center" convention. Setting it places the eye and records the value as
+        :attr:`placement`. Unless the origin is the rotation centre, ``look_at`` moves the origin as the
         eye turns, so after a ``look_at`` the value read here can differ from the value set.
 
         An eye that looks at a target turns to it again from its new place. With ``hold_fixation`` off, or
@@ -1279,8 +1291,7 @@ class Eye:
         """Rows of the anatomy table giving the rotation centre(s), in mm behind the corneal apex."""
         rotation_center = self.model.rotation_center
         if isinstance(rotation_center, EyeballCenter):
-            # A fixed pivot is the eye-local origin, and the apex lies at or in front of it (z <= 0).
-            return [["Rotation center (mm behind apex)", f"{-self.cornea.get_apex_position().z:.3f}"]]
+            return [["Rotation center (mm behind apex)", f"{self.rotation_centre_depth_mm:.3f}"]]
         return [
             ["Rotation center, horizontal gaze (mm behind apex)", f"{rotation_center.horizontal_depth_mm:.3f}"],
             ["Rotation center, vertical gaze (mm behind apex)", f"{rotation_center.vertical_depth_mm:.3f}"],

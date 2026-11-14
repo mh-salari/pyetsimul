@@ -362,6 +362,18 @@ ETRA 2026 paper; this log records everything since.
   They were the defaults of parameters that were never used. `pprint_hardware_defaults` no longer prints a "pupil base
   radius" of 2.5 mm, which was not the pupil radius of any eye.
 
+- **Fixed: an eye with `EyeballCenter` rotated about its corneal apex instead of the centre of the eyeball.**
+  `EyeballCenter` gives an eye model one fixed rotation centre, which is meant to be the centre of the eyeball. Before,
+  with the default corneas, the eye rotated about its corneal apex: a turn of 26 deg swung the centre of the eyeball by
+  5.7 mm. `examples/14_custom_eye_model.py` builds such an eye. Now the eye rotates about the centre of the eyeball,
+  half the axial length behind the apex, and its images change for every gaze direction. The `et_simul` eye model is
+  not affected, and the default eye model does not use `EyeballCenter`.
+
+- **Fixed: `Eye.rotation_centre` and `Camera.point_at(eye, mode="fick")` did not work for an eye with
+  `EyeballCenter`.**
+  Before, both raised an error for such an eye. Now they work. The new `Eye.rotation_centre_depth_mm` returns how far
+  the rotation centre lies behind the corneal apex.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed

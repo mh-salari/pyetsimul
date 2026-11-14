@@ -109,13 +109,18 @@ directions. PyEtSimul provides two models, and both change only where the rigid 
 Fixed Center
 ^^^^^^^^^^^^
 
-``EyeballCenter`` pivots the eye about its own local origin for every gaze direction, and the
-eye never translates. The origin is the eyeball center under the ``"center"`` placement
-convention, which is where the original et_simul puts it: 12.33 mm behind the corneal apex for
-the default 7.98 mm corneal radius. The ``et_simul`` eye model keeps this fixed pivot so that it
-reproduces the 2008 MATLAB implementation it is validated against. Under the ``"apex"``
-convention this model would pivot the eye about its corneal apex, so an apex-origin eye needs a
-gaze-dependent center instead.
+``EyeballCenter`` pivots the eye about one point for every gaze direction. Where that point
+lies follows the placement convention of the cornea.
+
+Under the ``"center"`` convention it is the eye-local origin, which that convention defines as
+the center the eye turns about, so the origin never translates. This is where the original
+et_simul puts it: 12.33 mm behind the corneal apex for the default 7.98 mm corneal radius. The
+``et_simul`` eye model keeps this fixed pivot so that it reproduces the 2008 MATLAB
+implementation it is validated against.
+
+Under the ``"apex"`` convention the origin is the corneal apex, and the eye pivots about the
+center of its globe, half the axial length behind the apex (12.375 mm for the default axial
+length). The apex then moves as the eye turns, as it does with a gaze-dependent center.
 
 Gaze-Dependent Center
 ^^^^^^^^^^^^^^^^^^^^^

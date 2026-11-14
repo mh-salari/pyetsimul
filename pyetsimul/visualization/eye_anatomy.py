@@ -49,11 +49,10 @@ def _rotation_centres_world(eye: Eye) -> list[tuple[str, np.ndarray]]:
     """
     rotation_center = eye.model.rotation_center
     placement = np.array([eye.placement.x, eye.placement.y, eye.placement.z], dtype=float)
-    if isinstance(rotation_center, EyeballCenter):
-        # A fixed pivot is the eye-local origin, which stays at the placement.
-        return [("Rotation Center", placement)]
-
     horizontal = eye.rotation_centre
+    if isinstance(rotation_center, EyeballCenter):
+        return [("Rotation Center", np.array([horizontal.x, horizontal.y, horizontal.z], dtype=float))]
+
     # The vertical centre, placed the way the horizontal one is: its depth is given from the corneal apex.
     apex_to_origin = abs(eye.cornea.get_apex_position().z)
     vertical_local = np.array(
