@@ -466,6 +466,16 @@ ETRA 2026 paper; this log records everything since.
   the eye. Now all of these behave as for a pinhole camera. Lens distortion is not supported in this mode and raises
   `ValueError`. The projection itself is unchanged.
 
+- **Fixed: the homography gaze model could match glints to the wrong light sources.**
+  The model has to know which glint belongs to which light. Before, it sorted the glints and the lights by their angle
+  around their centre and matched them in that order. For some light arrangements this order changed from one image to
+  the next, and the glints were then matched to the wrong lights. For four lights in a diamond rotated by 1 deg, the
+  mean gaze error was 462 mm; it is 3.9 mm with the fix. Now glints are matched to lights by their index. For light
+  arrangements that were not affected, predictions change by at most 0.0001 mm.
+
+- **Removed: `order_points_by_angle` in `homography_normalization_utils`.**
+  Only the homography gaze model used it, and that model no longer sorts the glints.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed

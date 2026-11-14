@@ -53,25 +53,3 @@ def apply_homography(H: np.ndarray, points: np.ndarray) -> np.ndarray:
     result = transformed.reshape(-1, 2)
 
     return result[0] if len(result) == 1 else result
-
-
-def order_points_by_angle(points: np.ndarray) -> np.ndarray:
-    """Sorts a list of 2D points counter-clockwise based on their angle around the centroid.
-
-    Args:
-        points: An Nx2 numpy array of 2D points.
-
-    Returns:
-        An Nx2 numpy array of sorted points.
-
-    """
-    # Calculate the centroid
-    centroid = np.mean(points, axis=0)
-
-    # Calculate the angle of each point with respect to the centroid
-    angles = np.arctan2(points[:, 1] - centroid[1], points[:, 0] - centroid[0])
-
-    # Sort the points based on the angles
-    sorted_indices = np.argsort(angles)
-
-    return points[sorted_indices]

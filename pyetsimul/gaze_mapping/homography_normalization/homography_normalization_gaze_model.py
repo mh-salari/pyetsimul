@@ -17,7 +17,7 @@ from pyetsimul.types.imaging import EyeMeasurement
 from ...geometry.plane_detection import PlaneInfo, detect_calibration_plane, summarize_plane_detection
 from .gaussian_process import GaussianProcessErrorCorrection
 from .homography_normalization_state import HomographyNormalizationGazeModelState
-from .homography_normalization_utils import apply_homography, compute_homography, order_points_by_angle
+from .homography_normalization_utils import apply_homography, compute_homography
 
 
 class HomographyNormalizationGazeModel(EyeTracker):
@@ -96,7 +96,8 @@ class HomographyNormalizationGazeModel(EyeTracker):
         2. Define a canonical reference pattern for the N light sources.
         3. For each calibration point:
 
-           - Order the detected glints and reference points.
+           - Pair each glint with the reference point of its light (an image holds its glints in the
+             order of the lights).
            - Compute H^n_i: glints_image → normalized space using a best-fit method.
            - Normalize the pupil center: pc^n = H^n_i @ pc^i.
 
@@ -113,13 +114,12 @@ class HomographyNormalizationGazeModel(EyeTracker):
         n_glints = len(first_valid.camera_image.corneal_reflections)
         info(f"Using {n_glints} glints for homography normalization.")
 
-        # Define normalized reference pattern using 2D projection of light positions
-        # The homography will map current glints to this reference pattern
+        # Define normalized reference pattern using 2D projection of light positions, in the order of the
+        # lights. The homography will map current glints to this reference pattern
         light_positions_3d = [light.position for light in self.lights]
         light_positions_2d = np.array([self.plane_info.extract_2d_coords(p) for p in light_positions_3d])
-        ordered_reference_points = order_points_by_angle(light_positions_2d)
 
-        self.algorithm_state.reference_glints_normalized = [Point2D(x=p[0], y=p[1]) for p in ordered_reference_points]
+        self.algorithm_state.reference_glints_normalized = [Point2D(x=p[0], y=p[1]) for p in light_positions_2d]
 
         normalized_pupils = []
         valid_calib_points = []
@@ -135,12 +135,11 @@ class HomographyNormalizationGazeModel(EyeTracker):
             if len(glints_array) != n_glints:
                 continue
 
-            ordered_glints = order_points_by_angle(glints_array)
             reference_array = np.array(
                 [[p.x, p.y] for p in self.algorithm_state.reference_glints_normalized], dtype=np.float32
             )
 
-            H_n_i = compute_homography(ordered_glints, reference_array, self.ransac_threshold)  # noqa: N806
+            H_n_i = compute_homography(glints_array, reference_array, self.ransac_threshold)  # noqa: N806
             pc_normalized = apply_homography(H_n_i, np.array([pc.x, pc.y], dtype=np.float32))
 
             normalized_pupils.append(pc_normalized)
@@ -196,12 +195,11 @@ class HomographyNormalizationGazeModel(EyeTracker):
         if len(glints_array) != len(reference_glints):
             return None
 
-        ordered_glints = order_points_by_angle(glints_array)
-        intermediate_results = {"pc": pc, "glints": glints, "glints_array": ordered_glints}
+        intermediate_results = {"pc": pc, "glints": glints, "glints_array": glints_array}
 
         reference_array = np.array([[p.x, p.y] for p in reference_glints], dtype=np.float32)
 
-        H_n_i = compute_homography(ordered_glints, reference_array, self.ransac_threshold)  # noqa: N806
+        H_n_i = compute_homography(glints_array, reference_array, self.ransac_threshold)  # noqa: N806
         intermediate_results["H_n_i"] = H_n_i
 
         pc_normalized = apply_homography(H_n_i, np.array([pc.x, pc.y], dtype=np.float32))
