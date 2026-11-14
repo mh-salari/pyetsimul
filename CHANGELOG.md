@@ -162,6 +162,11 @@ ETRA 2026 paper; this log records everything since.
   Before, with `use_gp_correction=True` and exactly four valid calibration points, the correction was skipped without a
   message, and the tracker predicted without it. Now a warning is printed.
 
+- **Fixed: `ContourPupil` changed the boundary array that was passed to it.**
+  Before, the array was shifted in place so that its mean is zero. An array passed to `ContourPupil`,
+  `Eye.set_pupil_from_contour(..., apparent=False)` or `Eye.register_pupil_shape` was therefore changed for the caller.
+  Now the pupil works on a copy.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed

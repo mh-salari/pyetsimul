@@ -617,7 +617,8 @@ class ContourPupil(Pupil):
         n: int | None = None,
     ) -> None:
         """Initialise from an explicit boundary; the contour is recentred and normalised to unit mean radius."""
-        pts = np.asarray(contour, dtype=float).reshape(-1, 2)
+        # A copy, because the recentring below is done in place and must not reach the caller's array.
+        pts = np.array(contour, dtype=float).reshape(-1, 2)
         pts -= pts.mean(axis=0)
         mean_radius = float(np.hypot(pts[:, 0], pts[:, 1]).mean())
         self._unit = pts / mean_radius  # shape at unit mean radius
