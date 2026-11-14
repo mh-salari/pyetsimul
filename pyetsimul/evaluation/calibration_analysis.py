@@ -115,12 +115,8 @@ def accuracy_at_calibration_points(et: EyeTracker, eye: Eye) -> CalibrationResul
     info(f"Analyzing calibration accuracy at {n_points} points...")
 
     # Output eye measurements
-    apex_pos = eye.cornea.get_apex_position()
-    apecornea_surface_x_dist = np.linalg.norm(apex_pos - eye.cornea.center)
-    cornea_pupil_dist = np.linalg.norm(eye.cornea.center - eye.pupil.pos_pupil)
-
-    info(f"Corneal radius: {apecornea_surface_x_dist:.3g} mm")
-    info(f"Pupil radius:   {cornea_pupil_dist:.3g} mm")
+    info(f"Corneal radius: {eye.cornea.anterior_radius:.3g} mm")
+    info(f"Pupil diameter: {eye.get_pupil_diameter():.3g} mm")
 
     # Initialize result arrays
     actual_points = []

@@ -183,6 +183,11 @@ ETRA 2026 paper; this log records everything since.
   This name is the `algorithm_name` of a prediction. It now matches the name of the tracker. Code that compares
   `algorithm_name` with `"homography"` needs the new name.
 
+- **Fixed: wrong "Corneal radius" and "Pupil radius" in the calibration report.**
+  Before, the line "Corneal radius" printed the distance from the corneal apex to the cornea centre (8.62 mm for the
+  default cornea, whose radius is 7.76 mm), and the line "Pupil radius" printed the distance from the cornea centre to
+  the pupil centre. Now the report prints the anterior corneal radius and the pupil diameter.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed
