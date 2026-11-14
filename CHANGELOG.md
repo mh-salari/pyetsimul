@@ -198,6 +198,11 @@ ETRA 2026 paper; this log records everything since.
   `outputs/`. A dataset generated with the defaults was therefore not found by the loader with its defaults.
   `output_dir="output"` keeps the old folder.
 
+- **Fixed: `PupilDecentrationVariation` produced NaN pupil positions when its first range was constant.**
+  Before, with a constant first range, for example `dx_range=[0.1, 0.1]` together with a varying `dy_range`, the pupil
+  was placed at NaN in every step, without an error. Now any of the ranges may be constant, and `ValueError` is raised
+  when all of them are.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed

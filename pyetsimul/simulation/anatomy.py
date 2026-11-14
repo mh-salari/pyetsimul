@@ -194,21 +194,20 @@ class PupilDecentrationVariation(GenericEyeVariation):
             num_steps: Number of steps in variation
 
         Raises:
-            ValueError: If no range is given, or the first given range has equal min and max.
+            ValueError: If no range is given, or every given range has equal min and max.
 
         """
-        if dx_range is None and dy_range is None and dz_range is None:
+        given = [value_range for value_range in (dx_range, dy_range, dz_range) if value_range is not None]
+        if not given:
             raise ValueError("At least one of dx_range, dy_range, or dz_range must be provided")
 
-        # Use first available range as primary for GenericEyeVariation
-        primary_range = dx_range or dy_range or dz_range
-        # The offsets on every axis are stepped by how far a value lies along the primary range.
-        if primary_range[0] == primary_range[1]:
-            raise ValueError(
-                f"The first given range must have different min and max, because the offsets are stepped along "
-                f"it; got {primary_range}"
-            )
-        super().__init__("pupil_decentration", primary_range, num_steps)
+        # The offsets on every axis are stepped by how far a value lies along the primary range, so the
+        # primary range is the first one whose min and max differ. A range with equal min and max is a
+        # fixed offset on its axis.
+        varying = [value_range for value_range in given if value_range[0] != value_range[1]]
+        if not varying:
+            raise ValueError(f"At least one given range must have different min and max; got {given}")
+        super().__init__("pupil_decentration", varying[0], num_steps)
 
         self.dx_range = dx_range
         self.dy_range = dy_range
