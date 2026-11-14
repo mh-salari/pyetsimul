@@ -46,10 +46,7 @@ class PupilDefaults:
 
     BOUNDARY_POINTS_ELLIPTICAL: int = 100
     BOUNDARY_POINTS_REALISTIC: int = 360
-    BASE_RADIUS: float = 2.5  # mm
     NONCIRCULARITY: float = 0.0166
-    ELLIPSE_CONTRIBUTION: float = 0.5
-    MAJOR_AXIS_ANGLE: float = 0.0  # rad
     OFFSET_FROM_LIMBUS: tuple[float, float] = (0.27, 0.20)  # (nasal, superior) mm; Wyatt 1995
     N_HARMONICS: int = 6
     REFERENCE_AGE: float = 35.8  # years
@@ -131,7 +128,6 @@ def pprint_hardware_defaults() -> None:
     info(f"  Principal Point: ({CameraDefaults.PRINCIPAL_POINT_X:.0f}, {CameraDefaults.PRINCIPAL_POINT_Y:.0f})")
 
     info("Pupil:")
-    info(f"  Base Radius: {PupilDefaults.BASE_RADIUS:.1f} mm")
     info(f"  Noncircularity: {PupilDefaults.NONCIRCULARITY:.4f}")
     info(f"  Boundary Points: {PupilDefaults.BOUNDARY_POINTS_REALISTIC}")
 

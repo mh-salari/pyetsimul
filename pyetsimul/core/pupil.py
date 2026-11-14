@@ -293,6 +293,21 @@ class EllipticalPupil(Pupil):
         )
 
 
+# A pupil at least this wide is in the dilated state. The value lies between the mean diameters that
+# Wyatt (1995) measured in light (3.09 mm) and in darkness (4.93 mm).
+DILATED_FROM_DIAMETER_MM = 4.0
+# Share of the squared noncircularity carried by the elliptical (second) harmonic (Wyatt 1995).
+ELLIPSE_CONTRIBUTION_DILATED = 0.596
+ELLIPSE_CONTRIBUTION_CONSTRICTED = 0.477
+# Von Mises concentration of the major-axis orientation about its mean: vertical for the dilated pupil,
+# horizontal for the constricted one. This value gives a spread of about 35 degrees.
+_MAJOR_AXIS_CONCENTRATION = 3.0
+# Decay of the amplitude weights from one higher harmonic to the next.
+_HARMONIC_WEIGHT_DECAY = 0.7
+# Increase of the noncircularity per decade of age.
+_NONCIRCULARITY_PER_DECADE = 0.0015
+
+
 @dataclass
 class RealisticPupilParams:
     """Parameters for realistic human pupil shape generation.
@@ -310,23 +325,29 @@ class RealisticPupilParams:
     Vision Research, 35(14), 2021-2036.
 
     Attributes:
-        base_radius: Average pupil radius in mm
         noncircularity: Measure of deviation from circularity (0 = perfect circle)
-        ellipse_contribution: Fraction of noncircularity from elliptical component
-        major_axis_angle: Orientation of ellipse major axis in radians (0=vertical)
+        ellipse_contribution: Share of the squared noncircularity carried by the elliptical component, in
+            [0, 1]. None uses the shares of the paper: 0.596 for a dilated and 0.477 for a constricted pupil.
+        major_axis_angle: Orientation of the ellipse major axis in radians (0 = vertical), used at every
+            size. None draws one orientation for the dilated pupil (about vertical) and one for the
+            constricted pupil (about horizontal), as the paper found.
         n_harmonics: Number of Fourier harmonics to include in shape generation
-        age: Subject age in years (affects noncircularity and pupil size)
-        random_seed: Random seed for reproducible shape generation (None for random)
+        age: Subject age in years (affects noncircularity)
+        random_seed: Seed of the pupil's shape signature (None for a different signature per pupil)
 
     """
 
-    base_radius: float = PupilDefaults.BASE_RADIUS  # mm
     noncircularity: float = PupilDefaults.NONCIRCULARITY
-    ellipse_contribution: float = PupilDefaults.ELLIPSE_CONTRIBUTION
-    major_axis_angle: float = PupilDefaults.MAJOR_AXIS_ANGLE
+    ellipse_contribution: float | None = None
+    major_axis_angle: float | None = None
     n_harmonics: int = PupilDefaults.N_HARMONICS
     age: float = PupilDefaults.REFERENCE_AGE
-    random_seed: int | None = None  # seed for reproducible random generation (None = random)
+    random_seed: int | None = None
+
+    def __post_init__(self) -> None:
+        """Reject an elliptical share outside [0, 1]."""
+        if self.ellipse_contribution is not None and not 0.0 <= self.ellipse_contribution <= 1.0:
+            raise ValueError(f"ellipse_contribution must be in [0, 1], got {self.ellipse_contribution}")
 
 
 class RealisticPupil(Pupil):
@@ -336,6 +357,12 @@ class RealisticPupil(Pupil):
     Implements Fourier series: R(θ) = r_ave + Σ r_n cos(n(θ - φ_n)).
     Uses paper's noncircularity formula: NC² = (1/2) Σ(r_n/r_ave)² for n=2 to N.
 
+    Each pupil has a shape signature that is drawn once, when the pupil is created, and kept at every size:
+    the phases of the higher harmonics, and the major-axis orientation of its dilated and of its constricted
+    state. The paper found the shape of a pupil stable over time, similar in light and darkness apart from
+    the orientation of the ellipse, and different between subjects. With ``random_seed`` the signature is the
+    same in every run; without it every pupil has its own.
+
     Based on: Wyatt, H.J. (1995). "The Form of the Human Pupil."
     Vision Research, 35(14), 2021-2036.
 
@@ -344,6 +371,7 @@ class RealisticPupil(Pupil):
         x_pupil: Vector defining X-axis radius/direction
         y_pupil: Vector defining Y-axis radius/direction
         params: Parameters for realistic pupil shape generation
+        n: Number of boundary points
 
     """
 
@@ -366,107 +394,70 @@ class RealisticPupil(Pupil):
 
         """
         super().__init__(pos_pupil, x_pupil, y_pupil, n)
-        # The pupil writes its size and ellipse orientation into its parameters, so it keeps its own copy
-        # and leaves the caller's object as it was.
+        # A copy, so a later change to the caller's object does not reach this pupil.
         self.params = RealisticPupilParams() if params is None else replace(params)
 
-        # Extract current pupil size from elliptical parameters
-        current_radius_x = x_pupil.magnitude()
-        current_radius_y = y_pupil.magnitude()
-        avg_radius = (current_radius_x + current_radius_y) / 2
-
-        # Initialize realistic pupil
-        self.params.base_radius = avg_radius
-
-        # Initialize attributes that will be set dynamically
-        self.r2 = None
-        self.harmonics: dict[int, dict[str, float]] = {}
-
-        # Set dilated/constricted condition and orientation based on pupil size
-        diameter = avg_radius * 2
-        self._update_condition_and_orientation(diameter)
-
-        self._generate_harmonics()
-
-    def _generate_harmonics(self) -> None:
-        """Generate harmonic amplitudes for realistic pupil shape using Wyatt (1995) formula."""
+        # The shape signature, drawn once in this order.
         rng = np.random.default_rng(self.params.random_seed)
-        # Apply age effects to base parameters
+        self._phases = {n_harmonic: rng.uniform(0, 2 * np.pi) for n_harmonic in range(3, self.params.n_harmonics + 1)}
+        # Major axis about vertical (0) for the dilated pupil, about horizontal (+/-90 deg) for the constricted.
+        self._dilated_axis_angle = float(rng.vonmises(0.0, _MAJOR_AXIS_CONCENTRATION))
+        horizontal = rng.choice([np.pi / 2, -np.pi / 2])
+        self._constricted_axis_angle = float(rng.vonmises(horizontal, _MAJOR_AXIS_CONCENTRATION))
+
+        self.r2 = 0.0
+        self.harmonics: dict[int, dict[str, float]] = {}
+        self._set_radius((x_pupil.magnitude() + y_pupil.magnitude()) / 2)
+
+    @property
+    def is_dilated(self) -> bool:
+        """Whether the pupil is in the dilated state: at least ``DILATED_FROM_DIAMETER_MM`` wide."""
+        return 2 * self._radius >= DILATED_FROM_DIAMETER_MM
+
+    @property
+    def major_axis_angle(self) -> float:
+        """Orientation of the ellipse major axis at the current size, in radians (0 = vertical)."""
+        if self.params.major_axis_angle is not None:
+            return self.params.major_axis_angle
+        return self._dilated_axis_angle if self.is_dilated else self._constricted_axis_angle
+
+    def _set_radius(self, radius: float) -> None:
+        """Set the mean radius and the harmonic amplitudes that go with it, by the formula of Wyatt (1995).
+
+        The amplitudes follow from NC² = (1/2) Σ(rₙ/r_ave)² for n = 2 to N: the elliptical harmonic takes its
+        share of NC², and the higher harmonics divide the rest with weights that decay with n.
+        """
+        self._radius = radius
         age_offset = self.params.age - PupilDefaults.REFERENCE_AGE
-        noncircularity_age_adjusted = self.params.noncircularity + (age_offset / 10) * 0.0015
+        noncircularity = self.params.noncircularity + (age_offset / 10) * _NONCIRCULARITY_PER_DECADE
 
-        # Get lighting-dependent ellipse contribution
-        ellipse_contrib = 0.596 if self._is_dilated else 0.477  # From paper
+        ellipse_share = self.params.ellipse_contribution
+        if ellipse_share is None:
+            ellipse_share = ELLIPSE_CONTRIBUTION_DILATED if self.is_dilated else ELLIPSE_CONTRIBUTION_CONSTRICTED
 
-        # Use paper's formula: NC² = (1/2) Σ(rₙ/r_ave)² for n=2 to N
-        # We need to work backwards from target NC to get harmonic amplitudes
-
-        # 2nd harmonic (elliptical component)
-        ellipse_nc_contribution = ellipse_contrib * (noncircularity_age_adjusted**2)
-        self.r2 = np.sqrt(2 * ellipse_nc_contribution) * self.params.base_radius
-
-        # Higher harmonics - distribute remaining noncircularity
-        remaining_nc_squared = (noncircularity_age_adjusted**2) * (1 - ellipse_contrib)
-        n_higher_harmonics = self.params.n_harmonics - 2  # excluding 2nd harmonic
+        self.r2 = np.sqrt(2 * ellipse_share * noncircularity**2) * radius
 
         self.harmonics = {}
-        if n_higher_harmonics > 0:
-            # Distribute remaining NC² among higher harmonics with exponential decay
-            weights = np.array([np.exp(-(n - 2) * 0.7) for n in range(3, self.params.n_harmonics + 1)])
-            weights /= np.sum(weights)  # Normalize
+        if self._phases:
+            weights = np.array([np.exp(-(n_harmonic - 2) * _HARMONIC_WEIGHT_DECAY) for n_harmonic in self._phases])
+            weights /= np.sum(weights)
+            remaining_nc_squared = noncircularity**2 * (1 - ellipse_share)
+            for weight, (n_harmonic, phase) in zip(weights, self._phases.items(), strict=True):
+                amplitude = np.sqrt(2 * remaining_nc_squared * weight) * radius
+                self.harmonics[n_harmonic] = {"amplitude": amplitude, "phase": phase}
 
-            for i, n in enumerate(range(3, self.params.n_harmonics + 1)):
-                # Each harmonic gets a fraction of remaining NC²
-                harmonic_nc_squared = remaining_nc_squared * weights[i]
-                amplitude = np.sqrt(2 * harmonic_nc_squared) * self.params.base_radius
-
-                self.harmonics[n] = {
-                    "amplitude": amplitude,
-                    "phase": rng.uniform(0, 2 * np.pi),  # Individual variation
-                }
-
-    def _update_condition_and_orientation(self, diameter: float) -> None:
-        """Update dilated/constricted condition and major axis orientation based on pupil size.
-
-        Args:
-            diameter: Pupil diameter in mm
-
-        """
-        rng = np.random.default_rng(self.params.random_seed)
-        # Determine orientation based on size (using paper's reference values)
-        # Large pupils (dilated) tend to have vertical ellipse orientation
-        # Small pupils (constricted) tend to have horizontal ellipse orientation
-        if diameter >= 4.0:  # Closer to dilated condition size (4.93mm)
-            self._is_dilated = True
-            # Major axis orientation: clusters around vertical (0°)
-            concentration = 3.0  # Controls spread (~±30° for this value)
-            self.params.major_axis_angle = rng.vonmises(0, concentration)
-        else:  # Closer to constricted condition size (3.09mm)
-            self._is_dilated = False
-            # Major axis orientation: clusters around horizontal (±90°)
-            base_angle = rng.choice([np.pi / 2, -np.pi / 2])
-            concentration = 3.0
-            self.params.major_axis_angle = rng.vonmises(base_angle, concentration)
-
-    def set_diameter(self, diameter: float) -> None:
-        """Set pupil diameter and automatically determine shape characteristics.
-
-        Args:
-            diameter: Pupil diameter in mm
-
-        """
-        self.params.base_radius = diameter / 2
-
-        # Update condition and orientation based on new size
-        self._update_condition_and_orientation(diameter)
-
-        # Regenerate harmonics with new conditions
-        self._generate_harmonics()
-
-        # Update elliptical parameters to match average radius for compatibility
-        radius = diameter / 2
+        # The elliptical parameters of the base class hold the mean radius.
         self.x_pupil = Direction3D(radius, 0, 0)
         self.y_pupil = Direction3D(0, radius, 0)
+
+    def set_diameter(self, diameter: float) -> None:
+        """Set pupil diameter. The shape signature stays; the state follows the size.
+
+        Args:
+            diameter: Pupil diameter in mm
+
+        """
+        self._set_radius(diameter / 2)
 
     def get_boundary_points(self, n: int | None = None) -> np.ndarray:
         """Generate realistic pupil boundary points using Fourier series.
@@ -482,16 +473,14 @@ class RealisticPupil(Pupil):
         theta = np.linspace(0, 2 * np.pi, n_points, endpoint=False)
 
         # Start with average radius (in mm)
-        radius = np.full_like(theta, self.params.base_radius)
+        radius = np.full_like(theta, self._radius)
 
         # Add 2nd harmonic (elliptical component)
-        if self.r2 is not None:
-            radius += self.r2 * np.cos(2 * (theta - self.params.major_axis_angle))
+        radius += self.r2 * np.cos(2 * (theta - self.major_axis_angle))
 
         # Add higher harmonics for individual variation
-        if self.harmonics:
-            for harmonic_n, harmonic in self.harmonics.items():
-                radius += harmonic["amplitude"] * np.cos(harmonic_n * (theta - harmonic["phase"]))
+        for harmonic_n, harmonic in self.harmonics.items():
+            radius += harmonic["amplitude"] * np.cos(harmonic_n * (theta - harmonic["phase"]))
 
         # Convert to Cartesian coordinates
         x = radius * np.cos(theta)
@@ -509,13 +498,13 @@ class RealisticPupil(Pupil):
     def get_radii(self) -> tuple[float, float]:
         """Get pupil radii from both axes.
 
-        For realistic pupil, returns effective radii based on current parameters.
+        For realistic pupil, both are the mean radius.
 
         Returns:
             Tuple of (x_radius, y_radius) in mm
 
         """
-        return self.params.base_radius, self.params.base_radius
+        return self._radius, self._radius
 
     def set_radii(self, x_radius: float, y_radius: float) -> None:
         """Set pupil radii and update geometry.
@@ -525,19 +514,17 @@ class RealisticPupil(Pupil):
             y_radius: Pupil radius in Y direction (mm)
 
         """
-        # For realistic pupil, use average radius and update realistic parameters
-        avg_radius = (x_radius + y_radius) / 2
-        diameter = avg_radius * 2
-        self.set_diameter(diameter)
+        # For realistic pupil, the mean of the two radii is the mean radius
+        self._set_radius((x_radius + y_radius) / 2)
 
     def get_diameter(self) -> float:
         """Get pupil diameter.
 
         Returns:
-            Pupil diameter in mm (2 * base_radius)
+            Pupil diameter in mm (twice the mean radius)
 
         """
-        return self.params.base_radius * 2
+        return self._radius * 2
 
     def get_noncircularity(self) -> float:
         """Calculate actual noncircularity using Wyatt (1995) exact formula.
@@ -548,17 +535,9 @@ class RealisticPupil(Pupil):
         """
         # Paper's formula: NC² = (1/2) * Σ(rₙ/r_ave)² for n=2 to N
         # Where rₙ are the harmonic amplitudes
-        r_ave = self.params.base_radius
-        nc_squared = 0.0
-
-        # Add 2nd harmonic contribution (elliptical)
-        if self.r2 is not None:
-            nc_squared += 0.5 * (self.r2 / r_ave) ** 2
-
-        # Add higher harmonic contributions
-        if self.harmonics:
-            for harmonic in self.harmonics.values():
-                nc_squared += 0.5 * (harmonic["amplitude"] / r_ave) ** 2
+        nc_squared = 0.5 * (self.r2 / self._radius) ** 2
+        for harmonic in self.harmonics.values():
+            nc_squared += 0.5 * (harmonic["amplitude"] / self._radius) ** 2
 
         return np.sqrt(nc_squared)
 
@@ -570,10 +549,9 @@ class RealisticPupil(Pupil):
             "y_pupil": self.y_pupil.serialize(),
             "params": asdict(self.params),
             "n": self.n,
-            "harmonics": {
-                str(n): {"amplitude": h["amplitude"], "phase": h["phase"]} for n, h in self.harmonics.items()
-            },
-            "r2": self.r2,
+            "phases": {str(n_harmonic): phase for n_harmonic, phase in self._phases.items()},
+            "dilated_axis_angle": self._dilated_axis_angle,
+            "constricted_axis_angle": self._constricted_axis_angle,
         }
 
     @classmethod
@@ -587,11 +565,11 @@ class RealisticPupil(Pupil):
             n=data["n"],
         )
 
-        # Restore harmonics and r2
-        pupil.r2 = data.get("r2")
-        pupil.harmonics = {
-            int(n): {"amplitude": h["amplitude"], "phase": h["phase"]} for n, h in data.get("harmonics", {}).items()
-        }
+        # The saved shape signature replaces the one drawn for the new pupil.
+        pupil._phases = {int(n_harmonic): phase for n_harmonic, phase in data["phases"].items()}
+        pupil._dilated_axis_angle = data["dilated_axis_angle"]
+        pupil._constricted_axis_angle = data["constricted_axis_angle"]
+        pupil._set_radius(pupil._radius)
 
         return pupil
 

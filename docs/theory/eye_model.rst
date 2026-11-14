@@ -101,8 +101,22 @@ In the realistic pupil model, the pupil orientation is determined automatically 
 diameter. Wyatt (1995) observed that larger pupils in darkness (average diameter 4.93 mm) tend
 to have their ellipse major axes oriented vertically (0 deg), while smaller pupils in bright
 light (average diameter 3.09 mm) tend to have their major axes oriented horizontally (+/-90 deg).
-Based on this observation, 4.0 mm is set as the default threshold to classify pupils as either
+Based on this observation, 4.0 mm is set as the threshold to classify pupils as either
 dilated (vertical orientation) or constricted (horizontal orientation).
+
+Wyatt (1995) also found that the shape of one pupil is stable over time and similar in light and
+darkness apart from the orientation of the ellipse, while the shapes of different subjects are not
+similar. Each realistic pupil therefore has a shape signature that is drawn once, when the pupil
+is created, and kept at every size: the harmonic phases :math:`\phi_n`, one major-axis angle for
+the dilated state, drawn around vertical, and one for the constricted state, drawn around
+horizontal. The amplitudes scale with the radius, so within one state the outline keeps its shape
+as the pupil changes size. With ``pupil_random_seed`` the signature is the same in every run;
+without a seed every pupil has its own. The two eyes of one model are not mirrored.
+
+Two parameters of ``RealisticPupilParams`` replace part of this behavior when they are given.
+``major_axis_angle`` fixes the major-axis angle at every size, and ``ellipse_contribution`` fixes
+the share of the squared noncircularity that the elliptical component carries (0.596 for a dilated
+and 0.477 for a constricted pupil otherwise).
 
 Pupil Decentration
 ^^^^^^^^^^^^^^^^^^

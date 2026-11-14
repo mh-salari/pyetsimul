@@ -332,6 +332,36 @@ ETRA 2026 paper; this log records everything since.
   remembers the shift and applies it at every pupil size, in addition to the off-axis position and the size-dependent
   decentration of the pupil.
 
+- **Fixed: a realistic pupil got a new random shape every time its size changed.**
+  A realistic pupil (`pupil_type="realistic"`) has an irregular outline, built from an ellipse and higher harmonics
+  after Wyatt (1995). Before, without a random seed, which is the default, a new random outline was drawn at every
+  `set_pupil_diameter`. One eye therefore had a different pupil shape at every size; the normalised outline changed by
+  about 5 %. Wyatt (1995) reports that the shape of a pupil is stable over time. Now the random part of the shape is
+  drawn once, when the pupil is created. As before, the ellipse has one orientation for a dilated and one for a
+  constricted pupil, with the switch at 4 mm. Outlines of pupils with a seed differ from those of 5.1.0.
+
+- **Fixed: a saved realistic pupil was loaded with a different outline.**
+  Before, loading drew a new random orientation for the elliptical component of the pupil. Now the saved dictionary
+  holds the random part of the shape (`phases`, `dilated_axis_angle` and `constricted_axis_angle`) instead of
+  `harmonics` and `r2`.
+
+- **Changed: the ellipse share and the ellipse orientation of a realistic pupil can be set; before, both settings were
+  ignored.**
+  The two settings are `ellipse_contribution` and `major_axis_angle` of `RealisticPupilParams`. Before,
+  `major_axis_angle` was overwritten by the pupil, and `ellipse_contribution` was never read. Now a value for
+  `major_axis_angle` sets the orientation of the elliptical component of the pupil at every pupil size. A value for
+  `ellipse_contribution`, between 0 and 1, sets the share of the squared noncircularity that the elliptical component
+  carries. Both default to `None`, which uses the values of Wyatt (1995), one for a dilated and one for a constricted
+  pupil. The orientation that a pupil currently has is `RealisticPupil.major_axis_angle`.
+
+- **Removed: `RealisticPupilParams.base_radius`.**
+  The value was overwritten with the pupil size set on the eye, so setting it had no effect. The size of a pupil is
+  read with `get_diameter()`.
+
+- **Removed: `PupilDefaults.BASE_RADIUS`, `PupilDefaults.ELLIPSE_CONTRIBUTION` and `PupilDefaults.MAJOR_AXIS_ANGLE`.**
+  They were the defaults of parameters that were never used. `pprint_hardware_defaults` no longer prints a "pupil base
+  radius" of 2.5 mm, which was not the pupil radius of any eye.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed
