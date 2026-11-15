@@ -6,7 +6,7 @@ import multiprocessing
 from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
-from pyetsimul.log import get_log_level, info, set_log_level, warning
+from pyetsimul.log import configure_worker, get_log_file, get_log_level, info, warning
 
 from ..core import Eye
 from ..types import Position3D
@@ -191,8 +191,9 @@ class DataGenerationStrategy(VariationStrategy):
                 ]
 
                 # Use multiprocessing Pool to parallelize the generation of measurements. The workers get
-                # the log level of this process, which a spawned worker would not inherit.
-                with multiprocessing.Pool(initializer=set_log_level, initargs=(get_log_level(),)) as pool:
+                # the log level and the log file of this process, which a spawned worker would not inherit.
+                worker_logging = (get_log_level(), get_log_file())
+                with multiprocessing.Pool(initializer=configure_worker, initargs=worker_logging) as pool:
                     results = pool.map(_process_single_variation, tasks)
 
                 eye_data["measurements"] = results

@@ -628,6 +628,13 @@ ETRA 2026 paper; this log records everything since.
   year of the paper as 2007. It is 2008: Hoormann, Jainta & Jaschinski (2008), Journal of Eye Movement Research,
   1(2):3.
 
+- **Fixed: messages from the worker processes of a dataset generation were missing from the log file.**
+  `DataGenerationStrategy.execute` images the measurements in worker processes. On macOS and Windows a worker process
+  starts without the log file of the main process. Before, what a worker logged, such as the warnings from the imaging
+  and the lines about missing glints at `LogLevel.DEBUG`, was printed but not written to the file set with
+  `set_log_file`: in a test with 5 missing glints, the log file held none of the 5 lines. Now the workers get the log
+  file of the process that starts them and append to it.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed

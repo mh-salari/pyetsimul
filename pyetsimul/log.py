@@ -55,13 +55,34 @@ def set_log_file(path: str, mode: str = "a") -> None:
 
     mode: "a" to append (default), "w" to overwrite.
     """
-    # Spawned worker processes re-import the main module — skip to avoid wiping the log
+    # A spawned worker process imports the main module again. A call made there is skipped, so that it
+    # cannot empty the log; a worker gets its log file from configure_worker.
     if multiprocessing.current_process().name != "MainProcess":
         return
-    global _log_file_path  # noqa: PLW0603
-    _log_file_path = pathlib.Path(path)
     if mode == "w":
-        _log_file_path.write_text("", encoding="utf-8")
+        pathlib.Path(path).write_text("", encoding="utf-8")
+    _attach_log_file(pathlib.Path(path))
+
+
+def get_log_file() -> pathlib.Path | None:
+    """Return the path of the log file, or None when no log file is set."""
+    return _log_file_path
+
+
+def configure_worker(level: LogLevel, log_file: pathlib.Path | None) -> None:
+    """Give a worker process the log level and the log file of the process that starts it.
+
+    A spawned worker inherits neither. The worker appends to the log file and never empties it.
+    """
+    set_log_level(level)
+    if log_file is not None:
+        _attach_log_file(log_file)
+
+
+def _attach_log_file(path: pathlib.Path) -> None:
+    """Send the output and the warnings of this process to the log file as well."""
+    global _log_file_path  # noqa: PLW0603
+    _log_file_path = path
     warnings.showwarning = _showwarning_with_file
 
 
@@ -81,9 +102,9 @@ def _write_to_file(text: str, level: str = "INFO") -> None:
     if stripped and all(c == "-" for c in stripped):
         return
     timestamp = datetime.now(tz=UTC).strftime("%Y-%m-%d %H:%M:%S")
+    # One write per entry, so that the entries of processes that share the file do not interleave.
     with _log_file_path.open("a", encoding="utf-8") as f:
-        f.write(f"--- [{timestamp}] [{level}] ---\n")
-        f.write(stripped + "\n")
+        f.write(f"--- [{timestamp}] [{level}] ---\n{stripped}\n")
 
 
 def _showwarning_with_file(
