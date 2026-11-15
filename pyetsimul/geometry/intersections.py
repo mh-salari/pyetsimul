@@ -17,6 +17,8 @@ def intersect_ray_sphere(
 
     Uses quadratic equation to find intersection points. Returns both intersection
     points ordered by distance from ray origin (closer first).
+    The ray is treated as a line, as in et_simul: an intersection behind the ray origin is returned as
+    well, and "closer" is by distance from the origin on either side of it.
 
     Args:
         ray: Ray with origin and direction
@@ -67,7 +69,8 @@ def intersect_ray_circle(ray: Ray, circle_center: Point3D, circle_radius: float)
     """Find intersection between ray and circle in 2D plane.
 
     Uses quadratic equation to find intersection points in x-y plane.
-    Returns the closest intersection point to ray origin.
+    Returns the closest intersection point to ray origin. The ray is treated as a line, as in et_simul, so
+    that point can lie behind the ray origin.
 
     Args:
         ray: Ray with origin and direction
@@ -115,7 +118,8 @@ def intersect_ray_plane(ray: Ray, plane_point: Position3D, plane_normal: Directi
     """Find intersection between ray and plane.
 
     Solves the parametric ray equation with the plane equation using dot product.
-    Returns intersection point with surface normal.
+    Returns intersection point with surface normal. The ray is treated as a line, as in et_simul, so the
+    point can lie behind the ray origin.
 
     Args:
         ray: Ray with origin and direction
