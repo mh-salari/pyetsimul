@@ -1,8 +1,8 @@
 # Changelog
 
-All notable changes to PyEtSimul are recorded here. The format follows
-[Keep a Changelog](https://keepachangelog.com/en/1.1.0/). Version 3.0.0 is the release presented in the
-ETRA 2026 paper; this log records everything since.
+All notable changes to PyEtSimul are recorded here. Version 3.0.0 is the release presented in the ETRA 2026 paper; this
+log records everything since. Every entry starts with the kind of change (Added, Changed, Fixed or Removed). The
+entries of a version that is not released yet are in the order in which the changes were made.
 
 ## [Unreleased]
 
@@ -679,238 +679,316 @@ ETRA 2026 paper; this log records everything since.
 
 ## [5.1.0] - 2026-09-10
 
-### Changed
+- **Changed: the default rotation centres lie 14.8 mm (horizontal) and 12.2 mm (vertical) behind the corneal apex.**
+  The horizontal (azimuth) rotation centre lies 14.8 mm and the vertical (elevation) rotation centre 12.2 mm behind the
+  corneal apex, the values measured by Fry & Hill (1962, 1963). They were 14.7 mm and 12.0 mm. Eye positions after a
+  rotation shift by up to about 0.1 mm at large gaze angles. The `gkaModelEye` eye model keeps its own values.
 
-- **The default rotation-centre depths are the measured ones.** Azimuth 14.8 mm and elevation 12.2 mm behind
-  the corneal apex (Fry & Hill 1962, 1963), replacing 14.7 mm and 12.0 mm. Gaze-dependent eye positions shift
-  by up to about 0.1 mm at large eccentricities. `gkaModelEye` keeps the values that model sets.
-
-### Fixed
-
-- **The Fick rotation centres are credited to Aguirre (2021), not (2019).** The 2019 entrance-pupil paper
-  states that rotation is not studied there.
+- **Fixed: the Fick rotation centres were credited to the wrong paper.**
+  They were credited to Aguirre (2019). That paper, on the entrance pupil, states that it does not study eye rotation.
+  They are now credited to Aguirre (2021).
 
 ## [5.0.1] - 2026-09-09
 
-### Fixed
+- **Fixed: the documentation failed to build on Read the Docs since 4.0.0.**
+  The two guide pages in `docs/guides` were symbolic links to example files that were removed in 4.0.0, when the
+  examples became the numbered 01 to 16 series. The guides are now documentation pages of their own. The gaze-model
+  guide explains how to register a polynomial, which is what the theory pages that link to it refer to.
 
-- **The two guide pages are rebuilt as documentation rather than symlinks.** `docs/guides` held symlinks into
-  `examples/`, whose targets were deleted when the examples became the ordered 01-16 series. Sphinx could not read
-  them, and with `fail_on_warning` set that failed every Read the Docs build since 4.0.0. The guides are now
-  reStructuredText pages in `docs/`, and the gaze-model guide documents polynomial registration, which is what the
-  theory pages linking to it describe.
-
-### Removed
-
-- **`GenericEyeVariation` no longer takes a `description` argument.** It was stored and never read; `describe()`
-  builds its string from the parameter path. Passing it now raises `TypeError`.
+- **Removed: the `description` argument of `GenericEyeVariation`.**
+  It was stored and never used; `describe()` builds its text from the parameter path. Passing the argument raises
+  `TypeError`.
 
 ## [5.0.0] - 2026-09-09
 
-### Fixed
+- **Changed: a warning is issued when a pupil centre or diameter cannot be fitted.**
+  When the fit fails, another quantity is reported in its place. Each such case now warns, naming the input that could
+  not be fitted and what was reported instead, so that a failed fit cannot be mistaken for a fitted result.
 
-- **The pupil centre is fitted in-package rather than by scikit-image.** `fit_ellipse` solves the ellipse
-  directly under the conic constraint, on coordinates conditioned before the solve, and `_safe_ellipse_center`,
-  `_fit_ellipse_center`, `_fit_convex_hull_center` and `calculate_pupil_diameter_from_boundary` all read from it.
-  It reproduces scikit-image 0.25.2 to floating point on synthetic and measured boundaries: centre and axes to
-  1.4e-13, angle to 3.2e-12 degrees. Under numpy 2.5 scikit-image's `EllipseModel` raises `TypeError` for every
-  input, including a noiseless ellipse, because it applies `%=` to an angle that comes back complex; the fit path
-  therefore failed on every call and the centre silently became a boundary or hull-vertex centroid. On a smooth
-  pupil that substitute is close enough to pass unnoticed; on a boundary traced from a real image it differs by
-  several pixels.
-- **The Cerrolaza et al. (2008) asymmetric polynomial listed its constant term twice.** The horizontal row
-  carried five terms where the published model has four, so the design matrix held a duplicate column and the
-  fitted mapping spent a coefficient on it. The pseudo-inverse absorbed the rank deficiency, leaving the mapping
-  itself correct, but the descriptor did not match the cited model.
-- **Calibration points are included in the setup plot bounds.** The bounds test asked a two-column array for
-  three columns, so it never ran and calibration points outside the rest of the scene fell off the axes. The
-  points are now placed on the screen plane, where they are drawn.
+- **Changed: the default cornea is a conic instead of a sphere.**
+  `EyeModel` builds a `ConicCornea` instead of a `SphericalCornea`. The front surface of the default cornea is
+  aspheric, with a radius of 7.76 mm and a conic constant of -0.10. It was a sphere with a radius of 7.98 mm.
 
-### Changed
+- **Changed: `ConicCornea` models its back surface by default.**
+  `use_posterior_surface` defaults to `True`, so light is refracted at both surfaces of the cornea.
+  `use_posterior_surface=False` gives a cornea with a single surface.
 
-- **A pupil centre or diameter that falls back now warns.** Each fallback says which input could not be fitted
-  and what was reported instead, so a failed fit can no longer be mistaken for a fitted result.
-- **The default cornea is a conic.** `EyeModel` builds a `ConicCornea` rather than a `SphericalCornea`, so the
-  default eye refracts at an aspheric anterior surface (R 7.76 mm, k -0.10) instead of a sphere at 7.98 mm.
-- **`ConicCornea` models its posterior surface by default.** `use_posterior_surface` defaults to `True`, so
-  refraction is solved at both corneal surfaces; pass `False` for a single-surface cornea.
-- **The static off-axis pupil is applied by default.** `OffAxisPupilConfig.enabled` defaults to `True`, placing
-  the pupil centre nasally and superiorly off the optical axis (Wyatt 1995) rather than on it; pass `False` to
-  put the pupil back on the axis.
+- **Changed: the pupil is off the optical axis by default.**
+  `OffAxisPupilConfig.enabled` defaults to `True`. The pupil centre lies nasally and superiorly of the optical axis
+  (Wyatt 1995). `enabled=False` puts the pupil back on the axis.
 
-Together these make the default eye anatomically closer to a real one, and they move every result built on the
-defaults: the apparent pupil sits at the static offset and the corneal magnification changes. Code that needs the
-previous behaviour states it explicitly, as
-`EyeModel(cornea=SphericalCornea(), off_axis_pupil=OffAxisPupilConfig(enabled=False))`. The named `et_simul` and
-`gkaModelEye` models set their own cornea and off-axis pupil, so their MATLAB validations are unaffected.
+Together, the three new defaults make the default eye anatomically closer to a real eye. They change every result that
+relies on the defaults: the apparent pupil is at its off-axis position and the corneal magnification changes. The
+previous behaviour is obtained with `EyeModel(cornea=SphericalCornea(),
+off_axis_pupil=OffAxisPupilConfig(enabled=False))`. The `et_simul` and `gkaModelEye` eye models set their own cornea
+and pupil position, so their validation against MATLAB is not affected.
+
+- **Fixed: the pupil ellipse fit failed under numpy 2.5.**
+  PyEtSimul used `EllipseModel` of scikit-image to fit an ellipse to the pupil boundary. Under numpy 2.5 that fit
+  raises `TypeError` for every input. The pupil centre was then replaced, without a message, by the mean of the
+  boundary points or of the convex-hull vertices. For a smooth pupil that substitute is close to the ellipse centre;
+  for a boundary traced from a real image it differs by several pixels. The ellipse is now fitted inside PyEtSimul
+  (`fit_ellipse`). The result agrees with scikit-image 0.25.2 to floating-point precision (centre and axes to 1.4e-13,
+  angle to 3.2e-12 deg).
+
+- **Fixed: the Cerrolaza et al. (2008) asymmetric polynomial contained its constant term twice.**
+  The horizontal polynomial had five terms where the published model has four. The fitted gaze mapping was still
+  correct, because the fit absorbs the duplicate term, but the polynomial did not match the cited model.
+
+- **Fixed: calibration points could fall outside the 3D setup plot.**
+  The limits of the plot did not include the calibration points, because the test that should include them never ran.
+  Calibration points outside the rest of the scene were cut off. The limits now include them, at their positions on the
+  screen plane.
 
 ## [4.0.0] - 2026-07-06
 
-### Added
+- **Added: the specification of an eye is one object, `EyeModel`.**
+  An `EyeModel` holds the cornea, angle kappa, the rotation centre, the look-at method and the pupil, and cannot be
+  modified after it is created. `EyeModel.copy(**overrides)` returns a model with the given fields changed.
+  `Eye.copy(**overrides)` returns a new eye at the same position, built from such a model.
 
-- **The eye specification is a first-class `EyeModel`.** An immutable `EyeModel` holds the cornea, angle kappa,
-  rotation geometry, gaze convention and pupil; `EyeModel.copy(**overrides)` derives a variant, and `Eye.copy`
-  derives a placed eye with model overrides.
-- **Named eye-model registry.** `get_eye_model`, `register_eye_model` and `list_eye_models` select models by
-  name, with `"PyEtSimul"`, `"et_simul"` and `"gkaModelEye"` built in.
-- **`et_simul` eye model with a 1:1 MATLAB validation.** The original Böhme (2008) eye as a named model, with a
-  MATLAB reference and a test asserting the pupil centre and glint at each gaze target.
-- **`gkaModelEye` eye model with a 1:1 MATLAB validation.** An independently built schematic eye as a named
-  model, validated against its MATLAB reference to the iterative-solver floor.
-- **`FickRotation` camera projection.** `Camera.point_at(eye, mode="fick")` aims the camera at the eye's
-  rotation centre via a Fick-rotation projection.
-- **`plot_eye_cross_section` visualization.** A 2D cross-section of the eye (cornea, globe, pupil, optical and
-  visual axes), derived from the eye's own geometry.
-- **World-up control for `set_rest_orientation_at_target`.** An optional `up` vector sets the eye's roll when it
-  is rested facing a target.
-- **New examples series (numbered `01` to `16`).** One ordered, self-contained learning path: scene basics, the
-  eye, cornea, pupil, eyelid, glint and camera models, binocular setups, dataset generation and custom parameter
-  variations, calibration and gaze-accuracy evaluation with interactive plots, and building custom eye and gaze models.
+- **Added: eye models can be selected by name, with `get_eye_model`.**
+  `get_eye_model`, `register_eye_model` and `list_eye_models` give access to a registry of named eye models.
+  `"PyEtSimul"`, `"et_simul"` and `"gkaModelEye"` are built in.
 
-### Changed
+- **Added: the `et_simul` eye model, validated against the MATLAB original.**
+  It is the eye of Böhme et al. (2008). A test compares its pupil centre and glint at each gaze target with the output
+  of et_simul in MATLAB; they agree to within 0.001 px.
 
-- **The eye specification lives in `EyeModel`, not in `Eye` keyword arguments.** An eye is constructed as
-  `Eye(model=..., which_eye=...)`.
-- **The look-at method is an `EyeModel` property.** `look_at` is unified over `visual_axis`, `line_of_sight`,
-  `optical_then_kappa` and `optical_axis_target_direction`, chosen on the model, with a single `look_at_target`.
-- **The rotation centre is modelled as data on the eye model,** defaulting to anatomical Fick centres rather than
-  a single hard-coded globe centre.
-- **Corneal placement and radius-scaling are per-cornea conventions,** carried by each cornea rather than a global
-  setting.
-- **The eye-local origin is anchored at the corneal apex.**
-- **The default eye-model module is renamed to `PyEtSimul`.**
-- **`plot_camera_view_of_eye` reworked.** It accepts a plain rendered image (not only 3D-setup data), supports
-  per-camera and per-eye styling and zoom-to-features, and colours each glint by its light; the camera palette is
-  now distinct.
-- **Default elliptical-pupil boundary points raised to 100** (from 20), matching the `EllipticalPupil` class
-  default.
-- **README** gains a Features list, a Quickstart, an examples index, and a validation note.
+- **Added: the `gkaModelEye` eye model, validated against the MATLAB original.**
+  A test compares its pupil centre and glint at each gaze target with the output of gkaModelEye in MATLAB; they agree
+  to within 0.05 px.
 
-### Fixed
+- **Added: a camera can use the projection of gkaModelEye, with `Camera.point_at(eye, mode="fick")`.**
+  The call aims the camera at the horizontal (azimuth) rotation centre of the eye and replaces the pinhole projection
+  with the projection of gkaModelEye, in which the rotation is composed of torsion, elevation and azimuth angles. The
+  `gkaModelEye` validation uses it. Lens distortion is not applied in this mode.
 
-- **The glint reflects off the toric anterior surface** rather than the conic base.
-- **Near-parallel rotation axes** return the identity rotation instead of an unstable result.
+- **Added: a 2D cross-section of the eye can be plotted, with `plot_eye_cross_section`.**
+  The plot shows the cornea, the eyeball, the pupil and the optical and visual axes, computed from the geometry of the
+  eye.
 
-### Removed
+- **Added: the roll of the resting eye can be set, with the `up` argument of `set_rest_orientation_at_target`.**
+  The optional `up` vector sets the roll of the eye about its gaze direction when the eye is rested facing a target.
 
-- **The ad-hoc example scripts, `examples/experiments/`, and `validation_and_scientific_exploitation/`,**
-  superseded by the numbered examples series and the `validation/` MATLAB tests (preserved in git history and the
-  ETRA 2026 branch).
+- **Added: a new series of examples, numbered 01 to 16.**
+  They form one ordered path: scene basics, the eye, cornea, pupil, eyelid, glint and camera models, binocular setups,
+  dataset generation and custom parameter variations, calibration and gaze-accuracy evaluation with interactive plots,
+  and custom eye and gaze models.
+
+- **Changed: the specification of an eye is given as an `EyeModel`, not as keyword arguments of `Eye`.**
+  An eye is created with `Eye(model=..., which_eye=...)`.
+
+- **Changed: the look-at method is set on the eye model.**
+  `EyeModel.look_at_method` takes `"visual_axis"` (the default), `"line_of_sight"`, `"optical_then_kappa"` or the new
+  `"optical_axis_target_direction"`. `look_at(target, method=...)` overrides it for one call. This replaces
+  `Eye.aiming` and the `legacy` argument of `look_at`. `look_at_target(eye, target, method)` covers all four methods;
+  `look_at_target_optical_then_kappa` and `look_at_target_line_of_sight` are removed.
+
+- **Changed: the default eye turns about two anatomical rotation centres (Fick) instead of one fixed centre.**
+  `EyeModel.rotation_center` takes an `EyeballCenter` (one fixed rotation centre, at the origin of the eye's coordinate
+  system) or a `RotationCenter`; `EyeballCenter()` replaces `None`. The default was the fixed centre. It is now a
+  `RotationCenter` with the horizontal (azimuth) centre 14.7 mm behind the corneal apex and 0.79 mm nasal, and the
+  vertical (elevation) centre 12.0 mm behind the apex and 0.33 mm superior. The eye turns about the two centres one
+  after the other (Fick order). With the default model, `look_at` therefore moves the eye as well as turning it.
+  Afterwards, `Eye.position` returns the moved position, and `Eye.placement` returns the position the eye was given.
+  The `et_simul` model keeps the fixed centre.
+
+- **Changed: changing the corneal radius no longer moves the corneal apex or rescales the eye.**
+  `placement_convention` keeps either the corneal apex (`"apex"`, the default) or the centre of curvature (`"center"`)
+  at a fixed position in the eye. `scale_with_radius` (default `False`) sets whether the posterior radius, the
+  thickness and the corneal depth scale with the anterior radius. In 3.6.0 the cornea was always positioned by its
+  centre of curvature, and a spherical cornea always scaled; the `et_simul` model keeps this. With the defaults,
+  changing the corneal radius no longer moves the apex or rescales the eye.
+
+- **Changed: `Eye.position` is the position of the corneal apex; before, it was the position of the eyeball centre.**
+  `Eye.position` sets and returns the world position of the corneal apex. An eye given the same `Eye.position` as in
+  3.6.0 therefore sits further back, by the distance from its corneal apex to its eyeball centre (12.33 mm for the
+  default eye of 3.6.0). For a cornea with the `"center"` placement convention, as in the `et_simul` model, the origin
+  stays at the eyeball centre.
+
+- **Changed: the module with the default eye model is renamed to `PyEtSimul`.**
+
+- **Changed: `plot_camera_view_of_eye` accepts a rendered image and more styling options.**
+  It accepts a plain rendered image, in addition to the data of a 3D setup. It supports styling per camera and per eye
+  and zooming to the eye features, and colours each glint by its light source. The default camera colours are a set
+  that is easier to tell apart.
+
+- **Changed: an elliptical pupil has 100 boundary points by default, instead of 20.**
+  The default was 20. It now matches the default of the `EllipticalPupil` class.
+
+- **Changed: the README has a feature list, a quickstart, an index of the examples and a note on validation.**
+
+- **Fixed: the glint on a `ToricCornea` ignored the astigmatism.**
+  The reflection was computed on the rotationally symmetric conic, without the two different radii of the toric
+  surface, while the pupil was already refracted through the toric surface. The glint position on a toric cornea
+  changes. Spherical and conic corneas are not affected.
+
+- **Fixed: `look_at` could give an invalid orientation for a target almost exactly in the rest gaze direction.**
+  When the direction to the target was within about 1e-9 rad of the rest direction, but not identical to it, the
+  computed rotation matrix could be non-orthonormal. No rotation is applied for such directions now.
+
+- **Removed: the old example scripts, `examples/experiments/` and `validation_and_scientific_exploitation/`.**
+  They are replaced by the numbered examples and the MATLAB tests in `validation/`. The removed files remain in the git
+  history and on the ETRA 2026 branch.
 
 ## [3.6.0] - 2026-06-22
 
-### Added
+- **Added: the cornea can refract light at its back surface as well, with `use_posterior_surface`.**
+  The cornea can refract light at its front and its back surface (air to cornea, then cornea to aqueous humour), not
+  only at the front. It is enabled per cornea with `use_posterior_surface`.
 
-- **Two-surface (posterior) corneal refraction.** The cornea can refract at both its front and back surfaces
-  (air to cornea, then cornea to aqueous), not just the front. Enabled per cornea with `use_posterior_surface`.
-- **Toric (astigmatic) cornea (`ToricCornea`).** A conic cornea whose anterior surface has two principal-meridian
-  radii differing about the conic radius at a configurable axis, defaulting to the young-adult population mean
-  (with-the-rule, ~0.1 mm / 0.6 D, axis 90 deg). Select via `create_cornea("toric", ...)`.
-- **Optional tear film.** A thin tear film modelled as a third refracting surface in front of the anterior cornea
-  (air to tears to cornea), lowering the corneal magnification of the pupil. Off by default; requires the
-  two-surface cornea.
-- **Corneal surface tilt (`ConicCornea.tilt_x_deg`/`tilt_y_deg`).** Tilts the whole cornea off the eye axis about
-  the apex, reorienting both the refraction of the pupil and the reflection of the glint.
-- **Elliptical and measured-shape pupils.** `EllipticalPupil` gains an aspect ratio and orientation, and a new
-  `ContourPupil` takes an arbitrary measured boundary, so a real pupil contour can be used directly instead of a
-  circle.
-- **Apparent-size pupil sizing through the cornea.** Axial geometry and corneal-magnification helpers let the pupil
-  be set by its apparent (camera) size and shape, converted through the cornea to the physical pupil.
-- **Axial pupil-plane shift on dilation.** A `z_coeff` in the decentration model shifts the pupil plane in depth as
-  the pupil opens (0 keeps the shift in-plane only).
-- **Static off-axis pupil position (`OffAxisPupilConfig` on `Eye`).** The pupil centre can be displaced nasally and
-  superiorly from the optical axis by a fixed, size-independent amount (population mean from Wyatt 1995, 0.27 mm
-  nasal and 0.20 mm superior, mirrored between the eyes). Off by default. Composed with the size-dependent
-  pupil decentration when the pupil centre is positioned.
-- **Gaze-direction-dependent rotation centre (`RotationCenter`).** The eye pivots about a gaze-blended rotation
-  centre rather than a single fixed globe centre, so the globe centre translates as the eye turns.
-- **Separate Fick rotation centres with lateral offsets.** Horizontal (azimuth) and vertical (elevation) rotation
-  centres with optional nasal/superior offsets and a gaze-varying vertical depth, plus a `fick` mode that rotates
-  azimuth and elevation about their own centres sequentially (Fry & Hill 1962/1963; Aguirre 2019). With both
-  centres equal and `fick` off, the single fixed-centre behaviour is reproduced exactly.
-- **Line-of-sight gaze aiming (`Eye.aiming`).** With `aiming="line_of_sight"`, `look_at` aligns the fovea-through-
-  pupil-centre axis to the target instead of the visual axis, so the eye re-aims as the pupil decentres. Default
-  `"visual_axis"` leaves the behaviour unchanged.
-- **Pupil-plane tilt and torsion knobs.** `Eye.pupil_tilt_x_deg`/`pupil_tilt_y_deg` apply a z-shear of the pupil
-  disc about its centre, and `Eye.torsion_deg` adds a roll about the line of sight on top of Listing's law.
-- **`Eye.solve_decentration_from_apparent`.** Inverts a measured image-frame pupil-centre shift (per unit apparent
-  pupil-diameter change) to the eye-local decentration coefficients that reproduce it, by Newton-iterating the
-  rendered apparent pupil. Adds `calculate_pupil_diameter_from_boundary` in `pupil_imaging`.
-- **Convex-hull pupil-centre method and a refraction toggle in pupil imaging.**
-- **Single-point projection, pupil-plane reverse-projection, and image-Jacobian helpers.**
+- **Added: a cornea with astigmatism, `ToricCornea`.**
+  A conic cornea whose front surface has two different radii along its two principal meridians, at a configurable axis.
+  The defaults are the population mean of young adults (with-the-rule, about 0.1 mm or 0.6 D, axis 90 deg). It is
+  selected with `create_cornea("toric", ...)`.
 
-### Changed
+- **Added: an optional tear film in front of the cornea.**
+  A thin tear film is modelled as a third refracting surface in front of the cornea (air to tears to cornea). It lowers
+  the corneal magnification of the pupil. It is off by default and requires the two-surface cornea.
 
-- **Batch corneal refraction traces an arbitrary stack of refracting surfaces** rather than a fixed two-surface
-  cornea; the anterior conic surface accepts toric (astigmatic) coefficients, with rotationally symmetric defaults.
-- **Corneal refraction is vectorised over the whole pupil boundary.**
-- **`refract_direction` is a public optics helper.**
-- **The eye owns its side and resolves per-side geometry.** One `which_eye` flag signs the kappa angle and resolves
-  the (already eye-specific) pupil-decentration coefficients.
+- **Added: the cornea can be tilted, with `ConicCornea.tilt_x_deg` and `tilt_y_deg`.**
+  The whole cornea is tilted about its apex, away from the eye axis. This changes both the refraction of the pupil and
+  the reflection of the glint.
 
-### Fixed
+- **Added: a pupil can be elliptical or have a measured shape.**
+  `EllipticalPupil` has an aspect ratio and an orientation. The new `ContourPupil` takes any measured boundary, so the
+  contour of a real pupil can be used instead of a circle.
 
-- **`set_pupil_diameter(apparent=True)` now sets the apparent pupil size exactly.** It previously divided the
-  requested apparent diameter by the corneal magnification once; because the magnification varies with pupil size,
-  the rendered apparent pupil came out a few percent off. The physical diameter is now found by iterating the
-  fixed point `physical = apparent / corneal_magnification(physical)`, matching the request to within 1e-4 mm.
-- **Angle kappa is now signed by eye side in `look_at`.** `look_at_target` and `look_at_target_optical_then_kappa`
-  built the visual axis from the unsigned `fovea_alpha_deg`; the left eye's horizontal kappa must point the
-  opposite way to the right eye's. Both now use the eye's signed kappa.
-- **Ellipse and centre-of-mass pupil imaging route through `calculate_pupil_center_from_boundary`.**
-- **Adopt the skimage 0.26 `EllipseModel.from_estimate` API.**
+- **Added: the pupil can be set by the size it has in the camera image.**
+  The pupil can be set by the size and shape it has in the camera image. The physical pupil behind the cornea is
+  computed from it with the corneal magnification.
 
-### Removed
+- **Added: the pupil plane can shift in depth when the pupil size changes, with `z_coeff`.**
+  The coefficient `z_coeff` of the decentration model moves the pupil plane along the eye axis as the pupil size
+  changes. With 0, the pupil centre shifts only within its plane.
 
-- **Dead `pupil_offset_from_limbus` field on `RealisticPupilParams`.** Declared but never applied; the off-axis
-  pupil offset is now modelled by `OffAxisPupilConfig`.
-- **Dead `refract_ray_dual_surface` (spherical two-surface refraction).** Orphaned; the conic two-surface path in
-  `refraction_batch` is the live implementation.
+- **Added: the pupil can sit off the optical axis by a fixed amount, with `OffAxisPupilConfig`.**
+  The pupil centre can be displaced from the optical axis by a fixed amount that does not depend on the pupil size. The
+  defaults are the population mean of Wyatt (1995), 0.27 mm nasal and 0.20 mm superior, mirrored between the two eyes.
+  It is off by default, and is added to the size-dependent pupil decentration.
+
+- **Added: the rotation centre of the eye can depend on the gaze direction, with `RotationCenter`.**
+  An eye with a `RotationCenter` turns about a point whose depth behind the corneal apex depends on the gaze direction,
+  instead of about the eyeball centre. `look_at` then moves the eye as well as turning it, so `Eye.position` changes
+  after a `look_at`. The new `Eye.placement` returns the position the eye was given. Off by default.
+
+- **Added: horizontal and vertical eye rotation can have separate rotation centres (Fick).**
+  The horizontal (azimuth) and the vertical (elevation) rotation centre can have different depths, optional nasal and
+  superior offsets, and a vertical depth that varies with gaze. In the `fick` mode, the eye turns about the two centres
+  one after the other (Fry & Hill 1962, 1963; Aguirre 2019). With both centres equal and `fick` off, the result is
+  exactly that of a single fixed centre.
+
+- **Added: `look_at` can aim the line of sight at the target instead of the visual axis, with `Eye.aiming`.**
+  With `aiming="line_of_sight"`, `look_at` aims the line from the fovea through the pupil centre at the target, instead
+  of the visual axis. The eye then re-aims when the pupil centre shifts. The default, `"visual_axis"`, keeps the
+  previous behaviour.
+
+- **Added: the pupil plane can be tilted and the eye can have torsion.**
+  `Eye.pupil_tilt_x_deg` and `pupil_tilt_y_deg` tilt the pupil disc about its centre, as a shear along z.
+  `Eye.torsion_deg` adds a roll about the line of sight on top of Listing's law.
+
+- **Added: decentration coefficients can be computed from a measured pupil-centre shift, with
+  `Eye.solve_decentration_from_apparent`.**
+  Given a measured shift of the pupil centre in the image per unit change of the apparent pupil diameter, the function
+  finds the decentration coefficients of the eye that reproduce this shift. `calculate_pupil_diameter_from_boundary` is
+  added to `pupil_imaging`.
+
+- **Added: the pupil centre can be computed from the convex hull of the pupil boundary, with
+  `center_method="convex_hull"`.**
+  The ellipse is fitted to the convex hull of the pupil boundary. A notch in the boundary, such as one cut by a glint,
+  then does not pull the centre toward it.
+
+- **Added: single points inside the eye can be projected to the camera image and back, with functions in
+  `optics.pupil_imaging`.**
+  `project_point_to_image` projects a point inside the eye to the camera image, with corneal refraction or without it
+  (`use_refraction=False`). `reverse_project_to_pupil_plane` finds the points on the pupil plane that are seen at given
+  image positions. `image_jacobian` gives the Jacobian of the image position with respect to the position of a point in
+  the eye.
+
+- **Changed: batch corneal refraction traces any stack of refracting surfaces.**
+  It was limited to a cornea with two surfaces. The front conic surface accepts toric (astigmatic) coefficients; the
+  defaults are rotationally symmetric.
+
+- **Changed: corneal refraction is solved for the whole pupil boundary at once.**
+  The batch solvers in `optics.refraction_batch` replace the per-point functions `find_refraction_sphere`,
+  `find_refraction_conic`, `find_refraction_dual_sphere` and `find_refraction_dual_conic`, which are removed.
+
+- **Changed: `refract_direction` is a public function of the optics module.**
+
+- **Changed: the side of an eye is set with `Eye(which_eye=...)`, `"left"` or `"right"` (the default).**
+  It sets the sign of the horizontal angle kappa, whose magnitude is `fovea_alpha_deg`, and selects the default
+  pupil-decentration coefficients of that eye. `PupilDecentrationConfig` no longer takes `which_eye`.
+
+- **Fixed: `set_pupil_diameter(apparent=True)` gave an apparent pupil size that was a few percent off.**
+  The requested apparent diameter was divided by the corneal magnification once. As the magnification depends on the
+  pupil size, the pupil in the image came out a few percent off the request. The physical diameter is now found by
+  iteration, and the apparent size matches the request to within 1e-4 mm.
+
+- **Fixed: `look_at` used the same sign of angle kappa for both eyes.**
+  The horizontal angle kappa of the left eye points the opposite way to that of the right eye. `look_at_target` and
+  `look_at_target_optical_then_kappa` built the visual axis from the unsigned `fovea_alpha_deg`. Both now use the
+  signed angle of the eye.
+
+- **Fixed: three pupil-centre functions raised `AttributeError` for every visible pupil.**
+  `get_pupil_ellipse_image`, `get_pupil_center_mass_image` and `calculate_pupil_center_methods` passed the pupil
+  boundary on in the wrong data type. Now they return the pupil centre.
+
+- **Fixed: the ellipse fit emitted deprecation warnings under scikit-image 0.26.**
+  scikit-image 0.26 deprecates `EllipseModel().estimate()` and `EllipseModel.params`, so every fit emitted a
+  `FutureWarning`. The fit uses `EllipseModel.from_estimate`, and PyEtSimul requires scikit-image 0.26 or later.
+
+- **Removed: `RealisticPupilParams.pupil_offset_from_limbus`.**
+  The field existed but was never applied. `OffAxisPupilConfig` models the off-axis position of the pupil.
+
+- **Removed: `refract_ray_dual_surface`, the spherical two-surface refraction.**
+  Nothing called it. Two-surface refraction is done by `refraction_batch`.
 
 ## [3.5.0] - 2026-05-30
 
-### Changed
-
-- `compute_calibration_errors` is now public; calibration-view rendering is extracted into `render_calibration_view`.
+- **Changed: `compute_calibration_errors` is public, and the calibration view is drawn by the new
+  `render_calibration_view`.**
 
 ## [3.4.0] - 2026-05-19
 
-### Changed
+- **Changed: the Stampe (1993) gaze model is provided by the `stampe1993-gaze-mapping` package.**
+  The example comes with an HV9 (nine-point) setup.
 
-- The Stampe (1993) gaze model is delegated to the `stampe1993-gaze-mapping` package; the example ships an HV9 setup.
-
-### Removed
-
-- The EyeLink 1000 Plus gaze model (could not be verified against HREF P-CR data; use the Stampe model instead).
+- **Removed: the EyeLink 1000 Plus gaze model.**
+  It could not be verified against HREF P-CR data. The Stampe model takes its place.
 
 ## [3.3.0] - 2026-05-16
 
-### Fixed
-
-- The Stampe (1993) fit is staged: an inner biquadratic polynomial, then an outer corner correction.
+- **Fixed: the Stampe (1993) model fitted its polynomial on all nine calibration points.**
+  The biquadratic polynomial was fitted on all nine points, and the corner correction was derived from its residuals.
+  The corner points therefore pulled the polynomial, and its coefficients differed from those an EyeLink 1000 Plus
+  stores. The polynomial is now fitted on the centre and the four edge points, and the corner correction on the four
+  corner points, as in Stampe (1993).
 
 ## [3.2.5] - 2026-03-31
 
-### Added
-
-- ETRA 2026 DOI in the citation and badges.
+- **Added: the DOI of the ETRA 2026 paper in the citation and the badges.**
 
 ## [3.2.1] - [3.2.4] - 2026-03-17
 
-### Added
+- **Added: a camera can be pointed at a pair of eyes, with `Camera.point_at_binocular`.**
+  It points the camera at the midpoint between two eyes, rolled so that both eyes are at the same height in the image.
 
-- `Camera.point_at_binocular`; citation, acknowledgment, and the PyPI publish workflow.
+- **Added: citation information, an acknowledgment and the PyPI publish workflow.**
 
-### Fixed
+- **Fixed: wrong glint and pupil on a conic cornea for a rotated eye.**
+  The solvers for the reflection and the refraction on a conic cornea took the axis of the cornea as the world z-axis,
+  which holds only for an eye that is not rotated. They also searched for the reflection and refraction point only in
+  the plane through the camera, the centre of the conic and the light or the pupil point. They now work in the
+  coordinate system of the eye and also find points outside that plane.
 
-- Conic reflection and refraction solved in eye-local coordinates with a 2D `fsolve`.
-- Packaging: dynamic version from metadata, README as the PyPI description, project URLs, funding image URL.
+- **Fixed: packaging.**
+  The version is read from the package metadata, the README is the description on PyPI, and the project URLs and the
+  URL of the funding image are set.
 
 ## [3.1.0] - 2026-03-01
 
-### Added
-
-- EyeLink 1000 Plus gaze model with HREF preprocessing.
+- **Added: EyeLink 1000 Plus gaze model with HREF preprocessing.**
 
 ## [3.0.0] - 2026-02-24
 
