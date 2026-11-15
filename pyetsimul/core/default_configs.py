@@ -84,17 +84,23 @@ class PupilDecentrationDefaults:
     Reference: Wildenmann U & Schaeffel F. Variations of pupil centration and their
     effects on video eye tracking. Ophthalmic Physiol Opt 2013, 33, 634-641.
 
+    The coefficients are the shift of the pupil centre in eye-local coordinates, in mm per mm of increase
+    in pupil diameter. Eye-local +x points to the subject's right, which is temporal for the right eye and
+    nasal for the left eye, and +y is superior. The horizontal axis of the paper has the opposite sign
+    (positive is nasal in the right eye and temporal in the left eye, its Table 1), so the horizontal slopes
+    of its Table 2 are negated here. A dilating pupil moves temporally and inferiorly in both eyes.
+
     """
 
-    # Right eye (OD): horizontal -0.03±0.07
-    RIGHT_EYE_X_COEFF: float = -0.03  # mm/mm
+    # Right eye (OD): horizontal -0.03±0.07 mm/mm on the paper's axis
+    RIGHT_EYE_X_COEFF: float = 0.03  # mm/mm
     RIGHT_EYE_X_STD: float = 0.07  # mm/mm
     # Right eye (OD): vertical -0.04±0.06 mm/mm
     RIGHT_EYE_Y_COEFF: float = -0.04  # mm/mm
     RIGHT_EYE_Y_STD: float = 0.06  # mm/mm
 
-    # Left eye (OS): horizontal +0.03±0.04
-    LEFT_EYE_X_COEFF: float = 0.03  # mm/mm
+    # Left eye (OS): horizontal +0.03±0.04 mm/mm on the paper's axis
+    LEFT_EYE_X_COEFF: float = -0.03  # mm/mm
     LEFT_EYE_X_STD: float = 0.04  # mm/mm
     # Left eye (OS): vertical -0.05±0.12 mm/mm
     LEFT_EYE_Y_COEFF: float = -0.05  # mm/mm

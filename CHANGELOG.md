@@ -598,6 +598,15 @@ ETRA 2026 paper; this log records everything since.
   It replaces `compute_glint_diameter_sphere` and `compute_glint_diameter_conic`, and takes the camera position as its
   third argument.
 
+- **Fixed: the default pupil decentration moved the pupil centre in the wrong horizontal direction.**
+  With `PupilDecentrationConfig(enabled=True)` and no coefficients given, an eye uses the mean coefficients of
+  Wildenmann & Schaeffel (2013). In that paper the pupils are decentred nasally and are better centred at larger pupil
+  sizes, so a dilating pupil moves temporally in both eyes. Before, the simulated pupil centre moved nasally when the
+  pupil dilated: the horizontal coefficients were taken over with the sign of the horizontal axis of the paper, which
+  is opposite to the eye-local x axis. Now the horizontal coefficients are +0.03 mm/mm for the right eye and -0.03
+  mm/mm for the left eye. The vertical direction was correct. Results change for eyes that use the default decentration
+  coefficients. Coefficients that are given explicitly are used as given.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed
