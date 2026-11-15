@@ -666,6 +666,11 @@ ETRA 2026 paper; this log records everything since.
   which can be assigned, raised `ValueError` when it was read back. Now the getter returns a copy of the stored matrix
   as it is, and raises `ValueError` when that matrix is not orthonormal.
 
+- **Fixed: `run_calibration` left the eye looking at the last calibration point.**
+  Calibration turns the eye to every calibration point. Before, the eye that was passed to `run_calibration` stayed at
+  the last point afterwards, with that point as its gaze target, so its position and orientation had changed (by 3 mm
+  in a test). Now calibration turns a copy, and the eye that was passed in keeps its pose and its target.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed

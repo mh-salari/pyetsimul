@@ -4,6 +4,7 @@ This module provides the EyeTracker class that represents a complete eye trackin
 system with cameras, lights, calibration points, and algorithm functions.
 """
 
+import copy
 from abc import ABC, abstractmethod
 from dataclasses import dataclass, field
 
@@ -109,6 +110,10 @@ class EyeTracker(ABC):
         Gathers calibration data and reports detection failures.
         """
         measurements = []
+
+        # The eye is turned to every calibration point. A copy is turned, so that the eye that was passed in
+        # keeps its pose and its target.
+        eye = copy.deepcopy(eye)
 
         n_points = len(self.calib_points)
         failed_points = []
