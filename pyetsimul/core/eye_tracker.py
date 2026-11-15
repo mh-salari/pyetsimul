@@ -150,8 +150,13 @@ class EyeTracker(ABC):
             # Check for detection failures
             if camera_image.pupil_center is None:
                 failed_points.append((i + 1, calib_point, "PUPIL CENTER not detected"))
-            elif not camera_image.corneal_reflections or camera_image.corneal_reflections[0] is None:
-                failed_points.append((i + 1, calib_point, "CR not detected"))
+            else:
+                glints = camera_image.corneal_reflections
+                missing = [str(light + 1) for light, glint in enumerate(glints) if glint is None]
+                if not glints or len(missing) == len(glints):
+                    failed_points.append((i + 1, calib_point, "CR not detected"))
+                elif missing:
+                    failed_points.append((i + 1, calib_point, f"CR of light {', '.join(missing)} not detected"))
 
         # Store and report failed points
         self.failed_calibration_points = failed_points

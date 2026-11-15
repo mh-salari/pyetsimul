@@ -671,6 +671,12 @@ ETRA 2026 paper; this log records everything since.
   the last point afterwards, with that point as its gaze target, so its position and orientation had changed (by 3 mm
   in a test). Now calibration turns a copy, and the eye that was passed in keeps its pose and its target.
 
+- **Fixed: the calibration warning about failed points looked only at the glint of the first light.**
+  Before, with several lights, a calibration point at which the glint of the second or a later light was missing was
+  not listed in the warning and not in `failed_calibration_points`. In a test with two lights, the glint of the second
+  light was missing at 1 of 9 points and no point was reported. Now a point is reported when the glint of any light is
+  missing, and the warning names the light.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed
