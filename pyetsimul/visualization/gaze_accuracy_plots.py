@@ -17,7 +17,7 @@ from ..core import EyeTracker
 from ..evaluation.gaze_accuracy import GazeAccuracyResult
 from ..simulation.core import TargetVariation
 from ..types import Position3D
-from .analysis_plots import plot_error_vectors_2d, plot_error_vectors_3d
+from .analysis_plots import plot_error_by_parameter, plot_error_vectors_2d, plot_error_vectors_3d
 
 
 def detect_variation_plane(variation: "ParameterVariation") -> tuple[str, str, list[float], list[float]]:
@@ -80,11 +80,16 @@ class GazeAccuracyPlotter:
     ) -> plt.Figure:
         """Plot gaze accuracy results with flexible 2D/3D visualization.
 
+        A variation of the target or of the eye position is drawn as error vectors at those positions. A
+        sweep of an eye parameter, which has no positions, is drawn as the angular error against the swept
+        values (against the step number when a value is not a single number).
+
         Args:
             gaze_result: GazeAccuracyResult instance with analysis data
             eye_tracker: Eye tracker instance (used to access plane_info for 2D plotting)
             title_prefix: Title prefix for the plot
-            plot_mode: "2d", "3d", or "auto" (auto chooses 2D for 2D trackers, 3D otherwise)
+            plot_mode: "2d", "3d", or "auto" (auto chooses 2D for 2D trackers, 3D otherwise). Applies to the
+                error vectors of a position variation.
             show: If True (default), display the figure with plt.show() (blocks until closed).
                   If False, return the figure for saving (fig.savefig()) without displaying.
                   The figure is removed from matplotlib's manager to prevent it from
@@ -106,7 +111,11 @@ class GazeAccuracyPlotter:
             has_plane_info = hasattr(eye_tracker, "plane_info") and eye_tracker.plane_info is not None
             plot_mode = "2d" if has_plane_info else "3d"
 
-        if plot_mode == "2d":
+        variation = gaze_result.variation
+        has_positions = isinstance(variation, TargetVariation) or hasattr(getattr(variation, "grid", None), "dx")
+        if not has_positions:
+            fig = GazeAccuracyPlotter._plot_parameter(gaze_result, title_prefix, ax=ax)
+        elif plot_mode == "2d":
             fig = self._plot_2d(gaze_result, eye_tracker, title_prefix, ax=ax)
         else:
             fig = GazeAccuracyPlotter._plot_3d(gaze_result, title_prefix, ax=ax)
@@ -117,6 +126,24 @@ class GazeAccuracyPlotter:
             plt.close(fig)
 
         return fig
+
+    @staticmethod
+    def _plot_parameter(gaze_result: GazeAccuracyResult, title_prefix: str, ax: plt.Axes | None = None) -> plt.Figure:
+        """Plot the angular error against the values of a variation that has no positions."""
+        variation = gaze_result.variation
+        values = list(variation.generate_values())
+        if len(values) != len(gaze_result.errors_angular):
+            raise ValueError(
+                f"The variation has {len(values)} values and the result {len(gaze_result.errors_angular)} "
+                "measurements; they must match to plot the error against the values."
+            )
+        if all(isinstance(value, (int, float, np.number)) for value in values):
+            x, xlabel = np.array(values, dtype=float), variation.describe()
+        else:
+            x, xlabel = np.arange(1, len(values) + 1), f"Step ({variation.describe()})"
+        return plot_error_by_parameter(
+            x, np.array(gaze_result.errors_angular, dtype=float), gaze_result.error_stats, xlabel, title_prefix, ax=ax
+        )
 
     @staticmethod
     def _plot_3d(gaze_result: GazeAccuracyResult, title_prefix: str, ax: plt.Axes | None = None) -> plt.Figure:

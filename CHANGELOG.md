@@ -567,6 +567,22 @@ ETRA 2026 paper; this log records everything since.
   always computed the pupil with corneal refraction and marked the centre of the ellipse fitted to it. Now it can, for
   example, leave out the refraction or mark the centre of mass.
 
+- **Fixed: `GazeAccuracyPlotter.plot` failed for datasets that vary an eye parameter.**
+  Before, for a dataset in which neither the target position nor the eye position is varied, such as a pupil size or
+  angle kappa sweep, it raised `ValueError: Variation object must have grid with dx, dy, dz attributes`. Now it plots
+  the angular error against the values of the varied parameter.
+
+- **Added: the gaze error can be plotted against a varied eye parameter, with `plot_error_by_parameter`.**
+  The function plots the angular gaze error against the values of the parameter that was varied in a dataset, for
+  example the pupil diameter or angle kappa. `GazeAccuracyPlotter` uses it for datasets in which neither the target
+  position nor the eye position was varied.
+
+- **Fixed: the legend of `plot_error_vectors_2d` called shortened arrow tips "Predicted".**
+  The plot draws an arrow from each target to its predicted gaze point, and shortens the arrows when they do not fit.
+  Before, with `mark_predicted_positions`, the markers at the arrow tips were labelled "Predicted" also for shortened
+  arrows, whose tips are not at the predicted positions (120 mm away in a test). Now the legend says that the markers
+  are arrow tips and gives the scale.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed

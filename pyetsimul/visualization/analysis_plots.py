@@ -59,7 +59,8 @@ def plot_error_vectors_2d(
         width: Arrow width
         max_arrow_ratio: Maximum arrow length as fraction of plot range
         mark_target_positions: Show blue crosses at target positions
-        mark_predicted_positions: Show red dots at predicted positions
+        mark_predicted_positions: Show red dots at the arrow tips. They are the predicted positions when the
+            arrows are at full scale; when the arrows are shortened, the legend names them as arrow tips
         show_grid: Show grid lines
         auto_adjust_limits: Automatically adjust plot limits
         figure_size: Figure size tuple
@@ -141,10 +142,11 @@ def plot_error_vectors_2d(
         ax.scatter(x_pos, y_pos, marker="+", s=50, c="blue", linewidths=2, alpha=0.8, label="Target")
 
     if mark_predicted_positions:
-        # Calculate predicted positions (arrow tips)
+        # The markers sit at the arrow tips, which are the predicted positions only for arrows at full scale.
         x_pred = x_pos + u_scaled
         y_pred = y_pos + v_scaled
-        ax.scatter(x_pred, y_pred, marker="o", s=30, c="red", alpha=0.8, label="Predicted")
+        tip_label = f"Arrow tip (arrows scaled {scale_factor:.2f}x)" if scaling_applied else "Predicted"
+        ax.scatter(x_pred, y_pred, marker="o", s=30, c="red", alpha=0.8, label=tip_label)
 
         # Add legend if either marker type is shown
         if mark_target_positions:
@@ -191,6 +193,59 @@ def plot_error_vectors_2d(
         title = f"Gaze Error Vectors\n{error_stats}{scale_info}"
 
     ax.set_title(title, pad=20)
+
+    plt.tight_layout()
+
+    return fig
+
+
+def plot_error_by_parameter(
+    values: np.ndarray,
+    angular_errors: np.ndarray,
+    errors: dict[str, dict[str, float]],
+    xlabel: str,
+    title_prefix: str = "",
+    show_grid: bool = True,
+    figure_size: tuple[int, int] = (10, 6),
+    ax: plt.Axes | None = None,
+) -> plt.Figure:
+    """Plot the angular gaze error against the values of a swept parameter.
+
+    For a sweep that has no target or eye positions to draw error vectors at, such as a sweep of the pupil
+    size or of angle kappa.
+
+    Args:
+        values: Value of the parameter at each measurement
+        angular_errors: Angular error in degrees at each measurement (NaN where no gaze was predicted)
+        errors: dictionary with error statistics (from calculate_error_statistics)
+        xlabel: X-axis label, naming the parameter
+        title_prefix: Prefix text for plot title
+        show_grid: Show grid lines
+        figure_size: Figure size tuple
+        ax: Optional matplotlib Axes to draw on. If None, a new figure is created.
+
+    Returns:
+        The matplotlib Figure.
+
+    """
+    if ax is None:
+        plt.style.use("default")
+        fig, ax = plt.subplots(figsize=figure_size, facecolor="white")
+        ax.set_facecolor("white")
+    else:
+        fig = ax.get_figure()
+
+    ax.plot(values, angular_errors, color="darkblue", linewidth=1.0, marker="o", markersize=4, markerfacecolor="none")
+
+    if show_grid:
+        ax.grid(True, alpha=0.3, linestyle="-", linewidth=0.5)
+        ax.set_axisbelow(True)
+
+    ax.set_xlabel(xlabel)
+    ax.set_ylabel("Angular error (deg)")
+
+    error_stats = _format_error_statistics(errors, "mm")
+    ax.set_title(f"{title_prefix}\n{error_stats}" if title_prefix else f"Gaze Error\n{error_stats}", pad=20)
 
     plt.tight_layout()
 

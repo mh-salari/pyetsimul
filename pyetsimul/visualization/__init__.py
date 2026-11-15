@@ -15,7 +15,7 @@ from . import (
     interactive_gaze_plot,
     setup_plots,
 )
-from .analysis_plots import plot_error_vectors_2d, plot_error_vectors_3d
+from .analysis_plots import plot_error_by_parameter, plot_error_vectors_2d, plot_error_vectors_3d
 from .camera_view import plot_camera_view_of_eye
 from .coordinate_utils import prepare_eye_data_for_plots
 from .eye_anatomy import plot_eye_anatomy
@@ -43,6 +43,7 @@ __all__ = [
     "interactive_gaze_plot",
     "plot_axis",
     "plot_camera_view_of_eye",
+    "plot_error_by_parameter",
     "plot_error_vectors_2d",
     "plot_error_vectors_3d",
     "plot_eye_anatomy",
