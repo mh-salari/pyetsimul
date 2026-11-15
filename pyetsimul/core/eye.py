@@ -267,8 +267,11 @@ class Eye:
 
     @property
     def orientation(self) -> RotationMatrix:
-        """Get/set the eye's current orientation (3x3 rotation matrix)."""
-        return self.trans.get_rotation()
+        """Get/set the eye's current orientation (3x3 rotation matrix).
+
+        The getter returns a copy of the stored matrix as it is, left-handed if a left-handed one was set.
+        """
+        return RotationMatrix(self.trans[:3, :3], validate_handedness=False)
 
     @orientation.setter
     def orientation(self, value: RotationMatrix) -> None:

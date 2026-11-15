@@ -660,6 +660,12 @@ ETRA 2026 paper; this log records everything since.
   `et_simul` and `gkaModelEye`. Now a registered model is replaced only with `register_eye_model(name, model,
   overwrite=True)`.
 
+- **Fixed: `Eye.orientation` returned a changed copy of the stored orientation, and failed for a left-handed one.**
+  Before, the getter normalised the columns of the stored matrix. The returned matrix could differ from the stored one
+  in its last digit (2e-16), a matrix with a scale in it was returned as if it had none, and a left-handed orientation,
+  which can be assigned, raised `ValueError` when it was read back. Now the getter returns a copy of the stored matrix
+  as it is, and raises `ValueError` when that matrix is not orthonormal.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed
