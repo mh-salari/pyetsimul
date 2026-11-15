@@ -363,10 +363,13 @@ class Position3D:
 
     @classmethod
     def from_array(cls, arr: np.ndarray) -> "Position3D":
-        """Create from 4D homogeneous array [x,y,z,1] or 3D array [x,y,z]."""
+        """Create from a 4D homogeneous array [x,y,z,w] or a 3D array [x,y,z].
+
+        With w = 1 (a point) or w = 0 (a direction) the x, y, z are taken as they are; with any other w
+        they are divided by w.
+        """
         if arr.shape == (4,):
             w = float(arr[3])
-            # w == 1 (point) or w == 0 (direction) → take xyz directly; otherwise de-homogenize.
             if not math.isclose(w, 1.0) and not math.isclose(w, 0.0):
                 return cls(arr[0] / w, arr[1] / w, arr[2] / w)
             return cls(arr[0], arr[1], arr[2])
