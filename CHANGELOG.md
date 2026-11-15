@@ -649,6 +649,17 @@ ETRA 2026 paper; this log records everything since.
   positive semidefinite. In a test this happened for 54 of 361 such matrices. Now a negative eigenvalue of rounding
   size counts as zero.
 
+- **Fixed: changing an eye model returned by `get_eye_model` changed the registered model for the whole process.**
+  Before, `get_eye_model` returned the registered object itself. A line such as
+  `get_eye_model("PyEtSimul").cornea.anterior_radius = 5.0` changed the default eye model for every eye built
+  afterwards in the same process. Now `get_eye_model` returns a copy, and `register_eye_model` stores a copy of the
+  model it is given.
+
+- **Changed: `register_eye_model` raises `ValueError` for a name that is already registered.**
+  Before, the new model replaced the registered one without a message, also for the built-in names `PyEtSimul`,
+  `et_simul` and `gkaModelEye`. Now a registered model is replaced only with `register_eye_model(name, model,
+  overwrite=True)`.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed

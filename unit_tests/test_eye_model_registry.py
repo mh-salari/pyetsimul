@@ -13,10 +13,18 @@ def test_pyetsimul_is_registered() -> None:
 
 
 def test_lookup_is_case_insensitive() -> None:
-    """A model name resolves regardless of casing, to the same registered instance."""
+    """A model name resolves regardless of casing, to the same registered model."""
     canonical = get_eye_model("PyEtSimul")
-    assert get_eye_model("pyetsimul") is canonical
-    assert get_eye_model("PYETSIMUL") is canonical
+    assert get_eye_model("pyetsimul") == canonical
+    assert get_eye_model("PYETSIMUL") == canonical
+
+
+def test_fetched_model_is_a_copy() -> None:
+    """Changing a fetched model leaves the registered model as it is."""
+    fetched = get_eye_model("PyEtSimul")
+    registered_radius = fetched.cornea.anterior_radius
+    fetched.cornea.anterior_radius = registered_radius + 1.0
+    assert get_eye_model("PyEtSimul").cornea.anterior_radius == registered_radius
 
 
 def test_unknown_model_raises() -> None:
@@ -29,7 +37,17 @@ def test_register_and_retrieve() -> None:
     """A registered model is retrievable by name, case-insensitively."""
     custom = EyeModel(fovea_alpha_deg=3.0)
     register_eye_model("RegistryTestEye", custom)
-    assert get_eye_model("registrytesteye") is custom
+    assert get_eye_model("registrytesteye") == custom
+
+
+def test_registering_an_existing_name_needs_overwrite() -> None:
+    """A registered name is replaced only with overwrite=True."""
+    register_eye_model("RegistryOverwriteEye", EyeModel(fovea_alpha_deg=3.0))
+    replacement = EyeModel(fovea_alpha_deg=4.0)
+    with pytest.raises(ValueError, match="already registered"):
+        register_eye_model("registryoverwriteeye", replacement)
+    register_eye_model("registryoverwriteeye", replacement, overwrite=True)
+    assert get_eye_model("RegistryOverwriteEye") == replacement
 
 
 def test_eye_accepts_model_name() -> None:

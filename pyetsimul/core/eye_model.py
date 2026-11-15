@@ -91,7 +91,10 @@ class EyeModel:
     eyelid_enabled: bool = False
 
     def copy(self, **overrides: object) -> "EyeModel":
-        """Return a copy of this model with the given fields changed (the model itself is frozen)."""
+        """Return a copy of this model with the given fields changed (the model itself is frozen).
+
+        The copy holds the same cornea and config objects as this model, except those given as overrides.
+        """
         return replace(self, **overrides)
 
     def with_parameter(self, path: str, value: object) -> "EyeModel":
@@ -146,16 +149,31 @@ class EyeModel:
 _EYE_MODELS: dict[str, EyeModel] = {}
 
 
-def register_eye_model(name: str, model: EyeModel) -> None:
-    """Register ``model`` under ``name`` so it can be retrieved by name (matched case-insensitively)."""
-    _EYE_MODELS[name] = model
+def register_eye_model(name: str, model: EyeModel, overwrite: bool = False) -> None:
+    """Register a copy of ``model`` under ``name`` so it can be retrieved by name (matched case-insensitively).
+
+    Raises:
+        ValueError: If a model is registered under that name already and ``overwrite`` is False.
+
+    """
+    registered = next((existing for existing in _EYE_MODELS if existing.casefold() == name.casefold()), None)
+    if registered is not None:
+        if not overwrite:
+            raise ValueError(
+                f"An eye model is already registered as {registered!r}. Pass overwrite=True to replace it."
+            )
+        del _EYE_MODELS[registered]
+    _EYE_MODELS[name] = copy.deepcopy(model)
 
 
 def get_eye_model(name: str) -> EyeModel:
-    """Return the eye model registered under ``name`` (matched case-insensitively)."""
+    """Return a copy of the eye model registered under ``name`` (matched case-insensitively).
+
+    Changing the returned model, or the cornea and configs it holds, leaves the registered model as it is.
+    """
     for registered, model in _EYE_MODELS.items():
         if registered.casefold() == name.casefold():
-            return model
+            return copy.deepcopy(model)
     available = ", ".join(_EYE_MODELS) or "(none registered)"
     raise KeyError(f"Unknown eye model {name!r}; registered models: {available}")
 
