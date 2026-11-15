@@ -7,7 +7,7 @@ Hennessey, C., Noureddin, B., & Lawrence, P. (2008). Fixation precision in
     high-speed noncontact eye-gaze tracking. IEEE Transactions on Systems, Man,
     and Cybernetics, Part B (Cybernetics), 38(2), 289-298.
 
-Hoormann, J., Jainta, S., & Jaschinski, W. (2007). The effect of calibration
+Hoormann, J., Jainta, S., & Jaschinski, W. (2008). The effect of calibration
     errors on the accuracy of the eye movement recordings. Journal of Eye Movement
     Research, 1(2).
 
@@ -49,13 +49,13 @@ HENNESSEY_2008 = PolynomialDescriptor(
 )
 
 
-# Hoorman et al. (2008) polynomial: [[x, 1], [y, 1]]
+# Hoormann et al. (2008) polynomial: [[x, 1], [y, 1]]
 # Mathematical model (different features for X,Y):
 # gaze_x = a₀*x + a₁
 # gaze_y = b₀*y + b₁
-HOORMAN_2008 = PolynomialDescriptor(
-    name="hoorman_2008",
-    description="Hoorman et al. (2008) linear polynomial",
+HOORMANN_2008 = PolynomialDescriptor(
+    name="hoormann_2008",
+    description="Hoormann et al. (2008) linear polynomial",
     terms=[["x", "1"], ["y", "1"]],
     orders=[[1, 0], [1, 0]],
 )
@@ -274,7 +274,7 @@ polynomial_registry = PolynomialRegistry()
 # Auto-register all built-in polynomial descriptors
 builtin_descriptors = [
     HENNESSEY_2008,
-    HOORMAN_2008,
+    HOORMANN_2008,
     CERROLAZA_2008_SYMMETRIC,
     SECOND_ORDER,
     ZHU_JI_2005,

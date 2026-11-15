@@ -151,7 +151,7 @@ These names are registered on import and can be passed to ``PolynomialGazeModel.
 - ``zhu_ji_2005``
 - ``cerrolaza_2008_symmetric``
 - ``cerrolaza_2008_asymmetric``
-- ``hoorman_2008``
+- ``hoormann_2008``
 - ``hennessey_2008``
 - ``blignaut_wium_2013``
 

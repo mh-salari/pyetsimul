@@ -620,6 +620,14 @@ ETRA 2026 paper; this log records everything since.
   posterior surface, as in et_simul (`eye_make.m`). Now the property returns it, and assigning to it sets the
   thickness. The shape of the cornea is unchanged.
 
+- **Changed: the linear polynomial of Hoormann et al. (2008) is registered as `hoormann_2008`; before, it was
+  `hoorman_2008`.**
+  The name of the first author was misspelled in the registered name, in the constant (`HOORMANN_2008`, before
+  `HOORMAN_2008`) and in the description of the polynomial. Code that selects the polynomial by its name needs the new
+  spelling; the old name is no longer registered. The reference lists in the code and in the documentation gave the
+  year of the paper as 2007. It is 2008: Hoormann, Jainta & Jaschinski (2008), Journal of Eye Movement Research,
+  1(2):3.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed

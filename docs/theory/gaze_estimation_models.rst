@@ -29,7 +29,7 @@ PyEtSimul includes seven built-in polynomial models:
 
    g = a_0 xy + a_1 x + a_2 y + a_3
 
-**Hoorman (2008)** [2] --- Linear polynomial (different features for X/Y):
+**Hoormann (2008)** [2] --- Linear polynomial (different features for X/Y):
 
 .. math::
 
@@ -135,7 +135,7 @@ This method requires 4 or more light sources to compute the homography.
 ----
 
 | [1] Hennessey, C., Noureddin, B., & Lawrence, P. (2008). Fixation precision in high-speed noncontact eye-gaze tracking. *IEEE Trans. SMC-B*, 38(2), 289-298.
-| [2] Hoormann, J., Jainta, S., & Jaschinski, W. (2007). The effect of calibration errors on the accuracy of eye movement recordings. *Journal of Eye Movement Research*, 1(2).
+| [2] Hoormann, J., Jainta, S., & Jaschinski, W. (2008). The effect of calibration errors on the accuracy of eye movement recordings. *Journal of Eye Movement Research*, 1(2).
 | [3] Cerrolaza, J. J., Villanueva, A., & Cabeza, R. (2008). Taxonomic study of polynomial regressions applied to the calibration of video-oculographic systems. In *Proceedings of ETRA '08*, pp. 259-266.
 | [4] Zhu, Z., & Ji, Q. (2005). Eye gaze tracking under natural head movements. In *CVPR '05*, Vol. 1, pp. 918-923. IEEE.
 | [5] Blignaut, P., & Wium, D. (2013). The effect of mapping function on the accuracy of a video-based eye tracker. In *Proceedings of ETSA '13*, pp. 39-46.
