@@ -1,10 +1,10 @@
 # Changelog
 
 All notable changes to PyEtSimul are recorded here. Version 3.0.0 is the release presented in the ETRA 2026 paper; this
-log records everything since. Every entry starts with the kind of change (Added, Changed, Fixed or Removed). The
-entries of a version that is not released yet are in the order in which the changes were made.
+log records everything since. Every entry starts with the kind of change (Added, Changed, Fixed or Removed). From
+version 6.0.0 on, the entries of a version are in the order in which the changes were made.
 
-## [Unreleased]
+## [6.0.0] - 2026-11-15
 
 - **Fixed: a copy made with `Eye.copy()` was at a different position than the original eye.**
   `Eye.position` returns the position of the corneal apex, which moves when the eye turns, because the eye turns about
