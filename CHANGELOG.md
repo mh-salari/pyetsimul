@@ -635,6 +635,8 @@ ETRA 2026 paper; this log records everything since.
   `set_log_file`: in a test with 5 missing glints, the log file held none of the 5 lines. Now the workers get the log
   file of the process that starts them and append to it.
 
+- **Fixed: an `info()` call without a message wrote an empty entry to the log file.**
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed

@@ -98,8 +98,8 @@ def _write_to_file(text: str, level: str = "INFO") -> None:
     if _log_file_path is None:
         return
     stripped = text.strip("\n")
-    # Skip lines that are only dashes (visual separators)
-    if stripped and all(c == "-" for c in stripped):
+    # Skip empty messages and lines that are only dashes (visual separators)
+    if not stripped.strip("-"):
         return
     timestamp = datetime.now(tz=UTC).strftime("%Y-%m-%d %H:%M:%S")
     # One write per entry, so that the entries of processes that share the file do not interleave.
