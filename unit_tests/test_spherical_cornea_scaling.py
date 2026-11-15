@@ -64,18 +64,18 @@ def test_small_radius_scaling() -> None:
 
 
 def test_thickness_calculation() -> None:
-    """Test that thickness calculation uses scaled parameters."""
-    # Default cornea
+    """Test that the central thickness is the distance between the two apexes and scales with the radius."""
     default_cornea = SphericalCornea()
-    default_thickness = abs(7.98 - 6.22 - 1.15)
-    assert abs(default_cornea.thickness - default_thickness) < 1e-9
+    assert abs(default_cornea.thickness - 1.15) < 1e-9
 
-    # Custom cornea
     custom_radius = 10
     custom_cornea = SphericalCornea(anterior_radius=custom_radius, scale_with_radius=True)
     scale = custom_radius / 7.98
-    expected_thickness = abs(custom_radius - scale * 6.22 - scale * 1.15)
-    assert abs(custom_cornea.thickness - expected_thickness) < 1e-9
+    assert abs(custom_cornea.thickness - scale * 1.15) < 1e-9
+
+    custom_cornea.thickness = 0.5
+    assert abs(custom_cornea.thickness - 0.5) < 1e-9
+    assert custom_cornea.anterior_radius == custom_radius
 
 
 def test_posterior_center_scaling() -> None:

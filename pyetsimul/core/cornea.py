@@ -336,18 +336,18 @@ class SphericalCornea(Cornea):
 
     @property
     def thickness(self) -> float:
-        """Calculate the central corneal thickness based on radii and offset.
+        """Central corneal thickness in mm.
 
-        For a dual-surface spherical cornea, the central thickness is the distance
-        between the anterior and posterior surfaces along the optical axis.
-
-        Returns:
-            Central corneal thickness in mm
-
+        The distance on the optical axis from the apex of the anterior surface to the apex of the
+        posterior surface.
         """
-        # Distance between surface centers along optical axis
-        center_distance = abs(self.anterior_radius - self.posterior_radius - self.thickness_offset)
-        return center_distance
+        return self.thickness_offset
+
+    @thickness.setter
+    def thickness(self, value: float) -> None:
+        """Set the central corneal thickness in mm; the radii of the two surfaces stay as they are."""
+        # thickness_offset is the reference thickness times the scale factor.
+        self._thickness_offset_default = value / self.get_scale_factor()
 
     def get_posterior_center(self) -> Position3D:
         """Calculate the center of the posterior surface based on thickness."""

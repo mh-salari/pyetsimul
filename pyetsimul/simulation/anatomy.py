@@ -4,7 +4,6 @@ import copy
 from typing import TYPE_CHECKING
 
 from ..core.cornea import ConicCornea
-from ..core.default_configs import CorneaDefaults
 from .composed_variation import ComposedVariation
 from .generic import GenericEyeVariation
 
@@ -114,18 +113,11 @@ class CorneaThicknessVariation(GenericEyeVariation):
         return f"corneal thickness {self.value_range[0]:.2f}-{self.value_range[1]:.2f}mm ({self.num_steps} steps)"
 
     def apply_to_eye(self, eye: "Eye", value: float) -> None:  # noqa: PLR6301
-        """Apply thickness value by setting appropriate cornea parameter."""
-        # For ConicCornea: set thickness_offset directly
-        if isinstance(eye.model.cornea, ConicCornea):
-            eye.set_model(eye.model.with_parameter("cornea.thickness_offset", value))
-            return
-
-        # For SphericalCornea: calculate anterior_radius that gives desired thickness
-        # thickness_offset = scale * _thickness_offset_default
-        # scale = anterior_radius / _r_cornea_default
-        # So: anterior_radius = (desired_thickness / _thickness_offset_default) * _r_cornea_default
-        desired_radius = (value / CorneaDefaults.THICKNESS_OFFSET) * CorneaDefaults.ANTERIOR_RADIUS
-        eye.set_model(eye.model.with_parameter("cornea.anterior_radius", desired_radius))
+        """Give the eye a cornea with the central thickness ``value``; the corneal radii stay as they are."""
+        # The central thickness is the field thickness_offset of a conic cornea and the property thickness
+        # of a spherical cornea.
+        attribute = "thickness_offset" if isinstance(eye.model.cornea, ConicCornea) else "thickness"
+        eye.set_model(eye.model.with_parameter(f"cornea.{attribute}", value))
 
 
 class PupilSizeWithDecentrationVariation(GenericEyeVariation):

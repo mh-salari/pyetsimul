@@ -607,6 +607,19 @@ ETRA 2026 paper; this log records everything since.
   mm/mm for the left eye. The vertical direction was correct. Results change for eyes that use the default decentration
   coefficients. Coefficients that are given explicitly are used as given.
 
+- **Fixed: `CorneaThicknessVariation` on a spherical cornea changed the corneal radius instead of the thickness.**
+  Before, for a requested thickness of 0.5 mm, the anterior radius became 3.47 mm (the default is 7.98 mm). With
+  `scale_with_radius=False`, which is the default, the thickness stayed at 1.15 mm. With `scale_with_radius=True`, as
+  in the `et_simul` eye model, the thickness became 0.5 mm, but the whole cornea shrank with it (a corneal depth of
+  1.54 mm instead of 3.54 mm). Now the variation changes only the central thickness, and the radii stay as they are.
+  Datasets of this sweep on a spherical cornea change. A conic cornea was not affected.
+
+- **Fixed: `SphericalCornea.thickness` returned the distance between the two centres of curvature (0.61 mm) instead of
+  the central thickness (1.15 mm).**
+  The central thickness is the distance on the optical axis from the apex of the anterior surface to the apex of the
+  posterior surface, as in et_simul (`eye_make.m`). Now the property returns it, and assigning to it sets the
+  thickness. The shape of the cornea is unchanged.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed
