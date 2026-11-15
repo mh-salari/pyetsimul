@@ -629,7 +629,7 @@ class Camera:
                         # Compute glint size if the light has a physical diameter
                         if light.diameter is not None:
                             glint_diameter_3d = compute_glint_diameter(
-                                light.position, cr_3d, eye.cornea, eye.trans, light.diameter
+                                light.position, cr_3d, self.position, eye.cornea, eye.trans, light.diameter
                             )
                             distance_to_cr = float(projection_result.distances[0])
                             glint_size = self.camera_matrix.focal_length * glint_diameter_3d / distance_to_cr

@@ -583,6 +583,21 @@ ETRA 2026 paper; this log records everything since.
   arrows, whose tips are not at the predicted positions (120 mm away in a test). Now the legend says that the markers
   are arrow tips and gives the scale.
 
+- **Fixed: wrong glint size for a light source with a diameter.**
+  When a `Light` has a `diameter`, `Camera.take_image` reports the size of its glint in `glint_sizes_px`. Before, that
+  size was computed with a wrong mirror formula and a wrong local corneal radius. It was 3 % too large on a spherical
+  cornea and 11 to 65 % too small on the default conic cornea. Now it agrees to 0.02 % with the size found by
+  reflecting the two edges of the light off the cornea. Glint positions are not affected.
+
+- **Fixed: a light source with a diameter raised `TypeError` on a toric cornea.**
+  Before, `Camera.take_image` failed with `Unsupported cornea type: toric`, so no glint size could be computed for the
+  `gkaModelEye` eye model. Now the glint size on a toric cornea is computed on the conic that the toric cornea is built
+  on, which gives the mean diameter of the elliptical glint to 0.3 %.
+
+- **Changed: the glint size is computed by one function for every cornea type, `compute_glint_diameter`.**
+  It replaces `compute_glint_diameter_sphere` and `compute_glint_diameter_conic`, and takes the camera position as its
+  third argument.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed
