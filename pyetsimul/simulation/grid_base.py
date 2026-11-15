@@ -17,6 +17,8 @@ def _axis_value_count(min_offset: float, max_offset: float, num_points: int) -> 
 def _generate_axis_values(center_coord: float, min_offset: float, max_offset: float, num_points: int) -> np.ndarray:
     """Generate values along a single axis."""
     count = _axis_value_count(min_offset, max_offset, num_points)
+    if count == 1:
+        return np.array([center_coord + (min_offset + max_offset) / 2])
     return np.linspace(center_coord + min_offset, center_coord + max_offset, count)
 
 

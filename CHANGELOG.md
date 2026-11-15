@@ -637,6 +637,12 @@ ETRA 2026 paper; this log records everything since.
 
 - **Fixed: an `info()` call without a message wrote an empty entry to the log file.**
 
+- **Fixed: a grid with one point on an axis put that point at the lower end of the range.**
+  Before, with `grid_size=[1, 1, 3]` and `dx=[-100, 100]`, `TargetPositionVariation` and `EyePositionVariation` placed
+  their single x position 100 mm to one side of the grid centre. Now a single point lies at the middle of the range,
+  here at the grid centre, as for a `GenericEyeVariation` with one step. An axis whose two limits are equal is not
+  affected.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed
