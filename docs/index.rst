@@ -41,6 +41,7 @@ of gaze estimation algorithms across calibrated and uncalibrated settings.
    :caption: Contents
 
    getting_started
+   migration
 
 .. toctree::
    :maxdepth: 2
