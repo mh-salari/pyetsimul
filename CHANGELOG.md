@@ -643,6 +643,12 @@ ETRA 2026 paper; this log records everything since.
   here at the grid centre, as for a `GenericEyeVariation` with one step. An axis whose two limits are equal is not
   affected.
 
+- **Fixed: `GlintNoiseConfig` could reject a valid covariance matrix.**
+  A covariance matrix for perfectly correlated x and y noise is singular: one of its eigenvalues is zero. Before, when
+  that eigenvalue came out as a negative number of rounding size (about -1e-16), the matrix was rejected as not
+  positive semidefinite. In a test this happened for 54 of 361 such matrices. Now a negative eigenvalue of rounding
+  size counts as zero.
+
 ## [5.1.0] - 2026-09-10
 
 ### Changed

@@ -6,6 +6,9 @@ import numpy as np
 
 from ..types import Point2D
 
+# Size of a negative eigenvalue, relative to the largest one, that counts as zero.
+_EIGENVALUE_ROUNDING = 1e-12
+
 
 @dataclass
 class GlintNoiseConfig:
@@ -56,7 +59,8 @@ class GlintNoiseConfig:
             # Validate covariance matrix is positive semidefinite
             cov_matrix = np.array(self.covariance)
             eigenvalues = np.linalg.eigvals(cov_matrix)
-            if np.any(eigenvalues < 0):
+            # The zero eigenvalue of a singular matrix can round to a small negative number.
+            if eigenvalues.min() < -_EIGENVALUE_ROUNDING * np.abs(eigenvalues).max():
                 raise ValueError("Covariance matrix must be positive semidefinite")
 
             # Store numpy arrays
